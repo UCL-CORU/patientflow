@@ -395,9 +395,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#training-models-with-data-provided" class="md-nav__link">
+  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
     <span class="md-ellipsis">
-      Training models with data provided
+      Using the notebooks in this repository
     </span>
   </a>
   
@@ -409,22 +409,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#roadmap" class="md-nav__link">
+  <a href="#about-the-uclh-implementation" class="md-nav__link">
     <span class="md-ellipsis">
-      Roadmap
+      About the UCLH implementation
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#about" class="md-nav__link">
+  <a href="#roadmap" class="md-nav__link">
     <span class="md-ellipsis">
-      About
+      Roadmap
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="About">
+    <nav class="md-nav" aria-label="Roadmap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -739,9 +739,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#training-models-with-data-provided" class="md-nav__link">
+  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
     <span class="md-ellipsis">
-      Training models with data provided
+      Using the notebooks in this repository
     </span>
   </a>
   
@@ -753,22 +753,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#roadmap" class="md-nav__link">
+  <a href="#about-the-uclh-implementation" class="md-nav__link">
     <span class="md-ellipsis">
-      Roadmap
+      About the UCLH implementation
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#about" class="md-nav__link">
+  <a href="#roadmap" class="md-nav__link">
     <span class="md-ellipsis">
-      About
+      Roadmap
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="About">
+    <nav class="md-nav" aria-label="Roadmap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -878,7 +878,7 @@
 <h2 id="mathematical-assumptions-underlying-the-conversion-from-individual-to-group-predictions">Mathematical assumptions underlying the conversion from individual to group predictions:</h2>
 <ul>
 <li>Independence of patient requirements: The package assumes that individual patient requirements (eg for admission) are conditionally independent.</li>
-<li>Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.</li>
+<li>Bernoulli outcome model: Each patient outcome is modelled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.</li>
 <li>Different levels of aggregation: The package can calculate probability distributions for compound scenarios (such as the probability of a patient being admitted, assigned to a specific specialty if admitted, and being admitted within the prediction window) and for patient subgroups (like distributions by age or gender). In all cases, the independence assumption between patients is maintained.</li>
 </ul>
 <h2 id="getting-started">Getting started</h2>
@@ -900,16 +900,19 @@ pip install -e &quot;.[test]&quot; #this will install the code in test mode
 <pre><code class="language-sh">pytest
 </code></pre>
 <p>If you get errors running the pytest command, there may be other installations needed on your local machine.</p>
-<h3 id="training-models-with-data-provided">Training models with data provided</h3>
-<p>The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options</p>
+<h3 id="using-the-notebooks-in-this-repository">Using the notebooks in this repository</h3>
+<p>The notebooks in this repository demonstrate the use of some of the functions provided in <code>patientflow</code>. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options</p>
 <ul>
-<li>step through the notebooks (for this to work you'll either need copy the two csv files from <code>data-synthetic</code>into your <code>data-public</code> folder or request access on <a href="https://zenodo.org/records/14866057">Zenodo</a> to real patient data</li>
-<li>run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the <code>data_folder_name</code> parameter if you have the real data in <code>data-public</code>)</li>
+<li>step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on <a href="https://zenodo.org/records/14866057">Zenodo</a> to real patient data</li>
+<li>step through the notebooks using synthetic data. You will need to copy the two csv files from <code>data-synthetic</code>into your <code>data-public</code> folder or change the source in the each notebook. If you use synthetic data, you will not see the same cell output.</li>
 </ul>
+<h2 id="about-the-uclh-implementation">About the UCLH implementation</h2>
+<p>This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH).As noted above, please request access to the UCLH dataset via Zenodo.</p>
+<p>There is also a Python script that illustrates the training of the models that predict emergency demand at UCLH and saves them in your local environment using following commands (by default this will run with the synthetic data in its current location; change the <code>data_folder_name</code> parameter if you have downloaded the Zenodo dataset in <code>data-public</code>)</p>
 <pre><code class="language-sh">cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </code></pre>
-<p>The data_folder_name specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository</p>
+<p>The <code>data_folder_name</code>argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository</p>
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
@@ -917,8 +920,6 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 <li class="task-list-item"><input type="checkbox" disabled/> Alpha Release</li>
 <li class="task-list-item"><input type="checkbox" disabled/> Feature-Complete Release</li>
 </ul>
-<h2 id="about">About</h2>
-<p>This idea to create a Python package was inspired by , and</p>
 <h3 id="project-team">Project Team</h3>
 <ul>
 <li><a href="https://github.com/zmek">Dr Zella King</a>, Clinical Operational Research Unit (CORU), University College London (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)</li>
@@ -928,13 +929,7 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </ul>
 <h2 id="acknowledgements">Acknowledgements</h2>
 <p>The <a href="https://github.com/health-data-science-OR/pypi-template">py-pi template</a> developed by <a href="https://github.com/TomMonks">Tom Monks</a> inspired us to create a Python package. This repository is based on a template developed by the <a href="https://ucl.ac.uk/arc">Centre for Advanced Research Computing</a>, University College London. We are grateful to <a href="https://github.com/lawrencelai">Lawrence Lai</a> for creation of the synthetic dataset. MAPS QR Policy Funding from by University College London contributed to the construction of the repository.</p>
-<p>The underlying academic work was funded by grants from</p>
-<ul>
-<li>the Wellcome Institutional Strategic Support Fund (ISSF) UCL and Partner Hospitals: AI in Healthcare Funding Call 2019 (award number BRC717/HI/RW/101440),</li>
-<li>the National Institute for Health Research UCLH Biomedical Research Centre HIGODS Theme (award number BRC824/HG/ZK/110420)</li>
-<li>the National Institute for Health Research (Artificial Intelligence, Digitally adapted, hyper-local realtime bed forecasting to manage flow for NHS wards, AI_AWARD01786) and NHSX</li>
-<li>University College London Hospitals NHS Trust (Zetetic Benefits-Enhancing Data Science)</li>
-</ul>
+<p>The development of this repository/package was funded by UCL's QR Policy Support Fund, which is funded by <a href="https://www.ukri.org/councils/research-england/">Research England</a>.</p>
 
 
 
