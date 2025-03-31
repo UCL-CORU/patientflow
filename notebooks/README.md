@@ -18,21 +18,18 @@ I then explain who are the users of predictive models of patient flow.
 
 - **[1_Meet_the_users_of_our_predictions](/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
 
-A series of notebooks explaining patient snapshots
+A series of notebooks on patient snapshots.
 
 - **[2a_Create_patient_snapshots](/notebooks/2a_Create_patient_snapshots.ipynb):** Shows how to convert finished hospital visits into patient snapshots.
 - **[2b_Predict_using_patient_snapshots](/notebooks/2b_Predict_using_patient_snapshots.ipynb):** Shows how to make predictions using patient snapshots, handling multiple visits for a single patient, and multiple snapshots in a single visit.
 - **[2c_Evaluate_patient_snapshot_models](/notebooks/2c_Evaluate_patient_snapshot_models.ipynb):** Demonstrates the use of convenient function to help you evaluate predictive models trained on patient snapshots.
+- **[2d_Explore_the_datasets_provided](/notebooks/2d_Explore_the_datasets_provided.ipynb):** Provides exploratory plots of the two datasets that accompany this repository.
 
-A series of notebooks explaining group snapshots
+Two notebooks on group snapshots.
 
-- **[3a_Create_group_snapshots](/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
+- **[3a_Prepare_group_snapshots](/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
 
-One notebook introduces the synthetic dataset provided for the fully worked example:
-
-- **[3_Explore_the_datasets](/notebooks/3_Explore_the_datasets.ipynb):** Introduces the two synthetic datasets created to accompany this repository
-
-A set of notebooks follow, to show how we have used the functions in patientflow to predict number of beds needed for emergency demand.
+A set of notebooks follow, to show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
 
 - **[4_Specify_emergency_demand_model](/notebooks/4_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
 - **[4a_Predict_probability_of_admission_from_ED](/notebooks/4a_Predict_probability_of_admission_from_ED.ipynb):** Shows how to train a machine learning model to predict a patient's probability of admission using patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.

@@ -75,7 +75,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 ## Mathematical assumptions underlying the conversion from individual to group predictions:
 
 - Independence of patient requirements: The package assumes that individual patient requirements (eg for admission) are conditionally independent.
-- Bernoulli outcome model: Each patient outcome is modeled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.
+- Bernoulli outcome model: Each patient outcome is modelled as a Bernoulli trial with its own probability, and the package computes a probability distribution for the sum of these independent trials.
 - Different levels of aggregation: The package can calculate probability distributions for compound scenarios (such as the probability of a patient being admitted, assigned to a specific specialty if admitted, and being admitted within the prediction window) and for patient subgroups (like distributions by age or gender). In all cases, the independence assumption between patients is maintained.
 
 ## Getting started
@@ -107,19 +107,25 @@ pytest
 
 If you get errors running the pytest command, there may be other installations needed on your local machine.
 
-### Training models with data provided
+### Using the notebooks in this repository
 
-The data provided (which is synthetic) can be used to demonstrate training the models. To run training you have two options
+The notebooks in this repository demonstrate the use of some of the functions provided in `patientflow`. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options
 
-- step through the notebooks (for this to work you'll either need copy the two csv files from `data-synthetic`into your `data-public` folder or request access on [Zenodo](https://zenodo.org/records/14866057) to real patient data
-- run a Python script using following commands (by default this will run with the synthetic data in its current location; you can change the `data_folder_name` parameter if you have the real data in `data-public`)
+- step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on [Zenodo](https://zenodo.org/records/14866057) to real patient data
+- step through the notebooks using synthetic data. You will need to copy the two csv files from `data-synthetic`into your `data-public` folder or change the source in the each notebook. If you use synthetic data, you will not see the same cell output.
+
+## About the UCLH implementation
+
+This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH).As noted above, please request access to the UCLH dataset via Zenodo.
+
+There is also a Python script that illustrates the training of the models that predict emergency demand at UCLH and saves them in your local environment using following commands (by default this will run with the synthetic data in its current location; change the `data_folder_name` parameter if you have downloaded the Zenodo dataset in `data-public`)
 
 ```sh
 cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 ```
 
-The data_folder_name specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository
+The `data_folder_name`argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository
 
 ## Roadmap
 
@@ -127,10 +133,6 @@ The data_folder_name specifies the name of the folder containing data. The funct
 - [x] Minimum viable product <-- You are Here
 - [ ] Alpha Release
 - [ ] Feature-Complete Release
-
-## About
-
-This idea to create a Python package was inspired by , and
 
 ### Project Team
 
@@ -143,9 +145,4 @@ This idea to create a Python package was inspired by , and
 
 The [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by [Tom Monks](https://github.com/TomMonks) inspired us to create a Python package. This repository is based on a template developed by the [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London. We are grateful to [Lawrence Lai](https://github.com/lawrencelai) for creation of the synthetic dataset. MAPS QR Policy Funding from by University College London contributed to the construction of the repository.
 
-The underlying academic work was funded by grants from
-
-- the Wellcome Institutional Strategic Support Fund (ISSF) UCL and Partner Hospitals: AI in Healthcare Funding Call 2019 (award number BRC717/HI/RW/101440),
-- the National Institute for Health Research UCLH Biomedical Research Centre HIGODS Theme (award number BRC824/HG/ZK/110420)
-- the National Institute for Health Research (Artificial Intelligence, Digitally adapted, hyper-local realtime bed forecasting to manage flow for NHS wards, AI_AWARD01786) and NHSX
-- University College London Hospitals NHS Trust (Zetetic Benefits-Enhancing Data Science)
+The development of this repository/package was funded by UCL's QR Policy Support Fund, which is funded by [Research England](https://www.ukri.org/councils/research-england/).

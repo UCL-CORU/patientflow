@@ -164,6 +164,7 @@ get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
     Raises
     ------
     ValueError
+        If snapshots_dict is not properly formatted or empty.
         If model has no predict_proba method and is not a TrainedClassifier.
 
     Example Usage
@@ -178,6 +179,7 @@ get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
 import pandas as pd
 import sympy as sym
 from sympy import expand, symbols
+from datetime import date
 
 
 def create_symbols(n):
@@ -426,10 +428,11 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     ----------
     snapshots_dict : dict
         A dictionary mapping snapshot dates to indices in `X_test` and `y_test`.
-    X_test : pandas.DataFrame
-        A DataFrame containing the test features for prediction.
-    y_test : pandas.Series
-        A Series containing the true outcome values.
+        Must have datetime.date objects as keys and lists of indices as values.
+    X_test : DataFrame or array-like
+        Input test data to be passed to the model.
+    y_test : array-like
+        Observed target values.
     model : object or TrainedClassifier
         Either a predictive model which provides a `predict_proba` method,
         or a TrainedClassifier object containing a pipeline.
@@ -444,8 +447,25 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
     Raises
     ------
     ValueError
+        If snapshots_dict is not properly formatted or empty.
         If model has no predict_proba method and is not a TrainedClassifier.
     """
+    # Validate snapshots_dict format
+    if not snapshots_dict:
+        raise ValueError("snapshots_dict cannot be empty")
+
+    for dt, indices in snapshots_dict.items():
+        if not isinstance(dt, date):
+            raise ValueError(
+                f"snapshots_dict keys must be datetime.date objects, got {type(dt)}"
+            )
+        if not isinstance(indices, list):
+            raise ValueError(
+                f"snapshots_dict values must be lists, got {type(indices)}"
+            )
+        if indices and not all(isinstance(idx, int) for idx in indices):
+            raise ValueError("All indices in snapshots_dict must be integers")
+
     # Extract pipeline if model is a TrainedClassifier
     if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
         model = model.calibrated_pipeline
