@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
 from patientflow.predict.emergency_demand import add_missing_columns
-from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
+from typing import Optional
+from pathlib import Path
 
 # Define the color scheme
 primary_color = "#1f77b4"
@@ -11,10 +13,10 @@ secondary_color = "#aec7e8"
 
 def plot_calibration(
     trained_models: list[TrainedClassifier],
-    media_file_path,
     test_visits,
     exclude_from_training_data,
     strategy="uniform",
+    media_file_path: Optional[Path] = None,
     suptitle=None,
 ):
     """
@@ -54,7 +56,7 @@ def plot_calibration(
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
-        X_test, y_test = get_snapshots_at_prediction_time(
+        X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
@@ -96,9 +98,10 @@ def plot_calibration(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
 
-    calib_plot_path = media_file_path / "calibration_plot"
-    calib_plot_path = calib_plot_path.with_suffix(".png")
+    if media_file_path:
+        calib_plot_path = media_file_path / "calibration_plot"
+        calib_plot_path = calib_plot_path.with_suffix(".png")
 
-    plt.savefig(calib_plot_path)
+        plt.savefig(calib_plot_path)
     plt.show()
     plt.close()

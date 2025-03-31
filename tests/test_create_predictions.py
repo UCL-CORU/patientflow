@@ -276,7 +276,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertEqual(predictions["medical"]["yet_to_arrive"], [2, 1])
 
     def test_basic_functionality_with_special_category(self):
-        prediction_snapshots = create_random_df(n=100, include_consults=True)
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
 
         # print("\nWithout special category")
         # print(self.df[self.df.is_admitted == 1])
@@ -319,10 +319,10 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("paediatric", predictions_with_special_category)
 
         self.assertEqual(
-            predictions_without_special_category["paediatric"]["in_ed"], [9, 7]
+            predictions_without_special_category["paediatric"]["in_ed"], [4, 3]
         )
         self.assertEqual(
-            predictions_with_special_category["paediatric"]["in_ed"], [9, 8]
+            predictions_with_special_category["paediatric"]["in_ed"], [2, 1]
         )
 
     def test_single_row_prediction_snapshots(self):

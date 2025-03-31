@@ -18,7 +18,7 @@ prepare_for_inference(model_file_path, model_name, prediction_time=None,
 select_one_snapshot_per_visit(df, visit_col, seed=42)
     Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
 
-get_snapshots_at_prediction_time(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
+prepare_patient_snapshots(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
     Filters the DataFrame by prediction time and optionally selects one snapshot per visit.
 
 prepare_group_snapshot_dict(df, start_dt=None, end_dt=None)
@@ -90,73 +90,101 @@ def apply_set(row: pd.Series) -> str:
     )[0]
 
 
-def assign_mrns(
+def assign_patient_ids(
     df: pd.DataFrame,
     start_training_set: date,
     start_validation_set: date,
     start_test_set: date,
     end_test_set: date,
-    col_name: str = "arrival_datetime",
+    date_col: str = "arrival_datetime",
+    patient_id: str = "mrn",
+    visit_col: str = "encounter",
 ) -> pd.DataFrame:
-    """Probabilistically assign MRNs to train/validation/test sets.
+    """Probabilistically assign patient IDs to train/validation/test sets.
 
     Args:
-        df: DataFrame with mrn, encounter, and temporal columns
+        df: DataFrame with patient_id, encounter, and temporal columns
         start_training_set: Start date for training period
         start_validation_set: Start date for validation period
         start_test_set: Start date for test period
         end_test_set: End date for test period
-        col_name: Column name for temporal splitting
+        date_col: Column name for temporal splitting
+        patient_id: Column name for patient identifier (default: 'mrn')
+        visit_col: Column name for visit identifier (default: 'encounter')
 
     Returns:
-        DataFrame with MRN assignments based on weighted random sampling
+        DataFrame with patient ID assignments based on weighted random sampling
 
     Notes:
-        - Counts encounters in each time period per MRN
-        - Randomly assigns each MRN to one set, weighted by their temporal distribution
-        - MRN with 70% encounters in training, 30% in validation has 70% chance of training assignment
+        - Counts encounters in each time period per patient ID
+        - Randomly assigns each patient ID to one set, weighted by their temporal distribution
+        - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
     """
-    mrns: pd.DataFrame = df.groupby(["mrn", "encounter"])[col_name].max().reset_index()
+    patients: pd.DataFrame = (
+        df.groupby([patient_id, visit_col])[date_col].max().reset_index()
+    )
 
-    # Filter out MRNs outside temporal bounds
-    pre_training_mrns = mrns[mrns[col_name].dt.date < start_training_set]
-    post_test_mrns = mrns[mrns[col_name].dt.date >= end_test_set]
+    # Handle date_col as string, datetime, or date type
+    if pd.api.types.is_datetime64_any_dtype(patients[date_col]):
+        # Already datetime, extract date if needed
+        if hasattr(patients[date_col].iloc[0], "date"):
+            date_series = patients[date_col].dt.date
+        else:
+            # Already date type
+            date_series = patients[date_col]
+    else:
+        # Try to convert string to datetime
+        try:
+            patients[date_col] = pd.to_datetime(patients[date_col])
+            date_series = patients[date_col].dt.date
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"Could not convert column '{date_col}' to datetime format: {str(e)}"
+            )
 
-    if len(pre_training_mrns) > 0:
+    # Filter out patient IDs outside temporal bounds
+    pre_training_patients = patients[date_series < start_training_set]
+    post_test_patients = patients[date_series >= end_test_set]
+
+    if len(pre_training_patients) > 0:
         print(
-            f"Filtered out {len(pre_training_mrns)} MRNs with only pre-training visits"
+            f"Filtered out {len(pre_training_patients)} patients with only pre-training visits"
         )
-    if len(post_test_mrns) > 0:
-        print(f"Filtered out {len(post_test_mrns)} MRNs with only post-test visits")
+    if len(post_test_patients) > 0:
+        print(
+            f"Filtered out {len(post_test_patients)} patients with only post-test visits"
+        )
 
-    valid_mrns = mrns[
-        (mrns[col_name].dt.date >= start_training_set)
-        & (mrns[col_name].dt.date < end_test_set)
+    valid_patients = patients[
+        (date_series >= start_training_set) & (date_series < end_test_set)
     ]
-    mrns = valid_mrns
+    patients = valid_patients
 
-    mrns["training_set"] = (mrns[col_name].dt.date >= start_training_set) & (
-        mrns[col_name].dt.date < start_validation_set
+    # Use the date_series for set assignment
+    patients["training_set"] = (date_series >= start_training_set) & (
+        date_series < start_validation_set
     )
-    mrns["validation_set"] = (mrns[col_name].dt.date >= start_validation_set) & (
-        mrns[col_name].dt.date < start_test_set
+    patients["validation_set"] = (date_series >= start_validation_set) & (
+        date_series < start_test_set
     )
-    mrns["test_set"] = (mrns[col_name].dt.date >= start_test_set) & (
-        mrns[col_name].dt.date < end_test_set
+    patients["test_set"] = (date_series >= start_test_set) & (
+        date_series < end_test_set
     )
 
-    mrns = mrns.groupby("mrn")[["training_set", "validation_set", "test_set"]].sum()
-    mrns["training_validation_test"] = mrns.apply(apply_set, axis=1)
+    patients = patients.groupby(patient_id)[
+        ["training_set", "validation_set", "test_set"]
+    ].sum()
+    patients["training_validation_test"] = patients.apply(apply_set, axis=1)
 
     print(
-        f"\nMRN Set Overlaps (before random assignment):"
-        f"\nTrain-Valid: {mrns[mrns.training_set * mrns.validation_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.validation_set > 0].shape[0]}"
-        f"\nValid-Test: {mrns[mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.validation_set + mrns.test_set > 0].shape[0]}"
-        f"\nTrain-Test: {mrns[mrns.training_set * mrns.test_set != 0].shape[0]} of {mrns[mrns.training_set + mrns.test_set > 0].shape[0]}"
-        f"\nAll Sets: {mrns[mrns.training_set * mrns.validation_set * mrns.test_set != 0].shape[0]} of {mrns.shape[0]} total MRNs"
+        f"\nPatient Set Overlaps (before random assignment):"
+        f"\nTrain-Valid: {patients[patients.training_set * patients.validation_set != 0].shape[0]} of {patients[patients.training_set + patients.validation_set > 0].shape[0]}"
+        f"\nValid-Test: {patients[patients.validation_set * patients.test_set != 0].shape[0]} of {patients[patients.validation_set + patients.test_set > 0].shape[0]}"
+        f"\nTrain-Test: {patients[patients.training_set * patients.test_set != 0].shape[0]} of {patients[patients.training_set + patients.test_set > 0].shape[0]}"
+        f"\nAll Sets: {patients[patients.training_set * patients.validation_set * patients.test_set != 0].shape[0]} of {patients.shape[0]} total patients"
     )
 
-    return mrns
+    return patients
 
 
 def create_temporal_splits(
@@ -166,11 +194,13 @@ def create_temporal_splits(
     start_test: date,
     end_test: date,
     col_name: str = "arrival_datetime",
+    patient_id: str = "mrn",
+    visit_col: str = "encounter",
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split dataset into temporal train/validation/test sets.
 
     Creates temporal data splits using primary datetime column and optional snapshot dates.
-    Handles MRN (patient ID) grouping if present to prevent data leakage.
+    Handles patient ID grouping if present to prevent data leakage.
 
     Args:
         df: Input dataframe
@@ -179,6 +209,8 @@ def create_temporal_splits(
         start_test: Test start (inclusive)
         end_test: Test end (exclusive)
         col_name: Primary datetime column for splitting
+        patient_id: Column name for patient identifier (default: 'mrn')
+        visit_col: Column name for visit identifier (default: 'encounter')
 
     Returns:
         tuple: (train_df, valid_df, test_df) Split dataframes
@@ -191,17 +223,24 @@ def create_temporal_splits(
         except (AttributeError, TypeError):
             return series
 
-    if "mrn" in df.columns:
-        set_assignment: pd.DataFrame = assign_mrns(
-            df, start_train, start_valid, start_test, end_test, col_name
+    if patient_id in df.columns:
+        set_assignment: pd.DataFrame = assign_patient_ids(
+            df,
+            start_train,
+            start_valid,
+            start_test,
+            end_test,
+            col_name,
+            patient_id,
+            visit_col,
         )
-        mrn_sets: Dict[str, Set] = {
+        patient_sets: Dict[str, Set] = {
             k: set(set_assignment[set_assignment.training_validation_test == v].index)
             for k, v in {"train": "train", "valid": "valid", "test": "test"}.items()
         }
 
     splits: List[pd.DataFrame] = []
-    for start, end, mrn_key in [
+    for start, end, set_key in [
         (start_train, start_valid, "train"),
         (start_valid, start_test, "valid"),
         (start_test, end_test, "test"),
@@ -215,8 +254,8 @@ def create_temporal_splits(
                 get_date_value(df.snapshot_date) < end
             )
 
-        if "mrn" in df.columns:
-            mask &= df.mrn.isin(mrn_sets[mrn_key])
+        if patient_id in df.columns:
+            mask &= df[patient_id].isin(patient_sets[set_key])
 
         splits.append(df[mask].copy())
 
@@ -418,12 +457,12 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
     return df.loc[max_indices].drop(columns=["random_number"])
 
 
-def get_snapshots_at_prediction_time(
+def prepare_patient_snapshots(
     df,
     prediction_time,
-    exclude_columns,
+    exclude_columns=[],
     single_snapshot_per_visit=True,
-    visit_col="visit_number",
+    visit_col=None,
     label_col="is_admitted",
 ):
     """
@@ -438,9 +477,9 @@ def get_snapshots_at_prediction_time(
     exclude_columns : list
         List of columns to exclude from the final DataFrame
     single_snapshot_per_visit : bool, default=True
-        Whether to select only one snapshot per visit
-    visit_col : str, default="visit_number"
-        Name of the column containing visit identifiers
+        Whether to select only one snapshot per visit. If True, visit_col must be provided.
+    visit_col : str, optional
+        Name of the column containing visit identifiers. Required if single_snapshot_per_visit is True.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
 
@@ -448,13 +487,22 @@ def get_snapshots_at_prediction_time(
     --------
     tuple(pandas.DataFrame, pandas.Series)
         Processed DataFrame and corresponding labels
+
+    Raises:
+    -------
+    ValueError
+        If single_snapshot_per_visit is True but visit_col is not provided
     """
+    if single_snapshot_per_visit and visit_col is None:
+        raise ValueError(
+            "visit_col must be provided when single_snapshot_per_visit is True"
+        )
 
     # Filter by the time of day while keeping the original index
     df_tod = df[df["prediction_time"] == prediction_time].copy()
 
     if single_snapshot_per_visit:
-        # Group by visit_col and get the row with the maximum 'random_number'
+        # Select one row for each visit
         df_single = select_one_snapshot_per_visit(df_tod, visit_col)
         # Create label array with the same index
         y = df_single.pop(label_col).astype(int)
@@ -572,7 +620,7 @@ def prepare_for_inference(
         print("Column training_validation_test not found in dataframe")
         return None
 
-    X_test, y_test = get_snapshots_at_prediction_time(
+    X_test, y_test = prepare_patient_snapshots(
         test_df,
         prediction_time,
         exclude_from_training_data,
@@ -600,9 +648,17 @@ def prepare_group_snapshot_dict(df, start_dt=None, end_dt=None):
     if "snapshot_date" not in df.columns:
         raise ValueError("DataFrame must include a 'snapshot_date' column")
 
+    # Filter DataFrame to date range if provided
+    filtered_df = df.copy()
+    if start_dt and end_dt:
+        filtered_df = df[
+            (df["snapshot_date"] >= start_dt) & (df["snapshot_date"] < end_dt)
+        ]
+
     # Group the DataFrame by 'snapshot_date' and collect the indices for each group
     snapshots_dict = {
-        date: group.index.tolist() for date, group in df.groupby("snapshot_date")
+        date: group.index.tolist()
+        for date, group in filtered_df.groupby("snapshot_date")
     }
 
     # If start_dt and end_dt are specified, add any missing keys from prediction_dates

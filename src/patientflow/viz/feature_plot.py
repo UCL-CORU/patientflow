@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 from patientflow.model_artifacts import TrainedClassifier
 from sklearn.pipeline import Pipeline
 from typing import Optional
+from pathlib import Path
 
 
 def plot_features(
     trained_models: list[TrainedClassifier],
-    media_file_path,
+    media_file_path: Optional[Path] = None,
     top_n: int = 20,
     suptitle: Optional[str] = None,
 ):
@@ -68,8 +69,9 @@ def plot_features(
     if suptitle is not None:
         plt.suptitle(suptitle, y=1.05, fontsize=16)
 
-    # Save and display plot
-    feature_plot_path = media_file_path / "feature_importance_plots.png"
-    plt.savefig(feature_plot_path, bbox_inches="tight")
+    if media_file_path:
+        # Save and display plot
+        feature_plot_path = media_file_path / "feature_importance_plots.png"
+        plt.savefig(feature_plot_path, bbox_inches="tight")
     plt.show()
     plt.close(fig)

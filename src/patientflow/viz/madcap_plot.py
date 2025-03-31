@@ -26,14 +26,14 @@ generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_pat
 """
 
 from pathlib import Path
-from typing import List, Union, Optional
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import math
 import numpy as np
 import pandas as pd
 from patientflow.predict.emergency_demand import add_missing_columns
-from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
 
 exclude_from_training_data = [
@@ -87,9 +87,9 @@ def classify_age(age):
 
 def generate_madcap_plots(
     trained_models: list[TrainedClassifier],
-    media_file_path: Union[str, Path, None],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
+    media_file_path: Optional[Path] = None,
     suptitle: Optional[str] = None,
 ) -> None:
     """
@@ -140,7 +140,7 @@ def generate_madcap_plots(
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
-        X_test, y_test = get_snapshots_at_prediction_time(
+        X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
@@ -170,7 +170,7 @@ def generate_madcap_plots(
             prediction_time = trained_model.training_results.prediction_time
 
             # Get test data for this prediction time
-            X_test, y_test = get_snapshots_at_prediction_time(
+            X_test, y_test = prepare_patient_snapshots(
                 df=test_visits,
                 prediction_time=prediction_time,
                 exclude_columns=exclude_from_training_data,
@@ -360,11 +360,11 @@ def plot_madcap_by_group(
 
 def generate_madcap_plots_by_group(
     trained_models: list[TrainedClassifier],
-    media_file_path: Union[str, Path, None],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     grouping_var: str,
     grouping_var_name: str,
+    media_file_path: Optional[Path] = None,
     plot_difference: bool = False,
 ) -> None:
     """
@@ -407,7 +407,7 @@ def generate_madcap_plots_by_group(
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
-        X_test, y_test = get_snapshots_at_prediction_time(
+        X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
