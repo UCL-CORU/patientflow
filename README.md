@@ -80,7 +80,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](src/patientflow/README.md) for an overview of the Python package
+- Exploration: Start with the [notebooks README](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](https://github.com/UCL-CORU/patientflow/tree/main/src/patientflow#readme) for an overview of the Python package
 - Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
 - Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
 
