@@ -12,7 +12,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 
-from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import (
     HyperParameterTrial,
@@ -237,9 +237,9 @@ def evaluate_model(
     """Evaluate model on test set."""
     y_test_pred = pipeline.predict_proba(X_test)[:, 1]
     return {
-        "test_auc": roc_auc_score(y_test, y_test_pred),
-        "test_logloss": log_loss(y_test, y_test_pred),
-        "test_auprc": average_precision_score(y_test, y_test_pred),
+        "test_auc": float(roc_auc_score(y_test, y_test_pred)),
+        "test_logloss": float(log_loss(y_test, y_test_pred)),
+        "test_auprc": float(average_precision_score(y_test, y_test_pred)),
     }
 
 
@@ -251,12 +251,13 @@ def train_classifier(
     exclude_from_training_data: List[str],
     grid: Dict[str, List[Any]],
     ordinal_mappings: Dict[str, List[Any]],
-    visit_col: str,
+    visit_col: Optional[str] = None,
     model_class: Type = XGBClassifier,
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
-    calibration_method: str = "isotonic",
+    calibration_method: str = "sigmoid",
+    single_snapshot_per_visit: bool = True,
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
@@ -277,8 +278,8 @@ def train_classifier(
         Parameter grid for hyperparameter tuning
     ordinal_mappings : Dict[str, List[Any]]
         Mappings for ordinal categorical features
-    visit_col : str
-        Name of the visit column
+    visit_col : str, optional
+        Name of the visit column. Required if single_snapshot_per_visit is True.
     model_class : Type, optional
         The classifier class to use. Must be sklearn-compatible with fit() and predict_proba().
         Defaults to XGBClassifier.
@@ -288,23 +289,42 @@ def train_classifier(
         Ratio of majority to minority class samples
     calibrate_probabilities : bool, default=True
         Whether to apply probability calibration to the best model
-    calibration_method : str, default='isotonic'
+    calibration_method : str, default='sigmoid'
         Method for probability calibration ('isotonic' or 'sigmoid')
+    single_snapshot_per_visit : bool, default=True
+        Whether to select only one snapshot per visit. If True, visit_col must be provided.
 
     Returns:
     --------
     TrainedClassifier
         Trained model, including metrics, and feature information
     """
+    if single_snapshot_per_visit and visit_col is None:
+        raise ValueError(
+            "visit_col must be provided when single_snapshot_per_visit is True"
+        )
+
     # Get snapshots for each set
-    X_train, y_train = get_snapshots_at_prediction_time(
-        train_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+    X_train, y_train = prepare_patient_snapshots(
+        train_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
-    X_valid, y_valid = get_snapshots_at_prediction_time(
-        valid_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+    X_valid, y_valid = prepare_patient_snapshots(
+        valid_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
-    X_test, y_test = get_snapshots_at_prediction_time(
-        test_visits, prediction_time, exclude_from_training_data, visit_col=visit_col
+    X_test, y_test = prepare_patient_snapshots(
+        test_visits,
+        prediction_time,
+        exclude_from_training_data,
+        visit_col=visit_col,
+        single_snapshot_per_visit=single_snapshot_per_visit,
     )
 
     # Get dataset metadata before any balancing

@@ -1,18 +1,20 @@
 from matplotlib import pyplot as plt
-from patientflow.prepare import get_snapshots_at_prediction_time
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.model_artifacts import TrainedClassifier
 import shap
 import scipy.sparse
 import numpy as np
 from sklearn.pipeline import Pipeline
+from typing import Optional
+from pathlib import Path
 
 
 def plot_shap(
     trained_models: list[TrainedClassifier],
-    media_file_path,
     test_visits,
     exclude_from_training_data,
+    media_file_path: Optional[Path] = None,
 ):
     """
     Generate SHAP plots for multiple trained models.
@@ -42,7 +44,7 @@ def plot_shap(
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time
-        X_test, y_test = get_snapshots_at_prediction_time(
+        X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
@@ -94,9 +96,12 @@ def plot_shap(
         ax.set_xlabel("SHAP Value")
         plt.tight_layout()
 
-        # Save plot
-        shap_plot_path = str(media_file_path / f"shap_plot_{hour:02}{minutes:02}.png")
+        if media_file_path:
+            # Save plot
+            shap_plot_path = str(
+                media_file_path / f"shap_plot_{hour:02}{minutes:02}.png"
+            )
+            plt.savefig(shap_plot_path)
 
-        plt.savefig(shap_plot_path)
         plt.show()
         plt.close(fig)

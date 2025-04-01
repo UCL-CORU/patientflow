@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta, time
 
 
-def patient_visits(start_date, end_date, mean_patients_per_day):
+def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
     """
     Generate fake patient visit data with random arrival and departure times.
 
@@ -19,7 +19,7 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     Returns:
     --------
     tuple (pandas.DataFrame, pandas.DataFrame, pandas.DataFrame)
-        First DataFrame: visits with columns: visit_number, arrival_datetime, departure_datetime,
+        First DataFrame: visits with columns: visit_number, patient_id, arrival_datetime, departure_datetime,
         is_admitted, age
         Second DataFrame: observations with columns: visit_number, observation_datetime, triage_score
         Third DataFrame: lab_orders with columns: visit_number, order_datetime, lab_name
@@ -38,6 +38,18 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
 
     # Generate random number of patients for each day using Poisson distribution
     daily_patients = np.random.poisson(mean_patients_per_day, days_range)
+
+    # Calculate the total number of visits
+    total_visits = sum(daily_patients)
+
+    # Calculate approximately how many unique patients we need
+    # If 20% of patients have more than one visit (let's assume they have exactly 2),
+    # then for N total visits, we need approximately N * 0.8 + (N * 0.2) / 2 unique patients
+    # Simplifying: N * (0.8 + 0.1) = N * 0.9 unique patients
+    num_unique_patients = int(total_visits * 0.9)
+
+    # Create patient ids
+    patient_ids = list(range(1, num_unique_patients + 1))
 
     # Define admission probabilities based on triage score
     # Triage 1: 80% admission, Triage 2: 60%, Triage 3: 30%, Triage 4: 10%, Triage 5: 2%
@@ -99,11 +111,38 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     lab_orders = []
     visit_number = 1
 
+    # Create a dictionary to track number of visits per patient
+    patient_visit_count = {patient_id: 0 for patient_id in patient_ids}
+
+    # Create a pool of patients who will have multiple visits (20% of patients)
+    multi_visit_patients = set(
+        np.random.choice(
+            patient_ids, size=int(num_unique_patients * 0.2), replace=False
+        )
+    )
+
     for day_idx, num_patients in enumerate(daily_patients):
         current_date = start_date + timedelta(days=day_idx)
 
         # Generate patients for this day
         for _ in range(num_patients):
+            # Select a patient ID based on our requirements
+            # If we haven't assigned all patients yet, use a new one
+            # Otherwise, pick from multi-visit patients
+            available_new_patients = [
+                pid for pid in patient_ids if patient_visit_count[pid] == 0
+            ]
+
+            if available_new_patients:
+                # Use a new patient
+                patient_id = np.random.choice(available_new_patients)
+            else:
+                # All patients have at least one visit, now use multi-visit patients
+                patient_id = np.random.choice(list(multi_visit_patients))
+
+            # Increment the visit count for this patient
+            patient_visit_count[patient_id] += 1
+
             # Random hour for arrival (more likely during daytime)
             arrival_hour = np.random.normal(13, 4)  # Mean at 1 PM, std dev of 4 hours
             arrival_hour = max(0, min(23, int(arrival_hour)))  # Clamp between 0-23
@@ -143,15 +182,21 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
                 [0, 1], p=[1 - admission_prob, admission_prob]
             )
 
-            # Generate age with a distribution skewed towards older adults
-            age = int(
-                np.random.lognormal(mean=3.8, sigma=0.5)
-            )  # Centers around 45 years
-            age = max(0, min(100, age))  # Clamp between 0-100 years
+            # For returning patients, use the same age as their first visit
+            if patient_id in [v["patient_id"] for v in visits]:
+                # Find the age from a previous visit
+                age = next(v["age"] for v in visits if v["patient_id"] == patient_id)
+            else:
+                # Generate age with a distribution skewed towards older adults
+                age = int(
+                    np.random.lognormal(mean=3.8, sigma=0.5)
+                )  # Centers around 45 years
+                age = max(0, min(100, age))  # Clamp between 0-100 years
 
-            # Add visit record (without triage score)
+            # Add visit record (without triage score, but with patient_id)
             visits.append(
                 {
+                    "patient_id": patient_id,
                     "visit_number": visit_number,
                     "arrival_datetime": arrival_datetime,
                     "departure_datetime": departure_datetime,
@@ -215,32 +260,50 @@ def patient_visits(start_date, end_date, mean_patients_per_day):
     return visits_df, observations_df, lab_orders_df
 
 
-def create_snapshots(
-    df, observations_df, lab_orders_df, prediction_times, start_date, end_date
+def create_fake_snapshots(
+    prediction_times,
+    start_date,
+    end_date,
+    df=None,
+    observations_df=None,
+    lab_orders_df=None,
+    mean_patients_per_day=50,
 ):
     """
     Create snapshots of patients present at specific times between start_date and end_date.
 
     Parameters:
     -----------
-    df : pandas.DataFrame
-        DataFrame with patient visit data, must have 'arrival_datetime' and 'departure_datetime' columns
-    observations_df : pandas.DataFrame
-        DataFrame with triage observations, must have 'visit_number', 'observation_datetime', 'triage_score' columns
-    lab_orders_df : pandas.DataFrame
-        DataFrame with lab orders, must have 'visit_number', 'order_datetime', 'lab_name' columns
     prediction_times : list of tuples
         List of (hour, minute) tuples representing times to take snapshots
     start_date : str or datetime
         First date to take snapshots (format: 'YYYY-MM-DD' if string)
     end_date : str or datetime
         Last date to take snapshots (exclusive) (format: 'YYYY-MM-DD' if string)
+    df : pandas.DataFrame, optional
+        DataFrame with patient visit data, must have 'arrival_datetime' and 'departure_datetime' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    observations_df : pandas.DataFrame, optional
+        DataFrame with triage observations, must have 'visit_number', 'observation_datetime', 'triage_score' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    lab_orders_df : pandas.DataFrame, optional
+        DataFrame with lab orders, must have 'visit_number', 'order_datetime', 'lab_name' columns.
+        If not provided, will be generated using create_fake_finished_visits()
+    mean_patients_per_day : float, optional
+        The average number of patients to generate per day if generating fake data.
+        Only used if df, observations_df, and lab_orders_df are not provided.
 
     Returns:
     --------
     pandas.DataFrame
         DataFrame with snapshot information and patient data, including lab order counts
     """
+    # Generate fake data if not provided
+    if df is None or observations_df is None or lab_orders_df is None:
+        df, observations_df, lab_orders_df = create_fake_finished_visits(
+            start_date, end_date, mean_patients_per_day
+        )
+
     # Add date conversion at the start
     if isinstance(start_date, str):
         start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -342,9 +405,10 @@ def create_snapshots(
                 )
             else:
                 snapshot_df["latest_triage_score"] = pd.Series(
-                    [np.nan], dtype="float64", index=snapshot_df.index
+                    [np.nan] * len(snapshot_df),
+                    dtype="float64",
+                    index=snapshot_df.index,
                 )
-
             # Merge with lab counts
             snapshot_df = pd.merge(
                 snapshot_df, lab_counts, on="visit_number", how="left"
@@ -382,6 +446,7 @@ def create_snapshots(
         # Define column order
         snapshot_cols = ["snapshot_date", "prediction_time"]
         visit_cols = [
+            "patient_id",
             "visit_number",
             "is_admitted",
             "age",
