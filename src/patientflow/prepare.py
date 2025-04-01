@@ -35,7 +35,7 @@ from patientflow.load import load_saved_model, get_dict_cols, data_from_csv
 from datetime import datetime, date
 
 
-from typing import Tuple, List, Set, Dict, Any
+from typing import Tuple, List, Set, Dict, Any, Type, Callable, Union
 
 from patientflow.errors import MissingKeysError
 
@@ -303,12 +303,12 @@ class SpecialCategoryParams:
         else:
             raise ValueError("Unknown data format: could not find expected age columns")
 
-    def special_category_func(self, row):
+    def special_category_func(self, row: Union[dict, pd.Series]) -> bool:
         """
         Identify if a patient is pediatric based on age data.
 
         Parameters:
-            row (dict or pandas.Series): A row of patient data containing either
+            row (Union[dict, pd.Series]): A row of patient data containing either
                 'age_on_arrival' or 'age_group'
 
         Returns:
@@ -320,26 +320,28 @@ class SpecialCategoryParams:
         else:  # age_group
             return row["age_group"] == "0-17"
 
-    def opposite_special_category_func(self, row):
+    def opposite_special_category_func(self, row: Union[dict, pd.Series]) -> bool:
         """
         Identify if a patient is NOT pediatric.
 
         Parameters:
-            row (dict or pandas.Series): A row of patient data
+            row (Union[dict, pd.Series]): A row of patient data
 
         Returns:
             bool: True if the patient is NOT pediatric, False if they are pediatric
         """
         return not self.special_category_func(row)
 
-    def get_params_dict(self):
+    def get_params_dict(
+        self,
+    ) -> Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]:
         """
         Get the special parameter dictionary in the format expected by the application.
 
         Returns:
-            dict: A dictionary containing:
+            Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]: A dictionary containing:
                 - 'special_category_func': Function to identify pediatric patients
-                - 'special_category_dict': Default category values
+                - 'special_category_dict': Default category values (float)
                 - 'special_func_map': Mapping of category names to detection functions
         """
         return {
@@ -351,12 +353,12 @@ class SpecialCategoryParams:
             },
         }
 
-    def __reduce__(self):
+    def __reduce__(self) -> Tuple[Type["SpecialCategoryParams"], Tuple[list]]:
         """
         Support for pickle serialization.
 
         Returns:
-            tuple: A tuple containing:
+            Tuple[Type['SpecialCategoryParams'], Tuple[list]]: A tuple containing:
                 - The class itself (to be called as a function)
                 - A tuple of arguments to pass to the class constructor
         """
@@ -464,7 +466,7 @@ def prepare_patient_snapshots(
     single_snapshot_per_visit=True,
     visit_col=None,
     label_col="is_admitted",
-):
+) -> Tuple[pd.DataFrame, pd.Series]:
     """
     Get snapshots of data at a specific prediction time with configurable visit and label columns.
 
@@ -485,13 +487,10 @@ def prepare_patient_snapshots(
 
     Returns:
     --------
-    tuple(pandas.DataFrame, pandas.Series)
-        Processed DataFrame and corresponding labels
-
-    Raises:
-    -------
-    ValueError
-        If single_snapshot_per_visit is True but visit_col is not provided
+    Tuple[pandas.DataFrame, pandas.Series]
+        A tuple containing:
+        - DataFrame: Processed DataFrame with features
+        - Series: Corresponding labels
     """
     if single_snapshot_per_visit and visit_col is None:
         raise ValueError(
