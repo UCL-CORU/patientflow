@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.9">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
     
     
       
@@ -162,11 +162,13 @@
     
     
     
-      <label class="md-header__button md-icon" for="__search">
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-      </label>
-      <div class="md-search" data-md-component="search" role="dialog">
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
   <label class="md-search__overlay" for="__search"></label>
   <div class="md-search__inner" role="search">
     <form class="md-search__form" name="search">
@@ -198,6 +200,7 @@
     </div>
   </div>
 </div>
+      
     
     
       <div class="md-header__source">
@@ -270,6 +273,7 @@
       <a href=".." class="md-nav__link">
         
   
+  
   <span class="md-ellipsis">
     Overview
     
@@ -291,6 +295,7 @@
     
     
     
+    
     <li class="md-nav__item md-nav__item--nested">
       
         
@@ -300,6 +305,7 @@
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
+  
   
   <span class="md-ellipsis">
     Notebooks
@@ -326,6 +332,7 @@
     <li class="md-nav__item">
       <a href="../notebooks/" class="md-nav__link">
         
+  
   
   <span class="md-ellipsis">
     README
@@ -356,6 +363,7 @@
     
     
     
+    
     <li class="md-nav__item md-nav__item--nested">
       
         
@@ -365,6 +373,7 @@
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
+  
   
   <span class="md-ellipsis">
     Patientflow
@@ -391,6 +400,7 @@
     <li class="md-nav__item">
       <a href="../src/patientflow/" class="md-nav__link">
         
+  
   
   <span class="md-ellipsis">
     README
@@ -430,6 +440,7 @@
         <label class="md-nav__link md-nav__link--active" for="__toc">
           
   
+  
   <span class="md-ellipsis">
     API reference
     
@@ -441,6 +452,7 @@
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
+  
   
   <span class="md-ellipsis">
     API reference
@@ -2276,15 +2288,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#patientflow.prepare.prepare_patient_snapshots--raises" class="md-nav__link">
-    <span class="md-ellipsis">
-      Raises:
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2828,6 +2831,7 @@
     <li class="md-nav__item">
       <a href="../LICENSE/" class="md-nav__link">
         
+  
   
   <span class="md-ellipsis">
     License
@@ -4677,15 +4681,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#patientflow.prepare.prepare_patient_snapshots--raises" class="md-nav__link">
-    <span class="md-ellipsis">
-      Raises:
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -5237,7 +5232,10 @@
 
 
 <h1 id="api-reference">API reference</h1>
-<p>Introductory text here</p>
+<p><code>patientflow</code> provides a comprehensive set of tools for predicting short-term hospital bed demand using real-time data. This API reference documents all public modules, classes, and functions available in the PatientFlow package.</p>
+<p>Each function and class is documented with usage examples, parameter descriptions, and return value information to help you implement effective patient flow monitoring and prediction systems.</p>
+<p>Getting Started</p>
+<p>For common usage, we recommend starting with the notebooks section, which provides step-by-step examples. This API reference serves as a comprehensive technical resource once you're familiar with the basic concepts.</p>
 
 
 <div class="doc doc-object doc-module">
@@ -17056,7 +17054,9 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 <span class="normal">360</span>
 <span class="normal">361</span>
 <span class="normal">362</span>
-<span class="normal">363</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SpecialCategoryParams</span><span class="p">:</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SpecialCategoryParams</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A picklable implementation of special category parameters for patient classification.</span>
 
@@ -17096,12 +17096,12 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unknown data format: could not find expected age columns&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Identify if a patient is pediatric based on age data.</span>
 
 <span class="sd">        Parameters:</span>
-<span class="sd">            row (dict or pandas.Series): A row of patient data containing either</span>
+<span class="sd">            row (Union[dict, pd.Series]): A row of patient data containing either</span>
 <span class="sd">                &#39;age_on_arrival&#39; or &#39;age_group&#39;</span>
 
 <span class="sd">        Returns:</span>
@@ -17113,26 +17113,28 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
         <span class="k">else</span><span class="p">:</span>  <span class="c1"># age_group</span>
             <span class="k">return</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;age_group&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;0-17&quot;</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Identify if a patient is NOT pediatric.</span>
 
 <span class="sd">        Parameters:</span>
-<span class="sd">            row (dict or pandas.Series): A row of patient data</span>
+<span class="sd">            row (Union[dict, pd.Series]): A row of patient data</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            bool: True if the patient is NOT pediatric, False if they are pediatric</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">special_category_func</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the special parameter dictionary in the format expected by the application.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            dict: A dictionary containing:</span>
+<span class="sd">            Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]: A dictionary containing:</span>
 <span class="sd">                - &#39;special_category_func&#39;: Function to identify pediatric patients</span>
-<span class="sd">                - &#39;special_category_dict&#39;: Default category values</span>
+<span class="sd">                - &#39;special_category_dict&#39;: Default category values (float)</span>
 <span class="sd">                - &#39;special_func_map&#39;: Mapping of category names to detection functions</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
@@ -17144,12 +17146,12 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
             <span class="p">},</span>
         <span class="p">}</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="s2">&quot;SpecialCategoryParams&quot;</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Support for pickle serialization.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            tuple: A tuple containing:</span>
+<span class="sd">            Tuple[Type[&#39;SpecialCategoryParams&#39;], Tuple[list]]: A tuple containing:</span>
 <span class="sd">                - The class itself (to be called as a function)</span>
 <span class="sd">                - A tuple of arguments to pass to the class constructor</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -17319,17 +17321,18 @@ used to determine the appropriate age identification method</p>
   <table>
     <thead>
       <tr>
-<th>Name</th>        <th>Type</th>
+        <th>Type</th>
         <th>Description</th>
       </tr>
     </thead>
     <tbody>
         <tr>
-<td><code>tuple</code></td>          <td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a>[<a class="autorefs autorefs-external" title="typing.Type" href="https://docs.python.org/3/library/typing.html#typing.Type">Type</a>[<a class="autorefs autorefs-internal" title="patientflow.prepare.SpecialCategoryParams" href="#patientflow.prepare.SpecialCategoryParams">SpecialCategoryParams</a>], <a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>]]</code>
           </td>
           <td>
             <div class="doc-md-description">
-              <p>A tuple containing:
+              <p>Tuple[Type['SpecialCategoryParams'], Tuple[list]]: A tuple containing:
 - The class itself (to be called as a function)
 - A tuple of arguments to pass to the class constructor</p>
             </div>
@@ -17340,21 +17343,21 @@ used to determine the appropriate age identification method</p>
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">354</span>
-<span class="normal">355</span>
-<span class="normal">356</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">356</span>
 <span class="normal">357</span>
 <span class="normal">358</span>
 <span class="normal">359</span>
 <span class="normal">360</span>
 <span class="normal">361</span>
 <span class="normal">362</span>
-<span class="normal">363</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">__reduce__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="s2">&quot;SpecialCategoryParams&quot;</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Support for pickle serialization.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        tuple: A tuple containing:</span>
+<span class="sd">        Tuple[Type[&#39;SpecialCategoryParams&#39;], Tuple[list]]: A tuple containing:</span>
 <span class="sd">            - The class itself (to be called as a function)</span>
 <span class="sd">            - A tuple of arguments to pass to the class constructor</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -17387,19 +17390,20 @@ used to determine the appropriate age identification method</p>
   <table>
     <thead>
       <tr>
-<th>Name</th>        <th>Type</th>
+        <th>Type</th>
         <th>Description</th>
       </tr>
     </thead>
     <tbody>
         <tr>
-<td><code>dict</code></td>          <td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Dict" href="https://docs.python.org/3/library/typing.html#typing.Dict">Dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a>, <a class="autorefs autorefs-external" title="typing.Dict" href="https://docs.python.org/3/library/typing.html#typing.Dict">Dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>], <a class="autorefs autorefs-external" title="typing.Dict" href="https://docs.python.org/3/library/typing.html#typing.Dict">Dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Callable" href="https://docs.python.org/3/library/typing.html#typing.Callable">Callable</a>]]]</code>
           </td>
           <td>
             <div class="doc-md-description">
-              <p>A dictionary containing:
+              <p>Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]: A dictionary containing:
 - 'special_category_func': Function to identify pediatric patients
-- 'special_category_dict': Default category values
+- 'special_category_dict': Default category values (float)
 - 'special_func_map': Mapping of category names to detection functions</p>
             </div>
           </td>
@@ -17426,14 +17430,18 @@ used to determine the appropriate age identification method</p>
 <span class="normal">349</span>
 <span class="normal">350</span>
 <span class="normal">351</span>
-<span class="normal">352</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the special parameter dictionary in the format expected by the application.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        dict: A dictionary containing:</span>
+<span class="sd">        Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]: A dictionary containing:</span>
 <span class="sd">            - &#39;special_category_func&#39;: Function to identify pediatric patients</span>
-<span class="sd">            - &#39;special_category_dict&#39;: Default category values</span>
+<span class="sd">            - &#39;special_category_dict&#39;: Default category values (float)</span>
 <span class="sd">            - &#39;special_func_map&#39;: Mapping of category names to detection functions</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">{</span>
@@ -17482,7 +17490,7 @@ used to determine the appropriate age identification method</p>
         <tr>
           <td><code>row</code></td>
           <td>
-                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a> or <span title="pandas.Series">Series</span></code>
+                <code><a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>, <span title="pandas.Series">Series</span>]</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -17509,6 +17517,7 @@ used to determine the appropriate age identification method</p>
     <tbody>
         <tr>
 <td><code>bool</code></td>          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -17531,12 +17540,12 @@ used to determine the appropriate age identification method</p>
 <span class="normal">330</span>
 <span class="normal">331</span>
 <span class="normal">332</span>
-<span class="normal">333</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+<span class="normal">333</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Identify if a patient is NOT pediatric.</span>
 
 <span class="sd">    Parameters:</span>
-<span class="sd">        row (dict or pandas.Series): A row of patient data</span>
+<span class="sd">        row (Union[dict, pd.Series]): A row of patient data</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        bool: True if the patient is NOT pediatric, False if they are pediatric</span>
@@ -17580,7 +17589,7 @@ used to determine the appropriate age identification method</p>
         <tr>
           <td><code>row</code></td>
           <td>
-                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a> or <span title="pandas.Series">Series</span></code>
+                <code><a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>, <span title="pandas.Series">Series</span>]</code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -17608,6 +17617,7 @@ used to determine the appropriate age identification method</p>
     <tbody>
         <tr>
 <td><code>bool</code></td>          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
           </td>
           <td>
             <div class="doc-md-description">
@@ -17636,12 +17646,12 @@ used to determine the appropriate age identification method</p>
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
-<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Identify if a patient is pediatric based on age data.</span>
 
 <span class="sd">    Parameters:</span>
-<span class="sd">        row (dict or pandas.Series): A row of patient data containing either</span>
+<span class="sd">        row (Union[dict, pd.Series]): A row of patient data containing either</span>
 <span class="sd">            &#39;age_on_arrival&#39; or &#39;age_group&#39;</span>
 
 <span class="sd">    Returns:</span>
@@ -18064,9 +18074,7 @@ used to determine the appropriate age identification method</p>
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">368</span>
 <span class="normal">369</span>
 <span class="normal">370</span>
 <span class="normal">371</span>
@@ -18080,7 +18088,9 @@ used to determine the appropriate age identification method</p>
 <span class="normal">379</span>
 <span class="normal">380</span>
 <span class="normal">381</span>
-<span class="normal">382</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_special_category_objects</span><span class="p">(</span><span class="n">columns</span><span class="p">):</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_special_category_objects</span><span class="p">(</span><span class="n">columns</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a configuration for categorizing patients with special handling for pediatric cases.</span>
 
@@ -18472,9 +18482,7 @@ print(filters['medical'])
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">397</span>
-<span class="normal">398</span>
-<span class="normal">399</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">399</span>
 <span class="normal">400</span>
 <span class="normal">401</span>
 <span class="normal">402</span>
@@ -18520,7 +18528,9 @@ print(filters['medical'])
 <span class="normal">442</span>
 <span class="normal">443</span>
 <span class="normal">444</span>
-<span class="normal">445</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_yta_filters</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_yta_filters</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create specialty filters for categorizing patients by specialty and age group.</span>
 
@@ -18643,7 +18653,8 @@ y_test : pandas.Series, optional
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">521</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">520</span>
+<span class="normal">521</span>
 <span class="normal">522</span>
 <span class="normal">523</span>
 <span class="normal">524</span>
@@ -18751,8 +18762,7 @@ y_test : pandas.Series, optional
 <span class="normal">626</span>
 <span class="normal">627</span>
 <span class="normal">628</span>
-<span class="normal">629</span>
-<span class="normal">630</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_for_inference</span><span class="p">(</span>
+<span class="normal">629</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_for_inference</span><span class="p">(</span>
     <span class="n">model_file_path</span><span class="p">,</span>
     <span class="n">model_name</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -18893,7 +18903,8 @@ A array can be empty if there are no snapshots associated with a date</p>
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">633</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">632</span>
+<span class="normal">633</span>
 <span class="normal">634</span>
 <span class="normal">635</span>
 <span class="normal">636</span>
@@ -18932,8 +18943,7 @@ A array can be empty if there are no snapshots associated with a date</p>
 <span class="normal">669</span>
 <span class="normal">670</span>
 <span class="normal">671</span>
-<span class="normal">672</span>
-<span class="normal">673</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_group_snapshot_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">start_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">672</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_group_snapshot_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">start_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.</span>
 
@@ -19009,17 +19019,14 @@ visit_col : str, optional
 label_col : str, default="is_admitted"
     Name of the column containing the target labels</p>
 <h5 id="patientflow.prepare.prepare_patient_snapshots--returns">Returns:</h5>
-<p>tuple(pandas.DataFrame, pandas.Series)
-    Processed DataFrame and corresponding labels</p>
-<h5 id="patientflow.prepare.prepare_patient_snapshots--raises">Raises:</h5>
-<p>ValueError
-    If single_snapshot_per_visit is True but visit_col is not provided</p>
+<p>Tuple[pandas.DataFrame, pandas.Series]
+    A tuple containing:
+    - DataFrame: Processed DataFrame with features
+    - Series: Corresponding labels</p>
 
           <details class="quote">
             <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">462</span>
 <span class="normal">463</span>
 <span class="normal">464</span>
 <span class="normal">465</span>
@@ -19074,15 +19081,14 @@ label_col : str, default="is_admitted"
 <span class="normal">514</span>
 <span class="normal">515</span>
 <span class="normal">516</span>
-<span class="normal">517</span>
-<span class="normal">518</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_patient_snapshots</span><span class="p">(</span>
+<span class="normal">517</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_patient_snapshots</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">,</span>
     <span class="n">exclude_columns</span><span class="o">=</span><span class="p">[],</span>
     <span class="n">single_snapshot_per_visit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">label_col</span><span class="o">=</span><span class="s2">&quot;is_admitted&quot;</span><span class="p">,</span>
-<span class="p">):</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get snapshots of data at a specific prediction time with configurable visit and label columns.</span>
 
@@ -19103,13 +19109,10 @@ label_col : str, default="is_admitted"
 
 <span class="sd">    Returns:</span>
 <span class="sd">    --------</span>
-<span class="sd">    tuple(pandas.DataFrame, pandas.Series)</span>
-<span class="sd">        Processed DataFrame and corresponding labels</span>
-
-<span class="sd">    Raises:</span>
-<span class="sd">    -------</span>
-<span class="sd">    ValueError</span>
-<span class="sd">        If single_snapshot_per_visit is True but visit_col is not provided</span>
+<span class="sd">    Tuple[pandas.DataFrame, pandas.Series]</span>
+<span class="sd">        A tuple containing:</span>
+<span class="sd">        - DataFrame: Processed DataFrame with features</span>
+<span class="sd">        - Series: Corresponding labels</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">single_snapshot_per_visit</span> <span class="ow">and</span> <span class="n">visit_col</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -22502,7 +22505,9 @@ print(filters['medical'])
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["content.action.edit"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.action.edit"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
