@@ -1,20 +1,18 @@
 # Modelling probability of admission to specialty, if admitted
 
-This notebook demonstrates the second stage of prediction, to generate a probability of admission to a specialty for each patient in the ED if they are admitted. 
+This notebook demonstrates the second stage of prediction, to generate a probability of admission to a specialty for each patient in the ED if they are admitted.
 
-Here consult sequences provide the input to prediction, and the model is trained only on visits by adult patients that ended in admission. Patients less than 18 at the time of arrival to the ED are assumed to be admitted to paediatric wards. This assumption could be relaxed by changing the training data to include children, and changing how the inference stage is done. 
+Here consult sequences provide the input to prediction, and the model is trained only on visits by adult patients that ended in admission. Patients less than 18 at the time of arrival to the ED are assumed to be admitted to paediatric wards. This assumption could be relaxed by changing the training data to include children, and changing how the inference stage is done.
 
-This approach assumes that, if admitted, a patient's probability of admission to any particular specialty is independent of their probability of admission to hospital. 
+This approach assumes that, if admitted, a patient's probability of admission to any particular specialty is independent of their probability of admission to hospital.
 
 ## Set up the notebook environment
 
-
 ```python
 # Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 ```
-
 
 ```python
 from patientflow.load import set_project_root
@@ -26,9 +24,7 @@ project_root = set_project_root()
 
     Inferred project root: /Users/zellaking/Repos/patientflow
 
-
 ## Load parameters and set file paths, and load data
-
 
 ```python
 import pandas as pd
@@ -39,14 +35,14 @@ from patientflow.load import set_file_paths
 data_folder_name = 'data-public'
 data_file_path = project_root / data_folder_name
 
-data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root, 
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root,
                data_folder_name=data_folder_name)
 
 # load data
-ed_visits = load_data(data_file_path, 
-                    file_name='ed_visits.csv', 
+ed_visits = load_data(data_file_path,
+                    file_name='ed_visits.csv',
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 
 # load params
@@ -61,11 +57,9 @@ start_training_set, start_validation_set, start_test_set, end_test_set = params[
     Trained models will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public
     Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public/media
 
-
 ## Train the model
 
 This is the function that trains the specialty model, loaded from a file. Below we will break it down step-by-step.
-
 
 ```python
 from patientflow.train.sequence_predictor import train_sequence_predictor, get_default_visits
@@ -81,7 +75,7 @@ from patientflow.train.sequence_predictor import train_sequence_predictor, get_d
     [0;34m[0m    [0mgrouping_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
     [0;34m[0m    [0moutcome_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
     [0;34m[0m[0;34m)[0m [0;34m->[0m [0mpatientflow[0m[0;34m.[0m[0mpredictors[0m[0;34m.[0m[0msequence_predictor[0m[0;34m.[0m[0mSequencePredictor[0m[0;34m[0m[0;34m[0m[0m
-    [0;31mSource:[0m   
+    [0;31mSource:[0m
     [0;32mdef[0m [0mtrain_sequence_predictor[0m[0;34m([0m[0;34m[0m
     [0;34m[0m    [0mtrain_visits[0m[0;34m:[0m [0mDataFrame[0m[0;34m,[0m[0;34m[0m
     [0;34m[0m    [0mmodel_name[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
@@ -127,8 +121,7 @@ from patientflow.train.sequence_predictor import train_sequence_predictor, get_d
     [0;31mFile:[0m      ~/Repos/patientflow/src/patientflow/train/sequence_predictor.py
     [0;31mType:[0m      function
 
-The first step in the function above is to handle the fact that there are multiple snapshots per visit and we only want one for each visit in the training set. 
-
+The first step in the function above is to handle the fact that there are multiple snapshots per visit and we only want one for each visit in the training set.
 
 ```python
 from patientflow.prepare import select_one_snapshot_per_visit
@@ -142,15 +135,12 @@ print(visits_single.shape)
     (79814, 69)
     (64497, 68)
 
-
 To train the specialty model, we only use a subset of the columns. Here we can see the relevant columns
-
 
 ```python
 display(visits_single[['consultation_sequence', 'final_sequence', 'specialty', 'is_admitted', 'age_group']].head(10))
 
 ```
-
 
 <div>
 <style scoped>
@@ -165,6 +155,7 @@ display(visits_single[['consultation_sequence', 'final_sequence', 'specialty', '
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -270,9 +261,7 @@ display(visits_single[['consultation_sequence', 'final_sequence', 'specialty', '
 </table>
 </div>
 
-
-We filter down to only include admitted patients, and remove any with a null value for the specialty column, since this is the model aims to predict. 
-
+We filter down to only include admitted patients, and remove any with a null value for the specialty column, since this is the model aims to predict.
 
 ```python
 admitted = visits_single[
@@ -282,13 +271,11 @@ admitted = visits_single[
 
 Note that some visits that ended in admission had no consult request at the time they were sampled, as we can see below, where visits have an empty tuple
 
-
 ```python
 display(admitted[['consultation_sequence', 'final_sequence', 'specialty', 'is_admitted', 'age_group']].head(10))
-    
+
 
 ```
-
 
 <div>
 <style scoped>
@@ -303,6 +290,7 @@ display(admitted[['consultation_sequence', 'final_sequence', 'specialty', 'is_ad
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -408,9 +396,7 @@ display(admitted[['consultation_sequence', 'final_sequence', 'specialty', 'is_ad
 </table>
 </div>
 
-
-The UCLH data (not shared publicly) includes more detailed data on consult type, as shown in the `code` column in the dataset below. The public data has been simplified to a higher level (identified in the mapping below as `type`). 
-
+The UCLH data (not shared publicly) includes more detailed data on consult type, as shown in the `code` column in the dataset below. The public data has been simplified to a higher level (identified in the mapping below as `type`).
 
 ```python
 from pathlib import Path
@@ -418,9 +404,6 @@ model_input_path = project_root / 'src' /  'patientflow'/ 'model-input'
 name_mapping = pd.read_csv(str(model_input_path) + '/consults-mapping.csv')
 name_mapping
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -435,6 +418,7 @@ name_mapping
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -529,17 +513,11 @@ name_mapping
 <p>116 rows × 4 columns</p>
 </div>
 
-
-
 For example, the code for a consult with Acute Medicine is convered to a more general category in the public dataset
-
 
 ```python
 name_mapping[name_mapping.code == 'CON157']
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -554,6 +532,7 @@ name_mapping[name_mapping.code == 'CON157']
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -577,17 +556,11 @@ name_mapping[name_mapping.code == 'CON157']
 </table>
 </div>
 
-
-
 The medical group includes many of the more specific types
-
 
 ```python
 name_mapping[name_mapping.type == 'medical']
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -602,6 +575,7 @@ name_mapping[name_mapping.type == 'medical']
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -744,13 +718,9 @@ name_mapping[name_mapping.type == 'medical']
 </table>
 </div>
 
-
-
 ## Separate into training, validation and test sets
 
-As part of preparing the data, each visit has already been allocated into one of three sets - training, vaidation and test sets. 
-
-
+As part of preparing the data, each visit has already been allocated into one of three sets - training, vaidation and test sets.
 
 ```python
 from patientflow.prepare import create_temporal_splits
@@ -768,11 +738,9 @@ train_visits, _, _ = create_temporal_splits(
 
     Split sizes: [42852, 5405, 16240]
 
-
 ## Train the model
 
 Here, we load the SequencePredictor(), a function that takes a sequence as input (in this case consultation_sequence), a grouping variable (in this case final_sequence) and a outcome variable (in this case specialty), and uses a grouping variable to create a rooted directed tree. Each new consult in the sequence is a branching node of the tree. The grouping variable, final sequence, serves as the terminal nodes of the tree. The function maps the probability of each part-complete sequence of consults ending (via each final_sequence) in each specialty of admission.
-
 
 ```python
 from patientflow.predictors.sequence_predictor import SequencePredictor
@@ -788,9 +756,6 @@ spec_model.fit(train_visits)
 
 
 ```
-
-
-
 
 <style>#sk-container-id-24 {
   /* Definition of color scheme common for light and dark mode */
@@ -1197,67 +1162,52 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   background-color: var(--sklearn-color-fitted-level-3);
 }
 </style><div id="sk-container-id-24" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
+
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
+
 )</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-21" type="checkbox" checked><label for="sk-estimator-id-21" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequencePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequencePredictor(
-    input_var=&#x27;consultation_sequence&#x27;,
-    grouping_var=&#x27;final_sequence&#x27;,
-    outcome_var=&#x27;specialty&#x27;,
-    apply_special_category_filtering=False,
-    admit_col=&#x27;is_admitted&#x27;
+input_var=&#x27;consultation_sequence&#x27;,
+grouping_var=&#x27;final_sequence&#x27;,
+outcome_var=&#x27;specialty&#x27;,
+apply_special_category_filtering=False,
+admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-
-
 Meta data about the model can be viewed in the metrics object
-
 
 ```python
 spec_model.metrics
 ```
-
-
-
 
     {'train_dttm': '2025-03-20 16:30',
      'train_set_no': 42852,
      'start_date': '3/1/2031',
      'end_date': '8/9/2031'}
 
-
-
-Passing an empty tuple to the trained model shows the probability of ending in each specialty, if a visit has had no consults yet. 
-
+Passing an empty tuple to the trained model shows the probability of ending in each specialty, if a visit has had no consults yet.
 
 ```python
 print("For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below")
 print({k: round(v, 3) for k, v in spec_model.predict(tuple()) .items()})
 
-    
+
 
 ```
 
     For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below
     {'surgical': 0.258, 'medical': 0.574, 'paediatric': 0.078, 'haem/onc': 0.09}
 
-
-The probabilities for each consult sequence ending in a given observed specialty have been saved in the model. These can be accessed as follows: 
-
+The probabilities for each consult sequence ending in a given observed specialty have been saved in the model. These can be accessed as follows:
 
 ```python
 spec_model.weights[()].keys()
 ```
 
-
-
-
     dict_keys(['surgical', 'medical', 'paediatric', 'haem/onc'])
-
-
-
 
 ```python
 weights = spec_model.weights
@@ -1269,16 +1219,11 @@ print({k: round(v, 3) for k, v in weights[tuple(['acute'])].items()})
     For a visit which has one consult to acute medicine at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below
     {'surgical': 0.013, 'medical': 0.946, 'paediatric': 0.002, 'haem/onc': 0.039}
 
-
-The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options. 
-
+The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
 
 ```python
 spec_model.input_to_grouping_probs
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -1293,6 +1238,7 @@ spec_model.input_to_grouping_probs
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1615,9 +1561,6 @@ spec_model.input_to_grouping_probs
 <p>81 rows × 275 columns</p>
 </div>
 
-
-
-
 ```python
 # save models and metadata
 from patientflow.train.utils import save_model
@@ -1628,23 +1571,15 @@ print(f"Model has been saved to {model_file_path}")
 
     Model has been saved to /Users/zellaking/Repos/patientflow/trained-models/public
 
-
 ## Handle special categories
 
-At UCLH, we assume that all under 18s will be admitted to a paediatric specialty. Their visits are therefore used to train the specialty predictor. An `apply_special_category_filtering` parameter can be set in the `SequencePredictor` to handle certain categories differently. When this is set, the `SequencePredictor` will retrieve the relevant logic that has been defined in a class called `SpecialCategoryParams`. 
-
+At UCLH, we assume that all under 18s will be admitted to a paediatric specialty. Their visits are therefore used to train the specialty predictor. An `apply_special_category_filtering` parameter can be set in the `SequencePredictor` to handle certain categories differently. When this is set, the `SequencePredictor` will retrieve the relevant logic that has been defined in a class called `SpecialCategoryParams`.
 
 ```python
 train_visits.snapshot_date.min()
 ```
 
-
-
-
     '3/1/2031'
-
-
-
 
 ```python
 spec_model= SequencePredictor(
@@ -1666,7 +1601,6 @@ save_model(spec_model, "specialty", model_file_path)
 
 
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -1696,7 +1630,7 @@ save_model(spec_model, "specialty", model_file_path)
        2344 def unique(self) -> ArrayLike:  # pylint: disable=useless-parent-delegation
        2345     """
        2346     Return unique values of Series object.
-       2347 
+       2347
        (...)
        2405     Categories (3, object): ['a' < 'b' < 'c']
        2406     """
@@ -1714,7 +1648,7 @@ save_model(spec_model, "specialty", model_file_path)
         307 def unique(values):
         308     """
         309     Return unique values based on a hash table.
-        310 
+        310
        (...)
         399     array([('a', 'b'), ('b', 'a'), ('a', 'c')], dtype=object)
         400     """
@@ -1737,16 +1671,11 @@ save_model(spec_model, "specialty", model_file_path)
 
     TypeError: unhashable type: 'list'
 
-
 The handling of special categories is saved as an attribute of the trained model as shown below.
-
 
 ```python
 spec_model.special_params
 ```
-
-
-
 
     {'special_category_func': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0>>,
      'special_category_dict': {'medical': 0.0,
@@ -1755,9 +1684,6 @@ spec_model.special_params
       'paediatric': 1.0},
      'special_func_map': {'paediatric': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0>>,
       'default': <bound method SpecialCategoryParams.opposite_special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0>>}}
-
-
-
 
 ```python
 

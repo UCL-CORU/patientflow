@@ -2,20 +2,21 @@
 
 In the previous notebook [4a_Predict_probability_of_admission_from_ED.md](4a_Predict_probability_of_admission_from_ED.md), we created a model that will generate a probability of admission for each individual patient in the ED or SDEC. Since the objective of this modelling is to predict number of beds needed for a group of patients in the ED at a prediction moment, this notebook shows how to convert the individual-level probabilities into aggregate predictions.
 
-The patientflow python package includes a function called `get_prob_dist()` in a script called `aggregate.py` that will do the aggregating step. For each prediction moment, at which a set of patients were in ED or SDEC, this function generates a probability distribution showing how many beds will be needed by those patients. 
+The patientflow python package includes a function called `get_prob_dist()` in a script called `aggregate.py` that will do the aggregating step. For each prediction moment, at which a set of patients were in ED or SDEC, this function generates a probability distribution showing how many beds will be needed by those patients.
 
-The function expects several inputs, including a dictionary - here called `snapshots_dict` - in which each key is a snapshot datetime and the values are an array of `snapshot_id` for each patient in the ED/SDEC at that snapshot datetime. 
+The function expects several inputs, including a dictionary - here called `snapshots_dict` - in which each key is a snapshot datetime and the values are an array of `snapshot_id` for each patient in the ED/SDEC at that snapshot datetime.
 
+The aspiration can be plotted as an inverted survival curve, as shown below.
+
+The aspiration can be plotted as an inverted survival curve, as shown below.
 
 ## Set up the notebook environment
 
-
 ```python
 # Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 ```
-
 
 ```python
 from patientflow.load import set_project_root
@@ -24,9 +25,7 @@ project_root = set_project_root()
 
     Inferred project root: /Users/zellaking/Repos/patientflow
 
-
 ## Load parameters and set file paths, and load data
-
 
 ```python
 import pandas as pd
@@ -38,14 +37,14 @@ from patientflow.prepare import create_temporal_splits
 data_folder_name = 'data-public'
 data_file_path = project_root / data_folder_name
 
-data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root, 
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root,
                data_folder_name=data_folder_name)
 
 # load data
-ed_visits = load_data(data_file_path, 
-                    file_name='ed_visits.csv', 
+ed_visits = load_data(data_file_path,
+                    file_name='ed_visits.csv',
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 
 # load params
@@ -77,15 +76,13 @@ _, _, test_visits = create_temporal_splits(
     Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public/media
     Split sizes: [53801, 6519, 19494]
 
+## Generate aggregate predictions for one time of day 15:30
 
-## Generate aggregate predictions for one time of day 15:30 
+In the previous step, shown in notebook [4a_Predict_probability_of_admission_from_ED.md](4a_Predict_probability_of_admission_from_ED.md), we trained five models, one for each prediction time. Here we'll focus on the 15:30 prediction time.
 
-In the previous step, shown in notebook [4a_Predict_probability_of_admission_from_ED.md](4a_Predict_probability_of_admission_from_ED.md), we trained five models, one for each prediction time. Here we'll focus on the 15:30 prediction time. 
-
-The first step is to retrieve data on patients in the ED at that time of day, and use a saved model to make a prediction for each of them. 
+The first step is to retrieve data on patients in the ED at that time of day, and use a saved model to make a prediction for each of them.
 
 The function in the cell below formats the name of the model based on the time of day
-
 
 ```python
 from patientflow.load import get_model_key
@@ -97,14 +94,12 @@ print(f'The name of the model to be loaded is {model_key}. It will be loaded fro
 
     The name of the model to be loaded is admissions_balanced_calibrated_1530. It will be loaded from /Users/zellaking/Repos/patientflow/trained-models/public
 
-
 Next we use the `prepare_for_inference()` function. This does several things:
 
-* loads the trained model into a variable called `model`
-* reloads the original data, selects the test set records only and takes the subset of snaphots at 15:30 in the afternoon
-* prepares this subset for input into the trained model, which is returned in a variable called `X_test`. (Note that here we are not using X_test for training the model, but for inference - inference means that we are asking atrained   model to make predictions. The model will expect the input data to be in the same format as it received when it was trained)
-* returns an array of values `y_test` which is a binary variable whether each patient was actually admitted. This will be used to evaluate the model. 
-
+- loads the trained model into a variable called `model`
+- reloads the original data, selects the test set records only and takes the subset of snaphots at 15:30 in the afternoon
+- prepares this subset for input into the trained model, which is returned in a variable called `X_test`. (Note that here we are not using X_test for training the model, but for inference - inference means that we are asking atrained model to make predictions. The model will expect the input data to be in the same format as it received when it was trained)
+- returns an array of values `y_test` which is a binary variable whether each patient was actually admitted. This will be used to evaluate the model.
 
 ```python
 from patientflow.prepare import prepare_for_inference
@@ -112,7 +107,7 @@ from patientflow.prepare import prepare_for_inference
 exclude_from_training_data = [ 'snapshot_date', 'prediction_time','consultation_sequence', 'visit_number', 'specialty', 'final_sequence', 'training_validation_test']
 
 X_test, y_test, pipeline = prepare_for_inference(
-    model_file_path, 
+    model_file_path,
     model_name,
     prediction_time,
     model_only=False,
@@ -123,13 +118,9 @@ X_test, y_test, pipeline = prepare_for_inference(
 
 We can also view the data that was loaded for running inference on the model
 
-
 ```python
 X_test.head()
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -144,6 +135,7 @@ X_test.head()
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -322,17 +314,14 @@ X_test.head()
 <p>5 rows × 60 columns</p>
 </div>
 
-
-
 Next we prepare a dictionary of snapshots (which is the term used here to refer to moments in time when we want to make predictions). The key for each dictionary entry is a snapshot datetime. The values are snapshot_ids for patients in the ED or SDEC at that time.
 
 The output of the following cell shows the first 10 keys, and the first set of values - simply a list of snapshot_ids
 
-
 ```python
 from patientflow.prepare import prepare_group_snapshot_dict
 
-# select the snapshots to include in the probability distribution, 
+# select the snapshots to include in the probability distribution,
 snapshots_dict = prepare_group_snapshot_dict(
     test_visits[test_visits.prediction_time == prediction_time]
     )
@@ -349,20 +338,15 @@ print(first_record_values)
 
     First 10 keys in the snapshots dictionary
     ['10/1/2031', '10/10/2031', '10/11/2031', '10/12/2031', '10/13/2031', '10/14/2031', '10/15/2031', '10/16/2031', '10/17/2031', '10/18/2031']
-    
+
     Record associated with the first key
     [59741, 60002, 60261, 60278, 60317, 60324, 60335, 60351, 60358, 60363, 60375, 60380, 60383, 60385, 60387, 60389, 60400, 60405, 60408, 60409, 60410, 60411, 60412, 60413, 60414, 60415, 60416, 60417, 60418, 60419, 60420, 60421, 60422, 60423, 60424, 60425, 60426, 60427, 60428, 60429, 60430, 60431, 60432, 60433, 60434, 60435, 60436, 60437, 60438, 60443, 60444, 60445, 60448, 60449, 60451, 60452, 60453, 60454, 60455, 60456]
 
-
 To see the snapshots associated with this first key in the snapshots dictionary, use the values it returns to retrieve the relevant rows in the original visits dataset.
-
 
 ```python
 ed_visits.loc[first_record_values].head()
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -377,6 +361,7 @@ ed_visits.loc[first_record_values].head()
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -555,10 +540,7 @@ ed_visits.loc[first_record_values].head()
 <p>5 rows × 69 columns</p>
 </div>
 
-
-
 The following cell shows the number of patients who were in the ED at that snapshot datetime
-
 
 ```python
 print(len(ed_visits.loc[first_record_values]))
@@ -566,9 +548,7 @@ print(len(ed_visits.loc[first_record_values]))
 
     60
 
-
-With the model, the snapshot dictionary, X_test and y_test as inputs, the get_prob_dist() function is called. It returns a dictionary, with the same keys as before, and with a probability distribution for each snapshot date in the test set. As this processes each snapshot date separately, it may take some time. 
-
+With the model, the snapshot dictionary, X_test and y_test as inputs, the get_prob_dist() function is called. It returns a dictionary, with the same keys as before, and with a probability distribution for each snapshot date in the test set. As this processes each snapshot date separately, it may take some time.
 
 ```python
 from patientflow.aggregate import get_prob_dist
@@ -591,9 +571,7 @@ prob_dist = get_prob_dist(
     Processed 90 snapshot dates
     Processed 92 snapshot dates
 
-
-The cell below shows the entry in the `prob_dist` dictionary (which is the first snapshot date in the test set) and the probability distribution associated with that date. 
-
+The cell below shows the entry in the `prob_dist` dictionary (which is the first snapshot date in the test set) and the probability distribution associated with that date.
 
 ```python
 
@@ -624,14 +602,11 @@ prob_dist[first_record_key]
      58  1.27411141069909e-45
      59  4.82803167661050e-48
      60  8.88078644945381e-51
-     
+
      [61 rows x 1 columns],
      'agg_observed': 11}
 
-
-
 To make this output more readable, we can redisplay it like this
-
 
 ```python
 first_date_prob_dist = prob_dist[first_record_key]['agg_predicted'].rename(columns = {'agg_proba': 'probability'})
@@ -643,8 +618,6 @@ display(first_date_prob_dist.head(15))
 ```
 
     Probability of needing this number of beds on 10/1/2031 at (15, 30) based on EHR data from patients in the ED at that time
-
-
 
 <div>
 <style scoped>
@@ -659,6 +632,7 @@ display(first_date_prob_dist.head(15))
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -736,38 +710,30 @@ display(first_date_prob_dist.head(15))
 </table>
 </div>
 
-
 We can plot this probability distribution using a function from the patientflow package
-
 
 ```python
 from patientflow.viz.prob_dist_plot import prob_dist_plot
 
 title_ = f'Probability distribution for number of beds needed by patients in ED at {first_record_key} {prediction_time[0]:02d}:{prediction_time[1]:02d}'
-prob_dist_plot(prob_dist_data=prob_dist[first_record_key]['agg_predicted'], 
-    title=title_,  
+prob_dist_plot(prob_dist_data=prob_dist[first_record_key]['agg_predicted'],
+    title=title_,
     include_titles=True)
 ```
 
+![png](4b_Predict_demand_from_patients_in_ED_files/4b_Predict_demand_from_patients_in_ED_27_0.png)
 
-    
-![png](4b_Predict_demand_from_patients_in_ED_files/4b_Predict_demand_from_patients_in_ED_25_0.png)
-    
-
-
-From the output above, we can see how many beds are predicted to be needed by the patients in the ED/SDEC at this particular snapshot. It gives a range of probability, rather than a single estimate. In a later notebook [5_Evaluate_model_performance.md](5_Evaluate_model_performance.md) we show how to evaluate the model's predictions. 
+From the output above, we can see how many beds are predicted to be needed by the patients in the ED/SDEC at this particular snapshot. It gives a range of probability, rather than a single estimate.
 
 ### Reading a minimum number of beds needed from the probability distribution
 
 Our input for the UCLH output does not show a probability distribution like this. It shows 'at least this number of beds needed' with 90% and 70% probability. (Check back to notebook 2 for this). To calculate this from the distribution given, we illustrate first by added a cumulative probability to the dataframe created earlier.
-
 
 ```python
 first_date_prob_dist['cumulative probability'] = first_date_prob_dist['probability'].cumsum()
 first_date_prob_dist['probability of needing at least this number or beds'] = first_date_prob_dist['cumulative probability'].apply(lambda x: 1 -x)
 display(first_date_prob_dist.head(20))
 ```
-
 
 <div>
 <style scoped>
@@ -782,6 +748,7 @@ display(first_date_prob_dist.head(20))
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -923,10 +890,7 @@ display(first_date_prob_dist.head(20))
 </table>
 </div>
 
-
 From this cumulative probability we can read off the number of beds where there is a 90% chance of needing at least this number
-
-
 
 ```python
 row_indicating_at_least_90_pc = first_date_prob_dist[first_date_prob_dist['probability of needing at least this number or beds'] < 0.9].index[0]
@@ -935,9 +899,7 @@ print(f"There is a 90% chance of needing at least {row_indicating_at_least_90_pc
 
     There is a 90% chance of needing at least 10 beds
 
-
-The predict module has a function for reading off the cdf in this way 
-
+The predict module has a function for reading off the cdf in this way
 
 ```python
 from patientflow.predict.emergency_demand import index_of_sum
@@ -945,7 +907,7 @@ from patientflow.predict.emergency_demand import index_of_sum
 ```
 
     [0;31mSignature:[0m [0mindex_of_sum[0m[0;34m([0m[0msequence[0m[0;34m:[0m [0mList[0m[0;34m[[0m[0mfloat[0m[0;34m][0m[0;34m,[0m [0mmax_sum[0m[0;34m:[0m [0mfloat[0m[0;34m)[0m [0;34m->[0m [0mint[0m[0;34m[0m[0;34m[0m[0m
-    [0;31mSource:[0m   
+    [0;31mSource:[0m
     [0;32mdef[0m [0mindex_of_sum[0m[0;34m([0m[0msequence[0m[0;34m:[0m [0mList[0m[0;34m[[0m[0mfloat[0m[0;34m][0m[0;34m,[0m [0mmax_sum[0m[0;34m:[0m [0mfloat[0m[0;34m)[0m [0;34m->[0m [0mint[0m[0;34m:[0m[0;34m[0m
     [0;34m[0m    [0;34m"""Returns the index where the cumulative sum of a sequence of probabilities exceeds max_sum."""[0m[0;34m[0m
     [0;34m[0m    [0mcumulative_sum[0m [0;34m=[0m [0;36m0.0[0m[0;34m[0m
@@ -957,7 +919,6 @@ from patientflow.predict.emergency_demand import index_of_sum
     [0;31mFile:[0m      ~/Repos/patientflow/src/patientflow/predict/emergency_demand.py
     [0;31mType:[0m      function
 
-
 ```python
 sequence = first_date_prob_dist['probability'].values
 print(f"There is a 90% chance of needing at least {index_of_sum(sequence, 0.9)} beds, using the index_of_sum function")
@@ -966,9 +927,7 @@ print(f"There is a 90% chance of needing at least {index_of_sum(sequence, 0.9)} 
 
     There is a 90% chance of needing at least 10 beds, using the index_of_sum function
 
-
 And this can be done from the original probability distribution
-
 
 ```python
 sequence = prob_dist[first_record_key]['agg_predicted']['agg_proba'].values
@@ -982,12 +941,9 @@ for cut_point in cdf_cut_points:
     At least 10 beds needed with 90% probability
     At least 12 beds needed with 70% probability
 
-
-
 ```python
 
 ```
-
 
 ```python
 
