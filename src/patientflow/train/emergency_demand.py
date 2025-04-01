@@ -230,6 +230,7 @@ def train_all_models(
     model_file_path=None,
     save_models=True,
     test_realtime=True,
+    return_models=False,
 ):
     """
     Train and evaluate patient flow models.
@@ -270,10 +271,14 @@ def train_all_models(
         Whether to save the trained models to disk. Defaults to True.
     test_realtime : bool, optional
         Whether to run real-time prediction tests. Defaults to True.
+    return_models : bool, optional
+        Whether to return the trained models. Defaults to False.
 
     Returns
     -------
-    None
+    None or Tuple[Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor]
+        If return_models is True, returns a tuple of the trained models.
+        Otherwise, returns None.
 
     Raises
     ------
@@ -403,7 +408,10 @@ def train_all_models(
             random_seed=random_seed,
         )
 
-    return
+    if return_models:
+        return admission_models, specialty_model, yta_model
+    else:
+        return
 
 
 def main(data_folder_name=None):
