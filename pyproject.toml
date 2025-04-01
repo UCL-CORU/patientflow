@@ -33,12 +33,13 @@ optional-dependencies = {dev = [
     "tox",
     "twine",
 ], docs = [
-    "griffe==0.36.2",
+    "griffe",
     "mkdocs",
     "mkdocs-include-markdown-plugin",
     "mkdocs-material",
-    "mkdocstrings-python==1.7.0",
-    "mkdocstrings==0.24.0",
+    "mkdocstrings",
+    "mkdocstrings-python",
+    "nbconvert",
 ], test = [
     "pytest",
     "pytest-cov",
@@ -119,9 +120,14 @@ legacy_tox_ini = """
 
     [testenv:docs]
     commands =
+        jupyter nbconvert {toxinidir}/notebooks/*.ipynb --to markdown --output-dir={toxinidir}/docs/notebooks
+        cp {toxinidir}/notebooks/README.md {toxinidir}/docs/notebooks/README.md
+        python {toxinidir}/docs/notebooks/update_notebook_links.py {toxinidir}/docs/notebooks
         mkdocs build
     extras =
         docs
+    allowlist_externals =
+        cp
 
     [tox]
     env_list =
