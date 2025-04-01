@@ -35,19 +35,13 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
-nav:
-  - Overview: index.md
-  - Notebooks: notebooks/README.md
-  - Patientflow: src/patientflow/README.md
-  - API reference: api.md
-  - License: LICENSE.md
-
 markdown_extensions:
   - pymdownx.tasklist
 
 plugins:
   - search
   - autorefs
+  - awesome-pages
   - mkdocstrings:
       default_handler: python
       handlers:

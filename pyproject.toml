@@ -37,8 +37,8 @@ optional-dependencies = {dev = [
     "mkdocs",
     "mkdocs-include-markdown-plugin",
     "mkdocs-material",
-    "mkdocstrings-python",
     "mkdocstrings",
+    "mkdocstrings-python",
     "nbconvert",
 ], test = [
     "pytest",
