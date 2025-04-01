@@ -1,0 +1,2105 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../2b_Predict_using_patient_snapshots/">
+      
+      
+        <link rel="next" href="../2d_Explore_the_datasets_provided/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+    
+    
+      
+        <title>Evaluate models trained on patient-level snapshots - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#evaluate-models-trained-on-patient-level-snapshots" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Evaluate models trained on patient-level snapshots
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: Predicting demand for hospital beds using real-time data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MIT License
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Notebooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Notebooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About the notebooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Set up your environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introducing our users
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2b_Predict_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Make predictions using patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Evaluate models trained on patient-level snapshots
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Evaluate models trained on patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#things-to-consider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Things to consider
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Things to consider">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-dont-we-focus-on-typical-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why don't we focus on typical classification metrics?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#about-the-data-used-in-this-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      About the data used in this notebook
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loading-real-patient-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Loading real patient data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-one-model-for-each-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train one model for each prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-the-base-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting the base model
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspecting the base model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#distribution-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Distribution plots
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calibration-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Calibration plots
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#madcap-model-accuracy-diagnostic-calibration-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      MADCAP (Model Accuracy Diagnostic Calibration Plot)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-a-balanced-and-calibrated-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting a balanced and calibrated model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#madcap-plots-by-age" class="md-nav__link">
+    <span class="md-ellipsis">
+      MADCAP plots by age
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Explore the datasets provided
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create group snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Specify an emergency demand model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Predict_probability_of_admission_from_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict ED admission probability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_demand_from_patients_in_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Turning individual patient-level predictions into predictions of how many beds will be needed
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Predict_probability_of_admission_to_specialty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Modelling probability of admission to specialty, if admitted
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict yet to arrive
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4e_Predict_probabiity_of_admission_using_minimal_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict Probabiity of Admission Using Minimal Data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Bring_it_all_together/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Putting it all together
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Src
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Src
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Patientflow
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            Patientflow
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: A forthcoming Python package
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#things-to-consider" class="md-nav__link">
+    <span class="md-ellipsis">
+      Things to consider
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Things to consider">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-dont-we-focus-on-typical-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why don't we focus on typical classification metrics?
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#about-the-data-used-in-this-notebook" class="md-nav__link">
+    <span class="md-ellipsis">
+      About the data used in this notebook
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#loading-real-patient-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Loading real patient data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-one-model-for-each-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train one model for each prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-the-base-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting the base model
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspecting the base model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#distribution-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Distribution plots
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calibration-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Calibration plots
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#madcap-model-accuracy-diagnostic-calibration-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      MADCAP (Model Accuracy Diagnostic Calibration Plot)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-a-balanced-and-calibrated-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting a balanced and calibrated model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#madcap-plots-by-age" class="md-nav__link">
+    <span class="md-ellipsis">
+      MADCAP plots by age
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/2c_Evaluate_patient_snapshot_models.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="evaluate-models-trained-on-patient-level-snapshots">Evaluate models trained on patient-level snapshots</h1>
+<h2 id="things-to-consider">Things to consider</h2>
+<p>In the last notebook, I showed how to train models on patient snapshots using <code>patientflow</code>. Now, let's think about how to evaluate those models. </p>
+<p>When evaluating patient snapshots, we focus on:</p>
+<ul>
+<li>How well-calibrated the predicted probabilities are</li>
+<li>The distribution of these probabilities</li>
+</ul>
+<p>We don't focus as much on typical classification metrics like Area under the ROC curve, accuracy or precision/recall. </p>
+<h3 id="why-dont-we-focus-on-typical-classification-metrics">Why don't we focus on typical classification metrics?</h3>
+<p>The ultimate goal is to predict bed count distributions for groups of patients. Bed count distributions will be calculated in two steps</p>
+<ol>
+<li>First, we predict the probability of the outcome we are interested in (admission or discharge) for each individual patient, as shown in previous notebooks.</li>
+<li>Then, we use these probabilities in Bernoulli trials to get bed count distributions. The Bernouill trials step will be shown in later notebooks.</li>
+</ol>
+<p>Because of this approach, the accuracy of the probability values matters more than correct classification. That is why we use log loss to optimise our classifiers. </p>
+<h3 id="about-the-data-used-in-this-notebook">About the data used in this notebook</h3>
+<p>I'm going to use real patient data from visits to the Emergency Department (ED) and Same Day Emergency Care (SDEC) unit at UCLH to demonstrate the evaluation. The methods shown will work on any data in the same structure. </p>
+<p>You can request the datasets that are used here on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from <code>data_folder_name='data-public'</code> to <code>data_folder_name='data-synthetic'</code>.</p>
+<h2 id="loading-real-patient-data">Loading real patient data</h2>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 2
+</code></pre>
+<p>The function below identifies the root of the patientflow repository, in order to locate the folders containing data.</p>
+<pre><code class="language-python">import pandas as pd
+from patientflow.load import set_file_paths, load_data
+
+# set project root
+from patientflow.load import set_project_root
+project_root = set_project_root()
+
+# set file paths
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+        project_root, 
+        data_folder_name='data-public', # change this to data-synthetic if you don't have the public dataset
+        verbose=False) 
+
+# load the data
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
+                    index_column = 'snapshot_id',
+                    sort_columns = [&quot;visit_number&quot;, &quot;snapshot_date&quot;, &quot;prediction_time&quot;], 
+                    eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
+
+
+</code></pre>
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+</code></pre>
+<p>Inspecting the data that has been loaded, we can see that it is similar in structure to the fake data that was generated on the fly in the previous notebooks. The dates have been pushed into the future, to minimise the likelihood of re-identifcation of patients.</p>
+<pre><code class="language-python">ed_visits.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>snapshot_date</th>
+      <th>prediction_time</th>
+      <th>visit_number</th>
+      <th>elapsed_los</th>
+      <th>sex</th>
+      <th>age_group</th>
+      <th>arrival_method</th>
+      <th>current_location_type</th>
+      <th>total_locations_visited</th>
+      <th>num_obs</th>
+      <th>num_obs_events</th>
+      <th>num_obs_types</th>
+      <th>num_lab_batteries_ordered</th>
+      <th>has_consultation</th>
+      <th>consultation_sequence</th>
+      <th>visited_majors</th>
+      <th>visited_otf</th>
+      <th>visited_paeds</th>
+      <th>visited_rat</th>
+      <th>visited_resus</th>
+      <th>visited_sdec</th>
+      <th>visited_sdec_waiting</th>
+      <th>visited_unknown</th>
+      <th>visited_utc</th>
+      <th>visited_waiting</th>
+      <th>num_obs_blood_pressure</th>
+      <th>num_obs_pulse</th>
+      <th>num_obs_air_or_oxygen</th>
+      <th>num_obs_glasgow_coma_scale_best_motor_response</th>
+      <th>num_obs_level_of_consciousness</th>
+      <th>num_obs_news_score_result</th>
+      <th>num_obs_manchester_triage_acuity</th>
+      <th>num_obs_objective_pain_score</th>
+      <th>num_obs_subjective_pain_score</th>
+      <th>num_obs_temperature</th>
+      <th>num_obs_oxygen_delivery_method</th>
+      <th>num_obs_pupil_reaction_right</th>
+      <th>num_obs_oxygen_flow_rate</th>
+      <th>num_obs_uclh_sskin_areas_observed</th>
+      <th>latest_obs_pulse</th>
+      <th>latest_obs_respirations</th>
+      <th>latest_obs_level_of_consciousness</th>
+      <th>latest_obs_news_score_result</th>
+      <th>latest_obs_manchester_triage_acuity</th>
+      <th>latest_obs_objective_pain_score</th>
+      <th>latest_obs_temperature</th>
+      <th>lab_orders_bc</th>
+      <th>lab_orders_bon</th>
+      <th>lab_orders_crp</th>
+      <th>lab_orders_csnf</th>
+      <th>lab_orders_ddit</th>
+      <th>lab_orders_ncov</th>
+      <th>lab_orders_rflu</th>
+      <th>lab_orders_xcov</th>
+      <th>latest_lab_results_crea</th>
+      <th>latest_lab_results_hctu</th>
+      <th>latest_lab_results_k</th>
+      <th>latest_lab_results_lac</th>
+      <th>latest_lab_results_na</th>
+      <th>latest_lab_results_pco2</th>
+      <th>latest_lab_results_ph</th>
+      <th>latest_lab_results_wcc</th>
+      <th>latest_lab_results_alb</th>
+      <th>latest_lab_results_htrt</th>
+      <th>training_validation_test</th>
+      <th>final_sequence</th>
+      <th>is_admitted</th>
+      <th>random_number</th>
+      <th>specialty</th>
+    </tr>
+    <tr>
+      <th>snapshot_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>4/17/2031</td>
+      <td>(12, 0)</td>
+      <td>30767</td>
+      <td>1920</td>
+      <td>F</td>
+      <td>55-64</td>
+      <td>Ambulance</td>
+      <td>majors</td>
+      <td>4</td>
+      <td>107</td>
+      <td>34</td>
+      <td>34</td>
+      <td>4</td>
+      <td>False</td>
+      <td>[]</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>True</td>
+      <td>2</td>
+      <td>2</td>
+      <td>3</td>
+      <td>2</td>
+      <td>3</td>
+      <td>2</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>2</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>71.0</td>
+      <td>16.0</td>
+      <td>A</td>
+      <td>0.0</td>
+      <td>Yellow</td>
+      <td>Nil</td>
+      <td>98.2</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>train</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>15795</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>4/17/2031</td>
+      <td>(15, 30)</td>
+      <td>30767</td>
+      <td>14520</td>
+      <td>F</td>
+      <td>55-64</td>
+      <td>Ambulance</td>
+      <td>majors</td>
+      <td>5</td>
+      <td>138</td>
+      <td>39</td>
+      <td>34</td>
+      <td>6</td>
+      <td>False</td>
+      <td>[]</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>True</td>
+      <td>4</td>
+      <td>5</td>
+      <td>6</td>
+      <td>3</td>
+      <td>6</td>
+      <td>3</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>3</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>48.0</td>
+      <td>16.0</td>
+      <td>A</td>
+      <td>0.0</td>
+      <td>Yellow</td>
+      <td>Nil</td>
+      <td>98.1</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>57.0</td>
+      <td>0.422</td>
+      <td>3.8</td>
+      <td>1.0</td>
+      <td>138.0</td>
+      <td>4.61</td>
+      <td>7.474</td>
+      <td>8.77</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>train</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>860</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>12/10/2031</td>
+      <td>(15, 30)</td>
+      <td>36297</td>
+      <td>9180</td>
+      <td>M</td>
+      <td>75-102</td>
+      <td>NaN</td>
+      <td>majors</td>
+      <td>4</td>
+      <td>127</td>
+      <td>12</td>
+      <td>37</td>
+      <td>8</td>
+      <td>False</td>
+      <td>[]</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>7</td>
+      <td>6</td>
+      <td>7</td>
+      <td>7</td>
+      <td>7</td>
+      <td>6</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>6</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>63.0</td>
+      <td>22.0</td>
+      <td>A</td>
+      <td>2.0</td>
+      <td>Orange</td>
+      <td>Nil</td>
+      <td>97.5</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>97.0</td>
+      <td>0.483</td>
+      <td>4.1</td>
+      <td>1.2</td>
+      <td>140.0</td>
+      <td>4.82</td>
+      <td>7.433</td>
+      <td>6.59</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>test</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>76820</td>
+      <td>surgical</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3/28/2031</td>
+      <td>(6, 0)</td>
+      <td>53554</td>
+      <td>2220</td>
+      <td>F</td>
+      <td>35-44</td>
+      <td>Public Trans</td>
+      <td>rat</td>
+      <td>3</td>
+      <td>356</td>
+      <td>101</td>
+      <td>57</td>
+      <td>5</td>
+      <td>False</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>True</td>
+      <td>15</td>
+      <td>16</td>
+      <td>9</td>
+      <td>1</td>
+      <td>8</td>
+      <td>4</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>7</td>
+      <td>12</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>70.0</td>
+      <td>17.0</td>
+      <td>A</td>
+      <td>0.0</td>
+      <td>Green</td>
+      <td>Mild</td>
+      <td>97.7</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>train</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>54886</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>3/28/2031</td>
+      <td>(9, 30)</td>
+      <td>53554</td>
+      <td>14820</td>
+      <td>F</td>
+      <td>35-44</td>
+      <td>Public Trans</td>
+      <td>majors</td>
+      <td>4</td>
+      <td>375</td>
+      <td>107</td>
+      <td>57</td>
+      <td>7</td>
+      <td>False</td>
+      <td>[]</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>True</td>
+      <td>16</td>
+      <td>17</td>
+      <td>10</td>
+      <td>1</td>
+      <td>9</td>
+      <td>5</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>8</td>
+      <td>12</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>65.0</td>
+      <td>17.0</td>
+      <td>A</td>
+      <td>0.0</td>
+      <td>Green</td>
+      <td>Mild</td>
+      <td>97.7</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>True</td>
+      <td>False</td>
+      <td>False</td>
+      <td>True</td>
+      <td>False</td>
+      <td>68.0</td>
+      <td>0.379</td>
+      <td>4.1</td>
+      <td>1.6</td>
+      <td>139.0</td>
+      <td>4.00</td>
+      <td>7.536</td>
+      <td>13.03</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>train</td>
+      <td>[]</td>
+      <td>False</td>
+      <td>6265</td>
+      <td>medical</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of <code>patientflow</code>.</p>
+<pre><code class="language-python">#  
+from patientflow.load import load_config_file
+params = load_config_file(config_path)
+
+start_training_set = params[&quot;start_training_set&quot;]
+print(f&quot;Training set starts: {start_training_set}&quot;)
+
+start_validation_set = params[&quot;start_validation_set&quot;]
+print(f&quot;Validation set starts: {start_validation_set}&quot;)
+
+start_test_set = params[&quot;start_test_set&quot;] 
+print(f&quot;Test set starts: {start_test_set}&quot;)
+
+end_test_set = params[&quot;end_test_set&quot;]
+print(f&quot;Test set ends: {end_test_set}&quot;)
+
+</code></pre>
+<pre><code>Training set starts: 2031-03-01
+Validation set starts: 2031-09-01
+Test set starts: 2031-10-01
+Test set ends: 2032-01-01
+</code></pre>
+<h2 id="train-one-model-for-each-prediction-time">Train one model for each prediction time</h2>
+<p>First, we apply the temporal splits as shown in the previous notebook. </p>
+<pre><code class="language-python">
+
+from datetime import date   
+from patientflow.prepare import create_temporal_splits
+
+# create the temporal splits
+train_visits, valid_visits, test_visits = create_temporal_splits(
+    ed_visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;, # states which column contains the date to use when making the splits 
+    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits 
+
+)
+
+</code></pre>
+<pre><code>Split sizes: [53801, 6519, 19494]
+</code></pre>
+<p>Next we train a model for each prediction time.</p>
+<pre><code class="language-python">prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
+
+print(&quot;\nNumber of observations for each prediction time&quot;)
+print(ed_visits.prediction_time.value_counts())
+</code></pre>
+<pre><code>Number of observations for each prediction time
+prediction_time
+(15, 30)    22279
+(12, 0)     19075
+(22, 0)     18842
+(9, 30)     11421
+(6, 0)       8197
+Name: count, dtype: int64
+</code></pre>
+<p>As shown in the previous notebook, we define ordinal mappings where appropriate. These include:</p>
+<ul>
+<li><code>age_group</code> - Age on arrival at the ED, defined in groups</li>
+<li><code>latest_obs_manchester_triage_acuity</code> - Manchester Triage Score (where blue is the lowest acuity and red the highest)</li>
+<li><code>latest_obs_objective_pain_score</code> - ranging from nil to very severe </li>
+<li><code>latest_obs_level_of_consciousness</code> the ACVPU measure of consciousness, where A (aware) and U (unconscious) at are the extremes. </li>
+</ul>
+<pre><code class="language-python">ordinal_mappings = {
+    &quot;age_group&quot;: [
+        &quot;0-17&quot;,
+        &quot;18-24&quot;,
+        &quot;25-34&quot;,
+        &quot;35-44&quot;,
+        &quot;45-54&quot;,
+        &quot;55-64&quot;,
+        &quot;65-74&quot;,
+        &quot;75-102&quot;,
+    ],
+    &quot;latest_obs_manchester_triage_acuity&quot;: [
+        &quot;Blue&quot;,
+        &quot;Green&quot;,
+        &quot;Yellow&quot;,
+        &quot;Orange&quot;,
+        &quot;Red&quot;,
+    ],
+    &quot;latest_obs_objective_pain_score&quot;: [
+        &quot;Nil&quot;,
+        &quot;Mild&quot;,
+        &quot;Moderate&quot;,
+        &quot;Severe_Very Severe&quot;,
+    ],
+    &quot;latest_obs_level_of_consciousness&quot;: [
+        &quot;A&quot;, #alert
+        &quot;C&quot;, #confused
+        &quot;V&quot;, #voice - responds to voice stimulus
+        &quot;P&quot;, #pain - responds to pain stimulus
+        &quot;U&quot; #unconscious - no response to pain or voice stimulus
+    ]    }
+
+</code></pre>
+<p>In the real data, there are some columns that will be used for predicting admission to specialty, if admitted, that we don't use here. </p>
+<pre><code class="language-python">exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
+</code></pre>
+<p>We loop through each prediction time, training a model. To start with, we will not balance the dataset. </p>
+<pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+
+trained_models = []  
+
+# Loop through each prediction time
+for prediction_time in prediction_times:
+    print(f&quot;Training model for {prediction_time}&quot;)
+    model = train_classifier(
+        train_visits=train_visits,
+        valid_visits=valid_visits,
+        test_visits=test_visits,
+        grid={&quot;n_estimators&quot;: [20, 30, 40]},
+        exclude_from_training_data=exclude_from_training_data,
+        ordinal_mappings=ordinal_mappings,
+        prediction_time=prediction_time,
+        visit_col=&quot;visit_number&quot;,
+        calibrate_probabilities=False,
+        use_balanced_training=False,
+    )
+
+    trained_models.append(model)
+</code></pre>
+<pre><code>(6, 0)
+(9, 30)
+(12, 0)
+(15, 30)
+(22, 0)
+</code></pre>
+<h2 id="inspecting-the-base-model">Inspecting the base model</h2>
+<p>Below I show three different charts, all showing the calibration and distribution of the models, in slightly different ways. </p>
+<h3 id="distribution-plots">Distribution plots</h3>
+<p>A distribution plot shows the spread of predicted probabilities for positive and negative cases.</p>
+<ul>
+<li>X-axis (Predicted Probability): Represents the model's predicted probabilities from 0 to 1.</li>
+<li>Y-axis (Density): Shows the relative frequency of each probability value.</li>
+</ul>
+<p>The plot displays two histograms:</p>
+<ul>
+<li>Blue line/area: Distribution of predicted probabilities for negative cases (patients who weren't admitted)</li>
+<li>Orange line/area: Distribution of predicted probabilities for positive cases (patients who were admitted)</li>
+</ul>
+<p>Ideal separation between these distributions indicates a well-performing model:</p>
+<ul>
+<li>Negative cases (blue) should cluster toward lower probabilities (left side)</li>
+<li>Positive cases (orange) should cluster toward higher probabilities (right side)</li>
+</ul>
+<p>The degree of overlap between distributions helps assess model discrimination ability. Less overlap suggests the model effectively distinguishes between positive and negative cases, while significant overlap indicates areas where the model struggles to differentiate between outcomes.</p>
+<p>From the plot below, we see that the model is discriminating poorly, with a high degree of overlap, and very few positive cases at the higher end. </p>
+<pre><code class="language-python"># without balanced training
+from patientflow.viz.distribution_plots import plot_prediction_distributions
+plot_prediction_distributions(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_20_0.png" /></p>
+<h3 id="calibration-plots">Calibration plots</h3>
+<p>A calibration plot shows how well a model's predicted probabilities match actual outcomes.</p>
+<ul>
+<li>X-axis (Mean Predicted Probability): The model's predicted probabilities, ordered from 0 to 1, grouped into bins, either using the uniform or the quantile strategy (see below).</li>
+<li>Y-axis (Fraction of Positives): The observed proportion of admissions for visits in that group.</li>
+</ul>
+<p>A perfectly calibrated model would align its points along the diagonal line, meaning a 70% predicted probability means the event happens 70% of the time.</p>
+<p>Uniform vs Quantile Strategies:
+- Uniform: Divides predictions into equal-width probability bins (e.g., 0.0-0.1, 0.1-0.2), so some bins may have few or many points.
+- Quantile: Ensures each bin has the same number of predictions, regardless of how wide or narrow each bin's probability range is.</p>
+<p>Below, we see reasonable calibration at the lower end, but deteriorating towards the higher end.</p>
+<pre><code class="language-python"># without balanced training
+from patientflow.viz.calibration_plot import plot_calibration
+
+plot_calibration(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data,
+    strategy=&quot;quantile&quot;,  # optional
+    suptitle=&quot;Base model with imbalanced training data&quot;  # optional
+)
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_22_0.png" /></p>
+<h3 id="madcap-model-accuracy-diagnostic-calibration-plot">MADCAP (Model Accuracy Diagnostic Calibration Plot)</h3>
+<p>A MADCAP (Model Accuracy Diagnostic Calibration Plot) visually compares the predicted probabilities from a model with the actual outcomes (e.g., admissions or events) in a dataset. This plot helps to assess how well the model's predicted probabilities align with the observed values.</p>
+<p>The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
+The orange line represents the cumulative observed outcomes, calculated based on the actual labels in the dataset, averaged over the same sorted order of predicted probabilities.</p>
+<p>If the model is well calibrated, these two lines will closely follow each other, and the curves will bow to the bottom left. </p>
+<p>Below, we see that the models under-predict the likelihood of admissions, as the blue line (predicted outcomes) consistently falls below the orange line (actual outcomes). The models are systematically assigning lower probabilities than it should, meaning that (later) we will under-predict the number of beds needed for these patients.</p>
+<pre><code class="language-python">## without balanced training
+from patientflow.viz.madcap_plot import generate_madcap_plots
+generate_madcap_plots(
+    trained_models=trained_models,
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_24_0.png" /></p>
+<h2 id="inspecting-a-balanced-and-calibrated-model">Inspecting a balanced and calibrated model</h2>
+<p>In the previous notebook I showed that the <code>train_classifier()</code> function will balance the training set, by under-sampling the negative class, and then re-calibrate the data using the validation set. Below I train the models with these arguments set to true, and re-run the plots. </p>
+<pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+
+trained_models = []  
+
+# Loop through each prediction time
+for prediction_time in prediction_times:
+    print(f&quot;Training model for {prediction_time}&quot;)
+    model = train_classifier(
+        train_visits=train_visits,
+        valid_visits=valid_visits,
+        test_visits=test_visits,
+        grid={&quot;n_estimators&quot;: [20, 30, 40]},
+        exclude_from_training_data=exclude_from_training_data,
+        ordinal_mappings=ordinal_mappings,
+        prediction_time=prediction_time,
+        visit_col=&quot;visit_number&quot;,
+        calibrate_probabilities=True,
+        calibration_method=&quot;sigmoid&quot;,
+        use_balanced_training=True,
+    )
+
+    trained_models.append(model)
+
+
+</code></pre>
+<pre><code>Training model for (6, 0)
+Training model for (9, 30)
+Training model for (12, 0)
+Training model for (15, 30)
+Training model for (22, 0)
+</code></pre>
+<p>From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot, and the MADCAP lines are closer. The model slightly underpredicts at 06:00, 09:30 and 22:00, and slightly overpredicts at 12:00 and 15:30. These improvements have been achieved while maintaining good calibration.   </p>
+<pre><code class="language-python">plot_prediction_distributions(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+plot_calibration(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data,
+    strategy=&quot;quantile&quot;,  # optional
+    suptitle=&quot;Base model with imbalanced training data&quot;  # optional
+)
+
+generate_madcap_plots(
+    trained_models=trained_models,
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_2.png" /></p>
+<h2 id="madcap-plots-by-age">MADCAP plots by age</h2>
+<p>It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.</p>
+<p>The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits. The y axis maximum is the total number of snapshots in the test that were in at the prediction time. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.  </p>
+<p>Analysis like this helps understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, if there was enough data, or gathering more training data before deployment. </p>
+<pre><code class="language-python">from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
+generate_madcap_plots_by_group(
+    trained_models=list(trained_models),
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data,
+    grouping_var=&quot;age_group&quot;,
+    grouping_var_name=&quot;Age Group&quot;,
+    plot_difference=False
+)
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_3.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_4.png" /></p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
+<ul>
+<li>assess the discrimination and calibration of your models</li>
+<li>identify areas of weakness in your models by comparing predictions across different patient groups</li>
+</ul>
+<p>I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. This is common in healthcare data. </p>
+<p>This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where <code>patientflow</code> comes into its own. In the next notebook, I show how to create group snapshots. </p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>

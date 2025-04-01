@@ -1,0 +1,1432 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../2a_Create_patient_snapshots/">
+      
+      
+        <link rel="next" href="../2c_Evaluate_patient_snapshot_models/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+    
+    
+      
+        <title>Make predictions using patient-level snapshots - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#make-predictions-using-patient-level-snapshots" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Make predictions using patient-level snapshots
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: Predicting demand for hospital beds using real-time data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MIT License
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Notebooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Notebooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About the notebooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Set up your environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introducing our users
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Make predictions using patient-level snapshots
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Make predictions using patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#things-to-consider-when-training-predictive-models-using-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Things to consider when training predictive models using snapshots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-fake-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create fake snapshots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-a-model-to-predict-the-outcome-of-each-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train a model to predict the outcome of each snapshot
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-the-object-returned-by-train_classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting the object returned by train_classifier()
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2c_Evaluate_patient_snapshot_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Evaluate models trained on patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Explore the datasets provided
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create group snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Specify an emergency demand model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Predict_probability_of_admission_from_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict ED admission probability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_demand_from_patients_in_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Turning individual patient-level predictions into predictions of how many beds will be needed
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Predict_probability_of_admission_to_specialty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Modelling probability of admission to specialty, if admitted
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict yet to arrive
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4e_Predict_probabiity_of_admission_using_minimal_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict Probabiity of Admission Using Minimal Data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Bring_it_all_together/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Putting it all together
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Src
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Src
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Patientflow
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            Patientflow
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: A forthcoming Python package
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#things-to-consider-when-training-predictive-models-using-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Things to consider when training predictive models using snapshots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-fake-snapshots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create fake snapshots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-a-model-to-predict-the-outcome-of-each-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train a model to predict the outcome of each snapshot
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspecting-the-object-returned-by-train_classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inspecting the object returned by train_classifier()
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/2b_Predict_using_patient_snapshots.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="make-predictions-using-patient-level-snapshots">Make predictions using patient-level snapshots</h1>
+<h2 id="things-to-consider-when-training-predictive-models-using-snapshots">Things to consider when training predictive models using snapshots</h2>
+<p><strong>Random versus temporal splits</strong></p>
+<p>When dividing your data into training, validation and test sets, a random allocation will make your models appear to perform better than they actually would in practice. This is because random splits ignore the temporal nature of healthcare data, where patterns may change over time. A more realistic approach is to use temporal splits, where you train on earlier data and validate/test on later data, mimicking how the model would be deployed in a real-world setting.</p>
+<p><strong>Multiple snapshots per visit</strong></p>
+<p>To use <code>patientflow</code> your data should be in snapshot form. I showed how to create this in the last notebook. I defined a series of prediction times, and then sampled finished visit to get snapshots that represent those visits while still in progress. When you follow this method, you may end up with multiple snapshots. Is this OK, for your analysis? You will need to decide whether you include all snapshots from a single visit into a predictive model. These snapshots from the same visit are inherently correlated, which may violate assumptions of many statistical and machine learning methods. </p>
+<p><strong>Multiple visits per patient</strong></p>
+<p>The patient identifier is also important, because if the same patient appears in training and test sets, there is the potential for data leakage. We took the decision to probabilistically allocate each patient to training, validation and test sets, where the probability of being allocated to each set is in proportion to the number of visits they made in any of those time periods. </p>
+<p><code>patientflow</code> includes functions that handle of all these considerations.</p>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 2
+</code></pre>
+<h2 id="create-fake-snapshots">Create fake snapshots</h2>
+<p>See the previous notebook for more information about how this is done. </p>
+<pre><code class="language-python">from patientflow.generate import create_fake_snapshots
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
+snapshots_df=create_fake_snapshots(prediction_times=prediction_times, start_date='2023-01-01', end_date='2023-04-01')
+snapshots_df.head()
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>snapshot_date</th>
+      <th>prediction_time</th>
+      <th>patient_id</th>
+      <th>visit_number</th>
+      <th>is_admitted</th>
+      <th>age</th>
+      <th>latest_triage_score</th>
+      <th>num_bmp_orders</th>
+      <th>num_troponin_orders</th>
+      <th>num_cbc_orders</th>
+      <th>num_urinalysis_orders</th>
+      <th>num_d-dimer_orders</th>
+    </tr>
+    <tr>
+      <th>snapshot_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2023-01-01</td>
+      <td>(6, 0)</td>
+      <td>2690</td>
+      <td>6</td>
+      <td>0</td>
+      <td>49</td>
+      <td>5.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
+      <td>2471</td>
+      <td>16</td>
+      <td>0</td>
+      <td>76</td>
+      <td>4.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
+      <td>2987</td>
+      <td>9</td>
+      <td>0</td>
+      <td>58</td>
+      <td>2.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
+      <td>3472</td>
+      <td>46</td>
+      <td>0</td>
+      <td>63</td>
+      <td>5.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
+      <td>41</td>
+      <td>35</td>
+      <td>0</td>
+      <td>83</td>
+      <td>4.0</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="train-a-model-to-predict-the-outcome-of-each-snapshot">Train a model to predict the outcome of each snapshot</h2>
+<p>Let's train a model to predict admission for the 9:30 prediction time. We will specify that the triage scores are ordinal, to make use of sklearn's OrdinalEncoder to maintain the natural order of categories. </p>
+<p>We exclude columns that are not relevant to the prediction of probability of admission, including <code>snapshot_date</code> and <code>prediction_time</code>. Note that here we are trying a different model for each prediction time. That was a design decision, which allows the model to pick up different signals of the outcome at different times of day. You'll see the results of this in later notebooks where I show shap plots for models at different times of day. </p>
+<p>If the same patient appears in training, validation or test sets, there is the potential for data leakage. The <code>create_temporal_splits()</code> function below will randomly allocate each patient_id to training, validation and test sets, where the probability of being allocated to each is in proportion to the number of visits they made in any of those time periods. </p>
+<pre><code class="language-python">from datetime import date   
+from patientflow.prepare import create_temporal_splits
+
+# set the temporal split
+start_training_set = date(2023, 1, 1) 
+start_validation_set = date(2023, 2, 15) # 6 week training set 
+start_test_set = date(2023, 3, 1) # 2 week validation set 
+end_test_set = date(2023, 4, 1) # 1 month test set
+
+# create the temporal splits
+train_visits, valid_visits, test_visits = create_temporal_splits(
+    snapshots_df,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;, # states which column contains the date to use when making the splits 
+    patient_id=&quot;patient_id&quot;, # states which column contains the patient id to use when making the splits 
+    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits 
+
+)
+
+
+
+</code></pre>
+<pre><code>Patient Set Overlaps (before random assignment):
+Train-Valid: 0 of 2158
+Valid-Test: 29 of 1513
+Train-Test: 100 of 2500
+All Sets: 0 of 3021 total patients
+Split sizes: [1811, 629, 1242]
+</code></pre>
+<p>You will need to decide whether you include all snapshots from a single visit into a predictive model. If you do, there will be non-independence in the data. </p>
+<p>Since we train a different model for each prediction time, then it is only visits spanning more than 24 hours that would have multiple rows. If your snapshots are drawn from visits to ED, this should hopefully not happen too often (though sadly it is becoming more common in the UK). If your snapshots are drawn from inpatient visits, then it is very likely that you will have multiple rows per patient. </p>
+<p>We took the decision to select one visit at random, even for our ED visits. The function below gives you the option. If you specify <code>single_snapshot_per_visit</code> as True, the function will expect a <code>visit_col</code> parameter. </p>
+<pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+
+# exclude columns that are not needed for training
+exclude_from_training_data=['patient_id', 'visit_number', 'snapshot_date', 'prediction_time']
+
+# train the patient-level model
+model = train_classifier(
+    train_visits,
+    valid_visits,
+    test_visits,
+    grid={&quot;n_estimators&quot;: [20, 30, 40]},
+    prediction_time=(9, 30),
+    exclude_from_training_data=exclude_from_training_data,
+    ordinal_mappings={'latest_triage_score': [1, 2, 3, 4, 5]},
+    single_snapshot_per_visit=True,
+    visit_col='visit_number', # as we are using a single snapshot per visit, we need to specify which column contains the visit number
+    use_balanced_training=True,
+    calibrate_probabilities=True,
+    calibration_method='sigmoid'
+)
+
+</code></pre>
+<p><strong>About the parameters in <code>train_classifer()</code></strong></p>
+<p>There are a few parameters in this function to explain. </p>
+<ul>
+<li><code>grid</code>: specifies the grid to use in hyperparameter tuning.</li>
+<li><code>prediction_time</code>: is used to identify which patient snapshots to use for training.</li>
+<li><code>single_snapshot_per_visit</code>: if this is True, the function will randomly pick one snapshot for any visit, using <code>visit_col</code> as the column name that identifies the visit identifier. </li>
+<li><code>exclude_from_training_data</code>: certain columns in the data should not be used for training, including visit numbers and dates.</li>
+<li><code>ordinal_mappings</code>: the function makes use of SKLearn's Ordinal Mapping encoder.</li>
+<li><code>use_balanced_training</code>: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class. </li>
+<li><code>calibrate_probabilities</code>: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will apply isotonic regression to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.</li>
+<li><code>calibration_method</code>: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.</li>
+</ul>
+<p><strong>About machine learning choices</strong></p>
+<p>By default, the function will use an XGBoost classifier, initialised with the hyperparamter grid provided with log loss as the evaluation metric. Chronological ross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values. </p>
+<p>If you wish to use a different classifer, you can use another parameter,  not shown here:</p>
+<ul>
+<li><code>model_class</code> (not shown here):  You can pass your own model in an optional model_class argument, which expects classifier class (like XGBClassifier or other scikit-learn compatible classifiers) that can be instantiated and initialised with the parameters provided</li>
+</ul>
+<h2 id="inspecting-the-object-returned-by-train_classifier">Inspecting the object returned by <code>train_classifier()</code></h2>
+<p>The function returns an object of type TrainedClassifer(). Meta data and metrics from the training process are returned with it. </p>
+<pre><code class="language-python">print(f'Object returned is of type: {type(model)}')
+
+print(f'\nThe metadata from the training process are returned in the `training_results` attribute:')
+model.training_results
+</code></pre>
+<pre><code>Object returned is of type: &lt;class 'patientflow.model_artifacts.TrainedClassifier'&gt;
+
+The metadata from the training process are returned in the `training_results` attribute:
+
+
+
+
+
+TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9891000722886609), 'train_logloss': np.float64(0.2401767879184195), 'train_auprc': np.float64(0.9915814710451907), 'valid_auc': np.float64(0.6902652943461767), 'valid_logloss': np.float64(0.7612948055228466), 'valid_auprc': np.float64(0.6423223640376016)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9964572270616507), 'train_logloss': np.float64(0.2037677992999191), 'train_auprc': np.float64(0.9968371157941393), 'valid_auc': np.float64(0.6828805304172951), 'valid_logloss': np.float64(0.7965992894598218), 'valid_auprc': np.float64(0.6440393638797277)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9986821301541798), 'train_logloss': np.float64(0.17958817128501964), 'train_auprc': np.float64(0.9986379247873801), 'valid_auc': np.float64(0.6922204225513049), 'valid_logloss': np.float64(0.8288787785614758), 'valid_auprc': np.float64(0.6543331451114808)})], 'features': {'names': ['age', 'latest_triage_score', 'num_bmp_orders_0', 'num_bmp_orders_1', 'num_troponin_orders_0', 'num_troponin_orders_1', 'num_cbc_orders_0', 'num_cbc_orders_1', 'num_urinalysis_orders_0', 'num_urinalysis_orders_1', 'num_d-dimer_orders_0', 'num_d-dimer_orders_1'], 'importances': [0.11312869191169739, 0.3690102994441986, 0.11062111705541611, 0.0, 0.10884614288806915, 0.0, 0.11563073843717575, 0.0, 0.0881805568933487, 0.0, 0.09458249062299728, 0.0], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 299, 'valid_set_no': 106, 'test_set_no': 213}, 'train_valid_test_class_balance': {'y_train_class_balance': {0: 0.7123745819397993, 1: 0.28762541806020064}, 'y_valid_class_balance': {0: 0.6698113207547169, 1: 0.330188679245283}, 'y_test_class_balance': {0: 0.6901408450704225, 1: 0.30985915492957744}}}}, calibration_info={'method': 'sigmoid'}, test_results={'test_auc': 0.7148010719439291, 'test_logloss': 0.5654510176351998, 'test_auprc': 0.5559247479672749}, balance_info={'is_balanced': True, 'original_size': 299, 'balanced_size': 172, 'original_positive_rate': np.float64(0.28762541806020064), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
+</code></pre>
+<p>To get a better view of what is included within the results, here is a list of the fields returned: </p>
+<pre><code class="language-python">from dataclasses import fields
+print(&quot;\nDataclass fields in TrainingResults:&quot;)
+for field in fields(model.training_results):
+    print(field.name)
+</code></pre>
+<pre><code>Dataclass fields in TrainingResults:
+prediction_time
+training_info
+calibration_info
+test_results
+balance_info
+</code></pre>
+<p>The prediction time has been saved. </p>
+<pre><code class="language-python">print(f'The prediction time is: {model.training_results.prediction_time}')
+</code></pre>
+<pre><code>The prediction time is: (9, 30)
+</code></pre>
+<p>An object called training_info contains information related to model training. To simplify the code, I'll assign it to a variable called results. It will tell us the size and class balance of each set </p>
+<pre><code class="language-python">results = model.training_results.training_info
+
+print(f&quot;The training_info object contains the following keys: {results.keys()}&quot;)
+
+print(f&quot;\nNumber in each set{results['dataset_info']['train_valid_test_set_no']}&quot;)
+
+def print_class_balance(d):
+    for k in d:
+        print(f&quot;{k.split('_')[1]}: {d[k][0]:.1%} neg, {d[k][1]:.1%} pos&quot;)
+
+
+print_class_balance(results['dataset_info']['train_valid_test_class_balance'])
+</code></pre>
+<pre><code>The training_info object contains the following keys: dict_keys(['cv_trials', 'features', 'dataset_info'])
+
+Number in each set{'train_set_no': 299, 'valid_set_no': 106, 'test_set_no': 213}
+train: 71.2% neg, 28.8% pos
+valid: 67.0% neg, 33.0% pos
+test: 69.0% neg, 31.0% pos
+</code></pre>
+<p>Class balance information is also saved in the training_results, which will store information about the differences between the class balance when forcing the training set to be balanced</p>
+<pre><code class="language-python">model.training_results.balance_info
+</code></pre>
+<pre><code>{'is_balanced': True,
+ 'original_size': 299,
+ 'balanced_size': 172,
+ 'original_positive_rate': np.float64(0.28762541806020064),
+ 'balanced_positive_rate': np.float64(0.5),
+ 'majority_to_minority_ratio': 1.0}
+</code></pre>
+<p>And the type of calibration done on balanced samples is saved in training_results also</p>
+<pre><code class="language-python">model.training_results.calibration_info
+</code></pre>
+<pre><code>{'method': 'sigmoid'}
+</code></pre>
+<p>Results of hyperparameter tuning are saved in a HyperParameterTrial object</p>
+<pre><code class="language-python"># results are stored in a HyperParameterTrial object
+results['cv_trials']
+</code></pre>
+<pre><code>[HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9891000722886609), 'train_logloss': np.float64(0.2401767879184195), 'train_auprc': np.float64(0.9915814710451907), 'valid_auc': np.float64(0.6902652943461767), 'valid_logloss': np.float64(0.7612948055228466), 'valid_auprc': np.float64(0.6423223640376016)}),
+ HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9964572270616507), 'train_logloss': np.float64(0.2037677992999191), 'train_auprc': np.float64(0.9968371157941393), 'valid_auc': np.float64(0.6828805304172951), 'valid_logloss': np.float64(0.7965992894598218), 'valid_auprc': np.float64(0.6440393638797277)}),
+ HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9986821301541798), 'train_logloss': np.float64(0.17958817128501964), 'train_auprc': np.float64(0.9986379247873801), 'valid_auc': np.float64(0.6922204225513049), 'valid_logloss': np.float64(0.8288787785614758), 'valid_auprc': np.float64(0.6543331451114808)})]
+</code></pre>
+<pre><code class="language-python">
+# Find the trial with the lowest validation logloss
+best_trial = min(results[&quot;cv_trials&quot;], key=lambda trial: trial.cv_results['valid_logloss'])
+
+# print the best parameters
+print(f'The best parameters are: {best_trial.parameters}')
+</code></pre>
+<pre><code>The best parameters are: {'n_estimators': 20}
+</code></pre>
+<pre><code class="language-python">print(f'The results on the test set were:')
+model.training_results.test_results
+
+</code></pre>
+<pre><code>The results on the test set were:
+
+
+
+
+
+{'test_auc': 0.7148010719439291,
+ 'test_logloss': 0.5654510176351998,
+ 'test_auprc': 0.5559247479672749}
+</code></pre>
+<p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id. </p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Here I have shown how <code>patientflow</code> can help you</p>
+<ul>
+<li>handle multiple snapshots per visit and multiple visits per patient</li>
+<li>impose a temporal split on your training and test sets, allowing for the point above </li>
+<li>train a model to predict some later outcome using functions that handle class imbalance and calibration</li>
+</ul>
+<p>In the next notice, I show how to evaluate models applied to patient snapshots. </p>
+<p>A process like this creates a predicted probability of admission for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients in the ED at a point in time. This is where <code>patientflow</code> comes into its own. In the next notebook, I show how to do this. </p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2724 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../4b_Predict_demand_from_patients_in_ED/">
+      
+      
+        <link rel="next" href="../4d_Predict_demand_from_patients_yet_to_arrive/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+    
+    
+      
+        <title>Modelling probability of admission to specialty, if admitted - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#modelling-probability-of-admission-to-specialty-if-admitted" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Modelling probability of admission to specialty, if admitted
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: Predicting demand for hospital beds using real-time data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MIT License
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Notebooks
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Notebooks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    About the notebooks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Set up your environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introducing our users
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2b_Predict_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Make predictions using patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2c_Evaluate_patient_snapshot_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Evaluate models trained on patient-level snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    2. Explore the datasets provided
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Create group snapshots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Specify an emergency demand model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Predict_probability_of_admission_from_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict ED admission probability
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_demand_from_patients_in_ED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Turning individual patient-level predictions into predictions of how many beds will be needed
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Modelling probability of admission to specialty, if admitted
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Modelling probability of admission to specialty, if admitted
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set up the notebook environment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#load-parameters-and-set-file-paths-and-load-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Load parameters and set file paths, and load data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train the model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#separate-into-training-validation-and-test-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Separate into training, validation and test sets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-the-model_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train the model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handle-special-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handle special categories
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict yet to arrive
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4e_Predict_probabiity_of_admission_using_minimal_data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Predict Probabiity of Admission Using Minimal Data
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Bring_it_all_together/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Putting it all together
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Src
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Src
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Patientflow
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            Patientflow
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PatientFlow: A forthcoming Python package
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set up the notebook environment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#load-parameters-and-set-file-paths-and-load-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Load parameters and set file paths, and load data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-the-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train the model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#separate-into-training-validation-and-test-sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Separate into training, validation and test sets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-the-model_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train the model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handle-special-categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      Handle special categories
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/4c_Predict_probability_of_admission_to_specialty.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="modelling-probability-of-admission-to-specialty-if-admitted">Modelling probability of admission to specialty, if admitted</h1>
+<p>This notebook demonstrates the second stage of prediction, to generate a probability of admission to a specialty for each patient in the ED if they are admitted. </p>
+<p>Here consult sequences provide the input to prediction, and the model is trained only on visits by adult patients that ended in admission. Patients less than 18 at the time of arrival to the ED are assumed to be admitted to paediatric wards. This assumption could be relaxed by changing the training data to include children, and changing how the inference stage is done. </p>
+<p>This approach assumes that, if admitted, a patient's probability of admission to any particular specialty is independent of their probability of admission to hospital. </p>
+<h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 2
+</code></pre>
+<pre><code class="language-python">from patientflow.load import set_project_root
+project_root = set_project_root()
+
+
+
+</code></pre>
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+</code></pre>
+<h2 id="load-parameters-and-set-file-paths-and-load-data">Load parameters and set file paths, and load data</h2>
+<pre><code class="language-python">import pandas as pd
+from patientflow.load import load_data
+from patientflow.load import set_file_paths
+
+# set file paths
+data_folder_name = 'data-public'
+data_file_path = project_root / data_folder_name
+
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root, 
+               data_folder_name=data_folder_name)
+
+# load data
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
+                    index_column = 'snapshot_id',
+                    sort_columns = [&quot;visit_number&quot;, &quot;snapshot_date&quot;, &quot;prediction_time&quot;], 
+                    eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
+
+# load params
+from patientflow.load import load_config_file
+params = load_config_file(config_path)
+
+start_training_set, start_validation_set, start_test_set, end_test_set = params[&quot;start_training_set&quot;], params[&quot;start_validation_set&quot;], params[&quot;start_test_set&quot;], params[&quot;end_test_set&quot;]
+</code></pre>
+<pre><code>Configuration will be loaded from: /Users/zellaking/Repos/patientflow/config.yaml
+Data files will be loaded from: /Users/zellaking/Repos/patientflow/data-public
+Trained models will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public
+Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public/media
+</code></pre>
+<h2 id="train-the-model">Train the model</h2>
+<p>This is the function that trains the specialty model, loaded from a file. Below we will break it down step-by-step.</p>
+<pre><code class="language-python">from patientflow.train.sequence_predictor import train_sequence_predictor, get_default_visits
+??train_sequence_predictor
+</code></pre>
+<pre><code>[0;31mSignature:[0m
+[0mtrain_sequence_predictor[0m[0;34m([0m[0;34m[0m
+[0;34m[0m    [0mtrain_visits[0m[0;34m:[0m [0mpandas[0m[0;34m.[0m[0mcore[0m[0;34m.[0m[0mframe[0m[0;34m.[0m[0mDataFrame[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mmodel_name[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mvisit_col[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0minput_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mgrouping_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0moutcome_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m[0;34m)[0m [0;34m-&gt;[0m [0mpatientflow[0m[0;34m.[0m[0mpredictors[0m[0;34m.[0m[0msequence_predictor[0m[0;34m.[0m[0mSequencePredictor[0m[0;34m[0m[0;34m[0m[0m
+[0;31mSource:[0m   
+[0;32mdef[0m [0mtrain_sequence_predictor[0m[0;34m([0m[0;34m[0m
+[0;34m[0m    [0mtrain_visits[0m[0;34m:[0m [0mDataFrame[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mmodel_name[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mvisit_col[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0minput_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0mgrouping_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0moutcome_var[0m[0;34m:[0m [0mstr[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m[0;34m)[0m [0;34m-&gt;[0m [0mSequencePredictor[0m[0;34m:[0m[0;34m[0m
+[0;34m[0m    [0;34m"""Train a specialty prediction model.[0m
+[0;34m[0m
+[0;34m    Args:[0m
+[0;34m        train_visits: Training data containing visit information[0m
+[0;34m        model_name: Name identifier for the model[0m
+[0;34m        visit_col: Column name containing visit identifiers[0m
+[0;34m        input_var: Column name for input sequence[0m
+[0;34m        grouping_var: Column name for grouping sequence[0m
+[0;34m        outcome_var: Column name for target variable[0m
+[0;34m[0m
+[0;34m    Returns:[0m
+[0;34m        Trained SequencePredictor model[0m
+[0;34m    """[0m[0;34m[0m
+[0;34m[0m    [0mvisits_single[0m [0;34m=[0m [0mselect_one_snapshot_per_visit[0m[0;34m([0m[0mtrain_visits[0m[0;34m,[0m [0mvisit_col[0m[0;34m)[0m[0;34m[0m
+[0;34m[0m    [0madmitted[0m [0;34m=[0m [0mvisits_single[0m[0;34m[[0m[0;34m[0m
+[0;34m[0m        [0;34m([0m[0mvisits_single[0m[0;34m.[0m[0mis_admitted[0m[0;34m)[0m [0;34m&amp;[0m [0;34m~[0m[0;34m([0m[0mvisits_single[0m[0;34m.[0m[0mspecialty[0m[0;34m.[0m[0misnull[0m[0;34m([0m[0;34m)[0m[0;34m)[0m[0;34m[0m
+[0;34m[0m    [0;34m][0m[0;34m[0m
+[0;34m[0m    [0mfiltered_admitted[0m [0;34m=[0m [0mget_default_visits[0m[0;34m([0m[0madmitted[0m[0;34m)[0m[0;34m[0m
+[0;34m[0m[0;34m[0m
+[0;34m[0m    [0mfiltered_admitted[0m[0;34m.[0m[0mloc[0m[0;34m[[0m[0;34m:[0m[0;34m,[0m [0minput_var[0m[0;34m][0m [0;34m=[0m [0mfiltered_admitted[0m[0;34m[[0m[0minput_var[0m[0;34m][0m[0;34m.[0m[0mapply[0m[0;34m([0m[0;34m[0m
+[0;34m[0m        [0;32mlambda[0m [0mx[0m[0;34m:[0m [0mtuple[0m[0;34m([0m[0mx[0m[0;34m)[0m [0;32mif[0m [0mx[0m [0;32melse[0m [0;34m([0m[0;34m)[0m[0;34m[0m
+[0;34m[0m    [0;34m)[0m[0;34m[0m
+[0;34m[0m    [0mfiltered_admitted[0m[0;34m.[0m[0mloc[0m[0;34m[[0m[0;34m:[0m[0;34m,[0m [0mgrouping_var[0m[0;34m][0m [0;34m=[0m [0mfiltered_admitted[0m[0;34m[[0m[0mgrouping_var[0m[0;34m][0m[0;34m.[0m[0mapply[0m[0;34m([0m[0;34m[0m
+[0;34m[0m        [0;32mlambda[0m [0mx[0m[0;34m:[0m [0mtuple[0m[0;34m([0m[0mx[0m[0;34m)[0m [0;32mif[0m [0mx[0m [0;32melse[0m [0;34m([0m[0;34m)[0m[0;34m[0m
+[0;34m[0m    [0;34m)[0m[0;34m[0m
+[0;34m[0m[0;34m[0m
+[0;34m[0m    [0mspec_model[0m [0;34m=[0m [0mSequencePredictor[0m[0;34m([0m[0;34m[0m
+[0;34m[0m        [0minput_var[0m[0;34m=[0m[0minput_var[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m        [0mgrouping_var[0m[0;34m=[0m[0mgrouping_var[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m        [0moutcome_var[0m[0;34m=[0m[0moutcome_var[0m[0;34m,[0m[0;34m[0m
+[0;34m[0m    [0;34m)[0m[0;34m[0m
+[0;34m[0m    [0mspec_model[0m[0;34m.[0m[0mfit[0m[0;34m([0m[0mfiltered_admitted[0m[0;34m)[0m[0;34m[0m
+[0;34m[0m[0;34m[0m
+[0;34m[0m    [0;32mreturn[0m [0mspec_model[0m[0;34m[0m[0;34m[0m[0m
+[0;31mFile:[0m      ~/Repos/patientflow/src/patientflow/train/sequence_predictor.py
+[0;31mType:[0m      function
+</code></pre>
+<p>The first step in the function above is to handle the fact that there are multiple snapshots per visit and we only want one for each visit in the training set. </p>
+<pre><code class="language-python">from patientflow.prepare import select_one_snapshot_per_visit
+
+visits_single = select_one_snapshot_per_visit(ed_visits, visit_col = 'visit_number')
+
+print(ed_visits.shape)
+print(visits_single.shape)
+</code></pre>
+<pre><code>(79814, 69)
+(64497, 68)
+</code></pre>
+<p>To train the specialty model, we only use a subset of the columns. Here we can see the relevant columns</p>
+<pre><code class="language-python">display(visits_single[['consultation_sequence', 'final_sequence', 'specialty', 'is_admitted', 'age_group']].head(10))
+
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>consultation_sequence</th>
+      <th>final_sequence</th>
+      <th>specialty</th>
+      <th>is_admitted</th>
+      <th>age_group</th>
+    </tr>
+    <tr>
+      <th>snapshot_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>[]</td>
+      <td>[]</td>
+      <td>medical</td>
+      <td>False</td>
+      <td>55-64</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>[]</td>
+      <td>[]</td>
+      <td>surgical</td>
+      <td>False</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>[]</td>
+      <td>[]</td>
+      <td>medical</td>
+      <td>False</td>
+      <td>35-44</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>['haem_onc']</td>
+      <td>['haem_onc']</td>
+      <td>haem/onc</td>
+      <td>False</td>
+      <td>65-74</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>['surgical']</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>False</td>
+      <td>25-34</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>[]</td>
+      <td>['haem_onc']</td>
+      <td>medical</td>
+      <td>False</td>
+      <td>65-74</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>['haem_onc']</td>
+      <td>['haem_onc']</td>
+      <td>medical</td>
+      <td>False</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>['haem_onc']</td>
+      <td>['haem_onc']</td>
+      <td>haem/onc</td>
+      <td>False</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>[]</td>
+      <td>[]</td>
+      <td>haem/onc</td>
+      <td>False</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>['ambulatory']</td>
+      <td>['ambulatory']</td>
+      <td>NaN</td>
+      <td>False</td>
+      <td>0-17</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>We filter down to only include admitted patients, and remove any with a null value for the specialty column, since this is the model aims to predict. </p>
+<pre><code class="language-python">admitted = visits_single[
+    (visits_single.is_admitted) &amp; ~(visits_single.specialty.isnull())
+]
+</code></pre>
+<p>Note that some visits that ended in admission had no consult request at the time they were sampled, as we can see below, where visits have an empty tuple</p>
+<pre><code class="language-python">display(admitted[['consultation_sequence', 'final_sequence', 'specialty', 'is_admitted', 'age_group']].head(10))
+
+
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>consultation_sequence</th>
+      <th>final_sequence</th>
+      <th>specialty</th>
+      <th>is_admitted</th>
+      <th>age_group</th>
+    </tr>
+    <tr>
+      <th>snapshot_id</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>20</th>
+      <td>['surgical']</td>
+      <td>['surgical', 'surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>45-54</td>
+    </tr>
+    <tr>
+      <th>58</th>
+      <td>['surgical']</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>35-44</td>
+    </tr>
+    <tr>
+      <th>77</th>
+      <td>[]</td>
+      <td>['acute']</td>
+      <td>medical</td>
+      <td>True</td>
+      <td>65-74</td>
+    </tr>
+    <tr>
+      <th>117</th>
+      <td>[]</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>35-44</td>
+    </tr>
+    <tr>
+      <th>125</th>
+      <td>['surgical']</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>25-34</td>
+    </tr>
+    <tr>
+      <th>128</th>
+      <td>['surgical']</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>141</th>
+      <td>[]</td>
+      <td>['surgical']</td>
+      <td>surgical</td>
+      <td>True</td>
+      <td>65-74</td>
+    </tr>
+    <tr>
+      <th>163</th>
+      <td>['acute']</td>
+      <td>['acute']</td>
+      <td>medical</td>
+      <td>True</td>
+      <td>65-74</td>
+    </tr>
+    <tr>
+      <th>176</th>
+      <td>[]</td>
+      <td>['surgical']</td>
+      <td>medical</td>
+      <td>True</td>
+      <td>75-102</td>
+    </tr>
+    <tr>
+      <th>227</th>
+      <td>[]</td>
+      <td>['paeds']</td>
+      <td>paediatric</td>
+      <td>True</td>
+      <td>0-17</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>The UCLH data (not shared publicly) includes more detailed data on consult type, as shown in the <code>code</code> column in the dataset below. The public data has been simplified to a higher level (identified in the mapping below as <code>type</code>). </p>
+<pre><code class="language-python">from pathlib import Path
+model_input_path = project_root / 'src' /  'patientflow'/ 'model-input'
+name_mapping = pd.read_csv(str(model_input_path) + '/consults-mapping.csv')
+name_mapping
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>code</th>
+      <th>name</th>
+      <th>type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>CON124</td>
+      <td>Inpatient consult to Neuro Ophthalmology</td>
+      <td>neuro</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>CON9</td>
+      <td>Inpatient consult to Neurology</td>
+      <td>neuro</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>CON34</td>
+      <td>Inpatient consult to Dietetics (N&amp;D) - Not TPN</td>
+      <td>allied</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>CON134</td>
+      <td>Inpatient consult to PERRT</td>
+      <td>icu</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>CON163</td>
+      <td>IP Consult to MCC Complementary Therapy Team</td>
+      <td>pain</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>111</th>
+      <td>112</td>
+      <td>CON77</td>
+      <td>Inpatient consult to Paediatric Allergy</td>
+      <td>paeds</td>
+    </tr>
+    <tr>
+      <th>112</th>
+      <td>113</td>
+      <td>CON168</td>
+      <td>Inpatient consult to Acute Oncology Service</td>
+      <td>haem_onc</td>
+    </tr>
+    <tr>
+      <th>113</th>
+      <td>114</td>
+      <td>CON84</td>
+      <td>Inpatient consult to Paediatric Hematology - C...</td>
+      <td>haem_onc</td>
+    </tr>
+    <tr>
+      <th>114</th>
+      <td>115</td>
+      <td>CON122</td>
+      <td>Inpatient consult to Paediatric Epilepsy Service</td>
+      <td>paeds</td>
+    </tr>
+    <tr>
+      <th>115</th>
+      <td>116</td>
+      <td>CON74</td>
+      <td>Inpatient consult to Smoking Cessation Program</td>
+      <td>other</td>
+    </tr>
+  </tbody>
+</table>
+<p>116 rows × 4 columns</p>
+</div>
+
+<p>For example, the code for a consult with Acute Medicine is convered to a more general category in the public dataset</p>
+<pre><code class="language-python">name_mapping[name_mapping.code == 'CON157']
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>code</th>
+      <th>name</th>
+      <th>type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>14</th>
+      <td>15</td>
+      <td>CON157</td>
+      <td>Inpatient consult to Acute Medicine</td>
+      <td>acute</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>The medical group includes many of the more specific types</p>
+<pre><code class="language-python">name_mapping[name_mapping.type == 'medical']
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>code</th>
+      <th>name</th>
+      <th>type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>7</th>
+      <td>8</td>
+      <td>CON165</td>
+      <td>Inpatient consult to Nutrition Team (TPN)</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>11</td>
+      <td>CON54</td>
+      <td>Inpatient consult to Respiratory Medicine</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>13</td>
+      <td>CON43</td>
+      <td>Inpatient consult to Cardiology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>15</th>
+      <td>16</td>
+      <td>CON5</td>
+      <td>Inpatient consult to Infectious Diseases</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>18</td>
+      <td>CON132</td>
+      <td>Inpatient consult to Adult Diabetes CNS</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>33</th>
+      <td>34</td>
+      <td>CON68</td>
+      <td>Inpatient consult to Gastroenterology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>37</th>
+      <td>38</td>
+      <td>CON60</td>
+      <td>Inpatient consult to Endocrinology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>48</th>
+      <td>49</td>
+      <td>CON156</td>
+      <td>Inpatient consult to Adult Endocrine &amp; Diabetes</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>62</th>
+      <td>63</td>
+      <td>CON44</td>
+      <td>Inpatient consult to Rheumatology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>66</th>
+      <td>67</td>
+      <td>CON147</td>
+      <td>Inpatient consult to Cardiac Rehabilitation</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>70</th>
+      <td>71</td>
+      <td>CON62</td>
+      <td>Inpatient consult to Internal Medicine</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>71</th>
+      <td>72</td>
+      <td>CON127</td>
+      <td>Inpatient consult to Hepato-Biliary Medicine</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>76</th>
+      <td>77</td>
+      <td>CON171</td>
+      <td>Inpatient consult to Tropical Medicine</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>91</th>
+      <td>92</td>
+      <td>CON153</td>
+      <td>Inpatient consult to Clinical Biochemistry</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>95</th>
+      <td>96</td>
+      <td>CON8</td>
+      <td>Inpatient consult to Renal Medicine</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>98</th>
+      <td>99</td>
+      <td>CON81</td>
+      <td>Inpatient consult to Paediatric Endocrinology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>101</th>
+      <td>102</td>
+      <td>CON151</td>
+      <td>Inpatient consult to Virology</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>106</th>
+      <td>107</td>
+      <td>CON28</td>
+      <td>Inpatient consult to Integrative Medicine</td>
+      <td>medical</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="separate-into-training-validation-and-test-sets">Separate into training, validation and test sets</h2>
+<p>As part of preparing the data, each visit has already been allocated into one of three sets - training, vaidation and test sets. </p>
+<pre><code class="language-python">from patientflow.prepare import create_temporal_splits
+
+# note that we derive the training set from visits_single, as the SequencePredictor() does the preprocessing mentioned above
+train_visits, _, _ = create_temporal_splits(
+    visits_single,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;,
+)
+</code></pre>
+<pre><code>Split sizes: [42852, 5405, 16240]
+</code></pre>
+<h2 id="train-the-model_1">Train the model</h2>
+<p>Here, we load the SequencePredictor(), a function that takes a sequence as input (in this case consultation_sequence), a grouping variable (in this case final_sequence) and a outcome variable (in this case specialty), and uses a grouping variable to create a rooted directed tree. Each new consult in the sequence is a branching node of the tree. The grouping variable, final sequence, serves as the terminal nodes of the tree. The function maps the probability of each part-complete sequence of consults ending (via each final_sequence) in each specialty of admission.</p>
+<pre><code class="language-python">from patientflow.predictors.sequence_predictor import SequencePredictor
+
+spec_model = SequencePredictor(
+    input_var=&quot;consultation_sequence&quot;,
+    grouping_var=&quot;final_sequence&quot;,
+    outcome_var=&quot;specialty&quot;,
+    apply_special_category_filtering=False,
+)
+
+spec_model.fit(train_visits)
+
+
+</code></pre>
+<style>#sk-container-id-24 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: black;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-24 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-24 pre {
+  padding: 0;
+}
+
+#sk-container-id-24 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-24 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-24 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-24 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-24 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-24 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-24 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-24 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-24 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-24 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-24 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-24 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-24 label.sk-toggleable__label {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#sk-container-id-24 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-24 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-24 div.sk-toggleable__content {
+  max-height: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-24 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-24 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-24 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-24 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sk-container-id-24 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-24 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-24 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-24 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-24 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-24 div.sk-label label.sk-toggleable__label,
+#sk-container-id-24 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-24 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-24 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-24 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-24 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-24 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-24 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-24 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-24 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 1ex;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-24 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-24 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-24 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-24 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+</style>
+<div id="sk-container-id-24" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=False,
+    admit_col=&#x27;is_admitted&#x27;
+)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-21" type="checkbox" checked><label for="sk-estimator-id-21" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequencePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequencePredictor(
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=False,
+    admit_col=&#x27;is_admitted&#x27;
+)</pre></div> </div></div></div></div>
+
+<p>Meta data about the model can be viewed in the metrics object</p>
+<pre><code class="language-python">spec_model.metrics
+</code></pre>
+<pre><code>{'train_dttm': '2025-03-20 16:30',
+ 'train_set_no': 42852,
+ 'start_date': '3/1/2031',
+ 'end_date': '8/9/2031'}
+</code></pre>
+<p>Passing an empty tuple to the trained model shows the probability of ending in each specialty, if a visit has had no consults yet. </p>
+<pre><code class="language-python">print(&quot;For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below&quot;)
+print({k: round(v, 3) for k, v in spec_model.predict(tuple()) .items()})
+
+
+
+</code></pre>
+<pre><code>For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below
+{'surgical': 0.258, 'medical': 0.574, 'paediatric': 0.078, 'haem/onc': 0.09}
+</code></pre>
+<p>The probabilities for each consult sequence ending in a given observed specialty have been saved in the model. These can be accessed as follows: </p>
+<pre><code class="language-python">spec_model.weights[()].keys()
+</code></pre>
+<pre><code>dict_keys(['surgical', 'medical', 'paediatric', 'haem/onc'])
+</code></pre>
+<pre><code class="language-python">weights = spec_model.weights
+print(&quot;For a visit which has one consult to acute medicine at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below&quot;)
+print({k: round(v, 3) for k, v in weights[tuple(['acute'])].items()})
+
+</code></pre>
+<pre><code>For a visit which has one consult to acute medicine at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below
+{'surgical': 0.013, 'medical': 0.946, 'paediatric': 0.002, 'haem/onc': 0.039}
+</code></pre>
+<p>The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options. </p>
+<pre><code class="language-python">spec_model.input_to_grouping_probs
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>final_sequence</th>
+      <th>()</th>
+      <th>('acute',)</th>
+      <th>('acute', 'acute')</th>
+      <th>('acute', 'acute', 'medical')</th>
+      <th>('acute', 'acute', 'medical', 'surgical')</th>
+      <th>('acute', 'acute', 'mental_health')</th>
+      <th>('acute', 'acute', 'palliative')</th>
+      <th>('acute', 'acute', 'surgical')</th>
+      <th>('acute', 'allied')</th>
+      <th>('acute', 'allied', 'acute')</th>
+      <th>...</th>
+      <th>('surgical', 'surgical')</th>
+      <th>('surgical', 'surgical', 'acute')</th>
+      <th>('surgical', 'surgical', 'acute', 'mental_health', 'discharge', 'discharge')</th>
+      <th>('surgical', 'surgical', 'acute', 'surgical')</th>
+      <th>('surgical', 'surgical', 'icu')</th>
+      <th>('surgical', 'surgical', 'medical')</th>
+      <th>('surgical', 'surgical', 'obs_gyn')</th>
+      <th>('surgical', 'surgical', 'other')</th>
+      <th>('surgical', 'surgical', 'surgical')</th>
+      <th>probability_of_grouping_sequence</th>
+    </tr>
+    <tr>
+      <th>consultation_sequence</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>()</th>
+      <td>0.009819</td>
+      <td>0.458837</td>
+      <td>0.013218</td>
+      <td>0.000755</td>
+      <td>0.000378</td>
+      <td>0.000755</td>
+      <td>0.000000</td>
+      <td>0.000378</td>
+      <td>0.005665</td>
+      <td>0.000378</td>
+      <td>...</td>
+      <td>0.007553</td>
+      <td>0.000755</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000378</td>
+      <td>0.534194</td>
+    </tr>
+    <tr>
+      <th>('acute',)</th>
+      <td>0.000000</td>
+      <td>0.830409</td>
+      <td>0.005848</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.014620</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.206980</td>
+    </tr>
+    <tr>
+      <th>('acute', 'acute')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.909091</td>
+      <td>0.045455</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.045455</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.004438</td>
+    </tr>
+    <tr>
+      <th>('acute', 'allied')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>1.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000202</td>
+    </tr>
+    <tr>
+      <th>('acute', 'ambulatory')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000403</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>('surgical', 'medical')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000403</td>
+    </tr>
+    <tr>
+      <th>('surgical', 'obs_gyn')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000403</td>
+    </tr>
+    <tr>
+      <th>('surgical', 'surgical')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.814815</td>
+      <td>0.000000</td>
+      <td>0.037037</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0.037037</td>
+      <td>0.037037</td>
+      <td>0.037037</td>
+      <td>0.037037</td>
+      <td>0.005447</td>
+    </tr>
+    <tr>
+      <th>('surgical', 'surgical', 'acute')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.500000</td>
+      <td>0.000000</td>
+      <td>0.5</td>
+      <td>0.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000403</td>
+    </tr>
+    <tr>
+      <th>('surgical', 'surgical', 'icu')</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>...</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>1.0</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000202</td>
+    </tr>
+  </tbody>
+</table>
+<p>81 rows × 275 columns</p>
+</div>
+
+<pre><code class="language-python"># save models and metadata
+from patientflow.train.utils import save_model
+
+save_model(spec_model, &quot;specialty_no_filtering&quot;, model_file_path)
+print(f&quot;Model has been saved to {model_file_path}&quot;)
+</code></pre>
+<pre><code>Model has been saved to /Users/zellaking/Repos/patientflow/trained-models/public
+</code></pre>
+<h2 id="handle-special-categories">Handle special categories</h2>
+<p>At UCLH, we assume that all under 18s will be admitted to a paediatric specialty. Their visits are therefore used to train the specialty predictor. An <code>apply_special_category_filtering</code> parameter can be set in the <code>SequencePredictor</code> to handle certain categories differently. When this is set, the <code>SequencePredictor</code> will retrieve the relevant logic that has been defined in a class called <code>SpecialCategoryParams</code>. </p>
+<pre><code class="language-python">train_visits.snapshot_date.min()
+</code></pre>
+<pre><code>'3/1/2031'
+</code></pre>
+<pre><code class="language-python">spec_model= SequencePredictor(
+    input_var=&quot;consultation_sequence&quot;,
+    grouping_var=&quot;final_sequence&quot;,
+    outcome_var=&quot;specialty&quot;,
+    apply_special_category_filtering=True,
+)
+
+spec_model.fit(train_visits)
+
+weights = spec_model.weights
+print(&quot;For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below&quot;)
+print({k: round(v, 3) for k, v in spec_model.predict(tuple()) .items()})
+print(&quot;For a visit which has one consult to acute medicine at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below&quot;)
+print({k: round(v, 3) for k, v in weights[tuple(['acute'])].items()})
+
+save_model(spec_model, &quot;specialty&quot;, model_file_path)
+
+
+</code></pre>
+<pre><code>---------------------------------------------------------------------------
+
+TypeError                                 Traceback (most recent call last)
+
+Cell In[128], line 8
+      1 spec_model= SequencePredictor(
+      2     input_var="consultation_sequence",
+      3     grouping_var="final_sequence",
+      4     outcome_var="specialty",
+      5     apply_special_category_filtering=True,
+      6 )
+----&gt; 8 spec_model.fit(train_visits)
+     10 weights = spec_model.weights
+     11 print("For a visit which has no consult at the time of a snapsnot, the probabilities of ending up under a medical, surgical or haem/onc specialty are shown below")
+
+
+File ~/Repos/patientflow/src/patientflow/predictors/sequence_predictor.py:178, in SequencePredictor.fit(self, X)
+    176     self.metrics["end_date"] = X["snapshot_date"].max()
+    177     self.metrics["unique_outcomes"] = len(X[self.outcome_var].unique())
+--&gt; 178     self.metrics["unique_input_sequences"] = len(X[self.input_var].unique())
+    179     self.metrics["unique_grouping_sequences"] = len(X[self.grouping_var].unique())
+    181 # Preprocess the data
+
+
+File ~/miniconda3/envs/patientflow/lib/python3.12/site-packages/pandas/core/series.py:2407, in Series.unique(self)
+   2344 def unique(self) -&gt; ArrayLike:  # pylint: disable=useless-parent-delegation
+   2345     """
+   2346     Return unique values of Series object.
+   2347 
+   (...)
+   2405     Categories (3, object): ['a' &lt; 'b' &lt; 'c']
+   2406     """
+-&gt; 2407     return super().unique()
+
+
+File ~/miniconda3/envs/patientflow/lib/python3.12/site-packages/pandas/core/base.py:1025, in IndexOpsMixin.unique(self)
+   1023     result = values.unique()
+   1024 else:
+-&gt; 1025     result = algorithms.unique1d(values)
+   1026 return result
+
+
+File ~/miniconda3/envs/patientflow/lib/python3.12/site-packages/pandas/core/algorithms.py:401, in unique(values)
+    307 def unique(values):
+    308     """
+    309     Return unique values based on a hash table.
+    310 
+   (...)
+    399     array([('a', 'b'), ('b', 'a'), ('a', 'c')], dtype=object)
+    400     """
+--&gt; 401     return unique_with_mask(values)
+
+
+File ~/miniconda3/envs/patientflow/lib/python3.12/site-packages/pandas/core/algorithms.py:440, in unique_with_mask(values, mask)
+    438 table = hashtable(len(values))
+    439 if mask is None:
+--&gt; 440     uniques = table.unique(values)
+    441     uniques = _reconstruct_data(uniques, original.dtype, original)
+    442     return uniques
+
+
+File pandas/_libs/hashtable_class_helper.pxi:7248, in pandas._libs.hashtable.PyObjectHashTable.unique()
+
+
+File pandas/_libs/hashtable_class_helper.pxi:7195, in pandas._libs.hashtable.PyObjectHashTable._unique()
+
+
+TypeError: unhashable type: 'list'
+</code></pre>
+<p>The handling of special categories is saved as an attribute of the trained model as shown below.</p>
+<pre><code class="language-python">spec_model.special_params
+</code></pre>
+<pre><code>{'special_category_func': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0&gt;&gt;,
+ 'special_category_dict': {'medical': 0.0,
+  'surgical': 0.0,
+  'haem/onc': 0.0,
+  'paediatric': 1.0},
+ 'special_func_map': {'paediatric': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0&gt;&gt;,
+  'default': &lt;bound method SpecialCategoryParams.opposite_special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x28a867ef0&gt;&gt;}}
+</code></pre>
+<pre><code class="language-python">
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8M97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      
+    
+  </body>
+</html>
