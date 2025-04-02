@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_admission_time_survival_curve(df):
+def plot_admission_time_survival_curve(df, title):
     """
     Creates a survival curve for the time it takes patients to be admitted to a ward
     without using the lifelines package.
@@ -54,9 +54,12 @@ def plot_admission_time_survival_curve(df):
     )
 
     # Configure the plot
-    plt.title("Time to Ward Admission Survival Curve")
-    plt.xlabel("Hours from Arrival")
-    plt.ylabel("Proportion Not Yet Admitted")
+    if title:
+        plt.title(title)
+    else:
+        plt.title("Time to Ward Admission Survival Curve")
+    plt.xlabel("Elapsed time from arrival")
+    plt.ylabel("Proportion not yet admitted")
     plt.grid(True, alpha=0.3)
     plt.legend()
 
