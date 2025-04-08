@@ -422,10 +422,9 @@ Here I have demonstrated some methods for evaluating predicted distributions.
 
 We prefer the QQ plot for evaluating probability distribution predictions for several reasons.
 
-QQ plots directly compare the entire predicted and observed distributions, revealing systematic deviations across the full probability range. Unlike summary statistics like MAE or MPE that reduce complex distributional information to single values, QQ plots preserve and visualize the whole distribution. This comprehensive view is particularly valuable for detecting issues in the tails of distributions, where rare but consequential events occur. For instance, in the 22:00 time slot from your data, the QQ plot reveals significant deviations in the upper quantiles that summary statistics might obscure.
+QQ plots directly compare the entire predicted and observed distributions across the full probability range. Unlike summary statistics like MAE or MPE that reduce information to single values, QQ plots preserve and visualise the whole distribution. A comprehensive view can be particularly valuable for detecting issues in the tails of distributions. For instance, in the 22:00 time slot from my data, the QQ plot reveals deviations in the upper quantiles that summary statistics would obscure.
 
 QQ plots are good for identifying specific types of mismatches — for example whether a model systematically under-predicts high values, over-predicts low values, or misses multimodality in the data. These insights can inform model improvement by showing where and how the predicted distribution fails.
 
-QQ plots maintain their interpretability regardless of scale differences between distributions.
 
 

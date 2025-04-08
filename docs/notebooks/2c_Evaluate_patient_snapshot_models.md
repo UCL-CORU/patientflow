@@ -1015,3 +1015,5 @@ Here I have shown how visualations within `patientflow` can help you
 I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data. 
 
 This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots. 
+
+

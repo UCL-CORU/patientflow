@@ -927,7 +927,7 @@ weighted_poisson_prediction = yta_model.predict(prediction_context, x1, y1, x2, 
 
 ```
 
-The chart below show the results of using this weighted predictor to generate an unfettered distribution for patients yet-to-arrive. The numbers look more realistic of levels of demand, suggesting a high probability that the hospital will need to find at least two beds for such patients. 
+The chart below show the results of using this weighted predictor to generate an unfettered distribution for patients yet-to-arrive. The numbers look more realistic than above (where the expected number of beds was zero), with an expected value of two beds needed for the yet-to-arrive patients. 
 
 
 ```python
@@ -951,12 +951,10 @@ prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
 
 ## Conclusion
 
-Here I have demonstrated the use of `patientflow` to generate bed counts for groups of patients, without using snapshots. 
+Here I have demonstrated the use of `patientflow` to generate bed counts for groups of patients, without using patient snapshots. 
 
-If your data on past visits approximate to a statistical distribution, as the example here with a Poisson distribution, generating bed counts is simple to do with standard libraries like scipy. You don't need `patientflow` functions for that. 
+If you have count data on past visits that approximate to a statistical distribution, preparing a  model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need `patientflow` functions for that. 
 
-There might be cases where the historical data don't reflect the desired performance of the ED. In that case, the users of your predictions might be more interested in understand their unfettered demand. 
-
-The chart above shows an unfettered distribution for patients yet-to-arrive. 
+However there might be cases where the historical data don't reflect the desired performance of the ED, as in the example shown here. In that case, the users of your predictions might be more interested in understanding their unfettered demand. `patientflow`  provides functions that enable you to produce such predictions. 
 
 

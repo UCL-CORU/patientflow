@@ -1,4 +1,4 @@
-# Specify an emergency demand model
+# 4. Specify an emergency demand model
 
 In [the first notebook](1_Meet_the_users_of_our_predictions.md) I introduced bed managers and their work. Here I talk about what they need from predictions of emergency demand, and explain choices we made to make the model useful to them.
 
