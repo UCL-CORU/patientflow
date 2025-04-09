@@ -28,6 +28,49 @@ import itertools
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+from patientflow.predict.emergency_demand import find_probability_threshold_index
+
+
+def calculate_probability_thresholds(
+    probability_sequence, probability_levels=[0.7, 0.9]
+):
+    """
+    Calculate resource thresholds for given probability levels based on the probability distribution.
+
+    This function determines resource thresholds where there's a specified probability
+    that at least this many resources will be needed.
+
+    Parameters
+    ----------
+    probability_sequence : array-like
+        The probability mass function (PMF) of resource needs
+    probability_levels : list of float, optional, default=[0.7, 0.9]
+        The desired probability levels (e.g., [0.7, 0.9] for 70% and 90%)
+
+    Returns
+    -------
+    dict
+        Dictionary mapping probability levels to resource thresholds.
+        For example, {0.9: 15, 0.7: 12} means that:
+        - There is a 90% probability of needing at least 15 resources
+        - There is a 70% probability of needing at least 12 resources
+
+    Examples
+    --------
+    >>> pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]  # Probability of needing 0,1,2,3,4,5,6 beds
+    >>> calculate_probability_thresholds(pmf, [0.8, 0.9])
+    {0.8: 4, 0.9: 5}
+    # This means:
+    # - There is an 80% probability of needing at least 4 beds
+    # - There is a 90% probability of needing at least 5 beds
+    """
+    thresholds = {}
+    for probability in probability_levels:
+        thresholds[probability] = find_probability_threshold_index(
+            probability_sequence, probability
+        )
+
+    return thresholds
 
 
 def prob_dist_plot(
@@ -40,8 +83,9 @@ def prob_dist_plot(
     text_size=None,
     bar_colour="#5B9BD5",
     file_name=None,
-    min_beds_lines=None,
-    plot_min_beds_lines=True,
+    probability_thresholds=None,  # Renamed from min_beds_lines
+    show_probability_thresholds=True,  # Renamed from plot_min_beds_lines
+    probability_levels=None,  # New parameter for automatic threshold calculation
     plot_bed_base=None,
     xlabel="Number of beds",
     return_figure=False,
@@ -92,13 +136,27 @@ def prob_dist_plot(
         Name of the file to save the plot. If not provided, the title is used to generate
         a file name.
 
-    min_beds_lines : dict, optional
-        A dictionary where keys are percentages (as decimals, e.g., 0.5 for 50%) and values are
-        the indices into the distribution's index array where vertical lines should be drawn.
-        For example, {0.5: 5} would draw a line at the 5th position in the prob_dist_data.index array.
+    probability_thresholds : dict, optional
+        A dictionary where keys are confidence levels (as decimals, e.g., 0.9 for 90%)
+        and values are the corresponding resource thresholds (bed counts).
+        For example, {0.9: 15} indicates there is a 90% probability that
+        at least 15 beds will be needed (represents the lower tail of the distribution).
 
-    plot_min_beds_lines : bool, optional, default=True
-        Whether to plot the minimum beds lines if min_beds_lines is provided.
+        This can be generated automatically using the calculate_probability_thresholds() function.
+
+        Example usage:
+        ```python
+        # Calculate thresholds for 80% and 95% confidence levels
+        pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
+        thresholds = calculate_probability_thresholds(pmf, [0.8, 0.95])
+
+        # Pass to plotting function
+        prob_dist_plot(pmf, "Bed Demand", probability_thresholds=thresholds)
+        ```
+
+    show_probability_thresholds : bool, optional, default=True
+        Whether to show vertical lines indicating the resource requirements
+        at different confidence levels.
 
     plot_bed_base : dict, optional
         Dictionary of bed balance lines to plot in red.
@@ -114,6 +172,26 @@ def prob_dist_plot(
     -------
     matplotlib.figure.Figure or None
         Returns the figure if return_figure is True, otherwise displays the plot
+
+    Examples
+    --------
+    Basic usage with an array of probabilities:
+
+    >>> probabilities = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
+    >>> prob_dist_plot(probabilities, "Bed Demand Distribution")
+
+    With confidence thresholds:
+
+    >>> thresholds = calculate_probability_thresholds(probabilities, [0.8, 0.95])
+    >>> prob_dist_plot(probabilities, "Bed Demand with Confidence Levels",
+    ...                probability_thresholds=thresholds)
+
+    Using with a scipy stats distribution:
+
+    >>> from scipy import stats
+    >>> poisson_dist = stats.poisson(mu=5)  # Poisson with mean of 5
+    >>> prob_dist_plot(poisson_dist, "Poisson Distribution (μ=5)",
+    ...                truncate_at_beds=(0, 15))
     """
     # Convert input data to standardized pandas DataFrame
 
@@ -170,6 +248,12 @@ def prob_dist_plot(
         # Use all available data
         filtered_data = prob_dist_data
 
+    # Calculate probability thresholds if probability_levels is provided
+    if probability_thresholds is None and probability_levels is not None:
+        probability_thresholds = calculate_probability_thresholds(
+            filtered_data["agg_proba"].values, probability_levels
+        )
+
     # Create the plot
     fig = plt.figure(figsize=figsize)
 
@@ -202,20 +286,20 @@ def prob_dist_plot(
         tick_end = data_max + 1
         plt.xticks(np.arange(tick_start, tick_end, tick_step))
 
-    # Plot minimum beds lines
-    if plot_min_beds_lines and min_beds_lines:
+    # Plot probability threshold lines
+    if show_probability_thresholds and probability_thresholds:
         colors = itertools.cycle(
-            plt.cm.gray(np.linspace(0.3, 0.7, len(min_beds_lines)))
+            plt.cm.gray(np.linspace(0.3, 0.7, len(probability_thresholds)))
         )
-        for point in min_beds_lines:
+        for probability, bed_count in probability_thresholds.items():
             plt.axvline(
-                x=prob_dist_data.index[min_beds_lines[point]],
+                x=bed_count,
                 linestyle="--",
                 linewidth=2,
                 color=next(colors),
-                label=f"{point*100:.0f}% probability",
+                label=f"{probability*100:.0f}% probability of needing ≥ {bed_count} beds",
             )
-        plt.legend(loc="upper right", fontsize=14)
+        plt.legend(loc="upper right")
 
     # Add bed balance lines
     if plot_bed_base:
@@ -226,7 +310,7 @@ def prob_dist_plot(
                 color="red",
                 label=f"bed balance: {point}",
             )
-        plt.legend(loc="upper right", fontsize=14)
+        plt.legend(loc="upper right")
 
     # Add text and labels
     if text_size:

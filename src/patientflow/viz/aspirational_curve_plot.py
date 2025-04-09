@@ -20,6 +20,7 @@ def plot_curve(
     media_file_path=None,
     file_name=None,
     return_figure=False,
+    annotate_points=False,
 ):
     gamma, lamda, a, x_values, y_values = create_curve(
         x1, y1, x2, y2, generate_values=True
@@ -36,6 +37,22 @@ def plot_curve(
     plt.plot(x_values, y_values)
     plt.scatter(x1, y1, color="red")  # Mark the point (x1, y1)
     plt.scatter(x2, y2, color="red")  # Mark the point (x2, y2)
+
+    if annotate_points:
+        plt.annotate(
+            f"({x1}, {y1:.2f})",
+            (x1, y1),
+            xytext=(10, -15),
+            textcoords="offset points",
+            fontsize=text_size,
+        )
+        plt.annotate(
+            f"({x2}, {y2:.2f})",
+            (x2, y2),
+            xytext=(10, -15),
+            textcoords="offset points",
+            fontsize=text_size,
+        )
 
     if text_size:
         plt.tick_params(axis="both", which="major", labelsize=text_size)

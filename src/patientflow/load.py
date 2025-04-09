@@ -446,6 +446,7 @@ def load_data(
     sort_columns=None,
     eval_columns=None,
     home_path=None,
+    encoding=None,
 ):
     """
     Loads data from CSV or pickle file with optional transformations.
@@ -464,6 +465,8 @@ def load_data(
         Columns to apply safe_literal_eval to
     home_path : str or Path, optional
         Base path to use instead of user's home directory
+    encoding : str, optional
+        The encoding to use when reading CSV files (e.g., 'utf-8', 'latin1')
 
     Returns
     -------
@@ -488,7 +491,7 @@ def load_data(
 
     try:
         if path.suffix.lower() == ".csv":
-            df = pd.read_csv(path, parse_dates=True)
+            df = pd.read_csv(path, parse_dates=True, encoding=encoding)
         elif path.suffix.lower() == ".pkl":
             df = pd.read_pickle(path)
         else:

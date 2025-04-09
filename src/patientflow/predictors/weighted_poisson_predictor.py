@@ -121,13 +121,13 @@ def convolute_distributions(dist_a, dist_b):
     return result.groupby("sum")["prob"].sum().reset_index()
 
 
-def poisson_binom_generating_function(NTimes, lambda_t, theta, epsilon):
+def poisson_binom_generating_function(NTimes, arrival_rates, theta, epsilon):
     """
     Generate a distribution based on the aggregate of Poisson and Binomial distributions over time intervals.
 
     Parameters
     NTimes (int): The number of time intervals.
-    lambda_t (numpy.ndarray): An array of lambda values for each time interval.
+    arrival_rates (numpy.ndarray): An array of lambda values for each time interval.
     theta (numpy.ndarray): An array of theta values for each time interval.
     epsilon (float): The desired error threshold.
 
@@ -139,12 +139,12 @@ def poisson_binom_generating_function(NTimes, lambda_t, theta, epsilon):
     if NTimes <= 0 or epsilon <= 0 or epsilon >= 1:
         raise ValueError("Ensure NTimes > 0 and 0 < epsilon < 1.")
 
-    maxlam = max(lambda_t)
+    maxlam = max(arrival_rates)
     kmax = int(poisson.ppf(1 - epsilon, maxlam))
     distribution = np.zeros((kmax + 1, NTimes))
 
     for j in range(NTimes):
-        distribution[:, j] = aggregate_probabilities(lambda_t, kmax, theta, j)
+        distribution[:, j] = aggregate_probabilities(arrival_rates, kmax, theta, j)
 
     df_list = [
         pd.DataFrame({"sum": range(kmax + 1), "prob": distribution[:, j]})
@@ -312,7 +312,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             num_days (int): Number of days over which to calculate time-varying arrival rates
 
         Returns:
-            dict: Calculated lambda_t parameters organized by time of day.
+            dict: Calculated arrival_rates parameters organized by time of day.
 
         """
         Ntimes = int(prediction_window / yta_time_interval)
@@ -327,7 +327,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 if isinstance(prediction_time_, int)
                 else prediction_time_
             )
-            lambda_t = [
+            arrival_rates = [
                 arrival_rates_dict[
                     (
                         datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
@@ -337,7 +337,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 for i in range(Ntimes)
             ]
             prediction_time_dict[(prediction_time_hr, prediction_time_min)] = {
-                "lambda_t": lambda_t
+                "arrival_rates": arrival_rates
             }
 
         return prediction_time_dict
@@ -408,8 +408,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                     num_days,
                 )
         else:
-            # If there are no filters, store the parameters with a generic key, like 'default' or 'unfiltered'
-            self.weights["default"] = self._calculate_parameters(
+            # If there are no filters, store the parameters with a generic key of 'unfiltered'
+            self.weights["unfiltered"] = self._calculate_parameters(
                 train_df,
                 prediction_window,
                 yta_time_interval,
@@ -419,7 +419,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         if self.verbose:
             self.logger.info(
-                f"Poisson Binomial Predictor trained for these times: {prediction_times}"
+                f"Weighted Poisson Predictor trained for these times: {prediction_times}"
             )
             self.logger.info(
                 f"using prediction window of {prediction_window} minutes after the time of prediction"
@@ -506,14 +506,16 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                         prediction_time, self.prediction_times
                     )
 
-                lambda_t = self.weights[filter_key][prediction_time].get("lambda_t")
-                if lambda_t is None:
+                arrival_rates = self.weights[filter_key][prediction_time].get(
+                    "arrival_rates"
+                )
+                if arrival_rates is None:
                     raise ValueError(
-                        f"No 'lambda_t' found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
                     )
 
                 predictions[filter_key] = poisson_binom_generating_function(
-                    NTimes, lambda_t, theta, self.epsilon
+                    NTimes, arrival_rates, theta, self.epsilon
                 )
 
             except KeyError as e:

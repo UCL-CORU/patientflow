@@ -420,7 +420,7 @@ def get_prob_dist_for_prediction_moment(
     return prediction_moment_dict
 
 
-def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
+def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False):
     """
     Calculate probability distributions for each snapshot date based on given model predictions.
 
@@ -438,6 +438,8 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
         or a TrainedClassifier object containing a pipeline.
     weights : pandas.Series, optional
         A Series containing weights for the test data points.
+    verbose : bool, optional (default=False)
+        If True, print progress information.
 
     Returns
     -------
@@ -478,12 +480,13 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
         )
 
     prob_dist_dict = {}
-    print(
-        f"Calculating probability distributions for {len(snapshots_dict)} snapshot dates"
-    )
+    if verbose:
+        print(
+            f"Calculating probability distributions for {len(snapshots_dict)} snapshot dates"
+        )
 
-    if len(snapshots_dict) > 10:
-        print("This may take a minute or more")
+        if len(snapshots_dict) > 10:
+            print("This may take a minute or more")
 
     # Initialize a counter for notifying the user every 10 snapshot dates processed
     count = 0
@@ -516,9 +519,10 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None):
 
         # Increment the counter and notify the user every 10 snapshot dates processed
         count += 1
-        if count % 10 == 0 and count != len(snapshots_dict):
+        if verbose and count % 10 == 0 and count != len(snapshots_dict):
             print(f"Processed {count} snapshot dates")
 
-    print(f"Processed {len(snapshots_dict)} snapshot dates")
+    if verbose:
+        print(f"Processed {len(snapshots_dict)} snapshot dates")
 
     return prob_dist_dict

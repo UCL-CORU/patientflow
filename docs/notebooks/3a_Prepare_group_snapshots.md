@@ -1,10 +1,8 @@
-# Create group snapshots
-
-## About snapshots
+# Prepare group snapshots from patient snapshots
 
 Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a prediction time.
 
-In this notebook, I show how `patientflow` is designed to work with group snapshots. `patientflow` divides patient snapshots into their groups, and stores the group snapshots as dictionary with:
+In this notebook, I show how `patientflow` can be used to prepare group snapshots, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
 
 - `snapshot_date` as the key
 - `snapshot_ids` of each patient snapshot as the values

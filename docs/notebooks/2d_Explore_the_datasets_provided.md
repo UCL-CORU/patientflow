@@ -46,8 +46,6 @@ project_root = set_project_root()
 
 Parameters are set in config.json and (for UCLH implementation in config-uclh.yaml). You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defned training, validation and test set dates.
 
-For more information about parameters and file paths, see notebook [4a_Predict_probability_of_admission_from_ED.md](4a_Predict_probability_of_admission_from_ED.md)
-
 ```python
 from patientflow.load import set_file_paths, load_config_file
 

@@ -8,6 +8,8 @@ Classes
 -------
 SequencePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on input sequences.
+    Note: All sequence inputs are expected to be tuples. Lists will be automatically converted to tuples,
+    and None values will be converted to empty tuples.
 """
 
 from typing import Dict
@@ -79,6 +81,42 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
             f")"
         )
 
+    def _ensure_tuple(self, sequence):
+        """
+        Convert a sequence to tuple if it's not already a tuple.
+        Handles string cleaning to avoid double-quoting issues.
+
+        Parameters
+        ----------
+        sequence : tuple, list, or None
+            The sequence to convert
+
+        Returns
+        -------
+        tuple
+            The input sequence as a tuple, or an empty tuple if input was None
+        """
+        if sequence is None:
+            return ()
+        if isinstance(sequence, (list, pd.Series)):
+            # Clean any quoted strings in the sequence
+            cleaned_sequence = [
+                ast.literal_eval(item)
+                if isinstance(item, str) and item.startswith("'") and item.endswith("'")
+                else item
+                for item in sequence
+            ]
+            return tuple(cleaned_sequence) if cleaned_sequence else ()
+        if isinstance(sequence, tuple):
+            # Clean any quoted strings in the tuple
+            return tuple(
+                ast.literal_eval(item)
+                if isinstance(item, str) and item.startswith("'") and item.endswith("'")
+                else item
+                for item in sequence
+            )
+        return sequence
+
     def _preprocess_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Preprocesses the input data before fitting the model.
@@ -128,26 +166,12 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
                 & (df[self.outcome_var] != special_category_key)
             ]
 
-        # Step 3: Convert sequence columns to tuple format if not already tuples
-        # Process input variable
+        # Step 3: Convert sequence columns to tuple format
         if self.input_var in df.columns:
-            df[self.input_var] = df[self.input_var].apply(
-                lambda x: tuple(x)
-                if (x is not None and not isinstance(x, tuple))
-                else ()
-                if x is None
-                else x
-            )
+            df[self.input_var] = df[self.input_var].apply(self._ensure_tuple)
 
-        # Process grouping variable
         if self.grouping_var in df.columns:
-            df[self.grouping_var] = df[self.grouping_var].apply(
-                lambda x: tuple(x)
-                if (x is not None and not isinstance(x, tuple))
-                else ()
-                if x is None
-                else x
-            )
+            df[self.grouping_var] = df[self.grouping_var].apply(self._ensure_tuple)
 
         return df
 
@@ -347,7 +371,8 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
         dict
             A dictionary of categories and the probabilities that the input sequence will end in them.
         """
-        # Check for no tuple
+        input_sequence = self._ensure_tuple(input_sequence)
+
         if input_sequence is None or pd.isna(input_sequence):
             return self.weights.get(tuple(), {})
 

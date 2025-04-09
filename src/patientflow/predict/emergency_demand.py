@@ -66,14 +66,36 @@ def add_missing_columns(pipeline, df):
     return df
 
 
-def index_of_sum(sequence: List[float], max_sum: float) -> int:
-    """Returns the index where the cumulative sum of a sequence of probabilities exceeds max_sum."""
+def find_probability_threshold_index(sequence: List[float], threshold: float) -> int:
+    """
+    Returns the index where the cumulative sum of a sequence of probabilities exceeds the given threshold.
+
+    Parameters
+    ----------
+    sequence : List[float]
+        The probability mass function (PMF) of resource needs
+    threshold : float
+        The probability threshold (e.g., 0.9 for 90%)
+
+    Returns
+    -------
+    int
+        The index where the cumulative probability exceeds 1 - threshold,
+        indicating the number of resources needed with the specified probability.
+
+    Examples
+    --------
+    >>> pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
+    >>> find_probability_threshold_index(pmf, 0.9)
+    5
+    # This means there is a 90% probability of needing at least 5 beds
+    """
     cumulative_sum = 0.0
     for i, value in enumerate(sequence):
         cumulative_sum += value
-        if cumulative_sum >= 1 - max_sum:
+        if cumulative_sum >= 1 - threshold:
             return i
-    return len(sequence) - 1  # Return the last index if the sum doesn't exceed max_sum
+    return len(sequence) - 1  # Return the last index if the threshold isn't reached
 
 
 def get_specialty_probs(
@@ -365,11 +387,13 @@ def create_predictions(
         )
 
         predictions[specialty]["in_ed"] = [
-            index_of_sum(agg_predicted_in_ed["agg_proba"].values.cumsum(), cut_point)
+            find_probability_threshold_index(
+                agg_predicted_in_ed["agg_proba"].values.cumsum(), cut_point
+            )
             for cut_point in cdf_cut_points
         ]
         predictions[specialty]["yet_to_arrive"] = [
-            index_of_sum(
+            find_probability_threshold_index(
                 agg_predicted_yta[specialty]["agg_proba"].values.cumsum(), cut_point
             )
             for cut_point in cdf_cut_points

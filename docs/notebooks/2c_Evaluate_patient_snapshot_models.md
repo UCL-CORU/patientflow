@@ -1,4 +1,4 @@
-# Evaluate models trained on patient-level snapshots
+# 2c. Evaluate models trained on patient-level snapshots
 
 ## Things to consider
 
@@ -6,8 +6,8 @@ In the last notebook, I showed how to train models on patient snapshots using `p
 
 When evaluating patient snapshots, we focus on:
 
-- How well-calibrated the predicted probabilities are
-- The distribution of these probabilities
+- How well calibrated the predicted probabilities are
+- How well the probabilities discriminate between patients who are and are not admitted.
 
 We don't focus as much on typical classification metrics like Area under the ROC curve, accuracy or precision/recall.
 
@@ -33,8 +33,6 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %load_ext autoreload
 %autoreload 2
 ```
-
-The function below identifies the root of the patientflow repository, in order to locate the folders containing data.
 
 ```python
 import pandas as pd
@@ -747,11 +745,11 @@ for prediction_time in prediction_times:
 
 ## Inspecting the base model
 
-Below I show three different charts, all showing the calibration and distribution of the models, in slightly different ways.
+Below I show three different charts, all showing the calibration and discrimination of the models, in slightly different ways.
 
-### Distribution plots
+### Discrimination plots
 
-A distribution plot shows the spread of predicted probabilities for positive and negative cases.
+A discrimination plot shows the spread of predicted probabilities for positive and negative cases.
 
 - X-axis (Predicted Probability): Represents the model's predicted probabilities from 0 to 1.
 - Y-axis (Density): Shows the relative frequency of each probability value.
@@ -781,7 +779,7 @@ plot_prediction_distributions(
 
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_20_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_19_0.png)
 
 ### Calibration plots
 
@@ -812,7 +810,7 @@ plot_calibration(
 )
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_22_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png)
 
 ### MADCAP (Model Accuracy Diagnostic Calibration Plot)
 
@@ -835,7 +833,7 @@ generate_madcap_plots(
 )
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_24_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png)
 
 ## Inspecting a balanced and calibrated model
 
@@ -897,11 +895,11 @@ generate_madcap_plots(
 )
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_0.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_1.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_1.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_2.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_2.png)
 
 ## MADCAP plots by age
 
@@ -923,15 +921,15 @@ generate_madcap_plots_by_group(
 )
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_0.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_1.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_2.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_3.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_4.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png)
 
 ## Conclusion
 
@@ -940,6 +938,6 @@ Here I have shown how visualations within `patientflow` can help you
 - assess the discrimination and calibration of your models
 - identify areas of weakness in your models by comparing predictions across different patient groups
 
-I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. This is common in healthcare data.
+I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data.
 
 This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots.
