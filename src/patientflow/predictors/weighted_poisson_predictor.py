@@ -419,7 +419,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         if self.verbose:
             self.logger.info(
-                f"Poisson Binomial Predictor trained for these times: {prediction_times}"
+                f"Weighted Poisson Predictor trained for these times: {prediction_times}"
             )
             self.logger.info(
                 f"using prediction window of {prediction_window} minutes after the time of prediction"

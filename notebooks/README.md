@@ -28,16 +28,15 @@ A series of notebooks on patient snapshots.
 Two notebooks on group snapshots.
 
 - **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
+- **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.ipynb):** Show how to evaluate predicted bed count distribution generated form group snapshots.
+- **[3c_Predict_bed_counts_without_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_counts_without_using_patient_snapshots.ipynb):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
+- **[3d_Predict_bed_counts_for_subgroups](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Predict_bed_counts_for_subgroups.ipynb):** Show how to disaggregate bed count distributions by subgroups such as age or specialty of admission
 
 A set of notebooks follow, to show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
 
-- **[4_Specify_emergency_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
-- **[4a_Predict_probability_of_admission_from_ED](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Predict_probability_of_admission_from_ED.ipynb):** Shows how to train a machine learning model to predict a patient's probability of admission using patient data from the Emergency Department (ED). This includes dividing the data into training, validation, and testing sets, as well as into subsets based on the time of day the predictions are made, applying an XGBoost model for predictions, and saving the models for future use.
-- **[4b_Predict_demand_from_patients_in_ED](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb)** Shows how to convert patient-level admission probabilities into a predictions of overall bed demand
-- **[4c_Predict_probability_of_admission_to_specialty](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4c_Predict_probability_of_admission_to_specialty.ipynb):** Shows how to train a model predicting specialty of admission; a sequence of consultation requests is mapped to a probability of being admitted to one of three specialties: medical, surgical, and haematology/oncology, with paediatric patients (under 18) handled differently
-- **[4d_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Predict_demand_from_patients_yet_to_arrive.ipynb):** Shows the use of a time-varying weighted Poisson distribution to predict a number of patients yet to arrive to the ED within a prediction window (say 8 hours). Demonstrates the use of a function that will assume ED performance targets are met when predicting the number admitted by the end of the prediction window
-- **[4e_Predict_probabiity_of_admission_using_minimal_data](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4e_Predict_probabiity_of_admission_using_minimal_data.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
-- **[4f_Bring_it_all_together](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4f_Bring_it_all_together.ipynb):** Shows an example of doing live inference using the models trained in the previous steps
+- **[4a_Specify_emergency_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
+- **[4b_Predict_emergency_demand](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_emergency_demand.ipynb):** Shows a full implementation of the functions covered up to this point, to predict emergency demand at UCLH.
+- **[4c_Evaluate_emergency_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb)** Shows an evaluation of the emergency demand predictions generated using the public data provided with this repo.
 
 ## Preparing your notebook environment
 

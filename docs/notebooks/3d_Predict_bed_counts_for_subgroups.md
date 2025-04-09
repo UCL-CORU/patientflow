@@ -1,10 +1,11 @@
 # Predict bed count distributions for subgroups
 
-It is often the case that pressures build up on certain areas of the hospital, or for subgroups of patients. For example, due to infections in the community, there might be particulary demand for respiratory specialties, or for male geriatric beds. 
+It is often the case that pressures build up on certain areas of the hospital, or for subgroups of patients. For example, due to infections in the community, there might be particulary demand for respiratory specialties, or for male geriatric beds.
 
-In this notebook I show how `patientflow` functions can be used to create predictions for some subgroup which might be 
-* specific areas of the hospital (eg medical or paediatric beds)
-* sub-groups defined by a demographic characteristic (eg sex) 
+In this notebook I show how `patientflow` functions can be used to create predictions for some subgroup which might be
+
+- specific areas of the hospital (eg medical or paediatric beds)
+- sub-groups defined by a demographic characteristic (eg sex)
 
 I will first demonsrate the use of a `SequencePredictor` class, that can be used to predict each patient's probability of admission to a clinical area if they are admitted. Here I show predictions to four specialties: medical, surgical, haematology/oncology or paediatric. I'll load real patient data and show how the `SequencePredictor` is trained using sequences of consult requests made while patients were in the ED.
 
@@ -12,18 +13,15 @@ If we assume that two events - a patient being admitted, and a patient requiring
 
 I'll also demonstrate the disaggregation of predicted bed counts by sex.
 
-
 ## Loading real patient data
 
-Following the approaach taken in the previous notebook, I'll first load some real patient data. 
-
+Following the approaach taken in the previous notebook, I'll first load some real patient data.
 
 ```python
 # Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 ```
-
 
 ```python
 import pandas as pd
@@ -35,15 +33,15 @@ project_root = set_project_root()
 
 # set file paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        project_root, 
+        project_root,
         data_folder_name='data-public', # change this to data-synthetic if you don't have the public dataset
-        verbose=False) 
+        verbose=False)
 
 # load the data
-ed_visits = load_data(data_file_path, 
-                    file_name='ed_visits.csv', 
+ed_visits = load_data(data_file_path,
+                    file_name='ed_visits.csv',
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
@@ -52,7 +50,7 @@ params = load_config_file(config_path)
 start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
 
 # apply the temporal splits
-from datetime import date   
+from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
@@ -62,8 +60,8 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="snapshot_date", # states which column contains the date to use when making the splits 
-    visit_col="visit_number", # states which column contains the visit number to use when making the splits 
+    col_name="snapshot_date", # states which column contains the date to use when making the splits
+    visit_col="visit_number", # states which column contains the visit number to use when making the splits
 
 )
 
@@ -72,18 +70,13 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     Inferred project root: /Users/zellaking/Repos/patientflow
     Split sizes: [53801, 6519, 19494]
 
-
 ## Train a model to predict probability of admission to each specialty
 
-In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. Below, the `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.  
-
+In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. Below, the `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.
 
 ```python
 ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['consultation_sequence', 'final_sequence', 'specialty']].head(10)
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -98,6 +91,7 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -179,19 +173,15 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
 </table>
 </div>
 
+Below I demonstrate training the model. A rooted decision-tree is used to calculate the probability of an ordered sequence of consultations (observed at the snapshot, which could be none) resulting in each final sequences at the end of the ED visit, and the probabiltity of each of those final sequences being associated with admission to each specialty.
 
+This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams. Therefore, the `SequencePredictor` arguments have been given generic names:
 
-Below I demonstrate training the model. A rooted decision-tree is used to calculate the probability of an ordered sequence of consultations (observed at the snapshot, which could be none) resulting in each final sequences at the end of the ED visit, and the probabiltity of each of those final sequences being associated with admission to each specialty. 
+- `input_var` - the interim node in the decision tree, observed at the snapshot
+- `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
+- `outcome_var` - the final outcome to be predicted
 
-This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams. Therefore, the `SequencePredictor` arguments have been given generic names: 
-
-* `input_var` - the interim node in the decision tree, observed at the snapshot
-* `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
-* `outcome_var` - the final outcome to be predicted
-
-The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties. 
-
-
+The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties.
 
 ```python
 from patientflow.predictors.sequence_predictor import SequencePredictor
@@ -206,10 +196,7 @@ spec_model = SequencePredictor(
 spec_model.fit(train_visits)
 ```
 
-
-
-
-<style>#sk-container-id-7 {
+<style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: black;
   --sklearn-color-line: gray;
@@ -239,15 +226,15 @@ spec_model.fit(train_visits)
   }
 }
 
-#sk-container-id-7 {
+#sk-container-id-1 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-7 pre {
+#sk-container-id-1 pre {
   padding: 0;
 }
 
-#sk-container-id-7 input.sk-hidden--visually {
+#sk-container-id-1 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -259,7 +246,7 @@ spec_model.fit(train_visits)
   width: 1px;
 }
 
-#sk-container-id-7 div.sk-dashed-wrapped {
+#sk-container-id-1 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -267,7 +254,7 @@ spec_model.fit(train_visits)
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-7 div.sk-container {
+#sk-container-id-1 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -277,7 +264,7 @@ spec_model.fit(train_visits)
   position: relative;
 }
 
-#sk-container-id-7 div.sk-text-repr-fallback {
+#sk-container-id-1 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -293,14 +280,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-7 div.sk-parallel-item::after {
+#sk-container-id-1 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-7 div.sk-parallel {
+#sk-container-id-1 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -308,28 +295,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-7 div.sk-parallel-item {
+#sk-container-id-1 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-7 div.sk-parallel-item:first-child::after {
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-7 div.sk-parallel-item:last-child::after {
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-7 div.sk-parallel-item:only-child::after {
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-7 div.sk-serial {
+#sk-container-id-1 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -347,14 +334,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-7 div.sk-toggleable {
+#sk-container-id-1 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-7 label.sk-toggleable__label {
+#sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
   display: block;
   width: 100%;
@@ -364,7 +351,7 @@ clickable and can be expanded/collapsed.
   text-align: center;
 }
 
-#sk-container-id-7 label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -372,13 +359,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-7 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-7 div.sk-toggleable__content {
+#sk-container-id-1 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -387,12 +374,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-7 div.sk-toggleable__content.fitted {
+#sk-container-id-1 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-7 div.sk-toggleable__content pre {
+#sk-container-id-1 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -400,79 +387,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-7 div.sk-toggleable__content.fitted pre {
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-7 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-7 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-7 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-7 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-7 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-7 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-7 div.sk-label label.sk-toggleable__label,
-#sk-container-id-7 div.sk-label label {
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-7 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-7 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-7 div.sk-label label {
+#sk-container-id-1 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-7 div.sk-label-container {
+#sk-container-id-1 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-7 div.sk-estimator {
+#sk-container-id-1 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -482,18 +469,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-7 div.sk-estimator.fitted {
+#sk-container-id-1 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-7 div.sk-estimator:hover {
+#sk-container-id-1 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-7 div.sk-estimator.fitted:hover {
+#sk-container-id-1 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -580,7 +567,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-7 a.estimator_doc_link {
+#sk-container-id-1 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -595,42 +582,41 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-7 a.estimator_doc_link.fitted {
+#sk-container-id-1 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-7 a.estimator_doc_link:hover {
+#sk-container-id-1 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-7 a.estimator_doc_link.fitted:hover {
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-7" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
+
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
-)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-7" type="checkbox" checked><label for="sk-estimator-id-7" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequencePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequencePredictor(
-    input_var=&#x27;consultation_sequence&#x27;,
-    grouping_var=&#x27;final_sequence&#x27;,
-    outcome_var=&#x27;specialty&#x27;,
-    apply_special_category_filtering=False,
-    admit_col=&#x27;is_admitted&#x27;
+
+)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequencePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequencePredictor(
+input_var=&#x27;consultation_sequence&#x27;,
+grouping_var=&#x27;final_sequence&#x27;,
+outcome_var=&#x27;specialty&#x27;,
+apply_special_category_filtering=False,
+admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-
-
 From the weights that are returned, we can view the probability of being admitted to each specialty for a patient who has no consultation sequence at the time of prediction
-
 
 ```python
 print(
@@ -644,9 +630,7 @@ print(
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
     {'surgical': 0.257, 'medical': 0.604, 'paediatric': 0.063, 'haem/onc': 0.077}
 
-
 Similar we can view the probability of being admitted to each specialty after a consultation request to acute medicine
-
 
 ```python
 print(
@@ -655,20 +639,14 @@ print(
 )
 ```
 
-    
     Probability of being admitted to each specialty if one consultation request to acute medicine has taken place by the time of the snapshot:
     {'surgical': 0.015, 'medical': 0.951, 'paediatric': 0.001, 'haem/onc': 0.033}
 
-
-The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options. 
-
+The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
 
 ```python
 spec_model.input_to_grouping_probs.iloc[:, :10]
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -683,6 +661,7 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -862,19 +841,13 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
 <p>111 rows × 10 columns</p>
 </div>
 
-
-
-## Using the `SequencePredictor` 
+## Using the `SequencePredictor`
 
 Below I apply the predict function to get each patient's probability of being admitted to the four specialties.
-
 
 ```python
 test_visits['consultation_sequence'].head().apply(spec_model.predict)
 ```
-
-
-
 
     snapshot_id
     2        {'surgical': 0.25677749360613816, 'medical': 0...
@@ -884,10 +857,7 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
     58564    {'surgical': 0.8329853862212944, 'medical': 0....
     Name: consultation_sequence, dtype: object
 
-
-
 A dictionary is returned for each patient, with probabilites summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
-
 
 ```python
 print("Probability of admission to medical specialty for five patients:")
@@ -903,20 +873,17 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lamb
 
     array([0.60396419, 0.05462185, 0.05462185, 0.05462185, 0.1263048 ])
 
-
-
 ## Generate predicted bed count distributions by specialty.
 
 I now have a model I can use to get a patient's probability of admission to each of the four specialties: medical, surgical, haematology/oncology or paediatric, if admitted. I'll use this these probabilities, with each patient's probability of admission after ED, to generate predicted bed count distributions for each specialty.
 
-For that I'll also need an admission prediction model, which is set up below. 
-
+For that I'll also need an admission prediction model, which is set up below.
 
 ```python
 from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
 
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
 ordinal_mappings = {
     "age_group": [
         "0-17",
@@ -971,7 +938,6 @@ admission_model = train_classifier(
 
 The logic below is similar to previous notebooks, but this time I'll add the specialty probabilities as weights in the `get_prob_dist` function
 
-
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 
@@ -980,14 +946,16 @@ first_group_snapshot_key = test_visits.snapshot_date.min()
 
 prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) & (test_visits.prediction_time == (9,30))]
 
+# format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
-    df=prediction_snapshots, 
-    prediction_time=(9,30), 
+    df=prediction_snapshots,
+    prediction_time=(9,30),
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data, 
+    exclude_columns=exclude_from_training_data,
     visit_col='visit_number'
 )
 
+# prepare group snapshots dict to indicate which patients comprise the group we want to predict for
 group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots
     )
@@ -995,9 +963,6 @@ group_snapshots_dict = prepare_group_snapshot_dict(
 group_snapshots_dict
 
 ```
-
-
-
 
     {datetime.date(2031, 10, 1): [60311,
       60315,
@@ -1023,9 +988,6 @@ group_snapshots_dict
       60360,
       60361]}
 
-
-
-
 ```python
 from patientflow.viz.prob_dist_plot import prob_dist_plot
 from patientflow.aggregate import get_prob_dist
@@ -1042,7 +1004,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} '
 )
-prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
+prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
     include_titles=True)
 
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
@@ -1059,7 +1021,7 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
+    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
         include_titles=True)
 
 ```
@@ -1067,67 +1029,41 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_1.png)
-    
-
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_3.png)
-    
-
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_5.png)
-    
-
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_7.png)
-    
-
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_9.png)
-    
-
 
 ## Generating predicted bed counts by demographic variables
 
 Disaggregation of predictions using unchanging attributes like sex is very straightforward.
 
-for 
-
+for
 
 ```python
 for sex in ['M', 'F']:
 
-    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) & 
+    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) &
                                        (test_visits.sex == sex) &
                                        (test_visits.prediction_time == (9,30))]
-    
+
     group_snapshots_dict = prepare_group_snapshot_dict(
         prediction_snapshots
     )
@@ -1142,38 +1078,26 @@ for sex in ['M', 'F']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
+    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
         include_titles=True)
 ```
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_26_1.png)
-    
-
 
     Calculating probability distributions for 1 snapshot dates
     Processed 1 snapshot dates
 
-
-
-    
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_26_3.png)
-    
-
 
 ## Conclusion
 
-In this notebook I have presented examples of how to disaggregate predicted bed counts according to sub-categories of interest. 
+In this notebook I have presented examples of how to disaggregate predicted bed counts according to sub-categories of interest.
 
-Some subgroups are straightfoward to generate at inference time, if they are based on static attributes of the patient such as sex or perhaps ethnicity. 
+Some subgroups are straightfoward to generate at inference time, if they are based on static attributes of the patient such as sex or perhaps ethnicity.
 
-Demand on clinical areas can be predicted dynamically, using some kind of real-time signal collected about a patient that is related to their likely clinical area. 
+Demand on clinical areas can be predicted dynamically, using some kind of real-time signal collected about a patient that is related to their likely clinical area.
 
-In the following notebook, I demonstrate a fully worked up example of how the functions provided in `patientflow` are in use at University College London Hospital to predict emergency demand. 
-
-
+In the following notebook, I demonstrate a fully worked up example of how the functions provided in `patientflow` are in use at University College London Hospital to predict emergency demand.
