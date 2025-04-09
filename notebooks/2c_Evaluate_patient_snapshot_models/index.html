@@ -24,7 +24,7 @@
     
     
       
-        <title>Evaluate models trained on patient-level snapshots - PatientFlow</title>
+        <title>2c. Evaluate models trained on patient-level snapshots - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#evaluate-models-trained-on-patient-level-snapshots" class="md-skip">
+        <a href="#2c-evaluate-models-trained-on-patient-level-snapshots" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Evaluate models trained on patient-level snapshots
+              2c. Evaluate models trained on patient-level snapshots
             
           </span>
         </div>
@@ -505,7 +505,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient-level snapshots
     
   </span>
   
@@ -518,7 +518,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient-level snapshots
     
   </span>
   
@@ -602,9 +602,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#distribution-plots" class="md-nav__link">
+  <a href="#discrimination-plots" class="md-nav__link">
     <span class="md-ellipsis">
-      Distribution plots
+      Discrimination plots
     </span>
   </a>
   
@@ -704,7 +704,7 @@
   
   
   <span class="md-ellipsis">
-    Create group snapshots
+    Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -722,12 +722,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+      <a href="../3b_Evaluate_group_snapshots/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Specify an emergency demand model
+    Evaluate group snapshots
     
   </span>
   
@@ -745,12 +745,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4a_Predict_probability_of_admission_from_ED/" class="md-nav__link">
+      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict ED admission probability
+    Predict bed counts without using patient snapshots
     
   </span>
   
@@ -768,12 +768,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4b_Predict_demand_from_patients_in_ED/" class="md-nav__link">
+      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Turning individual patient-level predictions into predictions of how many beds will be needed
+    Predict bed count distributions for subgroups
     
   </span>
   
@@ -791,12 +791,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4c_Predict_probability_of_admission_to_specialty/" class="md-nav__link">
+      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Modelling probability of admission to specialty, if admitted
+    4. Predict emergency demand
     
   </span>
   
@@ -814,12 +814,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4d_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+      <a href="../4b_Predict_emergency_demand/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict yet to arrive
+    Predict emergency demand
     
   </span>
   
@@ -837,35 +837,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4e_Predict_probabiity_of_admission_using_minimal_data/" class="md-nav__link">
+      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict Probabiity of Admission Using Minimal Data
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../4f_Bring_it_all_together/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Putting it all together
+    Evaluate predictions of emergency demand
     
   </span>
   
@@ -1085,9 +1062,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#distribution-plots" class="md-nav__link">
+  <a href="#discrimination-plots" class="md-nav__link">
     <span class="md-ellipsis">
-      Distribution plots
+      Discrimination plots
     </span>
   </a>
   
@@ -1167,13 +1144,13 @@
   
 
 
-<h1 id="evaluate-models-trained-on-patient-level-snapshots">Evaluate models trained on patient-level snapshots</h1>
+<h1 id="2c-evaluate-models-trained-on-patient-level-snapshots">2c. Evaluate models trained on patient-level snapshots</h1>
 <h2 id="things-to-consider">Things to consider</h2>
 <p>In the last notebook, I showed how to train models on patient snapshots using <code>patientflow</code>. Now, let's think about how to evaluate those models. </p>
 <p>When evaluating patient snapshots, we focus on:</p>
 <ul>
-<li>How well-calibrated the predicted probabilities are</li>
-<li>The distribution of these probabilities</li>
+<li>How well calibrated the predicted probabilities are</li>
+<li>How well the probabilities discriminate between patients who are and are not admitted.</li>
 </ul>
 <p>We don't focus as much on typical classification metrics like Area under the ROC curve, accuracy or precision/recall. </p>
 <h3 id="why-dont-we-focus-on-typical-classification-metrics">Why don't we focus on typical classification metrics?</h3>
@@ -1191,7 +1168,6 @@
 %load_ext autoreload 
 %autoreload 2
 </code></pre>
-<p>The function below identifies the root of the patientflow repository, in order to locate the folders containing data.</p>
 <pre><code class="language-python">import pandas as pd
 from patientflow.load import set_file_paths, load_data
 
@@ -1878,9 +1854,9 @@ for prediction_time in prediction_times:
 (22, 0)
 </code></pre>
 <h2 id="inspecting-the-base-model">Inspecting the base model</h2>
-<p>Below I show three different charts, all showing the calibration and distribution of the models, in slightly different ways. </p>
-<h3 id="distribution-plots">Distribution plots</h3>
-<p>A distribution plot shows the spread of predicted probabilities for positive and negative cases.</p>
+<p>Below I show three different charts, all showing the calibration and discrimination of the models, in slightly different ways. </p>
+<h3 id="discrimination-plots">Discrimination plots</h3>
+<p>A discrimination plot shows the spread of predicted probabilities for positive and negative cases.</p>
 <ul>
 <li>X-axis (Predicted Probability): Represents the model's predicted probabilities from 0 to 1.</li>
 <li>Y-axis (Density): Shows the relative frequency of each probability value.</li>
@@ -1906,7 +1882,7 @@ plot_prediction_distributions(
 )
 
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_20_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_19_0.png" /></p>
 <h3 id="calibration-plots">Calibration plots</h3>
 <p>A calibration plot shows how well a model's predicted probabilities match actual outcomes.</p>
 <ul>
@@ -1929,7 +1905,7 @@ plot_calibration(
     suptitle=&quot;Base model with imbalanced training data&quot;  # optional
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_22_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png" /></p>
 <h3 id="madcap-model-accuracy-diagnostic-calibration-plot">MADCAP (Model Accuracy Diagnostic Calibration Plot)</h3>
 <p>A MADCAP (Model Accuracy Diagnostic Calibration Plot) visually compares the predicted probabilities from a model with the actual outcomes (e.g., admissions or events) in a dataset. This plot helps to assess how well the model's predicted probabilities align with the observed values.</p>
 <p>The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
@@ -1944,7 +1920,7 @@ generate_madcap_plots(
     exclude_from_training_data=exclude_from_training_data
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_24_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png" /></p>
 <h2 id="inspecting-a-balanced-and-calibrated-model">Inspecting a balanced and calibrated model</h2>
 <p>In the previous notebook I showed that the <code>train_classifier()</code> function will balance the training set, by under-sampling the negative class, and then re-calibrate the data using the validation set. Below I train the models with these arguments set to true, and re-run the plots. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
@@ -1998,9 +1974,9 @@ generate_madcap_plots(
     exclude_from_training_data=exclude_from_training_data
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_0.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_1.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_2.png" /></p>
 <h2 id="madcap-plots-by-age">MADCAP plots by age</h2>
 <p>It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.</p>
 <p>The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits. The y axis maximum is the total number of snapshots in the test that were in at the prediction time. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.  </p>
@@ -2015,18 +1991,18 @@ generate_madcap_plots_by_group(
     plot_difference=False
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_0.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_1.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_2.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_3.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_4.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>
 <li>assess the discrimination and calibration of your models</li>
 <li>identify areas of weakness in your models by comparing predictions across different patient groups</li>
 </ul>
-<p>I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. This is common in healthcare data. </p>
+<p>I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data. </p>
 <p>This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where <code>patientflow</code> comes into its own. In the next notebook, I show how to create group snapshots. </p>
 
 

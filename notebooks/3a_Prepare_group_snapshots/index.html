@@ -16,7 +16,7 @@
         <link rel="prev" href="../2d_Explore_the_datasets_provided/">
       
       
-        <link rel="next" href="../4_Specify_emergency_demand_model/">
+        <link rel="next" href="../3b_Evaluate_group_snapshots/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Create group snapshots - PatientFlow</title>
+        <title>Prepare group snapshots from patient snapshots - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#create-group-snapshots" class="md-skip">
+        <a href="#prepare-group-snapshots-from-patient-snapshots" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Create group snapshots
+              Prepare group snapshots from patient snapshots
             
           </span>
         </div>
@@ -496,7 +496,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient-level snapshots
     
   </span>
   
@@ -551,7 +551,7 @@
   
   
   <span class="md-ellipsis">
-    Create group snapshots
+    Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -564,7 +564,7 @@
   
   
   <span class="md-ellipsis">
-    Create group snapshots
+    Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -585,15 +585,6 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#about-snapshots" class="md-nav__link">
-    <span class="md-ellipsis">
-      About snapshots
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#about-the-examples-in-this-notebook" class="md-nav__link">
@@ -683,12 +674,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+      <a href="../3b_Evaluate_group_snapshots/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Specify an emergency demand model
+    Evaluate group snapshots
     
   </span>
   
@@ -706,12 +697,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4a_Predict_probability_of_admission_from_ED/" class="md-nav__link">
+      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict ED admission probability
+    Predict bed counts without using patient snapshots
     
   </span>
   
@@ -729,12 +720,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4b_Predict_demand_from_patients_in_ED/" class="md-nav__link">
+      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Turning individual patient-level predictions into predictions of how many beds will be needed
+    Predict bed count distributions for subgroups
     
   </span>
   
@@ -752,12 +743,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4c_Predict_probability_of_admission_to_specialty/" class="md-nav__link">
+      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Modelling probability of admission to specialty, if admitted
+    4. Predict emergency demand
     
   </span>
   
@@ -775,12 +766,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4d_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+      <a href="../4b_Predict_emergency_demand/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict yet to arrive
+    Predict emergency demand
     
   </span>
   
@@ -798,35 +789,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../4e_Predict_probabiity_of_admission_using_minimal_data/" class="md-nav__link">
+      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Predict Probabiity of Admission Using Minimal Data
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../4f_Bring_it_all_together/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Putting it all together
+    Evaluate predictions of emergency demand
     
   </span>
   
@@ -985,15 +953,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#about-snapshots" class="md-nav__link">
-    <span class="md-ellipsis">
-      About snapshots
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#about-the-examples-in-this-notebook" class="md-nav__link">
     <span class="md-ellipsis">
       About the examples in this notebook
@@ -1089,10 +1048,9 @@
   
 
 
-<h1 id="create-group-snapshots">Create group snapshots</h1>
-<h2 id="about-snapshots">About snapshots</h2>
+<h1 id="prepare-group-snapshots-from-patient-snapshots">Prepare group snapshots from patient snapshots</h1>
 <p>Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a prediction time.</p>
-<p>In this notebook, I show how <code>patientflow</code> is designed to work with group snapshots. <code>patientflow</code> divides patient snapshots into their groups, and stores the group snapshots as dictionary with:
+<p>In this notebook, I show how <code>patientflow</code> can be used to prepare group snapshots, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
 * <code>snapshot_date</code> as the key
 * <code>snapshot_ids</code> of each patient snapshot as the values </p>
 <p>This structure is a convenient way to organise the data when making bed count predictions for different snapshot dates and prediction times, and especially when evaluating those predictions (see next notebook).</p>

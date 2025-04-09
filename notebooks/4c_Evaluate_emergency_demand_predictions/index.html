@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../0_Set_up_your_environment/">
+        <link rel="prev" href="../4b_Predict_emergency_demand/">
       
       
-        <link rel="next" href="../2a_Create_patient_snapshots/">
+        <link rel="next" href="../../src/patientflow/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>Introducing our users - PatientFlow</title>
+        <title>Evaluate predictions of emergency demand - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#introducing-our-users" class="md-skip">
+        <a href="#evaluate-predictions-of-emergency-demand" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Introducing our users
+              Evaluate predictions of emergency demand
             
           </span>
         </div>
@@ -419,32 +419,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Introducing our users
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
         
   
   
@@ -455,71 +433,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-patient-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      What is patient flow?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#who-is-responsible-for-managing-patient-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      Who is responsible for managing patient flow?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-information-do-bed-managers-use-to-manage-patient-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      What information do bed managers use to manage patient flow?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-modelling-is-useful-to-bed-managers" class="md-nav__link">
-    <span class="md-ellipsis">
-      What modelling is useful to bed managers?
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-are-the-elements-of-patient-flow" class="md-nav__link">
-    <span class="md-ellipsis">
-      What are the elements of patient flow?
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -759,10 +672,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Evaluate predictions of emergency demand
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -773,6 +708,107 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set up the notebook environment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-file-paths-and-load-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set file paths and load data
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-modelling-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set modelling parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-temporal-splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply temporal splits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train models to predict bed count distributions for patients currently in the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train specialty model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generate predicted distributions for each specialty and prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plot-qq-plots-for-each-specialty-and-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot qq plots for each specialty and prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -926,45 +962,81 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-is-patient-flow" class="md-nav__link">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
     <span class="md-ellipsis">
-      What is patient flow?
+      Set up the notebook environment
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#who-is-responsible-for-managing-patient-flow" class="md-nav__link">
+  <a href="#set-file-paths-and-load-data" class="md-nav__link">
     <span class="md-ellipsis">
-      Who is responsible for managing patient flow?
+      Set file paths and load data
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-information-do-bed-managers-use-to-manage-patient-flow" class="md-nav__link">
+  <a href="#set-modelling-parameters" class="md-nav__link">
     <span class="md-ellipsis">
-      What information do bed managers use to manage patient flow?
+      Set modelling parameters
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-modelling-is-useful-to-bed-managers" class="md-nav__link">
+  <a href="#apply-temporal-splits" class="md-nav__link">
     <span class="md-ellipsis">
-      What modelling is useful to bed managers?
+      Apply temporal splits
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-are-the-elements-of-patient-flow" class="md-nav__link">
+  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
     <span class="md-ellipsis">
-      What are the elements of patient flow?
+      Train models to predict bed count distributions for patients currently in the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Train specialty model
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generate predicted distributions for each specialty and prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#plot-qq-plots-for-each-specialty-and-prediction-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot qq plots for each specialty and prediction time
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
     </span>
   </a>
   
@@ -986,7 +1058,7 @@
 
 
   
-    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/1_Meet_the_users_of_our_predictions.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/4c_Evaluate_emergency_demand_predictions.md" title="Edit this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -994,65 +1066,323 @@
   
 
 
-<h1 id="introducing-our-users">Introducing our users</h1>
-<p>This repository offers predictive modelling to support the management of patient flow in hospitals. </p>
-<h2 id="what-is-patient-flow">What is patient flow?</h2>
-<p>Hospitals refer to the streams of patients arriving and leaving as ‘patient flow’. Unplanned admissions create the ‘emergency’ flow, and the hospital must accommodate that flow alongside a flow of ‘elective’ or planned admissions. Sometimes outflows are reduced because patients are waiting for care to become available in another setting.  </p>
-<p>There are various ways people are admitted to a hospital specialty: </p>
+<h1 id="evaluate-predictions-of-emergency-demand">Evaluate predictions of emergency demand</h1>
+<p>The previous notebook demonstrated the full implementation in code of training models for use at UCLH using the functions provided in <code>patientflow</code>. </p>
+<p>The final step is to evaluate the predicted distributions against observed numbers. I will evaluate the predictions by specialty, using the qq plot approach covered in a previous notebook.</p>
+<p>As the predictions for yet-to-arrive patients are aspirational, these cannot be evaluated against observed numbers of admissions in the prediction window. Similarly for the group of patients in the ED, we calculate the predicted number of beds needed within the prediction window, but due to poor ED performance, few may have been admitted within the window.</p>
+<p>We can, however, evaluate the predictions of beds needed for each specialty against observed numbers admitted to each specialty from among patients comprising each group snapshot. </p>
+<h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 2
+</code></pre>
+<pre><code class="language-python">from patientflow.load import set_project_root
+project_root = set_project_root()
+
+</code></pre>
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+</code></pre>
+<h2 id="set-file-paths-and-load-data">Set file paths and load data</h2>
+<p>I'm going to use real patient data from UCLH to demonstrate the implementation. </p>
+<p>You can request the datasets that are used here on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from <code>data_folder_name='data-public'</code> to <code>data_folder_name='data-synthetic'</code>.</p>
+<pre><code class="language-python">from patientflow.load import set_file_paths
+
+# set file paths
+data_folder_name = 'data-public'
+data_file_path = project_root / data_folder_name
+
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+    project_root, 
+    data_folder_name=data_folder_name,
+    config_file = 'config.yaml')
+</code></pre>
+<pre><code>Configuration will be loaded from: /Users/zellaking/Repos/patientflow/config.yaml
+Data files will be loaded from: /Users/zellaking/Repos/patientflow/data-public
+Trained models will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public
+Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public/media
+</code></pre>
+<pre><code class="language-python">import pandas as pd
+from patientflow.load import load_data
+
+# load ED snapshots data
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
+                    index_column = 'snapshot_id',
+                    sort_columns = [&quot;visit_number&quot;, &quot;snapshot_date&quot;, &quot;prediction_time&quot;], 
+                    eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
+ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
+
+
+</code></pre>
+<h2 id="set-modelling-parameters">Set modelling parameters</h2>
+<p>The parameters are used in training or inference. They are set in config.json in the root of the repository and loaded by <code>load_config_file()</code></p>
+<pre><code class="language-python"># load params
+from patientflow.load import load_config_file
+params = load_config_file(config_path)
+
+start_training_set, start_validation_set, start_test_set, end_test_set = params[&quot;start_training_set&quot;], params[&quot;start_validation_set&quot;], params[&quot;start_test_set&quot;], params[&quot;end_test_set&quot;]
+
+</code></pre>
+<h2 id="apply-temporal-splits">Apply temporal splits</h2>
+<pre><code class="language-python">from patientflow.prepare import create_temporal_splits
+
+train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
+    ed_visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;,
+)
+
+</code></pre>
+<pre><code>Split sizes: [53801, 6519, 19494]
+</code></pre>
+<h2 id="train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed">Train models to predict bed count distributions for patients currently in the ED</h2>
+<p>This time I'll use a larger parameter grid, while still limiting the search space to a few hyperparameters for expediency.</p>
+<pre><code class="language-python">
+from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
+
+grid = { # Current parameters
+    'n_estimators': [30, 40, 50],  # Number of trees
+    'subsample': [0.7, 0.8, 0.9],  # Sample ratio of training instances
+    'colsample_bytree': [0.7, 0.8, 0.9],  # Sample ratio of columns for each tree
+   } 
+
+exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
+
+ordinal_mappings = {
+    &quot;latest_acvpu&quot;: [&quot;A&quot;, &quot;C&quot;, &quot;V&quot;, &quot;P&quot;, &quot;U&quot;],
+    &quot;latest_obs_manchester_triage_acuity&quot;: [
+        &quot;Blue&quot;,
+        &quot;Green&quot;,
+        &quot;Yellow&quot;,
+        &quot;Orange&quot;,
+        &quot;Red&quot;,
+    ],
+    &quot;latest_obs_objective_pain_score&quot;: [
+        &quot;Nil&quot;,
+        &quot;Mild&quot;,
+        &quot;Moderate&quot;,
+        &quot;Severe\\E\\Very Severe&quot;,
+    ],
+    &quot;latest_obs_level_of_consciousness&quot;: [&quot;A&quot;, &quot;C&quot;, &quot;V&quot;, &quot;P&quot;, &quot;U&quot;],
+}
+
+# create a dictionary to store the trained models
+admissions_models = {}
+model_name = 'admissions'
+
+# Loop through each prediction time
+for prediction_time in ed_visits.prediction_time.unique():
+    print(f&quot;Training model for {prediction_time}&quot;)
+    model = train_classifier(
+        train_visits=train_visits_df,
+        valid_visits=valid_visits_df,
+        test_visits=test_visits_df,
+        grid=grid,
+        exclude_from_training_data=exclude_from_training_data,
+        ordinal_mappings=ordinal_mappings,
+        prediction_time=prediction_time,
+        visit_col=&quot;visit_number&quot;,
+        calibrate_probabilities=True,
+        calibration_method=&quot;isotonic&quot;,
+        use_balanced_training=True,
+    )
+    model_key = get_model_key(model_name, prediction_time)
+
+    admissions_models[model_key] = model
+</code></pre>
+<pre><code>Training model for (12, 0)
+Training model for (15, 30)
+Training model for (6, 0)
+Training model for (9, 30)
+Training model for (22, 0)
+</code></pre>
+<h2 id="train-specialty-model">Train specialty model</h2>
+<p>Here the <code>apply_special_category_filtering</code> parameter has been set to True, so it will be assumed that all patients under 18 on arrival will be admitted to a paediatric specialty. </p>
+<pre><code class="language-python">from patientflow.predictors.sequence_predictor import SequencePredictor
+
+spec_model = SequencePredictor(
+    input_var=&quot;consultation_sequence&quot;,
+    grouping_var=&quot;final_sequence&quot;,
+    outcome_var=&quot;specialty&quot;,
+    apply_special_category_filtering=True,
+)
+
+spec_model = spec_model.fit(train_visits_df)
+</code></pre>
+<pre><code class="language-python">spec_model.special_params
+</code></pre>
+<pre><code>{'special_category_func': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;,
+ 'special_category_dict': {'medical': 0.0,
+  'surgical': 0.0,
+  'haem/onc': 0.0,
+  'paediatric': 1.0},
+ 'special_func_map': {'paediatric': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;,
+  'default': &lt;bound method SpecialCategoryParams.opposite_special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;}}
+</code></pre>
+<h2 id="generate-predicted-distributions-for-each-specialty-and-prediction-time">Generate predicted distributions for each specialty and prediction time</h2>
+<p>As we are treating paediatric patients differently from adults, the logic below is designed to identify eligible snapshots in either case. </p>
+<p>When evaluating the predictions for adult destinations (medical, surgical and haem/onc), patients under 18 will be excluded. When evaluating the predictions for paediatric patients, adults will be excluded.</p>
+<pre><code class="language-python">
+
+</code></pre>
+<pre><code class="language-python">test_visits_df[test_visits_df.age_group == '0-17']['specialty_prob'].head()
+</code></pre>
+<pre><code>snapshot_id
+60177    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
+60339    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
+60361    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
+60420    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
+60421    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
+Name: specialty_prob, dtype: object
+</code></pre>
+<pre><code class="language-python">test_visits_df[test_visits_df.age_group != '0-17']['specialty_prob'].head()
+</code></pre>
+<pre><code>snapshot_id
+2        {'medical': 0.6513468480977506, 'surgical': 0....
+55916    {'medical': 0.05485232067510548, 'surgical': 0...
+55917    {'medical': 0.05485232067510548, 'surgical': 0...
+55918    {'medical': 0.05485232067510548, 'surgical': 0...
+58564    {'medical': 0.13205417607223477, 'surgical': 0...
+Name: specialty_prob, dtype: object
+</code></pre>
+<pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
+from patientflow.aggregate import get_prob_dist
+from patientflow.predict.emergency_demand import get_specialty_probs
+
+prob_dist_dict_all = {}
+specialties = ['medical', 'surgical', 'haem/onc', 'paediatric']
+
+special_params = spec_model.special_params
+
+special_category_func = special_params[&quot;special_category_func&quot;]
+special_category_dict = special_params[&quot;special_category_dict&quot;]
+special_func_map = special_params[&quot;special_func_map&quot;]
+
+# Get predictions of admission to specialty
+test_visits_df.loc[:, &quot;specialty_prob&quot;] = get_specialty_probs(
+    specialties,
+    spec_model,
+    test_visits_df,
+    special_category_func=special_category_func,
+    special_category_dict=special_category_dict,
+)
+
+# initialise a dictionary to store the probability distributions for each specialty and prediction time
+prob_dist_dict_all = {}
+
+# Process each time of day
+for _prediction_time in ed_visits.prediction_time.unique():
+
+    prob_dist_dict_for_prediction_time = {}
+
+    print(&quot;\nProcessing :&quot; + str(_prediction_time))
+    model_key = get_model_key(model_name, _prediction_time)
+
+    for specialty in specialties:
+        print(f&quot;Predicting bed counts for {specialty} specialty, for all snapshots in the test set&quot;)
+        prob_dist_dict_for_specialty = {}
+
+        # Get indices of patients who are eligible for this specialty
+        func = special_func_map.get(specialty, special_func_map[&quot;default&quot;])
+        non_zero_indices = test_visits_df[
+            test_visits_df.apply(func, axis=1)
+        ].index
+
+        test_df_eligible = test_visits_df.copy()
+        test_df_eligible = test_df_eligible.loc[non_zero_indices]
+
+        # get the probability of admission to the specialty for eligible patients
+        # for patients under 18, the probability of admission to paediatric is 1
+        prob_admission_to_specialty = test_df_eligible[&quot;specialty_prob&quot;].apply(
+            lambda x: x[specialty]
+        )
+
+        # Prepare patient snapshots for the eligible patients
+        X_test, y_test = prepare_patient_snapshots(
+            df=test_df_eligible, 
+            prediction_time=_prediction_time, 
+            single_snapshot_per_visit=False,
+            exclude_columns=exclude_from_training_data, 
+            visit_col='visit_number'
+        )
+
+        # filter the probability of admission to the specialty for the eligible patients
+        filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
+            non_zero_indices
+        ]
+
+        group_snapshots_dict = prepare_group_snapshot_dict(
+            test_df_eligible[test_df_eligible.prediction_time == _prediction_time]
+        )
+
+        # get probability distribution for this time of day, for this specialty
+        prob_dist_dict_for_prediction_time[specialty] = get_prob_dist(
+            group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
+            weights=filtered_prob_admission_to_specialty
+            ) 
+
+    prob_dist_dict_all[model_key] = prob_dist_dict_for_prediction_time
+</code></pre>
+<pre><code>Processing :(12, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(15, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(6, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(9, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(22, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+</code></pre>
+<h2 id="plot-qq-plots-for-each-specialty-and-prediction-time">Plot qq plots for each specialty and prediction time</h2>
+<pre><code class="language-python">from patientflow.viz.qq_plot import qq_plot
+
+for specialty in specialties:
+
+    specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
+
+    qq_plot(ed_visits.prediction_time.unique(), 
+            specialty_prob_dist,
+            model_name=&quot;admissions&quot;,
+            suptitle=f&quot;QQ plot for {specialty} specialty&quot;)
+</code></pre>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_0.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_1.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_2.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_3.png" /></p>
+<h2 id="conclusion">Conclusion</h2>
+<p>This notebooks shows one method to evaluate predicted bed counts for the patients in ED. I demonstrated some of the special case handling that is in use for paediatric patients at UCLH. </p>
+<p>The QQ plots demonstrate that models consistently underpredict. There are a number of possible reasons, which merit further investigation. </p>
 <ul>
-<li>via the Accident &amp; Emergency Department, which is referred to by hospitals as the ED (Emergency Department). Some patients are admitted after visiting Same Day Emergency Care (SDEC). Here, we refer to the combined flows from ED and SDEC as coming via the ED</li>
-<li>as planned (or elective) admissions </li>
-<li>as an emergency admission via another route, like a transfer from another hospital</li>
-<li>as an internal transfer from another specialty in the same hospital</li>
+<li>The admissions model was trained on all patients, and in an earlier notebook I showed using MADCAP that discrimination and calibration were poor for patients under 18</li>
+<li>The method used to predict admission by specialty (consult requests while in the ED may not be robust enough)</li>
+<li>The assumption of independence between probability of admission, and probability of admission to a given specialty if admitted, may not hold</li>
+<li>The training dataset is relatively small - only six months for this public dataset; a longer period may yield better results. </li>
 </ul>
-<p>And various ways people leave a hospital specialty: </p>
-<ul>
-<li>as a discharge from hospital, to home or another care setting</li>
-<li>as an internal transfer to another specialty within the same hospital</li>
-<li>as a death</li>
-</ul>
-<p>If patient flow works well, each patient will receive timely and appropriate care from the right specialty team, without undue delays. An example of poor patient flow is when incoming patients experience delays to admission because inpatients are not being discharged.</p>
-<p>Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward - ie a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates it can lead to worse clinical outcomes and longer stays in hospitals. </p>
-<p>Hospitals strive to keep patient flow going, across all specialties, so far as they are able to. </p>
-<h2 id="who-is-responsible-for-managing-patient-flow">Who is responsible for managing patient flow?</h2>
-<p>All hospital staff share responsibility for patient flow, but a team of bed managers takes primary responsibility for managing it. Bed managers are usually senior nurses with a good understanding of each patient's likely care needs. Their work involves responding to rapidly changing situations caused by delays in patient care, infection outbreaks, excess demand for beds, and other incidents.</p>
-<p>To keep track of the changing situation, bed managers convene "flow huddles" three times a day. In these huddles, staff from the emergency department and from each ward meet with bed managers to discuss patients coming in (as either emergency or planned admissions), and review which inpatients are likely to be discharged. The flow huddles provide a picture of likely areas of pressure on beds.</p>
-<p>If bed pressures are anticipated, bed managers can take action by trying to accelerate discharges, or opening  up temporary beds and finding staff to cover them, or temporarily divert ambulances to another hospital. These decisions have consequences for patients, staff and other hospitals. </p>
-<h2 id="what-information-do-bed-managers-use-to-manage-patient-flow">What information do bed managers use to manage patient flow?</h2>
-<p>Bed managers' decisions depend on having a clear picture of current capacity and imminent pressures.  They like to know how many beds will be needed for new patients by the end of the day or shift, and how many will become available during that time. To predict how many beds will be needed today, they assume the number will be the same as yesterday. To work out how many patients will leave, they apply a simple rule based on patients' expected dates of discharge. </p>
-<p>These are simple rules of thumb, that are based on static information. Many hospitals have Electronic Health Records (EHRs), into which data are being entered all the time. That up-to-date information could provide a better view; bed managers' understanding of the current situation, and their projection of how it will develop, could be refreshed as new information comes into the EHR. </p>
-<h2 id="what-modelling-is-useful-to-bed-managers">What modelling is useful to bed managers?</h2>
-<p>I'm <a href="https://github.com/zmek/">Zella King</a>, a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. I started working with University College London Hospital (UCLH) in 2020 because the hospital wanted to make better use of the data streaming into its EHR. My colleague Prof Sonya Crowe led a small project to create a prototype of a predictive model of emergency demand that used real-time data. Through that project, and over the subsequent years, we have come to understand the needs of bed managers from predictive modelling. </p>
-<p><em>What bed managers want from predictive models</em></p>
-<ul>
-<li>
-<p><strong>Predictions issued at the times of day they need them:</strong>
-  Our users have a routine where they prepare a situation report of hospital capacity five times each day, and have flow huddles three times a day. They wanted predictions of bed demand to be available to them in the preparation of the reports, and at the flow huddles. </p>
-</li>
-<li>
-<p><strong>Predictions over a rolling window:</strong>
-  The current heuristics used widely across the NHS rely on daily averages, which means that a patient flow meeting will focus on projections up to midnight that day. A rolling prediction of 8 to 12 hours is more useful, because it enables conversation about what needs to be done during the current day or night shift, in order to head off pressures later.  </p>
-</li>
-<li>
-<p><strong>Output at aggregate level rather than individual:</strong>
-  It is common for researchers using statistics or Machine Learning to produce models that predict each patient's probability of admission. However, this is not useful for bed managers because, when managing capacity, they are mainly interested in overall numbers of beds needed, rather than whether any particular patient will be admitted.</p>
-</li>
-<li>
-<p><strong>Predictions that are based on real-time data from the Electronic Health Record (EHR):</strong>
-  Predictive models can be trained on historical patterns of admissions and discharges. However, if they can make use of real-time data from the EHR, bed managers will have a better sense of today's demand, rather than that of a typical day.</p>
-</li>
-<li>
-<p><strong>A breakdown of demand by specialty:</strong>
-  Knowing that the whole hospital is going to be short of beds is somewhat useful and does give a sense of the scale of the problem. More precise information - about which specialties are most affected - makes it easier to pinpoint where action is needed. </p>
-</li>
-<li>
-<p><strong>Some sense of the uncertainty of predictions:</strong>
-  Simple heuristics give bed managers a single number to work with. For example, if 50 patients were admitted yesterday, they might plan for 50 today. This doesn't show how likely the number 50 is; could it be 46 or 54? A good model will give a sense of uncertainty around the suggested number of beds.  Ironically, knowing the spread of the uncertainty gives a more certain picture.</p>
-</li>
-</ul>
-<h2 id="what-are-the-elements-of-patient-flow">What are the elements of patient flow?</h2>
-<p>Above, I said that bed managers want a breakdown of demand by specialty. Let's break down the sources of that demand. </p>
-<p>I intend that this repository will show how to model all of these flows eventually. </p>
+<p>Nonetheless, the use of QQ plot visualisations for evaluating such predictions are very valuable. </p>
 
 
 
