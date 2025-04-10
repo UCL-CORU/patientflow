@@ -179,7 +179,8 @@ get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
 import pandas as pd
 import sympy as sym
 from sympy import expand, symbols
-from datetime import date
+from datetime import date, datetime, time, timedelta, timezone
+from patientflow.calculate.admission_in_prediction_window import calculate_probability
 
 
 def create_symbols(n):
@@ -357,7 +358,7 @@ def pred_proba_to_agg_predicted(predictions_proba, weights=None):
 
 
 def get_prob_dist_for_prediction_moment(
-    X_test, model, weights=None, inference_time=False, y_test=None
+    X_test, model, weights=None, inference_time=False, y_test=None, category_filter=None
 ):
     """
     Calculate both predicted distributions and observed values for a given date using test data.
@@ -375,6 +376,9 @@ def get_prob_dist_for_prediction_moment(
         If True, do not calculate or return actual aggregate.
     y_test : array-like, optional
         Actual outcomes corresponding to the test features. Required if inference_time is False.
+    category_filter : array-like, optional
+        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
+        Should be the same length as y_test.
 
     Returns
     -------
@@ -409,7 +413,12 @@ def get_prob_dist_for_prediction_moment(
         prediction_moment_dict["agg_predicted"] = agg_predicted
 
         if not inference_time:
-            prediction_moment_dict["agg_observed"] = sum(y_test)
+            # Apply category filter when calculating observed sum
+            if category_filter is not None:
+                y_test_filtered = y_test & category_filter
+            else:
+                y_test_filtered = y_test
+            prediction_moment_dict["agg_observed"] = sum(y_test_filtered)
     else:
         prediction_moment_dict["agg_predicted"] = pd.DataFrame(
             {"agg_proba": [1]}, index=[0]
@@ -420,7 +429,7 @@ def get_prob_dist_for_prediction_moment(
     return prediction_moment_dict
 
 
-def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False):
+def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False, category_filter=None):
     """
     Calculate probability distributions for each snapshot date based on given model predictions.
 
@@ -440,6 +449,9 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=F
         A Series containing weights for the test data points.
     verbose : bool, optional (default=False)
         If True, print progress information.
+    category_filter : array-like, optional
+        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
+        Should be the same length as y_test.
 
     Returns
     -------
@@ -515,6 +527,7 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=F
                 y_test=y_test.loc[snapshots_to_include],
                 model=model,
                 weights=prediction_moment_weights,
+                category_filter=category_filter.loc[snapshots_to_include],
             )
 
         # Increment the counter and notify the user every 10 snapshot dates processed
@@ -524,5 +537,103 @@ def get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=F
 
     if verbose:
         print(f"Processed {len(snapshots_dict)} snapshot dates")
+
+    return prob_dist_dict
+
+
+def get_prob_dist_without_patient_snapshots(prediction_time, categories, model, test_df, 
+                                    prediction_window, x1, y1, x2, y2, snapshot_dates,
+                                    datetime_col='arrival_datetime'):
+    """
+    Calculate probability distributions for yet-to-arrive patients for each category at a specific prediction time.
+    
+    Args:
+        prediction_time: Tuple of (hour, minute) representing the prediction time
+        categories: List of categories to analyze
+        model: WeightedPoissonPredictor model for predicting yet-to-arrive patients
+        test_df: DataFrame containing test set inpatient arrivals
+        prediction_window: Time window for predictions in minutes
+        x1, y1, x2, y2: Coordinates for prediction
+        snapshot_dates: List of dates to analyze
+        datetime_col: Name of the column containing arrival datetimes (default: 'arrival_datetime')
+        
+    Returns:
+        Dictionary containing probability distributions for each category
+        
+    Raises:
+        ValueError: If prediction_time is not a (hour, minute) tuple
+        TypeError: If model is not a WeightedPoissonPredictor
+        ValueError: If model.prediction_window doesn't match prediction_window
+        ValueError: If categories are not a subset of model's weights keys
+        KeyError: If datetime_col is not present in test_df
+    """
+    # Validate prediction_time format
+    if not isinstance(prediction_time, (list, tuple)) or len(prediction_time) != 2 or \
+       not isinstance(prediction_time[0], int) or not isinstance(prediction_time[1], int):
+        raise ValueError("prediction_time must be a (hour, minute) tuple")
+
+    # Validate model type and prediction window
+    if not hasattr(model, '__class__') or model.__class__.__name__ != 'WeightedPoissonPredictor':
+        raise TypeError("model must be a WeightedPoissonPredictor")
+    
+    if not hasattr(model, 'prediction_window') or model.prediction_window != prediction_window:
+        raise ValueError(f"model.prediction_window ({model.prediction_window}) does not match provided prediction_window ({prediction_window})")
+
+    # Validate categories are subset of model weights keys
+    if not hasattr(model, 'weights'):
+        raise ValueError("Model must have 'weights' attribute")
+    valid_categories = set(model.weights.keys())
+    invalid_categories = set(categories) - valid_categories
+    if invalid_categories:
+        raise ValueError(f"Categories {invalid_categories} not found in model weights. Valid categories are {valid_categories}")
+
+    # Validate datetime_col exists in test_df
+    if datetime_col not in test_df.columns:
+        raise KeyError(f"Column '{datetime_col}' not found in test_df")
+
+    # Initialize dictionary to store probability distributions
+    prob_dist_dict = {}
+    hour, minute = prediction_time
+
+    # Loop through each category
+    for category in categories:
+        prob_dist_dict[category] = {}
+
+        # Get predicted number of patients yet-to-arrive
+        prediction_context = {category: {"prediction_time": prediction_time}}
+        agg_predicted_for_prediction_time = model.predict(
+            prediction_context, x1, y1, x2, y2
+        )[category]
+
+        # Calculate distributions for each date
+        for date_val in snapshot_dates:
+            snapshot_datetime = datetime.combine(date_val, time(hour=hour, minute=minute), tzinfo=timezone.utc)
+            prob_dist_dict[category][date_val] = {}
+
+            # Store predicted and observed values
+            prob_dist_dict[category][date_val]['agg_predicted'] = agg_predicted_for_prediction_time
+
+            # Calculate weighted observed count of patients later admitted who arrived during the prediction window
+            observed_patients = test_df[
+                (test_df[datetime_col] > snapshot_datetime) & 
+                (test_df[datetime_col] <= snapshot_datetime + timedelta(minutes=prediction_window)) & 
+                (test_df.specialty == category)
+            ]
+
+            # Calculate hours between arrival and end of prediction window
+            hours_til_arrival = (observed_patients[datetime_col] - snapshot_datetime).dt.total_seconds() / 3600
+            remaining_hours_in_window = (prediction_window/60 - hours_til_arrival)
+
+            prob_dist_dict[category][date_val]['agg_observed'] = remaining_hours_in_window.apply(
+                lambda x: calculate_probability(
+                    elapsed_los_td_hrs=0,
+                    prediction_window_hrs=x,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2
+                )
+            ).sum()
+            
 
     return prob_dist_dict
