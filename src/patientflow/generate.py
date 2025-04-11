@@ -1,3 +1,19 @@
+"""
+Fake Emergency Department Visit Generator.
+
+This module provides functions to generate fake datasets for patient visits to an emergency department (ED).
+It generates arrival and departure times, triage scores, lab orders, and patient admissions.
+The functions are used for illustrative purposes in some of the notebooks.
+
+Functions
+---------
+create_fake_finished_visits(start_date, end_date, mean_patients_per_day)
+    Generate synthetic patient visits, triage observations, and lab orders.
+
+create_fake_snapshots(prediction_times, start_date, end_date, df, observations_df, lab_orders_df, mean_patients_per_day)
+    Create patient-level snapshots at specific times with visit, triage, and lab features.
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, time
@@ -5,25 +21,48 @@ from datetime import datetime, timedelta, time
 
 def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
     """
-    Generate fake patient visit data with random arrival and departure times.
+    Generate synthetic patient visit data for an emergency department.
 
-    Parameters:
-    -----------
+    This function simulates a realistic distribution of patient arrivals, triage scores, lengths of stay,
+    admissions, and lab orders over a specified date range. Some patients may have multiple visits.
+
+    Parameters
+    ----------
     start_date : str or datetime
-        The minimum date to sample from (format: 'YYYY-MM-DD' if string)
+        The starting date for the simulation (inclusive). Can be a datetime object or a string in 'YYYY-MM-DD' format.
     end_date : str or datetime
-        The maximum date to sample from (exclusive) (format: 'YYYY-MM-DD' if string)
+        The ending date for the simulation (exclusive). Can be a datetime object or a string in 'YYYY-MM-DD' format.
     mean_patients_per_day : float
-        The average number of patients to generate per day
+        The average number of patient visits to generate per day.
 
-    Returns:
-    --------
-    tuple (pandas.DataFrame, pandas.DataFrame, pandas.DataFrame)
-        First DataFrame: visits with columns: visit_number, patient_id, arrival_datetime, departure_datetime,
-        is_admitted, age
-        Second DataFrame: observations with columns: visit_number, observation_datetime, triage_score
-        Third DataFrame: lab_orders with columns: visit_number, order_datetime, lab_name
+    Returns
+    -------
+    visits_df : pandas.DataFrame
+        DataFrame containing visit records with the following columns:
+        - 'visit_number'
+        - 'patient_id'
+        - 'arrival_datetime'
+        - 'departure_datetime'
+        - 'is_admitted'
+        - 'age'
+    observations_df : pandas.DataFrame
+        DataFrame containing triage score observations with columns:
+        - 'visit_number'
+        - 'observation_datetime'
+        - 'triage_score'
+    lab_orders_df : pandas.DataFrame
+        DataFrame containing lab test orders with columns:
+        - 'visit_number'
+        - 'order_datetime'
+        - 'lab_name'
+
+    Notes
+    -----
+    - Patients are more likely to arrive during daytime hours.
+    - 20% of patients will have more than one visit during the simulation period.
+    - Lab test ordering likelihood depends on the severity of the triage score.
     """
+
     # Convert string dates to datetime if needed
     if isinstance(start_date, str):
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
@@ -270,34 +309,49 @@ def create_fake_snapshots(
     mean_patients_per_day=50,
 ):
     """
-    Create snapshots of patients present at specific times between start_date and end_date.
+    Generate patient-level snapshots at specific times for prediction modeling.
 
-    Parameters:
-    -----------
-    prediction_times : list of tuples
-        List of (hour, minute) tuples representing times to take snapshots
+    For each specified time on each date in the range, this function returns a snapshot of patients
+    who are currently in the emergency department, along with their visit features, latest triage score,
+    and number of lab tests ordered prior to that time.
+
+    Parameters
+    ----------
+    prediction_times : list of tuple of int
+        A list of (hour, minute) tuples indicating times of day to create snapshots.
     start_date : str or datetime
-        First date to take snapshots (format: 'YYYY-MM-DD' if string)
+        The starting date for generating snapshots (inclusive).
     end_date : str or datetime
-        Last date to take snapshots (exclusive) (format: 'YYYY-MM-DD' if string)
+        The ending date for generating snapshots (exclusive).
     df : pandas.DataFrame, optional
-        DataFrame with patient visit data, must have 'arrival_datetime' and 'departure_datetime' columns.
-        If not provided, will be generated using create_fake_finished_visits()
+        Patient visit data from `create_fake_finished_visits`. If None, synthetic data is generated.
     observations_df : pandas.DataFrame, optional
-        DataFrame with triage observations, must have 'visit_number', 'observation_datetime', 'triage_score' columns.
-        If not provided, will be generated using create_fake_finished_visits()
+        Triage score data from `create_fake_finished_visits`. If None, synthetic data is generated.
     lab_orders_df : pandas.DataFrame, optional
-        DataFrame with lab orders, must have 'visit_number', 'order_datetime', 'lab_name' columns.
-        If not provided, will be generated using create_fake_finished_visits()
+        Lab order data from `create_fake_finished_visits`. If None, synthetic data is generated.
     mean_patients_per_day : float, optional
-        The average number of patients to generate per day if generating fake data.
-        Only used if df, observations_df, and lab_orders_df are not provided.
+        Average number of patients per day (used only if synthetic data is generated).
 
-    Returns:
-    --------
-    pandas.DataFrame
-        DataFrame with snapshot information and patient data, including lab order counts
+    Returns
+    -------
+    final_df : pandas.DataFrame
+        A DataFrame with one row per patient visit present at the snapshot time. Columns include:
+        - 'snapshot_date'
+        - 'prediction_time'
+        - 'patient_id'
+        - 'visit_number'
+        - 'is_admitted'
+        - 'age'
+        - 'latest_triage_score'
+        - One column per lab test: 'num_<lab_name>_orders'
+
+    Notes
+    -----
+    - Only patients present in the ED at the snapshot time are included.
+    - Lab order columns reflect counts of tests ordered before the snapshot time.
+    - If no patients are present at a snapshot time, that snapshot is omitted.
     """
+
     # Generate fake data if not provided
     if df is None or observations_df is None or lab_orders_df is None:
         df, observations_df, lab_orders_df = create_fake_finished_visits(

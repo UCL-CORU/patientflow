@@ -39,7 +39,7 @@ We have created the `patientflow` python package to make it convenient for other
 
 - Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
 - Patient snapshot: A summary of data from the EHR capturing is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
-- Group snaphot: A set of patients snapshots. Each group snapshot has a date and a prediction time associated with it.
+- Group snapshot: A set of patients snapshots. Each group snapshot has a date and a prediction time associated with it.
 - Prediction window: A period of hours that begins at the prediction time.
 
 The modelling functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the next 8 hours. The output is a probability distribution over the number of beds needed. The package includes functions to generate predictions at both patient and group level, to visualise predicted probability distributions, and to evaluate them.
@@ -48,17 +48,17 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ## What `patientflow` is for:
 
-- Predicting patient flow in hospitals: The package can be used by researchers or analysts who want to predict numbers of emergency admissions, discharges or transfers between units
+- Predicting patient flow in hospitals: The package can be used by researchers or analysts who want to predict numbers of emergency admissions, discharges or transfers between units.
 - Short-term operational planning: The predictions produced by this package are designed for bed managers who need to make decisions within an 4-16 hour timeframe.
-- Working with real-time data: The design assumes that data from an electronic health record (EHR) is available in real-time, or near to real-time
+- Working with real-time data: The design assumes that data from an electronic health record (EHR) is available in real-time, or near to real-time.
 - Point-in-time analysis: The package works by taking snapshots of groups of patients who are in the hospital at a particular moment, and making predictions about whether a non-clinical outcome like admission or discharge will occur with a short time horizon.
 
 ## What `patientflow` is NOT for:
 
 - Long-term capacity planning: The package focuses on immediate operational demand (hours ahead), not strategic planning over weeks or months.
-- Making decisions about individual patients: The package relies on data entered into the EHR by clinical staff looking after patients, but the patient-level predictions it generates should not be used to influence their decision-making
+- Making decisions about individual patients: The package relies on data entered into the EHR by clinical staff looking after patients, but the patient-level predictions it generates should not be used to influence their decision-making.
 - General hospital analytics: The package is designed for short-term bed management, not broader hospital analytics like long-term demand and capacity planning.
-- Predicting what happens _after_ a hospital visit: While historical data might train underlying models, the package itself focuses on patients currently in the hospital or soon to arrive
+- Predicting what happens _after_ a hospital visit has finished: While historical data might train underlying models, the package itself focuses on patients currently in the hospital or soon to arrive.
 - Replacing human judgment: The predictions are meant to augment the information available to bed managers, but not to automate bed management decisions.
 
 ## This package will help you if you want to:
@@ -80,9 +80,9 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](https://github.com/UCL-CORU/patientflow/tree/main/src/patientflow#readme) for an overview of the Python package
-- Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment
-- Configuration: Repurpose config.yaml to configure the package to your own data and user requirements
+- Exploration: Start with the [notebooks README](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](https://github.com/UCL-CORU/patientflow/tree/main/src/patientflow#readme) for an overview of the Python package.
+- Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment.
+- Configuration: Repurpose config.yaml to configure the package to your own data and user requirements.
 
 ### Prerequisites
 
@@ -90,7 +90,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ### Installation
 
-patientflow is not yet available on PyPI. To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it.
+To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it.
 
 ```sh
 git clone https://github.com/zmek/patientflow.git
@@ -99,7 +99,7 @@ pip install -e ".[test]" #this will install the code in test mode
 
 ```
 
-Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. This command will only work from the root repository. (To date, this has only been tested on Linux and Mac OS machines. If you are running Windows, there may be errors we don't know about.)
+Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. This command will only work from the root repository. (To date, this has only been tested on Linux and Mac OS machines. If you are running Windows, there may be errors we don't know about. Please raise an issue on Github in that case.)
 
 ```sh
 pytest
@@ -116,7 +116,7 @@ The notebooks in this repository demonstrate the use of some of the functions pr
 
 ## About the UCLH implementation
 
-This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH).As noted above, please request access to the UCLH dataset via Zenodo.
+This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH). As noted above, please request access to the UCLH dataset via Zenodo.
 
 There is also a Python script that illustrates the training of the models that predict emergency demand at UCLH and saves them in your local environment using following commands (by default this will run with the synthetic data in its current location; change the `data_folder_name` parameter if you have downloaded the Zenodo dataset in `data-public`)
 
@@ -125,7 +125,7 @@ cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 ```
 
-The `data_folder_name`argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository
+The `data_folder_name`argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository.
 
 ## Roadmap
 

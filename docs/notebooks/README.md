@@ -2,15 +2,11 @@
 
 ## Background
 
-The notebooks in this folder demonstrate how you can use the PatientFlow repository. Notebooks combine commentary, code and the results produced by that code. Here's how different audiences can use the notebooks:
-
-- **As a non-programmer seeking to understand the approach:** The narrative sections in each notebook introduce my approach to creating predictive models of emergency demand for a hospital.
-- **As a data scientist interested in how to model emergency demand:** The code snippets, combined with the narrative, show how I trained, tested and applied my models in Python. The output of each notebook cell shows the results of running the code.
-- **As a researcher interested in the patientflow package:** The repository contains a Python package that can be installed using an import statement in your code, so that you can use the functions I have developed. The notebooks demonstrate use of the functions in the PatientFlow package.
+The notebooks in this folder demonstrate the core functionality of the `patientflow` package. They have been written by me, Dr Zella King, the primary author of this repository. My aim is to introduce, in a step-by-step approach, how to structure your data for use with the package, and how to use the functions. I conclude with a fully worked example of how we use these functions at University College London Hospital (UCLH) to predict emergency demand for beds.
 
 ## Outline of the notebooks
 
-The first notebook explains how to set up your environment to run the notebooks that follow. Instructions are also provided at the bottom of this page.
+The first notebook explains how to set up your environment to run the notebooks that follow. Instructions are also provided at the bottom of this README.
 
 - **[0_Set_up_your_environment](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/0_Set_up_your_environment.md):** Shows how to set things up if you want to run these notebooks in a Jupyter environment
 
@@ -18,14 +14,14 @@ I then explain who are the users of predictive models of patient flow.
 
 - **[1_Meet_the_users_of_our_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/1_Meet_the_users_of_our_predictions.md):** Talks about the users of patient flow predictions in acute hospitals.
 
-A series of notebooks on patient snapshots.
+A series of notebooks on preparing patient snapshots, training models on them, and evaluating the performance of those models. I also introduce the real data provided by UCLH in a summary notebook.
 
 - **[2a_Create_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2a_Create_patient_snapshots.md):** Shows how to convert finished hospital visits into patient snapshots.
 - **[2b_Predict_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2b_Predict_using_patient_snapshots.md):** Shows how to make predictions using patient snapshots, handling multiple visits for a single patient, and multiple snapshots in a single visit.
 - **[2c_Evaluate_patient_snapshot_models](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2c_Evaluate_patient_snapshot_models.md):** Demonstrates the use of convenient function to help you evaluate predictive models trained on patient snapshots.
 - **[2d_Explore_the_datasets_provided](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2d_Explore_the_datasets_provided.md):** Provides exploratory plots of the two datasets that accompany this repository.
 
-Two notebooks on group snapshots.
+A series of notebooks on preparing group snapshots, generating predictions for group snapshots, and evaluating the predictions.
 
 - **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Create_group_snapshots.md):** Show how to create group snapshots from patient snapshots.
 - **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.md):** Show how to evaluate predicted bed count distribution generated form group snapshots.
