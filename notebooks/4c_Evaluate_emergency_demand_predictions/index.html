@@ -779,18 +779,45 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time" class="md-nav__link">
+  <a href="#train-models-for-yet-to-arrive-patients" class="md-nav__link">
     <span class="md-ellipsis">
-      Generate predicted distributions for each specialty and prediction time
+      Train models for yet-to-arrive patients
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#plot-qq-plots-for-each-specialty-and-prediction-time" class="md-nav__link">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed" class="md-nav__link">
     <span class="md-ellipsis">
-      Plot qq plots for each specialty and prediction time
+      Generate predicted distributions for each specialty and prediction time for patients in ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualise the performance of emergency demand prediction models for patients in the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      ## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualise the performance of emergency demand prediction models for patients yet-to-arrive to the ED
     </span>
   </a>
   
@@ -909,7 +936,7 @@
   
   
   <span class="md-ellipsis">
-    PatientFlow: A forthcoming Python package
+    PatientFlow: A Python package for converting patient-level predictions into output that is useful for bed managers in hospitals
     
   </span>
   
@@ -1016,18 +1043,45 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time" class="md-nav__link">
+  <a href="#train-models-for-yet-to-arrive-patients" class="md-nav__link">
     <span class="md-ellipsis">
-      Generate predicted distributions for each specialty and prediction time
+      Train models for yet-to-arrive patients
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#plot-qq-plots-for-each-specialty-and-prediction-time" class="md-nav__link">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed" class="md-nav__link">
     <span class="md-ellipsis">
-      Plot qq plots for each specialty and prediction time
+      Generate predicted distributions for each specialty and prediction time for patients in ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualise the performance of emergency demand prediction models for patients in the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      ## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualise the performance of emergency demand prediction models for patients yet-to-arrive to the ED
     </span>
   </a>
   
@@ -1070,7 +1124,7 @@
 <p>The previous notebook demonstrated the full implementation in code of training models for use at UCLH using the functions provided in <code>patientflow</code>. </p>
 <p>The final step is to evaluate the predicted distributions against observed numbers. I will evaluate the predictions by specialty, using the qq plot approach covered in a previous notebook.</p>
 <p>As the predictions for yet-to-arrive patients are aspirational, these cannot be evaluated against observed numbers of admissions in the prediction window. Similarly for the group of patients in the ED, we calculate the predicted number of beds needed within the prediction window, but due to poor ED performance, few may have been admitted within the window.</p>
-<p>We can, however, evaluate the predictions of beds needed for each specialty against observed numbers admitted to each specialty from among patients comprising each group snapshot. </p>
+<p>We can, however, evaluate the predictions of beds needed for each specialty against observed numbers admitted to each specialty from among patients comprising each group snapshot. For the yet-to-arrive patients, we can evaluate the arrival rates learned from the training set against observed arrival rates in the test set. </p>
 <h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload 
@@ -1112,6 +1166,10 @@ ed_visits = load_data(data_file_path,
                     eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
+# load data on inpatient arrivals
+inpatient_arrivals = inpatient_arrivals = load_data(data_file_path, 
+                    file_name='inpatient_arrivals.csv')
+inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'], utc = True)
 
 </code></pre>
 <h2 id="set-modelling-parameters">Set modelling parameters</h2>
@@ -1135,8 +1193,17 @@ train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
     col_name=&quot;snapshot_date&quot;,
 )
 
+train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_splits(
+    inpatient_arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;arrival_datetime&quot;,
+)
 </code></pre>
 <pre><code>Split sizes: [53801, 6519, 19494]
+Split sizes: [7730, 1244, 3701]
 </code></pre>
 <h2 id="train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed">Train models to predict bed count distributions for patients currently in the ED</h2>
 <p>This time I'll use a larger parameter grid, while still limiting the search space to a few hyperparameters for expediency.</p>
@@ -1213,42 +1280,32 @@ spec_model = SequencePredictor(
 
 spec_model = spec_model.fit(train_visits_df)
 </code></pre>
-<pre><code class="language-python">spec_model.special_params
-</code></pre>
-<pre><code>{'special_category_func': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;,
- 'special_category_dict': {'medical': 0.0,
-  'surgical': 0.0,
-  'haem/onc': 0.0,
-  'paediatric': 1.0},
- 'special_func_map': {'paediatric': &lt;bound method SpecialCategoryParams.special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;,
-  'default': &lt;bound method SpecialCategoryParams.opposite_special_category_func of &lt;patientflow.prepare.SpecialCategoryParams object at 0x287e46960&gt;&gt;}}
-</code></pre>
-<h2 id="generate-predicted-distributions-for-each-specialty-and-prediction-time">Generate predicted distributions for each specialty and prediction time</h2>
-<p>As we are treating paediatric patients differently from adults, the logic below is designed to identify eligible snapshots in either case. </p>
-<p>When evaluating the predictions for adult destinations (medical, surgical and haem/onc), patients under 18 will be excluded. When evaluating the predictions for paediatric patients, adults will be excluded.</p>
-<pre><code class="language-python">
+<h2 id="train-models-for-yet-to-arrive-patients">Train models for yet-to-arrive patients</h2>
+<pre><code class="language-python">from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.prepare import create_yta_filters
 
+x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
+prediction_window = params[&quot;prediction_window&quot;]
+yta_time_interval = params[&quot;yta_time_interval&quot;]
+
+specialty_filters = create_yta_filters(ed_visits)
+yta_model_by_spec =  WeightedPoissonPredictor(filters = specialty_filters, verbose=False)
+
+# calculate the number of days between the start of the training and validation sets; used for working out daily arrival rates
+num_days = (start_validation_set - start_training_set).days
+
+if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
+    train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
+
+yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df, 
+              prediction_window=prediction_window, 
+              yta_time_interval=yta_time_interval, 
+              prediction_times=ed_visits.prediction_time.unique(), 
+              num_days=num_days )
 </code></pre>
-<pre><code class="language-python">test_visits_df[test_visits_df.age_group == '0-17']['specialty_prob'].head()
-</code></pre>
-<pre><code>snapshot_id
-60177    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
-60339    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
-60361    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
-60420    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
-60421    {'medical': 0.0, 'surgical': 0.0, 'paediatric'...
-Name: specialty_prob, dtype: object
-</code></pre>
-<pre><code class="language-python">test_visits_df[test_visits_df.age_group != '0-17']['specialty_prob'].head()
-</code></pre>
-<pre><code>snapshot_id
-2        {'medical': 0.6513468480977506, 'surgical': 0....
-55916    {'medical': 0.05485232067510548, 'surgical': 0...
-55917    {'medical': 0.05485232067510548, 'surgical': 0...
-55918    {'medical': 0.05485232067510548, 'surgical': 0...
-58564    {'medical': 0.13205417607223477, 'surgical': 0...
-Name: specialty_prob, dtype: object
-</code></pre>
+<h2 id="generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed">Generate predicted distributions for each specialty and prediction time for patients in ED</h2>
+<p>As we are treating paediatric patients differently from adults, the code below includes logic to identify eligible snapshots in either case. </p>
+<p>When evaluating the predictions for adult destinations (medical, surgical and haem/onc), patients under 18 will be excluded. When evaluating the predictions for paediatric patients, adults will be excluded.</p>
 <pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 from patientflow.aggregate import get_prob_dist
 from patientflow.predict.emergency_demand import get_specialty_probs
@@ -1277,7 +1334,7 @@ prob_dist_dict_all = {}
 # Process each time of day
 for _prediction_time in ed_visits.prediction_time.unique():
 
-    prob_dist_dict_for_prediction_time = {}
+    prob_dist_dict_for_pats_in_ED = {}
 
     print(&quot;\nProcessing :&quot; + str(_prediction_time))
     model_key = get_model_key(model_name, _prediction_time)
@@ -1319,13 +1376,18 @@ for _prediction_time in ed_visits.prediction_time.unique():
             test_df_eligible[test_df_eligible.prediction_time == _prediction_time]
         )
 
-        # get probability distribution for this time of day, for this specialty
-        prob_dist_dict_for_prediction_time[specialty] = get_prob_dist(
+        admitted_to_specialty = test_df_eligible['specialty'] == specialty
+
+        # get probability distribution for this time of day, for this specialty, for patients in ED
+        prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
             group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
-            weights=filtered_prob_admission_to_specialty
+            weights=filtered_prob_admission_to_specialty,
+            category_filter=admitted_to_specialty
             ) 
 
-    prob_dist_dict_all[model_key] = prob_dist_dict_for_prediction_time
+
+    prob_dist_dict_all[f'{model_key}'] = prob_dist_dict_for_pats_in_ED
+
 </code></pre>
 <pre><code>Processing :(12, 0)
 Predicting bed counts for medical specialty, for all snapshots in the test set
@@ -1357,7 +1419,33 @@ Predicting bed counts for surgical specialty, for all snapshots in the test set
 Predicting bed counts for haem/onc specialty, for all snapshots in the test set
 Predicting bed counts for paediatric specialty, for all snapshots in the test set
 </code></pre>
-<h2 id="plot-qq-plots-for-each-specialty-and-prediction-time">Plot qq plots for each specialty and prediction time</h2>
+<h2 id="visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed">Visualise the performance of emergency demand prediction models for patients in the ED</h2>
+<p>Below I show two ways to evaluate the predicted distributions
+* histograms of observed versus expected values
+* qq plots</p>
+<p>The models perform best for medical and surgical specialties, which have more snapshots. These specialties show better calibration, particularly at 12:00 and 15:30. The 22:00 models show weak performance, which will partly be a result of the admissions model itself being worse for that time of day.</p>
+<p>The haematology/oncology and paediatric models have stepped patterns in their QQ plots. Because these specialties admit few patients, they cause modelling challenges:</p>
+<ul>
+<li>Each admission or discharge has a larger proportional impact</li>
+<li>Random variations have stronger effects on daily census</li>
+<li>The models struggle to capture the true variability in these departments</li>
+</ul>
+<p>Their QQ plots show a stepwise pattern of sharp vertical jumps. However, the narrow, peaked histograms for these specialties suggest consistent, small overestimations rather than wild inaccuracy, which is actually a reasonable outcome given the small sample sizes. </p>
+<pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
+from patientflow.viz.evaluation_plots import plot_observed_against_expected
+
+for specialty in specialties:
+
+    specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
+    results = calc_mae_mpe(specialty_prob_dist)
+    plot_observed_against_expected(results, 
+                                   main_title=f&quot;Histograms of Observed - Expected Values for {specialty} specialty&quot;,)
+
+</code></pre>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_0.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_1.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_2.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_3.png" /></p>
 <pre><code class="language-python">from patientflow.viz.qq_plot import qq_plot
 
 for specialty in specialties:
@@ -1369,20 +1457,176 @@ for specialty in specialties:
             model_name=&quot;admissions&quot;,
             suptitle=f&quot;QQ plot for {specialty} specialty&quot;)
 </code></pre>
-<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_0.png" /></p>
-<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_1.png" /></p>
-<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_2.png" /></p>
-<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_22_3.png" /></p>
-<h2 id="conclusion">Conclusion</h2>
-<p>This notebooks shows one method to evaluate predicted bed counts for the patients in ED. I demonstrated some of the special case handling that is in use for paediatric patients at UCLH. </p>
-<p>The QQ plots demonstrate that models consistently underpredict. There are a number of possible reasons, which merit further investigation. </p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_21_0.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_21_1.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_21_2.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_21_3.png" /></p>
+<h2 id="generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed">## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED</h2>
+<p>As the predictions for yet-to-arrive patients are aspirational, these cannot be directly compared with observed numbers of patients who arrived after the moment of prediction, and were admitted within the prediction window. Due to slower than target processing of patients through the ED, these future arrivals would have a smaller likelihood of being admitted within the window than suggested by the aspirational target. </p>
+<p>We can, however, compare the predictions based on arrival rates at the front door of ED, that were learned from the training set, against observed arrival rates at the front door during the test set. The observed arrivals can be adjusted using the same time-dependent probability of admission during the window. I have used a deterministic weighting where each patient contributes fractionally to the total number of admissions, based on their arrival time. If for example a patient arriving 3 hours into the prediction window has a 0.8 probability of admission, they would contribute 0.8 to the weighted observed count.</p>
+<p>The function <code>get_prob_dist_without_patient_snapshots</code> saves a predicted distribution for each prediction moment in the test set, and the weighted observed count of patients later admitted who arrived during the prediction window.</p>
+<pre><code class="language-python">from patientflow.aggregate import get_prob_dist_without_patient_snapshots
+from datetime import timedelta
+
+
+# Create date range
+snapshot_dates = []
+start_date = start_test_set
+end_date = end_test_set
+
+current_date = start_date
+while current_date &lt; end_date:
+    snapshot_dates.append(current_date)
+    current_date += timedelta(days=1)
+
+prob_dist_dict_for_yta = {}
+
+# Process each time of day
+for _prediction_time in ed_visits.prediction_time.unique():
+
+    print(&quot;\nProcessing :&quot; + str(_prediction_time))
+    model_key = get_model_key('yta', _prediction_time)
+
+    prob_dist_dict_for_yta[model_key] =  get_prob_dist_without_patient_snapshots(
+        prediction_time=_prediction_time, 
+        categories=specialties, 
+        model=yta_model_by_spec, 
+        test_df=test_inpatient_arrivals_df, 
+        prediction_window=prediction_window, 
+        x1=x1, y1=y1, x2=x2, y2=y2, 
+        snapshot_dates=snapshot_dates,
+        datetime_col='arrival_datetime')
+</code></pre>
+<pre><code>Processing :(12, 0)
+
+Processing :(15, 30)
+
+Processing :(6, 0)
+
+Processing :(9, 30)
+
+Processing :(22, 0)
+</code></pre>
+<pre><code class="language-python">## Alternative method, not weighted, just using Poisson distribution
+
+def count_yet_to_arrive(df, snapshot_dates, prediction_times, prediction_window_hours):
+    &quot;&quot;&quot;
+    Count patients who arrived after a prediction time and were admitted to a ward 
+    within a specified window.
+    &quot;&quot;&quot;
+    # Create an empty list to store results
+    results = []
+
+    # For each combination of date and time
+    for date_val in snapshot_dates:
+        for hour, minute in prediction_times:
+            # Create the prediction datetime
+            prediction_datetime = pd.Timestamp(datetime.combine(date_val, time(hour=hour, minute=minute)), tz='UTC')
+
+            # Calculate the end of the prediction window
+            prediction_window_end = prediction_datetime + pd.Timedelta(hours=prediction_window_hours)
+
+            # Count patients who arrived after prediction time and were admitted within the window
+            arrived_within_window = len(df[
+                (df['arrival_datetime'] &gt; prediction_datetime) &amp; 
+                (df['arrival_datetime'] &lt;= prediction_window_end)
+            ])
+
+            # Store the result
+            results.append({
+                'snapshot_date': date_val,
+                'prediction_time': (hour, minute),
+                'count': arrived_within_window
+            })
+
+    # Convert results to a DataFrame
+    results_df = pd.DataFrame(results)
+
+    return results_df
+yet_to_arrive_counts = count_yet_to_arrive(
+    train_inpatient_arrivals_df, snapshot_dates, ed_visits.prediction_time.unique(), prediction_window_hours=8)
+
+from scipy import stats
+poisson_mean = yet_to_arrive_counts['count'].mean()
+poisson_model = stats.poisson(poisson_mean)
+
+prob_dist_dict_for_yta = {}
+
+# Process each time of day
+for _prediction_time in ed_visits.prediction_time.unique():
+
+    print(&quot;\nProcessing :&quot; + str(_prediction_time))
+    model_key = get_model_key('yta', _prediction_time)
+
+    prob_dist_dict_for_yta[model_key] =  get_prob_dist_without_patient_snapshots(
+        prediction_time=_prediction_time, 
+        categories=specialties, 
+        model=poisson_model, 
+        test_df=test_inpatient_arrivals_df, 
+        prediction_window=prediction_window, 
+        snapshot_dates=snapshot_dates,
+        datetime_col='arrival_datetime',
+        max_range=50)
+</code></pre>
+<pre><code>Processing :(12, 0)
+
+Processing :(15, 30)
+
+Processing :(6, 0)
+
+Processing :(9, 30)
+
+Processing :(22, 0)
+</code></pre>
+<h2 id="visualise-the-performance-of-emergency-demand-prediction-models-for-patients-yet-to-arrive-to-the-ed">Visualise the performance of emergency demand prediction models for patients yet-to-arrive to the ED</h2>
+<p>Using the same visualisation methods as above, for ease of comparison, we can evaluate whether the arrival rates at the front door were in line with those predicted. The histograms are roughly centred around zero. </p>
+<p>The vertical segements in the QQ plots show "staircase" pattern rather than a smooth line. There are two reasons: </p>
 <ul>
-<li>The admissions model was trained on all patients, and in an earlier notebook I showed using MADCAP that discrimination and calibration were poor for patients under 18</li>
-<li>The method used to predict admission by specialty (consult requests while in the ED may not be robust enough)</li>
-<li>The assumption of independence between probability of admission, and probability of admission to a given specialty if admitted, may not hold</li>
-<li>The training dataset is relatively small - only six months for this public dataset; a longer period may yield better results. </li>
+<li>The weighted observed counts are discrete (rounded to the nearest integer), which creates discrete jumps in the empirical distribution rather than a smooth progression. </li>
+<li>The Poisson arrival rates in the model vary only by time of day, resulting in identical predicted distributions for each day in the test set. Since the x-axis represents the CDF of the model distribution, these identical predictions create consistent, fixed points along the axis where probability mass concentrates, resulting in large gaps between these points.</li>
 </ul>
-<p>Nonetheless, the use of QQ plot visualisations for evaluating such predictions are very valuable. </p>
+<p>The predictions for medical specialties are well-calibrated with histograms centered near zero. The QQ plots demonstrate good alignment with the theoretical distribution. Similarly, the surgical predictions show good calibration and consistent diagonal alignment with moderate step patterns. The other two have concentrated prediction errors with narrower histograms, reflecting the smaller patient volumes and more pronounced vertical segments but maintain acceptable alignment.</p>
+<pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
+from patientflow.viz.evaluation_plots import plot_observed_against_expected
+
+for specialty in specialties:
+
+    specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_for_yta.items()}
+    results = calc_mae_mpe(specialty_prob_dist)
+    plot_observed_against_expected(results, 
+                                   main_title=f&quot;Histograms comparing the expected number of patients to arrive during the prediction window and need admission to {specialty} specialties&quot; + 
+                                   f&quot;\nwith the observed number of patients later admitted to {specialty} specialties who arrived during the prediction window&quot;)
+</code></pre>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_26_0.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_26_1.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_26_2.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_26_3.png" /></p>
+<pre><code class="language-python">from patientflow.viz.qq_plot import qq_plot
+
+for specialty in specialties:
+
+    specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_for_yta.items()}
+
+    qq_plot(ed_visits.prediction_time.unique(), 
+            specialty_prob_dist,
+            model_name=&quot;yta&quot;,
+            suptitle=f&quot;QQ plot for patients yet-to-arrive to the ED, who need admission to {specialty} specialty&quot;)
+</code></pre>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_27_0.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_27_1.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_27_2.png" /></p>
+<p><img alt="png" src="../4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_27_3.png" /></p>
+<h2 id="conclusion">Conclusion</h2>
+<p>In this notebook I have shown how to evaluate predicted bed counts for the patients in ED, by specialty. I also demonstrated some of the special case handling that is in use for paediatric patients at UCLH.</p>
+<p>The models perform best for medical and surgical specialties, which have more snapshots. These specialties show better calibration, particularly at 12:00 and 15:30. The 22:00 models show weak performance, which will partly be a result of the admissions model itself being worse for that time of day.</p>
+<p>The haematology/oncology and paediatric models have stepped patterns in their QQ plots. Because these specialties admit few patients, they cause modelling challenges:</p>
+<ul>
+<li>Each admission or discharge has a larger proportional impact</li>
+<li>Random variations have stronger effects on daily census</li>
+<li>The models struggle to capture the true variability in these departments</li>
+</ul>
+<p>Their QQ plots show a stepwise pattern of sharp vertical jumps. However, the narrow, peaked histograms for these specialties suggest consistent, small overestimations rather than wild inaccuracy, which is actually a reasonable outcome given the small sample sizes. </p>
+<p>Despite the challenges, the models generally center around reasonable estimates, suggesting they provide useful information for planning, though with varying degrees of precision across specialties.</p>
 
 
 
