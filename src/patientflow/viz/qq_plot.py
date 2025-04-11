@@ -86,7 +86,9 @@ def qq_plot(
             mid = (upper + lower) / 2
 
             cdf_data.append(np.column_stack((upper, lower, mid, agg_predicted)))
-            observed_data.append(mid[agg_observed])
+            # Round the observed data to nearest integer before using as index
+            agg_observed_int = int(round(agg_observed))
+            observed_data.append(mid[agg_observed_int])
 
         if not cdf_data:
             continue
