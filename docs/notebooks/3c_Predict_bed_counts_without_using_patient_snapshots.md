@@ -1,41 +1,37 @@
-# Predict bed counts without using patient snapshots
+# 3c. Predict bed counts without using patient snapshots
 
-There are situations where we want to predict bed count distributions without having details of the patients, for example:
+There are situations where we might want to predict bed count distributions without having details of the patients, for example when predicting the number of beds needed:
 
-- when predicting the number of beds needed for patients yet-to-arrive to the Emergency Department, who will need a bed within a prediction window
-- when predicting the number of beds needed for emergency patients who arrive via other routes, or for elective patients
-
-In these situations, the Electronic Health Record (EHR) may not have any record of the patient until the moment they arrive. Elective patients may be on a 'To Come In' list, but often their encounter for the elective procedure begins at the moment they arrive. In a simple case without making use of any data on TCI lists, we might want to predict based on past patterns of such arrivals between a prediction time (eg 09:30) and the end of a prediction window (eg 8 hours later).
+* for patients yet-to-arrive to the Emergency Department, who will need a bed within a prediction window
+* for emergency patients who arrive via other routes than the ED, and become inpatients (such as emergency transfers from other hospitals)
+* for elective admissions of patients. Elective patients may be on a 'To Come In' list, but often their encounter for the elective procedure begins at the moment they arrive. In a simple case without making use of any data on TCI lists, we might want to predict based on past patterns of such arrivals between a prediction time (eg 09:30) and the end of a prediction window (eg 8 hours later).  
 
 For these situations, you can use `patientflow` to learn patterns from past data, and use these to predict a bed count distribution at the aggregate level.
 
-In this notebook, I'll use the example of predicting the number of beds needed for patients yet to arrive to the Emergency Department. I'll start by simply learning from past data to predict the number of patients.
+In this notebook, I'll use the example of predicting the number of beds needed for patients yet to arrive to the Emergency Department. I'll start by creating a very simple model trained on past data to predict the number of patients. 
 
-I will also include an example of a custom function developed to predict patients yet to arrive, assuming ED targets are met.
+I will also include an example of a custom function developed to predict number of patients yet to arrive, who will be admitted within a prediction window assuming ED targets are met. 
+
 
 ```python
 # Reload functions every time
-%load_ext autoreload
+%load_ext autoreload 
 %autoreload 2
-```
-
-## Set up prediction times
-
-The first step is to specify the times of day at which we want to create predictions.
-
-```python
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] # each time is expressed as a tuple of (hour, minute)
 ```
 
 ## Create fake arrival times
 
-I will generate some fake data on patients in an Emergency Department (ED)
+I will generate some fake data on patients in an Emergency Department (ED) using the same method as in previous notebooks. 
+
 
 ```python
 from patientflow.generate import create_fake_finished_visits
 visits_df, _, _ = create_fake_finished_visits('2023-01-01', '2023-04-01', 25)
 visits_df.head()
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -50,7 +46,6 @@ visits_df.head()
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -114,7 +109,10 @@ visits_df.head()
 </table>
 </div>
 
-For this analysis I only want to make predictions for patienets who are later admitted, so I will delete the non-admitted.
+
+
+For this analysis I only want to make predictions for patienets who are later admitted, so I will delete the non-admitted. 
+
 
 ```python
 import pandas as pd
@@ -124,6 +122,7 @@ inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arri
 ```
 
 I will generate an array of dates covered by the data I've loaded. I'm calling these `snapshot_dates` for consistency.
+
 
 ```python
 from datetime import datetime, time, timedelta, date
@@ -159,20 +158,23 @@ snapshot_dates[0:10]
      datetime.date(2023, 1, 9),
      datetime.date(2023, 1, 10)]
 
+
+
 ## Train a simple Poisson model to predict the patients who are yet-to-arrive
 
-The function below generates counts by snapshot date for the number of patients who arrived after the prediction time and were admitted before the end of the prediction window.
+The function below generates counts by snapshot date for the number of patients who arrived after the prediction time and were admitted before the end of the prediction window. 
+
 
 ```python
 
 def count_yet_to_arrive(df, snapshot_dates, prediction_times, prediction_window_hours):
     """
-    Count patients who arrived after a prediction time and were admitted to a ward
+    Count patients who arrived after a prediction time and were admitted to a ward 
     within a specified window.
     """
     # Create an empty list to store results
     results = []
-
+    
     # For each combination of date and time
     for date_val in snapshot_dates:
         for hour, minute in prediction_times:
@@ -181,36 +183,37 @@ def count_yet_to_arrive(df, snapshot_dates, prediction_times, prediction_window_
 
             # Calculate the end of the prediction window
             prediction_window_end = prediction_datetime + pd.Timedelta(hours=prediction_window_hours)
-
+            
             # Count patients who arrived after prediction time and were admitted within the window
             admitted_within_window = df[
-                (df['arrival_datetime'] > prediction_datetime) &
+                (df['arrival_datetime'] > prediction_datetime) & 
                 (df['admitted_to_ward_datetime'] <= prediction_window_end)
             ]['patient_id'].nunique()
-
+            
             # Store the result
             results.append({
                 'snapshot_date': date_val,
                 'prediction_time': (hour, minute),
                 'count': admitted_within_window
             })
-
+    
     # Convert results to a DataFrame
     results_df = pd.DataFrame(results)
-
+    
     return results_df
 ```
 
-As in previous notebooks, I'll apply a temporal split to the data.
+As in previous notebooks, I'll apply a temporal split to the data. 
+
 
 ```python
-from datetime import date
+from datetime import date   
 from patientflow.prepare import create_temporal_splits
 
 # set the temporal split
-start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6 week training set
-start_test_set = date(2023, 3, 1) # 2 week validation set
+start_training_set = date(2023, 1, 1) 
+start_validation_set = date(2023, 2, 15) # 6 week training set 
+start_test_set = date(2023, 3, 1) # 2 week validation set 
 end_test_set = date(2023, 4, 1) # 1 month test set
 
 # create the temporal splits
@@ -220,19 +223,26 @@ train_visits, _, _ = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="arrival_datetime", # states which column contains the date to use when making the splits
+    col_name="arrival_datetime", # states which column contains the date to use when making the splits 
 
 )
 ```
 
     Split sizes: [313, 109, 206]
 
+
 After applying the function, the count data is shown below.
 
+
 ```python
+prediction_times = [(9, 30)] 
+
 yet_to_arrive_counts = count_yet_to_arrive(train_visits, snapshot_dates, prediction_times, prediction_window_hours=8)
 yet_to_arrive_counts.head(10)
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -247,7 +257,6 @@ yet_to_arrive_counts.head(10)
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -262,68 +271,71 @@ yet_to_arrive_counts.head(10)
     <tr>
       <th>0</th>
       <td>2023-01-01</td>
-      <td>(6, 0)</td>
+      <td>(9, 30)</td>
       <td>1</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>2023-01-01</td>
+      <td>2023-01-02</td>
       <td>(9, 30)</td>
-      <td>1</td>
+      <td>5</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>2023-01-01</td>
-      <td>(12, 0)</td>
-      <td>1</td>
+      <td>2023-01-03</td>
+      <td>(9, 30)</td>
+      <td>5</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>2023-01-01</td>
-      <td>(15, 30)</td>
+      <td>2023-01-04</td>
+      <td>(9, 30)</td>
       <td>2</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>2023-01-01</td>
-      <td>(22, 0)</td>
-      <td>0</td>
+      <td>2023-01-05</td>
+      <td>(9, 30)</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>2023-01-02</td>
-      <td>(6, 0)</td>
-      <td>3</td>
+      <td>2023-01-06</td>
+      <td>(9, 30)</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>2023-01-02</td>
+      <td>2023-01-07</td>
       <td>(9, 30)</td>
-      <td>5</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>2023-01-02</td>
-      <td>(12, 0)</td>
-      <td>5</td>
+      <td>2023-01-08</td>
+      <td>(9, 30)</td>
+      <td>3</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>2023-01-02</td>
-      <td>(15, 30)</td>
-      <td>1</td>
+      <td>2023-01-09</td>
+      <td>(9, 30)</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>2023-01-02</td>
-      <td>(22, 0)</td>
-      <td>0</td>
+      <td>2023-01-10</td>
+      <td>(9, 30)</td>
+      <td>4</td>
     </tr>
   </tbody>
 </table>
 </div>
 
-Here I use the mean daily count as the mean of a Poisson distribution.
+
+
+Here I use the mean daily count as the mean of a Poisson distribution. 
+
 
 ```python
 from scipy import stats
@@ -331,7 +343,9 @@ poisson_mean = yet_to_arrive_counts['count'].mean()
 poisson_model = stats.poisson(poisson_mean)
 ```
 
-I use the Poisson model to predict a bed count distribution for the patients yet-to-arrive.
+I use the Poisson model to predict a bed count distribution for the patients yet-to-arrive. 
+
+
 
 ```python
 prob_dist_data = [poisson_model.pmf(k) for k in range(20)]
@@ -342,19 +356,24 @@ title = (
     f'Probability distribution for number of beds needed for patients'
     f'\nwho will arrive after {format_prediction_time((9,30))} on {snapshot_dates[0]} and need a bed within 8 hours'
 )
-prob_dist_plot(prob_dist_data, title,
+prob_dist_plot(prob_dist_data, title,  
     include_titles=True)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_19_0.png)
+
+    
+![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_17_0.png)
+    
+
 
 ## Train a weighted Poisson model
 
-The model above has learned the rates of arrivals of patients who are later admitted within a prediction window. In the chart above, the expected value for the number of patients arriving and being admitted within 8 hours is zero.
+The model above has learned the rates of arrivals of patients who are later admitted within a prediction window from past data. 
 
 A problem with this approach is that rates are learned from periods of poor performance. Currently, in England Emergency Departments have a target of processing all patients within four hours of their arrival time. However, EDs across the country have not hit targets since the end of the Covid pandemic.
 
 The poor performance is illustrated by the survival curve below, which shows that only 59% of admitted patients left the ED to go to the ward within four hours.
+
 
 ```python
 from patientflow.viz.survival_curves import plot_admission_time_survival_curve
@@ -364,9 +383,15 @@ plot_admission_time_survival_curve(inpatient_arrivals, title)
 
     Proportion of patients admitted within 4 hours: 58.76%
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_21_1.png)
 
-`patientflow` offers a weighted Poisson model, that will calculate each patient's probability of being admitted from their arrival time, if targets are met. Targets are set using the parameters set in config.yaml
+
+    
+![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_19_1.png)
+    
+
+
+`patientflow` offers a weighted Poisson model, that will calculate each patient's probability of being admitted from their arrival time, if targets are met. Targets are set using the parameters set in config.yaml 
+
 
 ```python
 from patientflow.load import load_config_file, set_file_paths, set_project_root
@@ -383,7 +408,9 @@ print(f'The aspiration is that within {str(x1)} hours of arrival, {str(y1*100)}%
     Inferred project root: /Users/zellaking/Repos/patientflow
     The aspiration is that within 4.0 hours of arrival, 76.0% of patients will have been admitted, and that witin 12.0 hours of arrival, 99.0% of patients will have been admitted
 
-The aspiration can be plotted as an inverted survival curve, as shown below.
+
+The aspiration can be plotted as an inverted survival curve, as shown below. 
+
 
 ```python
 from patientflow.viz.aspirational_curve_plot import plot_curve
@@ -403,23 +430,28 @@ plot_curve(
 
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_25_0.png)
 
-Below I demonstrate the use of a Weighted Poisson predictor.
+    
+![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_23_0.png)
+    
 
-Its `fit()` method will, for each prediction time
 
-- filter the dataframe if a filtering criteria is given (more detail below)
-- calculate arrival rates for a series of discrete time intervals (where the duration of each time interval is specified as `yta_time_interval` minutes) within a 24 hour period; `yta_time_interval` must divide evenly into a 24 hour period (ie be a factor of 24\* 60)
-- return the arrival rates for the intervals between the prediction time and the end of the prediction window in a dictionary; if the data is unfiltered it will use a generic key of 'unfiltered'; if the data is filtered, it will use the filters as keys
+Below I demonstrate the use of a Weighted Poisson predictor. 
+
+Its `fit()` method will, for each prediction time:
+
+* filter the dataframe if a filtering criteria is given (more detail below)
+* calculate arrival rates for a series of discrete time intervals (where the duration of each time interval is specified as `yta_time_interval` minutes) within a 24 hour period; `yta_time_interval` must divide evenly into a 24 hour period (ie be a factor of 24* 60)
+* return the arrival rates for the intervals between the prediction time and the end of the prediction window in a dictionary; if the data is unfiltered it will use a generic key of 'unfiltered'; if the data is filtered, it will use the filters as keys
 
 The `predict()` method will:
 
-- retrieve the arrival rates saved for the prediction window
-- for each discrete time interval, using the aspirational curve introduced above, and taking into account the time remaining before end of window, calculate a probability of admission in prediction window
-- weight the arrival rates for each time interval by this probability
-- generate a Poisson distribution for each time interval
-- convolute the distributions to return a single distribution for arrivals over all time intervals
+* retrieve the arrival rates saved for the prediction window
+* for each discrete time interval, using the aspirational curve introduced above, and taking into account the time remaining before end of window, calculate a probability of admission in prediction window 
+* weight the arrival rates for each time interval by this probability 
+* generate a Poisson distribution for each time interval
+* convolute the distributions to return a single distribution for arrivals over all time intervals
+
 
 ```python
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
@@ -435,13 +467,17 @@ yta_model.fit(train_visits, prediction_window=8*60, yta_time_interval=15, predic
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    Poisson Binomial Predictor trained for these times: [(9, 30)]
+    Weighted Poisson Predictor trained for these times: [(9, 30)]
     using prediction window of 480 minutes after the time of prediction
     and time interval of 15 minutes within the prediction window.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, used the get_weights() method
 
-<style>#sk-container-id-3 {
+
+
+
+
+<style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: black;
   --sklearn-color-line: gray;
@@ -471,15 +507,15 @@ yta_model.fit(train_visits, prediction_window=8*60, yta_time_interval=15, predic
   }
 }
 
-#sk-container-id-3 {
+#sk-container-id-1 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-3 pre {
+#sk-container-id-1 pre {
   padding: 0;
 }
 
-#sk-container-id-3 input.sk-hidden--visually {
+#sk-container-id-1 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -491,7 +527,7 @@ yta_model.fit(train_visits, prediction_window=8*60, yta_time_interval=15, predic
   width: 1px;
 }
 
-#sk-container-id-3 div.sk-dashed-wrapped {
+#sk-container-id-1 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -499,7 +535,7 @@ yta_model.fit(train_visits, prediction_window=8*60, yta_time_interval=15, predic
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-3 div.sk-container {
+#sk-container-id-1 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -509,7 +545,7 @@ yta_model.fit(train_visits, prediction_window=8*60, yta_time_interval=15, predic
   position: relative;
 }
 
-#sk-container-id-3 div.sk-text-repr-fallback {
+#sk-container-id-1 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -525,14 +561,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-3 div.sk-parallel-item::after {
+#sk-container-id-1 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-3 div.sk-parallel {
+#sk-container-id-1 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -540,28 +576,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-3 div.sk-parallel-item {
+#sk-container-id-1 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-3 div.sk-parallel-item:first-child::after {
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-3 div.sk-parallel-item:last-child::after {
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-3 div.sk-parallel-item:only-child::after {
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-3 div.sk-serial {
+#sk-container-id-1 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -579,14 +615,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-3 div.sk-toggleable {
+#sk-container-id-1 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-3 label.sk-toggleable__label {
+#sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
   display: block;
   width: 100%;
@@ -596,7 +632,7 @@ clickable and can be expanded/collapsed.
   text-align: center;
 }
 
-#sk-container-id-3 label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -604,13 +640,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-3 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-3 div.sk-toggleable__content {
+#sk-container-id-1 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -619,12 +655,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-3 div.sk-toggleable__content.fitted {
+#sk-container-id-1 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-3 div.sk-toggleable__content pre {
+#sk-container-id-1 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -632,79 +668,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-3 div.sk-toggleable__content.fitted pre {
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-3 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-3 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-3 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-3 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-3 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-3 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-3 div.sk-label label.sk-toggleable__label,
-#sk-container-id-3 div.sk-label label {
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-3 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-3 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-3 div.sk-label label {
+#sk-container-id-1 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-3 div.sk-label-container {
+#sk-container-id-1 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-3 div.sk-estimator {
+#sk-container-id-1 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -714,18 +750,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-3 div.sk-estimator.fitted {
+#sk-container-id-1 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-3 div.sk-estimator:hover {
+#sk-container-id-1 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-3 div.sk-estimator.fitted:hover {
+#sk-container-id-1 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -812,7 +848,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-3 a.estimator_doc_link {
+#sk-container-id-1 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -827,40 +863,56 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-3 a.estimator_doc_link.fitted {
+#sk-container-id-1 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-3 a.estimator_doc_link:hover {
+#sk-container-id-1 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-3 a.estimator_doc_link.fitted:hover {
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;WeightedPoissonPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;WeightedPoissonPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
-Below we view the results of the fit method for the 09:30 prediction time.
+
+
+Below we view the results of the fit method for the 09:30 prediction time. 
+
+
+```python
+round(v, 3) for v in arrival_rates_by_time_interval[0:10]
+```
+
+
+      Cell In[24], line 1
+        round(v, 3) for v in arrival_rates_by_time_interval[0:10]
+                    ^
+    SyntaxError: invalid syntax
+
+
+
 
 ```python
 arrival_rates_by_time_interval = yta_model.weights['unfiltered'][(9,30)]['arrival_rates']
 print(
-    f'The first 10 arrival rates for the discrete time intervals '
-    f'for the 09:30 prediction time are: {arrival_rates_by_time_interval[0:10]}'
-)
-
+    f'The calculated arrival rates for the first 10 discrete time intervals '
+    f'for the 09:30 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
 ```
 
-    The first 10 arrival rates for the discrete time intervals for the 09:30 prediction time are: [0.06666666666666667, 0.1111111111111111, 0.1111111111111111, 0.13333333333333333, 0.13333333333333333, 0.13333333333333333, 0.3333333333333333, 0.13333333333333333, 0.17777777777777778, 0.1111111111111111]
+    The calculated arrival rates for the first 10 discrete time intervals for the 09:30 prediction time are: [0.067, 0.111, 0.111, 0.133, 0.133, 0.133, 0.333, 0.133, 0.178, 0.111]
 
-To use the weighted poisson for prediction, it required a prediction_context to be set with the required prediction time and filtering.
+
+To use the weighted poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. 
+
 
 ```python
 from patientflow.viz.prob_dist_plot import prob_dist_plot
@@ -876,27 +928,33 @@ weighted_poisson_prediction = yta_model.predict(prediction_context, x1, y1, x2, 
 
 ```
 
-The chart below show the results of using this weighted predictor to generate an unfettered distribution for patients yet-to-arrive. The numbers look more realistic than above (where the expected number of beds was zero), with an expected value of two beds needed for the yet-to-arrive patients.
+The chart below show the results of using this weighted predictor to generate an unfettered distribution for patients yet-to-arrive. The numbers are higher than the equivalent chart above. 
+
 
 ```python
-
 title = (
     f'Probability distribution for number of beds needed for patients '
     f'who will arrive after {format_prediction_time((9,30))} on {snapshot_dates[0]} '
     f'\nand need a bed within 8 hours '
     f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
 )
-prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
+prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,  
     include_titles=True,
     truncate_at_beds=20)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_33_0.png)
+
+    
+![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_32_0.png)
+    
+
 
 ## Conclusion
 
-Here I have demonstrated the use of `patientflow` to generate bed counts for groups of patients, without using patient snapshots.
+Here I have demonstrated the use of `patientflow` to generate bed counts for groups of patients, without using patient snapshots. 
 
-If you have count data on past visits that approximate to a statistical distribution, preparing a model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need `patientflow` functions for that.
+If you have count data on past visits that approximate to a statistical distribution, preparing a  model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need `patientflow` functions for that. 
 
-However there might be cases where the historical data don't reflect the desired performance of the ED, as in the example shown here. In that case, the users of your predictions might be more interested in understanding their unfettered demand. `patientflow` provides functions that enable you to produce such predictions.
+However there might be cases where the historical data don't reflect the desired performance of the ED, as in the example shown here. In that case, the users of your predictions might be more interested in understanding their unfettered demand. `patientflow`  provides functions that enable you to produce such predictions. 
+
+

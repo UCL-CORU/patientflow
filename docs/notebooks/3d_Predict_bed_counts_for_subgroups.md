@@ -1,27 +1,29 @@
-# Predict bed count distributions for subgroups
+# 3d. Predict bed count distributions for subgroups
 
-It is often the case that pressures build up on certain areas of the hospital, or for subgroups of patients. For example, due to infections in the community, there might be particulary demand for respiratory specialties, or for male geriatric beds.
+It is often the case that pressures build up on certain areas of the hospital, or for subgroups of patients. For example, due to infections in the community there might be high demand for respiratory specialties. Sometimes one demographic group seems to be showing up more than others, such as older males, putting pressure on male geriatric beds. 
 
-In this notebook I show how `patientflow` functions can be used to create predictions for some subgroup which might be
+In this notebook I show how `patientflow` can be used to create predictions for subgroups of patients. These groups might be 
+* specific clinical areas of the hospital (eg medical or paediatric beds)
+* subgroups defined by a demographic characteristic (eg sex) 
 
-- specific areas of the hospital (eg medical or paediatric beds)
-- sub-groups defined by a demographic characteristic (eg sex)
+I will first demonstrate the use of a `SequencePredictor` class, that can be used to predict each patient's probability of admission to a clinical area if they are admitted. Here I show predictions to four specialties: medical, surgical, haematology/oncology or paediatric. I'll load real patient data and show how the `SequencePredictor` is trained using sequences of consult requests made while patients are in the ED.
 
-I will first demonsrate the use of a `SequencePredictor` class, that can be used to predict each patient's probability of admission to a clinical area if they are admitted. Here I show predictions to four specialties: medical, surgical, haematology/oncology or paediatric. I'll load real patient data and show how the `SequencePredictor` is trained using sequences of consult requests made while patients were in the ED.
-
-If we assume that two events - a patient being admitted, and a patient requiring a particular specialty if admitted - are independent, the probabilities of those events can be multiplied to give a probabilty of admission to a specialty. I'll show the use of this approach to generate bed count distributions for each specialty.
+If we assume that two events - a patient being admitted, and a patient requiring a particular specialty if admitted - are independent, the probabilities of those events can be multiplied to give a probability of admission to a specialty. I'll show the use of this approach to generate bed count distributions for each specialty.
 
 I'll also demonstrate the disaggregation of predicted bed counts by sex.
 
+
 ## Loading real patient data
 
-Following the approaach taken in the previous notebook, I'll first load some real patient data.
+Following the approach taken in the previous notebook, I'll first load some real patient data. 
+
 
 ```python
 # Reload functions every time
-%load_ext autoreload
+%load_ext autoreload 
 %autoreload 2
 ```
+
 
 ```python
 import pandas as pd
@@ -33,15 +35,15 @@ project_root = set_project_root()
 
 # set file paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        project_root,
+        project_root, 
         data_folder_name='data-public', # change this to data-synthetic if you don't have the public dataset
-        verbose=False)
+        verbose=False) 
 
 # load the data
-ed_visits = load_data(data_file_path,
-                    file_name='ed_visits.csv',
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
@@ -50,7 +52,7 @@ params = load_config_file(config_path)
 start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
 
 # apply the temporal splits
-from datetime import date
+from datetime import date   
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
@@ -60,8 +62,8 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="snapshot_date", # states which column contains the date to use when making the splits
-    visit_col="visit_number", # states which column contains the visit number to use when making the splits
+    col_name="snapshot_date", # states which column contains the date to use when making the splits 
+    visit_col="visit_number", # states which column contains the visit number to use when making the splits 
 
 )
 
@@ -70,13 +72,18 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     Inferred project root: /Users/zellaking/Repos/patientflow
     Split sizes: [53801, 6519, 19494]
 
+
 ## Train a model to predict probability of admission to each specialty
 
-In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. Below, the `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.
+In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. The `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.  
+
 
 ```python
 ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['consultation_sequence', 'final_sequence', 'specialty']].head(10)
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -91,7 +98,6 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -173,15 +179,22 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
 </table>
 </div>
 
-Below I demonstrate training the model. A rooted decision-tree is used to calculate the probability of an ordered sequence of consultations (observed at the snapshot, which could be none) resulting in each final sequences at the end of the ED visit, and the probabiltity of each of those final sequences being associated with admission to each specialty.
 
-This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams. Therefore, the `SequencePredictor` arguments have been given generic names:
 
-- `input_var` - the interim node in the decision tree, observed at the snapshot
-- `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
-- `outcome_var` - the final outcome to be predicted
+Below I demonstrate training the model. A rooted decision-tree is used to calculate:
 
-The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties.
+* the probability of an ordered sequence of consultations observed at the snapshot (which could be none) resulting in each final sequence at the end of the ED visit
+* the probability of each of those final sequences being associated with admission to each specialty
+
+This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams visited. Therefore, the `SequencePredictor` arguments have been given generic names: 
+
+* `input_var` - the interim node in the decision tree, observed at the snapshot
+* `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
+* `outcome_var` - the final outcome to be predicted
+
+The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties. 
+
+
 
 ```python
 from patientflow.predictors.sequence_predictor import SequencePredictor
@@ -195,6 +208,9 @@ spec_model = SequencePredictor(
 
 spec_model.fit(train_visits)
 ```
+
+
+
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
@@ -601,36 +617,37 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   background-color: var(--sklearn-color-fitted-level-3);
 }
 </style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
-
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
-
 )</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequencePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequencePredictor(
-input_var=&#x27;consultation_sequence&#x27;,
-grouping_var=&#x27;final_sequence&#x27;,
-outcome_var=&#x27;specialty&#x27;,
-apply_special_category_filtering=False,
-admit_col=&#x27;is_admitted&#x27;
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=False,
+    admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
+
+
 From the weights that are returned, we can view the probability of being admitted to each specialty for a patient who has no consultation sequence at the time of prediction
+
 
 ```python
 print(
     f'Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:\n'
     f'{dict((k, round(v, 3)) for k, v in spec_model.weights[()].items())}'
 )
-
-
 ```
 
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
     {'surgical': 0.257, 'medical': 0.604, 'paediatric': 0.063, 'haem/onc': 0.077}
 
+
 Similar we can view the probability of being admitted to each specialty after a consultation request to acute medicine
+
 
 ```python
 print(
@@ -639,14 +656,20 @@ print(
 )
 ```
 
+    
     Probability of being admitted to each specialty if one consultation request to acute medicine has taken place by the time of the snapshot:
     {'surgical': 0.015, 'medical': 0.951, 'paediatric': 0.001, 'haem/onc': 0.033}
 
-The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
+
+The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options. 
+
 
 ```python
 spec_model.input_to_grouping_probs.iloc[:, :10]
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -661,7 +684,6 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -841,13 +863,19 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
 <p>111 rows × 10 columns</p>
 </div>
 
-## Using the `SequencePredictor`
+
+
+## Using the `SequencePredictor` 
 
 Below I apply the predict function to get each patient's probability of being admitted to the four specialties.
+
 
 ```python
 test_visits['consultation_sequence'].head().apply(spec_model.predict)
 ```
+
+
+
 
     snapshot_id
     2        {'surgical': 0.25677749360613816, 'medical': 0...
@@ -857,15 +885,18 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
     58564    {'surgical': 0.8329853862212944, 'medical': 0....
     Name: consultation_sequence, dtype: object
 
+
+
 A dictionary is returned for each patient, with probabilites summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
 
+
 ```python
-print("Probability of admission to medical specialty for five patients:")
+print("Probability of admission to medical specialty for the first five patients:")
 test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lambda x: x['medical']).values
 
 ```
 
-    Probability of admission to medical specialty for five patients:
+    Probability of admission to medical specialty for the first five patients:
 
 
 
@@ -873,17 +904,20 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lamb
 
     array([0.60396419, 0.05462185, 0.05462185, 0.05462185, 0.1263048 ])
 
+
+
 ## Generate predicted bed count distributions by specialty.
 
 I now have a model I can use to get a patient's probability of admission to each of the four specialties: medical, surgical, haematology/oncology or paediatric, if admitted. I'll use this these probabilities, with each patient's probability of admission after ED, to generate predicted bed count distributions for each specialty.
 
-For that I'll also need an admission prediction model, which is set up below.
+For that I'll also need an admission prediction model, which is set up below. 
+
 
 ```python
 from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
 
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
 ordinal_mappings = {
     "age_group": [
         "0-17",
@@ -936,7 +970,8 @@ admission_model = train_classifier(
 
 ### Prepare group snapshots
 
-The logic below is similar to previous notebooks, but this time I'll add the specialty probabilities as weights in the `get_prob_dist` function
+The preparation of group snapshots below is similar to previous notebooks.
+
 
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -948,71 +983,35 @@ prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_sna
 
 # format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
-    df=prediction_snapshots,
-    prediction_time=(9,30),
+    df=prediction_snapshots, 
+    prediction_time=(9,30), 
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data,
+    exclude_columns=exclude_from_training_data, 
     visit_col='visit_number'
 )
 
 # prepare group snapshots dict to indicate which patients comprise the group we want to predict for
 group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots
-    )
-
-group_snapshots_dict
+)
 
 ```
 
-    {datetime.date(2031, 10, 1): [60311,
-      60315,
-      60322,
-      60328,
-      60331,
-      60333,
-      60336,
-      60338,
-      60339,
-      60340,
-      60341,
-      60342,
-      60343,
-      60344,
-      60348,
-      60349,
-      60352,
-      60353,
-      60354,
-      60356,
-      60359,
-      60360,
-      60361]}
+Below I demonstrate predictions for each specialty in turn. 
+
 
 ```python
 from patientflow.viz.prob_dist_plot import prob_dist_plot
 from patientflow.aggregate import get_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
-# get probability distribution for this time of day
-prob_dist_dict = get_prob_dist(
-        group_snapshots_dict, X_test, y_test, admission_model
-    )
-
-title = (
-    f'Probability distribution for total number of beds needed by the '
-    f'{len(prediction_snapshots)} patients\n'
-    f'in the ED at {format_prediction_time((9,30))} '
-    f'on {first_group_snapshot_key} '
-)
-prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
-    include_titles=True)
-
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
     prob_admission_to_specialty = prediction_snapshots['consultation_sequence'].apply(spec_model.predict).apply(lambda x: x[specialty])
 # get probability distribution for this time of day
     prob_dist_dict = get_prob_dist(
-            group_snapshots_dict, X_test, y_test, admission_model, weights=prob_admission_to_specialty
+            group_snapshots_dict, X_test, y_test, admission_model, 
+            weights=prob_admission_to_specialty
         )
 
     title = (
@@ -1021,49 +1020,74 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
-        include_titles=True)
+    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
+        include_titles=True, bar_colour='orange')
 
 ```
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_1.png)
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_24_0.png)
+    
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_3.png)
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_24_1.png)
+    
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_5.png)
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_7.png)
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_24_2.png)
+    
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_23_9.png)
+
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_24_3.png)
+    
+
+
+To compare these with the predictions overall (not by specialty) uses the same function without weighting the probability for each specialty. 
+
+
+```python
+# get probability distribution for this time of day
+prob_dist_dict = get_prob_dist(
+        group_snapshots_dict, X_test, y_test, admission_model 
+        # commenting out the weights argument
+        # weights=prob_admission_to_specialty
+    )
+
+title = (
+    f'Probability distribution for total number of beds needed by the '
+    f'{len(prediction_snapshots)} patients\n'
+    f'in the ED at {format_prediction_time((9,30))} '
+    f'on {first_group_snapshot_key} '
+)
+prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
+    include_titles=True)
+```
+
+
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_26_0.png)
+    
+
 
 ## Generating predicted bed counts by demographic variables
 
-Disaggregation of predictions using unchanging attributes like sex is very straightforward.
+Disaggregation of predictions using unchanging attributes like sex is very straightforward. Here I show breakdowns by sex. 
 
-for
 
 ```python
 for sex in ['M', 'F']:
 
-    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) &
+    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) & 
                                        (test_visits.sex == sex) &
                                        (test_visits.prediction_time == (9,30))]
-
+    
     group_snapshots_dict = prepare_group_snapshot_dict(
         prediction_snapshots
     )
@@ -1078,26 +1102,30 @@ for sex in ['M', 'F']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
         include_titles=True)
 ```
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_26_1.png)
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_28_0.png)
+    
 
-    Calculating probability distributions for 1 snapshot dates
-    Processed 1 snapshot dates
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_26_3.png)
+
+    
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_28_1.png)
+    
+
 
 ## Conclusion
 
-In this notebook I have presented examples of how to disaggregate predicted bed counts according to sub-categories of interest.
+In this notebook I have presented examples of how to disaggregate predicted bed counts according to sub-categories of interest. 
 
-Some subgroups are straightfoward to generate at inference time, if they are based on static attributes of the patient such as sex or perhaps ethnicity.
+Some subgroups are straightforward to generate at inference time, if they are based on attributes of the patient that do not change during a visit, such as sex, gender or ethnicity. 
 
-Demand on clinical areas can be predicted dynamically, using some kind of real-time signal collected about a patient that is related to their likely clinical area.
+Demand on clinical areas can be predicted dynamically, using a real-time signal collected about a patient that is related to their likely clinical area. In this case I used consult requests issued while patients were in the ED.
 
-In the following notebook, I demonstrate a fully worked up example of how the functions provided in `patientflow` are in use at University College London Hospital to predict emergency demand.
+In the following notebooks, I demonstrate a fully worked up example of how the functions provided in `patientflow` are in use at University College London Hospital to predict emergency demand. 
+
+

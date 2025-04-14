@@ -417,11 +417,10 @@ def get_prob_dist_for_prediction_moment(
 
         if not inference_time:
             # Apply category filter when calculating observed sum
-            if category_filter is not None:
-                y_test_filtered = y_test & category_filter
+            if category_filter is None:
+                prediction_moment_dict["agg_observed"] = sum(y_test)
             else:
-                y_test_filtered = y_test
-            prediction_moment_dict["agg_observed"] = sum(y_test_filtered)
+                prediction_moment_dict["agg_observed"] = sum(y_test & category_filter)
     else:
         prediction_moment_dict["agg_predicted"] = pd.DataFrame(
             {"agg_proba": [1]}, index=[0]
@@ -532,13 +531,21 @@ def get_prob_dist(
             else:
                 prediction_moment_weights = weights.loc[snapshots_to_include].values
 
+            # Apply category filter
+            if category_filter is None:
+                prediction_moment_category_filter = None
+            else:
+                prediction_moment_category_filter = category_filter.loc[
+                    snapshots_to_include
+                ]
+
             # Compute the predicted and observed valuesfor the current snapshot date
             prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
                 X_test=X_test.loc[snapshots_to_include],
                 y_test=y_test.loc[snapshots_to_include],
                 model=model,
                 weights=prediction_moment_weights,
-                category_filter=category_filter.loc[snapshots_to_include],
+                category_filter=prediction_moment_category_filter,
             )
 
         # Increment the counter and notify the user every 10 snapshot dates processed
