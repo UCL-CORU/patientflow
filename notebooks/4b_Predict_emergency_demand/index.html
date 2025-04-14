@@ -24,7 +24,7 @@
     
     
       
-        <title>Predict emergency demand - PatientFlow</title>
+        <title>4b. Predict emergency demand - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#predict-emergency-demand" class="md-skip">
+        <a href="#4b-predict-emergency-demand" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Predict emergency demand
+              4b. Predict emergency demand
             
           </span>
         </div>
@@ -404,7 +404,7 @@
   
   
   <span class="md-ellipsis">
-    Set up your environment
+    0. Set up your environment
     
   </span>
   
@@ -427,7 +427,7 @@
   
   
   <span class="md-ellipsis">
-    Introducing our users
+    1. Introducing our users
     
   </span>
   
@@ -450,7 +450,7 @@
   
   
   <span class="md-ellipsis">
-    Create patient-level snapshots
+    2a. Create patient-level snapshots
     
   </span>
   
@@ -473,7 +473,7 @@
   
   
   <span class="md-ellipsis">
-    Make predictions using patient-level snapshots
+    2b. Make predictions using patient-level snapshots
     
   </span>
   
@@ -519,7 +519,7 @@
   
   
   <span class="md-ellipsis">
-    2. Explore the datasets provided
+    2d. Explore the datasets provided
     
   </span>
   
@@ -542,7 +542,7 @@
   
   
   <span class="md-ellipsis">
-    Prepare group snapshots from patient snapshots
+    3a. Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -565,7 +565,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate group snapshots
+    3b. Evaluate group snapshots
     
   </span>
   
@@ -588,7 +588,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed counts without using patient snapshots
+    3c. Predict bed counts without using patient snapshots
     
   </span>
   
@@ -611,7 +611,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed count distributions for subgroups
+    3d. Predict bed count distributions for subgroups
     
   </span>
   
@@ -634,7 +634,7 @@
   
   
   <span class="md-ellipsis">
-    4. Predict emergency demand
+    4a. Specify requirements for emergency demand prediction
     
   </span>
   
@@ -666,7 +666,7 @@
   
   
   <span class="md-ellipsis">
-    Predict emergency demand
+    4b. Predict emergency demand
     
   </span>
   
@@ -679,7 +679,7 @@
   
   
   <span class="md-ellipsis">
-    Predict emergency demand
+    4b. Predict emergency demand
     
   </span>
   
@@ -800,6 +800,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -821,7 +830,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate predictions of emergency demand
+    4c. Evaluate predictions of emergency demand
     
   </span>
   
@@ -1078,6 +1087,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Conclusion
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1102,8 +1120,8 @@
   
 
 
-<h1 id="predict-emergency-demand">Predict emergency demand</h1>
-<p>This notebook demonstrates the full implementation in code. </p>
+<h1 id="4b-predict-emergency-demand">4b. Predict emergency demand</h1>
+<p>This notebook demonstrates the full implementation in code. I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by specialty, over the next 8 hours. The predictions are aspirational; they assume that ED four-hour targets are met. </p>
 <h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload 
@@ -1190,8 +1208,6 @@ prediction_time
 (6, 0)       8197
 Name: count, dtype: int64
 </code></pre>
-<pre><code class="language-python">
-</code></pre>
 <h2 id="apply-temporal-splits">Apply temporal splits</h2>
 <pre><code class="language-python">from patientflow.prepare import create_temporal_splits
 
@@ -1275,7 +1291,7 @@ Training model for (22, 0)
 </code></pre>
 <h2 id="train-specialty-model">Train specialty model</h2>
 <p>The <code>SequencePredictor</code> is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model. </p>
-<p>Here the <code>apply_special_category_filtering</code> parameter has been set to True. If set to True, there will be customised treatment for particular categories of patient; for example, at ULCH, it is assumed that all patients under 18 on arrival will be admitted to a paediatric specialty. I have not shown this here; for more information, please see the documentation.</p>
+<p>Here the <code>apply_special_category_filtering</code> parameter has been set to True. If set to True, there will be customised treatment for particular categories of patient; for example, at UCLH, it is assumed that all patients under 18 on arrival will be admitted to a paediatric specialty. I will demonstrate this further down.</p>
 <pre><code class="language-python">from patientflow.predictors.sequence_predictor import SequencePredictor
 
 spec_model = SequencePredictor(
@@ -1289,8 +1305,9 @@ spec_model = spec_model.fit(train_visits_df)
 </code></pre>
 <h2 id="make-predictions-for-the-group-of-patients-currently-in-the-ed">Make predictions for the group of patients currently in the ED</h2>
 <p>We now have models trained that we can use to create predicted probability distributions. Here is an example of how we could use those model to generate predictions at a particular moment. </p>
-<p>To illustrate, I'll pick a random prediction time from the test set. </p>
+<p>To illustrate, I'll pick a random prediction date and time from the test set. </p>
 <pre><code class="language-python">from patientflow.viz.utils import format_prediction_time
+from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 
 # Set seed
 import numpy as np
@@ -1301,7 +1318,7 @@ random_row = test_visits_df.sample(n=1)
 random_prediction_time = random_row.prediction_time.values[0]
 random_prediction_date = random_row.snapshot_date.values[0]
 
-prediction_snapshots = ed_visits[(ed_visits.prediction_time == prediction_time) &amp; \
+prediction_snapshots = ed_visits[(ed_visits.prediction_time == random_prediction_time) &amp; \
             (ed_visits.snapshot_date == random_prediction_date)]
 
 print(f'Number of adult patients in the ED at {format_prediction_time(random_prediction_time)} on {random_prediction_date}:',
@@ -1310,12 +1327,6 @@ print(f'Number of adult patients in the ED at {format_prediction_time(random_pre
 print(f'Number of patients under the age of 18 in the ED at {format_prediction_time(random_prediction_time)} on {random_prediction_date}:',
       f'{len(prediction_snapshots[prediction_snapshots.age_group == &quot;0-17&quot;])}')
 
-</code></pre>
-<pre><code>Number of adult patients in the ED at 09:30 on 2031-12-20: 21
-Number of patients under the age of 18 in the ED at 09:30 on 2031-12-20: 1
-</code></pre>
-<p>For this example, I'm only going to show predictions for the adult patients. Below I prepare the group snapshot dictionary, which signals which patients were in the ED at each snapshot date. I only include one snapshot date.</p>
-<pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 # format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
     df=prediction_snapshots, 
@@ -1333,18 +1344,24 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots[prediction_snapshots.age_group != &quot;0-17&quot;]
     )
 </code></pre>
-<p>The predicted bed counts for patients in the ED take three probabilities into account for each patients: </p>
+<pre><code>Number of adult patients in the ED at 09:30 on 2031-12-20: 21
+Number of patients under the age of 18 in the ED at 09:30 on 2031-12-20: 1
+</code></pre>
+<p>The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots: </p>
 <ul>
-<li>probability of being admitted after ED</li>
+<li>probability of being admitted after the ED has ended</li>
 <li>probability of being admitted to each specialty, if admitted</li>
-<li>probability of being admitted within the prediction window, taking into account how much time has elapsed since they arrived, and the stated ED targets</li>
+<li>probability of being admitted within the prediction window, taking into account how much time has elapsed since the patient arrived, and the stated ED targets</li>
 </ul>
 <p>To set the ED targets, we use the parameters set in the config file. The config file also specifies the length of the prediction, and (for use later) the length of the discrete intervals used to calculate arrival rates for yet-to-arrive patients.</p>
-<pre><code class="language-python"># set the ED 
+<pre><code class="language-python"># set the ED targets
 x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
 prediction_window = params[&quot;prediction_window&quot;]
 yta_time_interval = params[&quot;yta_time_interval&quot;]
 </code></pre>
+<p>In the cell below I first calculate <code>prob_admission_in_window</code>, the probability of being admitted within the prediction window, given the elapsed time since each patient arrived, and the specified ED targets. </p>
+<p>Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the probability of admission to specialty if admitted, by applying the specialty model trained earlier. </p>
+<p>These two probabilities for each patient snapshot are multiplied and the result passed to <code>get_prob_dist</code> function as weights. </p>
 <pre><code class="language-python">from patientflow.viz.prob_dist_plot import prob_dist_plot
 from patientflow.aggregate import get_prob_dist
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
@@ -1382,15 +1399,15 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     prob_dist_plot(prob_dist_dict[random_prediction_date]['agg_predicted'], title, 
         include_titles=True, truncate_at_beds=20,
         probability_levels=[0.7,0.9],
-        show_probability_thresholds=True,)
+        show_probability_thresholds=True, bar_colour='orange')
 </code></pre>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_25_0.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_25_1.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_25_2.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_25_3.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_0.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_1.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_2.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_3.png" /></p>
 <h2 id="train-model-to-predict-bed-count-distributions-for-patients-yet-to-arrive">Train model to predict bed count distributions for patients yet to arrive.</h2>
 <p>As we are predicting by clinical area (medical, surgical, haem/onc) we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. The <code>WeightedPoissonPredictor</code> will generate separate models, if the <code>specialty_filters</code> parameter is used. </p>
-<p>A function called <code>create_yta_filters</code> prepares the specialty filters, based on special category processing that has been set up for UCLH to treat children differently. </p>
+<p>A function called <code>create_yta_filters</code> prepares the specialty filters, based on special category processing that has been set up for UCLH to treat children and adolescents (anyone under 18 on the day of arrival at the ED) differently. It is assumed that these patients will always be admitted to a paediatric specialty, and that no adults will be.</p>
 <pre><code class="language-python">from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.prepare import create_yta_filters
 
@@ -1432,12 +1449,12 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
         truncate_at_beds=20,
         probability_levels=[0.7,0.9],
         show_probability_thresholds=True,
-        figsize=(6, 4) )
+        figsize=(6, 4) , bar_colour='green')
 </code></pre>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_29_0.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_29_1.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_29_2.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_29_3.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_0.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_1.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_2.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_3.png" /></p>
 <h2 id="combining-the-predictions-into-one-function-for-use-in-real-time-inference">Combining the predictions into one function for use in real-time inference</h2>
 <p>The function shown below is the one used for real-time prediction at UCLH. It returns the probability distributions with the lower threshold set at the requested level using the <code>cdf_cut_points</code> argument.</p>
 <p>The function returns a dictionary, which is inserted into cells in a spreadsheet (via a process not shown here, as this is not done by the <code>patientflow</code> repo) to create the output requested by the users.</p>
@@ -1450,7 +1467,7 @@ models = (admission_model, spec_model, yta_model_by_spec)
 
 create_predictions(
     models = models,
-    prediction_time = prediction_time,
+    prediction_time = random_prediction_time,
     prediction_snapshots = prediction_snapshots,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window_hrs = 8,
@@ -1460,13 +1477,19 @@ create_predictions(
     x2 = x2, 
     y2 = y2)
 </code></pre>
-<pre><code>{'medical': {'in_ed': [1, 1], 'yet_to_arrive': [5, 3]},
+<pre><code>{'medical': {'in_ed': [1, 0], 'yet_to_arrive': [5, 3]},
  'surgical': {'in_ed': [0, 0], 'yet_to_arrive': [2, 1]},
  'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
  'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [1, 0]}}
 </code></pre>
-<pre><code class="language-python">
-</code></pre>
+<h2 id="conclusion">Conclusion</h2>
+<p>Here I have shown how <code>patientflow</code> is used at UCLH to generate predictions of emergency demand for beds in the next 8 hours. There are two elements to the predictions. </p>
+<ul>
+<li>predictions for patients already in the ED</li>
+<li>predictions for patients yet-to-arrive to the ED, who will need admission in the next 8 hours</li>
+</ul>
+<p>Both sets of predictions assume specified ED targets are met. </p>
+<p>In the next notebook, I show how to evaluate the predictions against the numbers of patients actually admitted. </p>
 
 
 

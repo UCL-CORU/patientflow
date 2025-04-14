@@ -24,7 +24,7 @@
     
     
       
-        <title>2. Explore the datasets provided - PatientFlow</title>
+        <title>2d. Explore the datasets provided - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#2-explore-the-datasets-provided" class="md-skip">
+        <a href="#2d-explore-the-datasets-provided" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              2. Explore the datasets provided
+              2d. Explore the datasets provided
             
           </span>
         </div>
@@ -404,7 +404,7 @@
   
   
   <span class="md-ellipsis">
-    Set up your environment
+    0. Set up your environment
     
   </span>
   
@@ -427,7 +427,7 @@
   
   
   <span class="md-ellipsis">
-    Introducing our users
+    1. Introducing our users
     
   </span>
   
@@ -450,7 +450,7 @@
   
   
   <span class="md-ellipsis">
-    Create patient-level snapshots
+    2a. Create patient-level snapshots
     
   </span>
   
@@ -473,7 +473,7 @@
   
   
   <span class="md-ellipsis">
-    Make predictions using patient-level snapshots
+    2b. Make predictions using patient-level snapshots
     
   </span>
   
@@ -528,7 +528,7 @@
   
   
   <span class="md-ellipsis">
-    2. Explore the datasets provided
+    2d. Explore the datasets provided
     
   </span>
   
@@ -541,7 +541,7 @@
   
   
   <span class="md-ellipsis">
-    2. Explore the datasets provided
+    2d. Explore the datasets provided
     
   </span>
   
@@ -797,7 +797,7 @@
   
   
   <span class="md-ellipsis">
-    Prepare group snapshots from patient snapshots
+    3a. Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -820,7 +820,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate group snapshots
+    3b. Evaluate group snapshots
     
   </span>
   
@@ -843,7 +843,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed counts without using patient snapshots
+    3c. Predict bed counts without using patient snapshots
     
   </span>
   
@@ -866,7 +866,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed count distributions for subgroups
+    3d. Predict bed count distributions for subgroups
     
   </span>
   
@@ -889,7 +889,7 @@
   
   
   <span class="md-ellipsis">
-    4. Predict emergency demand
+    4a. Specify requirements for emergency demand prediction
     
   </span>
   
@@ -912,7 +912,7 @@
   
   
   <span class="md-ellipsis">
-    Predict emergency demand
+    4b. Predict emergency demand
     
   </span>
   
@@ -935,7 +935,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate predictions of emergency demand
+    4c. Evaluate predictions of emergency demand
     
   </span>
   
@@ -1330,13 +1330,13 @@
   
 
 
-<h1 id="2-explore-the-datasets-provided">2. Explore the datasets provided</h1>
+<h1 id="2d-explore-the-datasets-provided">2d. Explore the datasets provided</h1>
 <p>Two datasets have been provided with this repository. 
 - <code>ed_visits.csv</code> 
 - <code>inpatient_arrivals.csv</code></p>
-<p>These accompany my fully worked example of the modelling of emergency demand for beds. But they are also useful to illustrate what patient shapshots might be made up of. </p>
+<p>These accompany my fully worked example of the modelling of emergency demand for beds. And they are also useful to illustrate what patient shapshots might be made up of. </p>
 <p>This notebook does some data exploration by plotting charts of all relevant variables in each dataset. </p>
-<p>The <code>inpatient_arrivals</code> dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and a column to assign each one to training, validation and test sets.</p>
+<p>The <code>inpatient_arrivals</code> dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and which specialty they were admitted to.</p>
 <p>The <code>ed_visits</code> database contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve a 'labels' for model training. These are: <br />
 - <code>is_admitted</code> - whether the visit ended in admission to a ward
 - <code>final_sequence</code> - the sequence of consultations the patient had during the visit
@@ -1371,10 +1371,6 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
         verbose=False
         ) 
 
-# load parameters
-params = load_config_file(config_path)
-start_training_set, start_validation_set, start_test_set, end_test_set = params[&quot;start_training_set&quot;], params[&quot;start_validation_set&quot;], params[&quot;start_test_set&quot;], params[&quot;end_test_set&quot;]
-
 </code></pre>
 <h2 id="load-data">Load data</h2>
 <p>This notebook has been run using real data which you can download from <a href="https://zenodo.org/records/14866057">Zenodo</a> on request. </p>
@@ -1391,11 +1387,9 @@ ed_visits = load_data(data_file_path,
 
 inpatient_arrivals = load_data(data_file_path, 
                     file_name='inpatient_arrivals.csv', 
-                    index_column = 'snapshot_id',)
+                    index_column = 'arrival_datetime',)
 
 ed_visits.head()
-</code></pre>
-<pre><code>Warning: Index column 'snapshot_id' not found in dataframe
 </code></pre>
 <div>
 <style scoped>
@@ -1999,7 +1993,7 @@ plot_data_distributions(df=ed_visits, col_name='elapsed_los_hrs', grouping_var='
 </code></pre>
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_20_0.png" /></p>
 <p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id. </p>
-<p>Plotting only the snapshots where the elapsed visit duration is less than 10 hours shows a jump at around 1 hour. The reason for this is unclear. </p>
+<p>Plotting only the snapshots where the elapsed visit duration is less than 10 hours shows a jump at around 1 hour. The reason for this may be something to do with how the data were extracted; we are investigating.  </p>
 <pre><code class="language-python">plot_data_distributions(ed_visits[ed_visits.elapsed_los_hrs &lt; 10], 'elapsed_los_hrs', 'is_admitted', 'whether patient admitted', plot_type='both', 
                         title = 'Distribution of elapsed length of stay by whether patient admitted (where elapsed length of stay &lt; 10 hours)')
 </code></pre>
@@ -2225,55 +2219,50 @@ for col_name in [item for item in dict_cols['observations'] if 'news' in str(ite
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>training_validation_test</th>
-      <th>arrival_datetime</th>
       <th>sex</th>
       <th>specialty</th>
       <th>is_child</th>
       <th>is_admitted</th>
     </tr>
+    <tr>
+      <th>arrival_datetime</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>train</td>
-      <td>2031-04-24 19:21:00+00:00</td>
+      <th>2031-04-24 19:21:00+00:00</th>
       <td>M</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>1</th>
-      <td>train</td>
-      <td>2031-04-25 12:42:00+00:00</td>
+      <th>2031-04-25 12:42:00+00:00</th>
       <td>F</td>
       <td>medical</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>train</td>
-      <td>2031-03-20 19:54:00+00:00</td>
+      <th>2031-03-20 19:54:00+00:00</th>
       <td>F</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>3</th>
-      <td>train</td>
-      <td>2031-03-04 22:03:00+00:00</td>
+      <th>2031-03-04 22:03:00+00:00</th>
       <td>F</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>4</th>
-      <td>train</td>
-      <td>2031-03-01 11:10:44+00:00</td>
+      <th>2031-03-01 11:10:44+00:00</th>
       <td>M</td>
       <td>surgical</td>
       <td>false</td>
@@ -2285,7 +2274,7 @@ for col_name in [item for item in dict_cols['observations'] if 'news' in str(ite
 
 <pre><code class="language-python"># temporarily add is_admitted column to arrivals dataset, to be able to use the plot_data_distributions function
 inpatient_arrivals['is_admitted'] = True
-plot_data_distributions(inpatient_arrivals, 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distributions(inpatient_arrivals.reset_index().copy(), 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
 </code></pre>
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_65_0.png" /></p>
 <pre><code class="language-python">plot_data_distributions(inpatient_arrivals, 'is_child', 'is_admitted', 'whether patient admitted', plot_type='hist')

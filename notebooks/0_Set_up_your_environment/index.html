@@ -24,7 +24,7 @@
     
     
       
-        <title>Set up your environment - PatientFlow</title>
+        <title>0. Set up your environment - PatientFlow</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#set-up-your-environment" class="md-skip">
+        <a href="#0-set-up-your-environment" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Set up your environment
+              0. Set up your environment
             
           </span>
         </div>
@@ -413,7 +413,7 @@
   
   
   <span class="md-ellipsis">
-    Set up your environment
+    0. Set up your environment
     
   </span>
   
@@ -426,7 +426,7 @@
   
   
   <span class="md-ellipsis">
-    Set up your environment
+    0. Set up your environment
     
   </span>
   
@@ -449,9 +449,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#set-notebook-to-reload-functions-every-time-a-cell-is-fun" class="md-nav__link">
+  <a href="#set-notebook-to-reload-functions-every-time-a-cell-is-run" class="md-nav__link">
     <span class="md-ellipsis">
-      Set notebook to reload functions every time a cell is fun
+      Set notebook to reload functions every time a cell is run
     </span>
   </a>
   
@@ -514,7 +514,7 @@
   
   
   <span class="md-ellipsis">
-    Introducing our users
+    1. Introducing our users
     
   </span>
   
@@ -537,7 +537,7 @@
   
   
   <span class="md-ellipsis">
-    Create patient-level snapshots
+    2a. Create patient-level snapshots
     
   </span>
   
@@ -560,7 +560,7 @@
   
   
   <span class="md-ellipsis">
-    Make predictions using patient-level snapshots
+    2b. Make predictions using patient-level snapshots
     
   </span>
   
@@ -606,7 +606,7 @@
   
   
   <span class="md-ellipsis">
-    2. Explore the datasets provided
+    2d. Explore the datasets provided
     
   </span>
   
@@ -629,7 +629,7 @@
   
   
   <span class="md-ellipsis">
-    Prepare group snapshots from patient snapshots
+    3a. Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -652,7 +652,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate group snapshots
+    3b. Evaluate group snapshots
     
   </span>
   
@@ -675,7 +675,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed counts without using patient snapshots
+    3c. Predict bed counts without using patient snapshots
     
   </span>
   
@@ -698,7 +698,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed count distributions for subgroups
+    3d. Predict bed count distributions for subgroups
     
   </span>
   
@@ -721,7 +721,7 @@
   
   
   <span class="md-ellipsis">
-    4. Predict emergency demand
+    4a. Specify requirements for emergency demand prediction
     
   </span>
   
@@ -744,7 +744,7 @@
   
   
   <span class="md-ellipsis">
-    Predict emergency demand
+    4b. Predict emergency demand
     
   </span>
   
@@ -767,7 +767,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate predictions of emergency demand
+    4c. Evaluate predictions of emergency demand
     
   </span>
   
@@ -926,9 +926,9 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#set-notebook-to-reload-functions-every-time-a-cell-is-fun" class="md-nav__link">
+  <a href="#set-notebook-to-reload-functions-every-time-a-cell-is-run" class="md-nav__link">
     <span class="md-ellipsis">
-      Set notebook to reload functions every time a cell is fun
+      Set notebook to reload functions every time a cell is run
     </span>
   </a>
   
@@ -994,15 +994,15 @@
   
 
 
-<h1 id="set-up-your-environment">Set up your environment</h1>
-<p>Skip this notebook if you are just browsing. </p>
-<p>In this notebook I will explain where the code looks for data and saves models and media by default, and suggest how to set up your environment. There are two README files that may be useful:</p>
+<h1 id="0-set-up-your-environment">0. Set up your environment</h1>
+<p>In this notebook I will </p>
 <ul>
-<li><a href="https://github.com/UCL-CORU/patientflow#">Repository README</a> in the root of the repository</li>
-<li><a href="../">Notebooks README</a> in this folder</li>
+<li>Suggest how to set up your environment. You might find the checks below useful to confirm that your environment has been set up correctly for the following notebooks to run. </li>
+<li>Explain where the code expects to find data, and where it and saves models and media by default.</li>
 </ul>
-<h2 id="set-notebook-to-reload-functions-every-time-a-cell-is-fun">Set notebook to reload functions every time a cell is fun</h2>
-<p>This is useful if you make any changes to any underlying code</p>
+<p>See also the <a href="../">Notebooks README</a> in this folder for information about how to set the <code>project_root</code> variable. </p>
+<h2 id="set-notebook-to-reload-functions-every-time-a-cell-is-run">Set notebook to reload functions every time a cell is run</h2>
+<p>This is useful if you make any changes to any underlying code.</p>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload 
 %autoreload 2
@@ -1017,10 +1017,10 @@ except ImportError:
 except Exception as e:
    print(f&quot;❌ Error: {e}&quot;)
 </code></pre>
-<pre><code>✓ patientflow 0.1.0 imported successfully
+<pre><code>✓ patientflow 0.2.0 imported successfully
 </code></pre>
-<h2 id="set-project_root-variable">Set project_root variable</h2>
-<p>The variable called project_root tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to project_root. There are various ways to set it, which are described in the notebooks <a href="../">README</a>. </p>
+<h2 id="set-project_root-variable">Set <code>project_root</code> variable</h2>
+<p>The variable called <code>project_root</code> tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to <code>project_root</code>. There are various ways to set it, which are described in the notebooks <a href="../">README</a>. </p>
 <pre><code class="language-python">from patientflow.load import set_project_root
 project_root = set_project_root()
 </code></pre>
@@ -1040,11 +1040,13 @@ if data_file_path.exists():
 else:
     print(&quot;Synthetic data not found - check repository structure&quot;)
 </code></pre>
-<pre><code>patientflow version: 0.1.0
+<pre><code>patientflow version: 0.2.0
 Repository root: /Users/zellaking/Repos/patientflow
 ✓ Synthetic data found
 </code></pre>
-<p>The function will set file paths to default values, as shown here. You can override these as required. </p>
+<p>The<code>set_file_paths</code> function will set file paths to default values within the <code>patientflow</code> folder, as shown below. File paths for saving media and models are derived from the name of the data folder. </p>
+<p>In the notebooks that follow, no trained models are saved by default. All notebooks load data from <code>data_file_path</code> and train models from scratch. However, you may want to make use of <code>model_file_path</code> to save a model locally, especially they are time-consuming to run in your environment. </p>
+<p>The config.yaml file will be loaded from the root directory. It specifies training, validation and test set dates, and some other parameters that will be discussed later.</p>
 <pre><code class="language-python">from patientflow.load import set_file_paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root, 
                data_folder_name=data_folder_name)
@@ -1060,7 +1062,6 @@ Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/synth
 <li>how to configure your environment to run these notebooks</li>
 <li>where the notebooks expect to find data, and where they will save models and media, by default</li>
 </ul>
-<p>Now you are ready to explore the data that has been provided with this repository</p>
 
 
 

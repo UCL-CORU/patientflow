@@ -2952,7 +2952,7 @@
   
   
   <span class="md-ellipsis">
-    Set up your environment
+    0. Set up your environment
     
   </span>
   
@@ -2975,7 +2975,7 @@
   
   
   <span class="md-ellipsis">
-    Introducing our users
+    1. Introducing our users
     
   </span>
   
@@ -2998,7 +2998,7 @@
   
   
   <span class="md-ellipsis">
-    Create patient-level snapshots
+    2a. Create patient-level snapshots
     
   </span>
   
@@ -3021,7 +3021,7 @@
   
   
   <span class="md-ellipsis">
-    Make predictions using patient-level snapshots
+    2b. Make predictions using patient-level snapshots
     
   </span>
   
@@ -3067,7 +3067,7 @@
   
   
   <span class="md-ellipsis">
-    2. Explore the datasets provided
+    2d. Explore the datasets provided
     
   </span>
   
@@ -3090,7 +3090,7 @@
   
   
   <span class="md-ellipsis">
-    Prepare group snapshots from patient snapshots
+    3a. Prepare group snapshots from patient snapshots
     
   </span>
   
@@ -3113,7 +3113,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate group snapshots
+    3b. Evaluate group snapshots
     
   </span>
   
@@ -3136,7 +3136,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed counts without using patient snapshots
+    3c. Predict bed counts without using patient snapshots
     
   </span>
   
@@ -3159,7 +3159,7 @@
   
   
   <span class="md-ellipsis">
-    Predict bed count distributions for subgroups
+    3d. Predict bed count distributions for subgroups
     
   </span>
   
@@ -3182,7 +3182,7 @@
   
   
   <span class="md-ellipsis">
-    4. Predict emergency demand
+    4a. Specify requirements for emergency demand prediction
     
   </span>
   
@@ -3205,7 +3205,7 @@
   
   
   <span class="md-ellipsis">
-    Predict emergency demand
+    4b. Predict emergency demand
     
   </span>
   
@@ -3228,7 +3228,7 @@
   
   
   <span class="md-ellipsis">
-    Evaluate predictions of emergency demand
+    4c. Evaluate predictions of emergency demand
     
   </span>
   
@@ -6466,7 +6466,8 @@ category_filter : array-like, optional
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">435</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">434</span>
+<span class="normal">435</span>
 <span class="normal">436</span>
 <span class="normal">437</span>
 <span class="normal">438</span>
@@ -6583,7 +6584,14 @@ category_filter : array-like, optional
 <span class="normal">549</span>
 <span class="normal">550</span>
 <span class="normal">551</span>
-<span class="normal">552</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist</span><span class="p">(</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist</span><span class="p">(</span>
     <span class="n">snapshots_dict</span><span class="p">,</span>
     <span class="n">X_test</span><span class="p">,</span>
     <span class="n">y_test</span><span class="p">,</span>
@@ -6683,13 +6691,21 @@ category_filter : array-like, optional
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">prediction_moment_weights</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
 
+            <span class="c1"># Apply category filter</span>
+            <span class="k">if</span> <span class="n">category_filter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">prediction_moment_category_filter</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prediction_moment_category_filter</span> <span class="o">=</span> <span class="n">category_filter</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+                    <span class="n">snapshots_to_include</span>
+                <span class="p">]</span>
+
             <span class="c1"># Compute the predicted and observed valuesfor the current snapshot date</span>
             <span class="n">prob_dist_dict</span><span class="p">[</span><span class="n">dt</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
                 <span class="n">X_test</span><span class="o">=</span><span class="n">X_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
                 <span class="n">y_test</span><span class="o">=</span><span class="n">y_test</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
                 <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
                 <span class="n">weights</span><span class="o">=</span><span class="n">prediction_moment_weights</span><span class="p">,</span>
-                <span class="n">category_filter</span><span class="o">=</span><span class="n">category_filter</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">snapshots_to_include</span><span class="p">],</span>
+                <span class="n">category_filter</span><span class="o">=</span><span class="n">prediction_moment_category_filter</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="c1"># Increment the counter and notify the user every 10 snapshot dates processed</span>
@@ -6813,8 +6829,7 @@ category_filter : array-like, optional
 <span class="normal">428</span>
 <span class="normal">429</span>
 <span class="normal">430</span>
-<span class="normal">431</span>
-<span class="normal">432</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
+<span class="normal">431</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist_for_prediction_moment</span><span class="p">(</span>
     <span class="n">X_test</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inference_time</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">category_filter</span><span class="o">=</span><span class="kc">None</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -6871,11 +6886,10 @@ category_filter : array-like, optional
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">inference_time</span><span class="p">:</span>
             <span class="c1"># Apply category filter when calculating observed sum</span>
-            <span class="k">if</span> <span class="n">category_filter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">y_test_filtered</span> <span class="o">=</span> <span class="n">y_test</span> <span class="o">&amp;</span> <span class="n">category_filter</span>
+            <span class="k">if</span> <span class="n">category_filter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;agg_observed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y_test</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">y_test_filtered</span> <span class="o">=</span> <span class="n">y_test</span>
-            <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;agg_observed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y_test_filtered</span><span class="p">)</span>
+                <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;agg_observed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">y_test</span> <span class="o">&amp;</span> <span class="n">category_filter</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">prediction_moment_dict</span><span class="p">[</span><span class="s2">&quot;agg_predicted&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
             <span class="p">{</span><span class="s2">&quot;agg_proba&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">]},</span> <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
@@ -7141,14 +7155,7 @@ Second y-coordinate for curve parameter (required for WeightedPoissonPredictor)<
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/aggregate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
-<span class="normal">558</span>
-<span class="normal">559</span>
-<span class="normal">560</span>
-<span class="normal">561</span>
-<span class="normal">562</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">562</span>
 <span class="normal">563</span>
 <span class="normal">564</span>
 <span class="normal">565</span>
@@ -7294,7 +7301,14 @@ Second y-coordinate for curve parameter (required for WeightedPoissonPredictor)<
 <span class="normal">705</span>
 <span class="normal">706</span>
 <span class="normal">707</span>
-<span class="normal">708</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist_without_patient_snapshots</span><span class="p">(</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span>
+<span class="normal">712</span>
+<span class="normal">713</span>
+<span class="normal">714</span>
+<span class="normal">715</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_prob_dist_without_patient_snapshots</span><span class="p">(</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">categories</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">model</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">WeightedPoissonPredictor</span><span class="p">,</span> <span class="n">rv_discrete</span><span class="p">],</span>
@@ -8559,7 +8573,8 @@ prediction models.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.</p>
+        <p>Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
+Results are sorted by prediction time.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -8624,7 +8639,7 @@ prediction models.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results for each prediction time.</p>
+                <p>Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.</p>
               </div>
             </td>
           </tr>
@@ -8675,22 +8690,41 @@ prediction models.</p>
 <span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
-<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calc_mae_mpe</span><span class="p">(</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calc_mae_mpe</span><span class="p">(</span>
     <span class="n">prob_dist_dict_all</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
     <span class="n">use_most_probable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span> <span class="nb">float</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.</span>
+<span class="sd">    Results are sorted by prediction time.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.</span>
 <span class="sd">        use_most_probable (bool, optional): Whether to use the most probable value or expected value. Defaults to True.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results for each prediction time.</span>
+<span class="sd">        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="c1"># Create temporary results dictionary</span>
+    <span class="n">unsorted_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
 
+    <span class="c1"># Process results as before</span>
     <span class="k">for</span> <span class="n">_prediction_time</span> <span class="ow">in</span> <span class="n">prob_dist_dict_all</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
         <span class="n">expected_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">observed_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -8714,9 +8748,22 @@ prediction models.</p>
             <span class="n">expected_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">expected_value</span><span class="p">)</span>
             <span class="n">observed_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">observed_value</span><span class="p">)</span>
 
-        <span class="n">results</span><span class="p">[</span><span class="n">_prediction_time</span><span class="p">]</span> <span class="o">=</span> <span class="n">calculate_results</span><span class="p">(</span><span class="n">expected_values</span><span class="p">,</span> <span class="n">observed_values</span><span class="p">)</span>
+        <span class="n">unsorted_results</span><span class="p">[</span><span class="n">_prediction_time</span><span class="p">]</span> <span class="o">=</span> <span class="n">calculate_results</span><span class="p">(</span>
+            <span class="n">expected_values</span><span class="p">,</span> <span class="n">observed_values</span>
+        <span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">results</span>
+    <span class="c1"># Sort results by prediction time</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_time_value</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="c1"># Extract time from key (e.g., &#39;admissions_1530&#39; -&gt; 1530)</span>
+        <span class="n">time_str</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">time_str</span><span class="p">)</span>
+
+    <span class="c1"># Create sorted dictionary</span>
+    <span class="n">sorted_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="nb">sorted</span><span class="p">(</span><span class="n">unsorted_results</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">get_time_value</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sorted_results</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8747,23 +8794,7 @@ DataFrame with added probability columns</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
 <span class="normal">135</span>
@@ -8792,7 +8823,23 @@ DataFrame with added probability columns</p>
 <span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span>
-<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_admission_probs_relative_to_prediction</span><span class="p">(</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_admission_probs_relative_to_prediction</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span> <span class="n">prediction_datetime</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">is_before</span><span class="o">=</span><span class="kc">True</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -9025,23 +9072,7 @@ prediction_time: tuple of (hour, minute)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">258</span>
 <span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
@@ -9063,7 +9094,23 @@ prediction_time: tuple of (hour, minute)</p>
 <span class="normal">277</span>
 <span class="normal">278</span>
 <span class="normal">279</span>
-<span class="normal">280</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_weighted_observed</span><span class="p">(</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">calculate_weighted_observed</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">prediction_time</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -9194,29 +9241,29 @@ prediction_time: tuple of (hour, minute)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">452</span>
-<span class="normal">453</span>
-<span class="normal">454</span>
-<span class="normal">455</span>
-<span class="normal">456</span>
-<span class="normal">457</span>
-<span class="normal">458</span>
-<span class="normal">459</span>
-<span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
-<span class="normal">463</span>
-<span class="normal">464</span>
-<span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">468</span>
 <span class="normal">469</span>
 <span class="normal">470</span>
 <span class="normal">471</span>
 <span class="normal">472</span>
 <span class="normal">473</span>
-<span class="normal">474</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">combine_distributions</span><span class="p">(</span><span class="n">dist1</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">dist2</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">combine_distributions</span><span class="p">(</span><span class="n">dist1</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">dist2</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Combine two probability distributions using convolution.</span>
 
@@ -9261,12 +9308,12 @@ prediction_time: tuple of (hour, minute)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_time_mask</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">hour</span><span class="p">,</span> <span class="n">minute</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_time_mask</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">hour</span><span class="p">,</span> <span class="n">minute</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a mask for times before/after a specific hour:minute&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;arrival_datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span> <span class="o">&gt;</span> <span class="n">hour</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span>
         <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;arrival_datetime&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span> <span class="o">==</span> <span class="n">hour</span><span class="p">)</span>
@@ -9476,23 +9523,7 @@ prediction_time: tuple of (hour, minute)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
-<span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span>
-<span class="normal">493</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">493</span>
 <span class="normal">494</span>
 <span class="normal">495</span>
 <span class="normal">496</span>
@@ -9537,7 +9568,23 @@ prediction_time: tuple of (hour, minute)</p>
 <span class="normal">535</span>
 <span class="normal">536</span>
 <span class="normal">537</span>
-<span class="normal">538</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_combined_model</span><span class="p">(</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_combined_model</span><span class="p">(</span>
     <span class="n">prob_dist_dict_all</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">yta_preds</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
@@ -9771,23 +9818,7 @@ prediction_time: tuple of (hour, minute)</p>
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span>
-<span class="normal">406</span>
-<span class="normal">407</span>
-<span class="normal">408</span>
-<span class="normal">409</span>
-<span class="normal">410</span>
-<span class="normal">411</span>
-<span class="normal">412</span>
-<span class="normal">413</span>
-<span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">417</span>
 <span class="normal">418</span>
 <span class="normal">419</span>
 <span class="normal">420</span>
@@ -9819,7 +9850,23 @@ prediction_time: tuple of (hour, minute)</p>
 <span class="normal">446</span>
 <span class="normal">447</span>
 <span class="normal">448</span>
-<span class="normal">449</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_six_week_average</span><span class="p">(</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_six_week_average</span><span class="p">(</span>
     <span class="n">prob_dist_dict_all</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]],</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -9901,23 +9948,7 @@ tuple of (arrived_before, arrived_after) DataFrames for specified time period</p
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">180</span>
 <span class="normal">181</span>
 <span class="normal">182</span>
 <span class="normal">183</span>
@@ -9976,7 +10007,23 @@ tuple of (arrived_before, arrived_after) DataFrames for specified time period</p
 <span class="normal">236</span>
 <span class="normal">237</span>
 <span class="normal">238</span>
-<span class="normal">239</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_arrivals_with_admission_probs</span><span class="p">(</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_arrivals_with_admission_probs</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">prediction_datetime</span><span class="p">,</span>
     <span class="n">prediction_window</span><span class="p">,</span>
@@ -10082,23 +10129,7 @@ Returns:
 
             <details class="quote">
               <summary>Source code in <code>src/patientflow/evaluate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">307</span>
 <span class="normal">308</span>
 <span class="normal">309</span>
 <span class="normal">310</span>
@@ -10189,7 +10220,23 @@ Returns:
 <span class="normal">395</span>
 <span class="normal">396</span>
 <span class="normal">397</span>
-<span class="normal">398</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict_using_previous_weeks</span><span class="p">(</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict_using_previous_weeks</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">dt</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
