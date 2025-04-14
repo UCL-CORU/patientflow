@@ -1,4 +1,4 @@
-# Prepare group snapshots from patient snapshots
+# 3a. Prepare group snapshots from patient snapshots
 
 Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a prediction time.
 
@@ -25,20 +25,16 @@ I demonstrate functions in `patientflow` that handle the preparation of group sn
 %autoreload 2
 ```
 
-## Set up prediction times
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
 
-The first step is to specify the times of day at which we want to create predictions.
+## Generate fake snapshots
 
-```python
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] # each time is expressed as a tuple of (hour, minute)
-```
-
-## Create patient snapshots
-
-First I generate some fake data on patients in an Emergency Department (ED). See the [2a_Create_patient_snapshots](2a_Create_patient_snapshots.md) notebook for more information about to convert finished hospital visits into snapshots.
+See [a previous notebook](2a_Create_patient_snapshots.md) for more background on this.
 
 ```python
 from patientflow.generate import create_fake_snapshots
+
 prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
 snapshots_df=create_fake_snapshots(prediction_times=prediction_times,
                                    start_date='2023-01-01',
@@ -465,7 +461,7 @@ snapshots_df.loc[first_group_snapshot_values]
 
 More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with the `prepare_patient_snapshots`, which makes the data ready for processing in groups. This will:
 
-- filter out visits to include only those at the requested prediction time
+- filter visits to include only those at the requested prediction time
 - randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, given the name of the column containing visit identifiers
 - return a tuple of (X, y) matrices, ready for inference. The column containing the outcome (ie the label) is specified in the `label_col` argument.
 
@@ -700,11 +696,9 @@ first_snapshot_X
 </table>
 </div>
 
-## Very simple example of making a prediction for a group snapshot
+## Simple example of making a prediction for a group snapshot
 
-Let's make some predictions for this group, in the simplest possible way. We'll give each of them a probability of being admitted of 0.2.
-
-This is equivalent to computing the probable outcome of 12 coin flips, with probability of heads of 0.2.
+Let's make some predictions for this group. We'll give each of them a probability of being admitted of 0.2. This is equivalent to computing the probable outcome of 12 coin flips, with probability of heads of 0.2.
 
 ```python
 from scipy import stats
@@ -717,6 +711,8 @@ prob_dist_data
            1.32875551e-01, 5.31502203e-02, 1.55021476e-02, 3.32188877e-03,
            5.19045120e-04, 5.76716800e-05, 4.32537600e-06, 1.96608000e-07,
            4.09600000e-09])
+
+We can plot the predicted distribution using the `prob_dist_plot` function from patientflow.viz
 
 ```python
 prob_admission_first_group_snapshot = 0.2*len(first_group_snapshot_values)
@@ -733,11 +729,11 @@ prob_dist_plot(prob_dist_data, title,
     include_titles=True)
 ```
 
-![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_20_0.png)
+![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_19_0.png)
 
-## More realistic example
+## Example of making a prediction for a group snapshot with varying probabilities for each patient
 
-In the cell below, I'm using `create_temporal_splits()` to create a training, validation and test set and `train_classifier()` to prepare a XGBoost classifier. This classifier will be used to make predictions. See the [2b_Predict_using_patient_snapshots](2b_Predict_using_patient_snapshots.md) notebook for more on the functions shown here.
+In the cell below, I'm using `create_temporal_splits()` to create a training, validation and test set and `train_classifier()` to prepare a XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See the [2b_Predict_using_patient_snapshots](2b_Predict_using_patient_snapshots.md) notebook for more on the functions shown here.
 
 ```python
 from datetime import date
@@ -786,12 +782,12 @@ model = train_classifier(
     Valid-Test: 75 of 3019
     Train-Test: 226 of 5084
     All Sets: 0 of 6070 total patients
-    Split sizes: [3717, 1216, 2467]
+    Split sizes: [3696, 1204, 2502]
 
 Now, using the trained model, I will predict a bed count distribution for one snapshot using `get_prob_dist_for_prediction_moment()`. That function expects the following:
 
 - `X_test` - the dataset of patient snapshots to be passed to the model
-- `y_test` - the vector containing the outcome for each patient snapshot
+- `y_test` - the vector containing the outcome for each patient snapshot (if these are known)
 - `model` - a trained model
 - `inference_time` (defaults to True) - if set to False, the function will calculate the observed outcome for the group snapshot; set this to True if the outcomes for each patient as as yet unknown
 - `weights` - an optional parameter to weight the probabilities returned by the model. This will be demonstrated in later examples
@@ -833,7 +829,7 @@ prob_dist_plot(bed_count_prob_dist['agg_predicted'], title,
 
 ```
 
-![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_27_0.png)
+![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_26_0.png)
 
 The `prob_dist_plot` function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.
 
@@ -846,7 +842,7 @@ ax.legend();
 
 ```
 
-![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_29_0.png)
+![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_28_0.png)
 
 ## Make predictions for group snapshots
 
@@ -884,14 +880,7 @@ prob_dists_for_group_snapshots = get_prob_dist(
     )
 ```
 
-    Calculating probability distributions for 31 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 31 snapshot dates
-
-In the next cell I pick a key at random and visualise the predicted distribution.
+In the next cell I pick a date from the test set at random, and visualise the predicted distribution.
 
 ```python
 import random
@@ -909,7 +898,7 @@ ax.axvline(x=prob_dists_for_group_snapshots[random_snapshot_date]['agg_observed'
 ax.legend();
 ```
 
-![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_35_0.png)
+![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_34_0.png)
 
 The returned object is now ready for evaluation, which I cover in the next notebook.
 
@@ -921,4 +910,4 @@ In this notebook I have demonstrated the functions in `patientflow` that handle 
 - `get_prob_dist_for_prediction_moment`, which computes predicted and observed probabilities for a specific snapshot date and prediction time.
 - `get_prob_dist` which computes probability distributions for multiple snapshot dates.
 
-I have also shown the use of `prob_dist_plot` which can be used to visualise the predicted distribution for one group snapshot.
+I have also shown the use of `prob_dist_plot` to visualise the predicted distribution for one group snapshot.

@@ -1,15 +1,15 @@
-# Set up your environment
+# 0. Set up your environment
 
-Skip this notebook if you are just browsing.
+In this notebook I will
 
-In this notebook I will explain where the code looks for data and saves models and media by default, and suggest how to set up your environment. There are two README files that may be useful:
+- Suggest how to set up your environment. You might find the checks below useful to confirm that your environment has been set up correctly for the following notebooks to run.
+- Explain where the code expects to find data, and where it and saves models and media by default.
 
-- [Repository README](https://github.com/UCL-CORU/patientflow#) in the root of the repository
-- [Notebooks README](README.md) in this folder
+See also the [Notebooks README](README.md) in this folder for information about how to set the `project_root` variable.
 
-## Set notebook to reload functions every time a cell is fun
+## Set notebook to reload functions every time a cell is run
 
-This is useful if you make any changes to any underlying code
+This is useful if you make any changes to any underlying code.
 
 ```python
 # Reload functions every time
@@ -30,11 +30,11 @@ except Exception as e:
    print(f"❌ Error: {e}")
 ```
 
-    ✓ patientflow 0.1.0 imported successfully
+    ✓ patientflow 0.2.0 imported successfully
 
-## Set project_root variable
+## Set `project_root` variable
 
-The variable called project_root tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to project_root. There are various ways to set it, which are described in the notebooks [README](README.md).
+The variable called `project_root` tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to `project_root`. There are various ways to set it, which are described in the notebooks [README](README.md).
 
 ```python
 from patientflow.load import set_project_root
@@ -61,11 +61,15 @@ else:
     print("Synthetic data not found - check repository structure")
 ```
 
-    patientflow version: 0.1.0
+    patientflow version: 0.2.0
     Repository root: /Users/zellaking/Repos/patientflow
     ✓ Synthetic data found
 
-The function will set file paths to default values, as shown here. You can override these as required.
+The`set_file_paths` function will set file paths to default values within the `patientflow` folder, as shown below. File paths for saving media and models are derived from the name of the data folder.
+
+In the notebooks that follow, no trained models are saved by default. All notebooks load data from `data_file_path` and train models from scratch. However, you may want to make use of `model_file_path` to save a model locally, especially they are time-consuming to run in your environment.
+
+The config.yaml file will be loaded from the root directory. It specifies training, validation and test set dates, and some other parameters that will be discussed later.
 
 ```python
 from patientflow.load import set_file_paths
@@ -84,5 +88,3 @@ In this notebook you have seen
 
 - how to configure your environment to run these notebooks
 - where the notebooks expect to find data, and where they will save models and media, by default
-
-Now you are ready to explore the data that has been provided with this repository

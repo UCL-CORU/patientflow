@@ -75,16 +75,19 @@ def calc_mae_mpe(
 ) -> Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]:
     """
     Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
+    Results are sorted by prediction time.
 
     Args:
         prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
         use_most_probable (bool, optional): Whether to use the most probable value or expected value. Defaults to True.
 
     Returns:
-        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results for each prediction time.
+        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.
     """
-    results: Dict[Any, Dict[str, Union[List[Union[int, float]], float]]] = {}
+    # Create temporary results dictionary
+    unsorted_results: Dict[Any, Dict[str, Union[List[Union[int, float]], float]]] = {}
 
+    # Process results as before
     for _prediction_time in prob_dist_dict_all.keys():
         expected_values: List[Union[int, float]] = []
         observed_values: List[float] = []
@@ -108,9 +111,22 @@ def calc_mae_mpe(
             expected_values.append(expected_value)
             observed_values.append(observed_value)
 
-        results[_prediction_time] = calculate_results(expected_values, observed_values)
+        unsorted_results[_prediction_time] = calculate_results(
+            expected_values, observed_values
+        )
 
-    return results
+    # Sort results by prediction time
+    def get_time_value(key: str) -> int:
+        # Extract time from key (e.g., 'admissions_1530' -> 1530)
+        time_str = key.split("_")[1]
+        return int(time_str)
+
+    # Create sorted dictionary
+    sorted_results = dict(
+        sorted(unsorted_results.items(), key=lambda x: get_time_value(x[0]))
+    )
+
+    return sorted_results
 
 
 def calculate_admission_probs_relative_to_prediction(

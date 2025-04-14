@@ -1,4 +1,4 @@
-# Create patient-level snapshots
+# 2a. Create patient-level snapshots
 
 ## About snapshots
 
@@ -6,22 +6,27 @@
 
 - Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
 - Patient snapshot: A summary of data from the EHR capturing is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
-- Group snaphot: A set of patients snapshots. Each group snapshot has a date and a prediction time associated with it.
+- Group snapshot: A set of patient snapshots. Each group snapshot has a date and a prediction time associated with it.
 - Prediction window: A period of hours that begins at the prediction time.
 
-Its intended use is with data on hospital visits that are unfinished, to predict whether some outcome (admission from A&E, discharge from hospital, or transfer to another clinical specialty) will happen within the prediction window. What the outcome is doesn't really matter; the same methods can be used.
+To use `patientflow` your data should be in snapshot form.
 
-The utility of our approach - and the thing that makes it very generalisable - is that we then build up from the patient-level predictions into a predictions for a whole cohort of patients at a point in time. That step is what creates useful information for bed managers. I show this in later notebooks.
+In this notebook I suggest how to you might prepare your data, starting from past hospital visits that have already finished. I start with fake data on Emergency Department visits, and demonstrate how to convert it into snapshots. There are two examples
 
-To use `patientflow` your data should be in snapshot form. Here I suggest how to you might prepare your data, starting from past hospital visits that have already finished. I'm going to use some fake data on Emergency Department visits, and imagine that we want to predict whether a patient will be admitted to a ward after they leave the ED, or discharged from hospital.
+- A simple example of creating snapshots assuming you have one flat table of hospital visits
+- An example of creating snapshots from data structured as if a relational database.
 
-NOTE: In practice, how to _whether a patient was admitted after the ED visit_, and _when they were ready to be admitted_, can be tricky. How do you account for the fact that the patient may wait in the ED for a bed, due to lack of available beds? Likewise, if you are trying to predict discharge at the end of a hospital visit, should that that be the time they were ready to leave, or the time they actually left? Discharge delays are common, due to waiting for medication or transport, or waiting for onward care provision to become available.
+## A note on creating your own shapshots
+
+The snapshot creation shown here is designed to work with fake data generated below. You would need to create your own version of this process, to handle the data you have.
+
+In practice, deciding from data _whether a patient was admitted after the ED visit_, and _when they were ready to be admitted_, can be tricky. How do you account for the fact that the patient may wait in the ED for a bed, due to lack of available beds? Likewise, if you are trying to predict discharge at the end of a hospital visit, should that that be the time they were ready to leave, or the time they actually left? Discharge delays are common, due to waiting for medication or transport, or waiting for onward care provision to become available.
 
 The outcome that you are aiming for will depend on your setting. You may have to infer when a patient was ready from available data. Suffice to say, think carefully about what it is you are trying to predict, and how you will identify that outcome in data.
 
 ## Creating fake finished visits
 
-I'll start by loading some fake data resembling structure of EHR data on Emergency Department (ED) visits. In my fake data, each visit has one row, with an arrival time at the ED, a discharge time from the ED, the patient's age and an outcome of whether they were admitted after the ED visit.
+I'll start by loading some fake data resembling structure of EHR data on Emergency Department (ED) visits, using a function called `create_fake_finished_visits`. In my fake data, each visit has one row, with an arrival time at the ED, a discharge time from the ED, the patient's age and an outcome of whether they were admitted after the ED visit.
 
 The `is_admitted` column is our label, indicating the outcome in this imaginary case.
 
@@ -121,9 +126,9 @@ visits_df.head()
 </table>
 </div>
 
-## Create snapshots from fake data
+## Example 1: Create snapshots from fake data - a simple example
 
-My goal is to create snapshots of these visits. First, I define the times of day I will be issuing predictions at.
+My goal is to create snapshots of these visits. First, I define the times of day I will be issuing predictions at. Each time is expressed as a tuple of (hour, minute)
 
 ```python
 prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] # each time is expressed as a tuple of (hour, minute)
@@ -139,6 +144,7 @@ snapshot_dates = []
 start_date = date(2023, 1, 1)
 end_date = date(2023, 4, 1)
 
+# Iterate to create an array of dates
 current_date = start_date
 while current_date < end_date:
     snapshot_dates.append(current_date)
@@ -311,7 +317,8 @@ snapshots_df.head()
 Some patients are present at more than one of the prediction times, given them more than one entry in snapshots_df
 
 ```python
-snapshots_df.visit_number.value_counts()
+# Count the number of snapshots per visit and show top five
+snapshots_df.visit_number.value_counts().head()
 ```
 
     visit_number
@@ -320,13 +327,9 @@ snapshots_df.visit_number.value_counts()
     1432    3
     1292    3
     1604    3
-           ..
-    777     1
-    787     1
-    774     1
-    770     1
-    2238    1
-    Name: count, Length: 1675, dtype: int64
+    Name: count, dtype: int64
+
+Below I show one example of a patient who was in the ED long enough to have multiple snapshots, captured at the various prediction times during their visit.
 
 ```python
 # Displaying the snapshots for a visit with multiple snapshots
@@ -424,15 +427,15 @@ snapshots_df[snapshots_df.visit_number == example_visit_number]
 </table>
 </div>
 
-## Creating fake finished visits - a more complicated example
+## Example 2: Creating fake finished visits from a relational database
 
-In an EHR, information about the patient accumulates as the ED visit progresses. Patients may visit various locations in the ED, such as triage, where their acuity is recorded, and they have various different things done to them, like measurements of vital signs or lab tests.
+Electronic Health Record systems and their data warehouses are often structured as relational databases, with information stored on multiple linked tables. Timestamps are used to capture how information about a patient accumulates as the ED visit progresses. Patients may visit various locations in the ED, such as triage, where their acuity is recorded, and they have various different things done to them, like measurements of vital signs or lab tests.
 
 The function below returns three fake dataframes, meant to resemble EHR data.
 
-- hospital visit
-- observations - with a single measurement - a triage score - plus a timestamp for when that was recorded
-- lab orders - with five types of lab orders plus a timestamp for when that test was requested
+- hospital visit dataframe - already seen above
+- observations dataframe - with a single measurement, a triage score, plus a timestamp for when that was recorded
+- lab orders dataframe - with five types of lab orders plus a timestamp for when that test was requested
 
 The function that creates the fake data returns one triage score for each visit, within 10 minutes of arrival
 
@@ -504,7 +507,7 @@ observations_df.head()
 </table>
 </div>
 
-The function that creates the fake data returns a random number of lab tests for each patient, for visits over 2 hours
+The function that creates the fake data returns a random number of lab tests for each patient, for visits over 2 hours. Not all visits will have lab orders in this fake data.
 
 ```python
 print(f'There are {len(lab_orders_df)} lab orders in the dataset, for {len(lab_orders_df.visit_number.unique())} visits')
@@ -572,9 +575,7 @@ lab_orders_df.head()
 </table>
 </div>
 
-## Create snapshots from fake data - a more complicated example
-
-A function called `create_fake_snapshots()` will pull information from all three tables. Note that this function has been designed to work with the fake data generated above. You would need to create your own version of this function, to handle the data you have.
+The `create_fake_snapshots()` function will pull information from the three fake tables, and prepare snapshots.
 
 ```python
 from datetime import date
@@ -837,8 +838,8 @@ new_snapshots_df[new_snapshots_df.visit_number==example_visit_number]
 
 ## Conclusion
 
-Here I have shown how to create snapshots from finished patient visits. Note that there is a summarisation element going on. Above, there are counts of the number of lab orders, and the latest triage score. In the same vein, you might just take the last recorded heart rate or oxygen saturation level, or the latest value of a lab result. A snapshot loses some of the richness of the full data in an EHR, but with the benefit that you get data that replicates unfinished visits.
+Here I have shown how to create snapshots from finished patient visits. Note that there is summarisation involved. The lab orders have been summarised into counts, and the latest triage score has been taken. In the same vein, you might just take the last recorded heart rate or oxygen saturation level, or the latest value of a lab result. A snapshot loses some of the richness of the full data in an EHR, but with the benefit that you get data that replicate unfinished visits.
 
-You might ask why we don't use time series data, to hang on to that richness. The main reason is that hospital visit data can be very patchy, with a lot of missingness. For example, in the ED, a severely ill patient might have enough heart rate values recorded to constitute a time series, while a non-acute patient (say someone with a sprained ankle) might have one or no heart rate measurements. In the case of predicting probability of admission after ED, the absence of data is revealing in itself. By summarising, snapshots allow us to capture that variation in data completeness.
+You might ask why we don't use time series data, to hang on to that richness. The main reason is that hospital visit data can be very patchy. For example, in the ED, a severely ill patient might have enough heart rate values recorded to constitute a time series, while a non-acute patient (say someone with a sprained ankle) might have one or no heart rate measurements. This data missingness is not a problem, however. In the case of predicting probability of admission after ED, the absence of data is revealing in itself. By summarising, snapshots allow us to capture that variation in data completeness.
 
 In the next notebook I'll show how to make predictions using patient snapshots.

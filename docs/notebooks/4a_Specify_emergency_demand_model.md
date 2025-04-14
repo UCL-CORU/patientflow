@@ -1,10 +1,12 @@
-# 4. Predict emergency demand
+# 4a. Specify requirements for emergency demand prediction
 
-In previous notebooks I have introduced all of the building blocks provided in `patientflow` to make predictions of bed counts within a prediction window. Here I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by specialty, over the next 8 hours. The predictions are aspirational; they assume that ED four-hour targets are met.
+In previous notebooks I have introduced all of the building blocks provided in `patientflow` to make predictions of bed counts within a prediction window. In the next notebook I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by specialty, over the next 8 hours. The predictions are aspirational; they assume that ED four-hour targets are met.
+
+First, a brief recap on the requirements of our models.
 
 ## Recap on the requirements of our users
 
-In [the first notebook](1_Meet_the_users_of_our_predictions.md) I introduced bed managers and their work. We have worked closely together over five year, to understand their requirements for emergency demand predictions.
+In [the first notebook](1_Meet_the_users_of_our_predictions.md) I introduced bed managers and their work. Through working closely with them over five years, we have developed an understanding their requirements for emergency demand predictions.
 
 - They want information at specific times of day to coincide with their flow huddles, with an 8-hour view of incoming demand at these times
 - The 8-hour view needs to take account of patients who are yet to arrive, who should be admitted within that time

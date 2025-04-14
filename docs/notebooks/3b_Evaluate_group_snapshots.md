@@ -1,20 +1,22 @@
-# Evaluate group snapshots
+# 3b. Evaluate group snapshots
 
-In the last notebook, I showed how to prepare group snapshots using `patientflow`. Now, let's think about how to evaluate those models. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts over the period of the test set.
+In the last notebook, I showed how to prepare group snapshots using `patientflow`. Now, let's think about how to evaluate those models. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts at each prediction time over the period of the test set.
 
-There are various approaches. A common approach is to generate a single number such as mean squared error. For this:
+There are various approaches. Here I demonstrate two.
 
-a. for each prediction moment, compare the observed number of admissions and the expected value from the probability distribution for the model predictions at that moment. These can be compared, over the whole test set, using Mean Absolute Error (MAE) - which avoids positive and negative deviations cancelling each other out - and the error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
+### Mean Absolute Error and Mean Percentage Error
 
-b. for each prediction moment, compare the expected value of the probability distribution with a rolling average of six weeks
+For each prediction moment, subtract the expected value from the predicted probability distribution from the observed number of admissions to get an error value for each prediction time. Over the whole test set, calculate the Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
 
-Other methods appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution on 10% of prediction moments, and likewise in the highest tenth on 10% of prediction moments. This is evaluated by:
+This is a common approach so it is worth showing. I also plot the difference between expected and observed, which is more revealing the calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate.
 
-c. a QQ plot, a tool used to compare one probility distribution with another. The observed values across the test set are treated as a distribution, and compared with predicted distribution
+### QQ Plots
+
+Other methods appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution on 10% of prediction moments, and likewise in the highest tenth on 10% of prediction moments. A Quantile-Quantile (QQ) Plot can be used to compare one probability distribution with another. The observed values across the test set are treated as a distribution, and compared with predicted distribution
 
 ### About the data used in this notebook
 
-I'm going to use real patient data from visits to the Emergency Department (ED) and Same Day Emergency Care (SDEC) unit at UCLH to demonstrate the evaluation. The methods shown will work on any data in the same structure.
+I'm going to use real patient data from visits to the Emergency Department (ED) at UCLH to demonstrate the evaluation. The methods shown will work on any data in the same structure.
 
 You can request the datasets that are used here on [Zenodo](https://zenodo.org/records/14866057). Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
 
@@ -56,7 +58,7 @@ ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of `patientflow`.
 
 ```python
-#
+#  load config file
 from patientflow.load import load_config_file
 params = load_config_file(config_path)
 
@@ -81,11 +83,9 @@ print(f"Test set ends: {end_test_set}")
 
 ## Train one model for each prediction time
 
-First, we apply the temporal splits as shown in the previous notebook.
+See previous notebooks for more on the code below.
 
 ```python
-
-
 from datetime import date
 from patientflow.prepare import create_temporal_splits
 
@@ -98,39 +98,15 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     end_test_set,
     col_name="snapshot_date", # states which column contains the date to use when making the splits
     visit_col="visit_number", # states which column contains the visit number to use when making the splits
-
 )
 
-```
+# set prediction times
+prediction_times = ed_visits.prediction_time.unique()
 
-    Split sizes: [53801, 6519, 19494]
+# define variables to exclude
+exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
 
-Next we train a model for each prediction time.
-
-```python
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-print("\nNumber of observations for each prediction time")
-print(ed_visits.prediction_time.value_counts())
-```
-
-    Number of observations for each prediction time
-    prediction_time
-    (15, 30)    22279
-    (12, 0)     19075
-    (22, 0)     18842
-    (9, 30)     11421
-    (6, 0)       8197
-    Name: count, dtype: int64
-
-As shown in the previous notebook, we define ordinal mappings where appropriate. These include:
-
-- `age_group` - Age on arrival at the ED, defined in groups
-- `latest_obs_manchester_triage_acuity` - Manchester Triage Score (where blue is the lowest acuity and red the highest)
-- `latest_obs_objective_pain_score` - ranging from nil to very severe
-- `latest_obs_level_of_consciousness` the ACVPU measure of consciousness, where A (aware) and U (unconscious) at are the extremes.
-
-```python
+# set ordinal mappings
 ordinal_mappings = {
     "age_group": [
         "0-17",
@@ -162,14 +138,9 @@ ordinal_mappings = {
         "P", #pain - responds to pain stimulus
         "U" #unconscious - no response to pain or voice stimulus
     ]    }
-
 ```
 
-In the real data, there are some columns that will be used for predicting admission to specialty, if admitted, that we don't use here.
-
-```python
-exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
-```
+    Split sizes: [53801, 6519, 19494]
 
 We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set.
 
@@ -202,13 +173,18 @@ for prediction_time in prediction_times:
     trained_models[model_key] = model
 ```
 
-    Training model for (6, 0)
-    Training model for (9, 30)
     Training model for (12, 0)
     Training model for (15, 30)
+    Training model for (6, 0)
+    Training model for (9, 30)
     Training model for (22, 0)
 
 ## Prepare group snapshots
+
+We will now iterate over all group snapshots, to create the following
+
+- a prediction probability distribution for all group snapshots
+- the observed number of patients with the outcome for each group snapshot
 
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -238,113 +214,45 @@ for _prediction_time in prediction_times:
         )
 ```
 
-    Processing :(6, 0)
-    Calculating probability distributions for 92 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 40 snapshot dates
-    Processed 50 snapshot dates
-    Processed 60 snapshot dates
-    Processed 70 snapshot dates
-    Processed 80 snapshot dates
-    Processed 90 snapshot dates
-    Processed 92 snapshot dates
-
-    Processing :(9, 30)
-    Calculating probability distributions for 92 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 40 snapshot dates
-    Processed 50 snapshot dates
-    Processed 60 snapshot dates
-    Processed 70 snapshot dates
-    Processed 80 snapshot dates
-    Processed 90 snapshot dates
-    Processed 92 snapshot dates
-
     Processing :(12, 0)
-    Calculating probability distributions for 92 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 40 snapshot dates
-    Processed 50 snapshot dates
-    Processed 60 snapshot dates
-    Processed 70 snapshot dates
-    Processed 80 snapshot dates
-    Processed 90 snapshot dates
-    Processed 92 snapshot dates
 
     Processing :(15, 30)
-    Calculating probability distributions for 92 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 40 snapshot dates
-    Processed 50 snapshot dates
-    Processed 60 snapshot dates
-    Processed 70 snapshot dates
-    Processed 80 snapshot dates
-    Processed 90 snapshot dates
-    Processed 92 snapshot dates
+
+    Processing :(6, 0)
+
+    Processing :(9, 30)
 
     Processing :(22, 0)
-    Calculating probability distributions for 92 snapshot dates
-    This may take a minute or more
-    Processed 10 snapshot dates
-    Processed 20 snapshot dates
-    Processed 30 snapshot dates
-    Processed 40 snapshot dates
-    Processed 50 snapshot dates
-    Processed 60 snapshot dates
-    Processed 70 snapshot dates
-    Processed 80 snapshot dates
-    Processed 90 snapshot dates
-    Processed 92 snapshot dates
 
 ## Evaluate group snapshots
 
-## Comparing observed with expected values
+### Comparing observed with expected values
+
+The mean difference between observed and expected values are reported below.
 
 ```python
 from patientflow.evaluate import calc_mae_mpe
 results = calc_mae_mpe(prob_dist_dict_all)
-# Print results for verification
-for _prediction_time, values in results.items():
-    print(f"\n{_prediction_time}:")
-    print(f"  MAE: {values['mae']:.2f}")
-    print(f"  MPE: {values['mpe']:.2f}%")
+
+print("\nTime    MAE    MPE")
+print("----------------------")
+for prediction_time, values in results.items():
+    # Extract time by finding the underscore and formatting what comes after
+    time_str = prediction_time.split('_')[1]
+    formatted_time = f"{time_str[:2]}:{time_str[2:]}"
+    print(f"{formatted_time}  {values['mae']:<6.2f}  {values['mpe']:.2f}%")
+
 ```
 
-    admissions_0600:
-      MAE: 1.48
-      MPE: 41.19%
+    Time    MAE    MPE
+    ----------------------
+    06:00  1.49    41.43%
+    09:30  1.46    36.29%
+    12:00  2.05    37.41%
+    15:30  2.61    29.19%
+    22:00  2.99    26.67%
 
-    admissions_0930:
-      MAE: 1.32
-      MPE: 30.89%
-
-    admissions_1200:
-      MAE: 2.00
-      MPE: 37.48%
-
-    admissions_1530:
-      MAE: 2.46
-      MPE: 26.91%
-
-    admissions_2200:
-      MAE: 3.17
-      MPE: 28.65%
-
-Above, the 09:30 time slot showed the lowest Mean Absolute Error (MAE) at 1.32, indicating it had the most accurate predictions. However, the Mean Percentage Error (MPE) was lowest for the 15:30 time slot at 26.91%, suggesting that while the 15:30 predictions had larger absolute errors, they were proportionally more accurate relative to the actual values.
-
-The evening admissions (22:00) showed the highest MAE at 3.17, indicating the largest prediction errors occurred during this time period.
+The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally more accurate relative to the actual values.
 
 Similar observations can be drawn from plotting the observed values against the expected, as shown below.
 
@@ -353,7 +261,7 @@ from patientflow.viz.evaluation_plots import plot_observed_against_expected
 plot_observed_against_expected(results)
 ```
 
-![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_21_0.png)
+![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png)
 
 Fro the plots above:
 
@@ -365,7 +273,7 @@ Fro the plots above:
 
 ### QQ (quantile-quantile) Plots
 
-A QQ plot compares a predicted distribution to an observed distribution. In this case, the predicted distribution is the combined set of probability distributions (one for each snapshot date in the test set) at the given prediction time. The observed distribution is derived from the actual number of patients who were later admitted in each of those snapshot dates.
+A QQ plot compares a predicted distribution to an observed distribution. In this case, the predicted distribution is the combined set of probability distributions (one for each snapshot date in the test set) at the given prediction time. The observed distribution is derived from the actual number of patients in each group snapshot who were later admitted.
 
 If the predicted and observed distributions are similar, the qq plot should adhere closely to the y = x line in the plot.
 
@@ -377,12 +285,9 @@ qq_plot(prediction_times,
         model_name="admissions")
 ```
 
-![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_24_0.png)
+![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_18_0.png)
 
-The 12:00 distributions show the closest adherence to the theoretical distribution (closest to the diagonal line). The 15:30 plot shows reasonable alignment but with some deviation at the extremes.
-The 06:00 show deviations in the middle range, suggesting some bias in predictions.
-The 09:30 plot shows some deviation at the lower end.
-The 22:00 QQ plot shows significant deviation from the theoretical distribution, with a particularly strong departure in the upper quantiles.
+The 12:00 distributions show the closest adherence to the theoretical distribution (closest to the diagonal line). The 15:30 plot shows reasonable alignment but with some deviation in the lower range. The 06:00 and 09:30 show greater deviations in the middle range, suggesting some bias in predictions, and the 22:00 QQ plot shows significant deviation from the theoretical distribution, with a particularly strong departure in the upper quantiles.
 
 ## Conclusions
 
@@ -390,6 +295,6 @@ Here I have demonstrated some methods for evaluating predicted distributions.
 
 We prefer the QQ plot for evaluating probability distribution predictions for several reasons.
 
-QQ plots directly compare the entire predicted and observed distributions across the full probability range. Unlike summary statistics like MAE or MPE that reduce information to single values, QQ plots preserve and visualise the whole distribution. A comprehensive view can be particularly valuable for detecting issues in the tails of distributions. For instance, in the 22:00 time slot from my data, the QQ plot reveals deviations in the upper quantiles that summary statistics would obscure.
+QQ plots directly compare the entire predicted and observed distributions across the full probability range. Unlike summary statistics like MAE or MPE that reduce information to single values, QQ plots preserve and visualise the whole distribution. A comprehensive view can be particularly valuable for detecting issues in the tails of distributions. For instance, in the 22:00 time slot from the UCLH data, the QQ plot reveals deviations in the upper quantiles that summary statistics would obscure.
 
 QQ plots are good for identifying specific types of mismatches — for example whether a model systematically under-predicts high values, over-predicts low values, or misses multimodality in the data. These insights can inform model improvement by showing where and how the predicted distribution fails.

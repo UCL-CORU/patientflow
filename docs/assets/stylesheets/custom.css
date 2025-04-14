@@ -1,0 +1,16 @@
+/* Make tables scroll horizontally when they're too wide */
+.md-typeset__table {
+  overflow-x: auto;
+}
+
+/* Handle other wide content (like code blocks) */
+.md-content__inner {
+  overflow-x: auto;
+}
+
+/* Ensure dataframe tables specifically are contained */
+.dataframe {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}

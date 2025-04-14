@@ -1,15 +1,15 @@
-# 2. Explore the datasets provided
+# 2d. Explore the datasets provided
 
 Two datasets have been provided with this repository.
 
 - `ed_visits.csv`
 - `inpatient_arrivals.csv`
 
-These accompany my fully worked example of the modelling of emergency demand for beds. But they are also useful to illustrate what patient shapshots might be made up of.
+These accompany my fully worked example of the modelling of emergency demand for beds. And they are also useful to illustrate what patient shapshots might be made up of.
 
 This notebook does some data exploration by plotting charts of all relevant variables in each dataset.
 
-The `inpatient_arrivals` dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and a column to assign each one to training, validation and test sets.
+The `inpatient_arrivals` dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and which specialty they were admitted to.
 
 The `ed_visits` database contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve a 'labels' for model training. These are:
 
@@ -59,10 +59,6 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
         verbose=False
         )
 
-# load parameters
-params = load_config_file(config_path)
-start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
-
 ```
 
 ## Load data
@@ -85,12 +81,10 @@ ed_visits = load_data(data_file_path,
 
 inpatient_arrivals = load_data(data_file_path,
                     file_name='inpatient_arrivals.csv',
-                    index_column = 'snapshot_id',)
+                    index_column = 'arrival_datetime',)
 
 ed_visits.head()
 ```
-
-    Warning: Index column 'snapshot_id' not found in dataframe
 
 <div>
 <style scoped>
@@ -721,7 +715,7 @@ plot_data_distributions(df=ed_visits, col_name='elapsed_los_hrs', grouping_var='
 
 Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.
 
-Plotting only the snapshots where the elapsed visit duration is less than 10 hours shows a jump at around 1 hour. The reason for this is unclear.
+Plotting only the snapshots where the elapsed visit duration is less than 10 hours shows a jump at around 1 hour. The reason for this may be something to do with how the data were extracted; we are investigating.
 
 ```python
 plot_data_distributions(ed_visits[ed_visits.elapsed_los_hrs < 10], 'elapsed_los_hrs', 'is_admitted', 'whether patient admitted', plot_type='both',
@@ -1089,55 +1083,50 @@ inpatient_arrivals.head()
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>training_validation_test</th>
-      <th>arrival_datetime</th>
       <th>sex</th>
       <th>specialty</th>
       <th>is_child</th>
       <th>is_admitted</th>
     </tr>
+    <tr>
+      <th>arrival_datetime</th>
+      <th></th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>train</td>
-      <td>2031-04-24 19:21:00+00:00</td>
+      <th>2031-04-24 19:21:00+00:00</th>
       <td>M</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>1</th>
-      <td>train</td>
-      <td>2031-04-25 12:42:00+00:00</td>
+      <th>2031-04-25 12:42:00+00:00</th>
       <td>F</td>
       <td>medical</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>2</th>
-      <td>train</td>
-      <td>2031-03-20 19:54:00+00:00</td>
+      <th>2031-03-20 19:54:00+00:00</th>
       <td>F</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>3</th>
-      <td>train</td>
-      <td>2031-03-04 22:03:00+00:00</td>
+      <th>2031-03-04 22:03:00+00:00</th>
       <td>F</td>
       <td>haem/onc</td>
       <td>false</td>
       <td>True</td>
     </tr>
     <tr>
-      <th>4</th>
-      <td>train</td>
-      <td>2031-03-01 11:10:44+00:00</td>
+      <th>2031-03-01 11:10:44+00:00</th>
       <td>M</td>
       <td>surgical</td>
       <td>false</td>
@@ -1150,7 +1139,7 @@ inpatient_arrivals.head()
 ```python
 # temporarily add is_admitted column to arrivals dataset, to be able to use the plot_data_distributions function
 inpatient_arrivals['is_admitted'] = True
-plot_data_distributions(inpatient_arrivals, 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distributions(inpatient_arrivals.reset_index().copy(), 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
 ![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_65_0.png)
