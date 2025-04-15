@@ -183,8 +183,6 @@ def create_spec_model(df, apply_special_category_filtering):
         admit_col="is_admitted",
     )
     model.fit(df)
-    # full_path = self.model_file_path / str("ed_specialty.joblib")
-    # joblib.dump(model, full_path)
 
     return model
 

@@ -39,8 +39,6 @@ from pathlib import Path
 import sys
 
 import pandas as pd
-from joblib import load
-from patientflow.errors import ModelLoadError
 
 import yaml
 from typing import Any, Dict, Tuple, Union, Optional
@@ -547,49 +545,6 @@ def get_model_key(model_name, prediction_time):
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
     model_name = model_name + "_" + f"{hour_:02}" + min_
     return model_name
-
-
-def load_saved_model(model_file_path, model_name, prediction_time=None):
-    """
-    Load a saved model from a file.
-
-    Parameters
-    ----------
-    model_file_path : Path
-        The path to the directory where the model is saved.
-    model_name : str
-        The base name of the model.
-    prediction_time : tuple of int, optional
-        The time of day the model was trained for.
-
-    Returns
-    -------
-    Any
-        The loaded model.
-
-    Raises
-    ------
-    ModelLoadError
-        If the model file cannot be found or loaded.
-    """
-    if prediction_time:
-        # retrieve model based on the time of day it is trained for
-        model_name = get_model_key(model_name, prediction_time)
-
-    full_path = model_file_path / model_name
-    full_path = full_path.with_suffix(".joblib")
-
-    try:
-        model = load(full_path)
-        return model
-    except FileNotFoundError:
-        # print(f"Model named {model_name} not found at path: {model_file_path}")
-        raise ModelLoadError(
-            f"Model named {model_name} not found at path: {model_file_path}"
-        )
-    except Exception as e:
-        # print(f"Error loading model: {e}")
-        raise ModelLoadError(f"Error loading model called {model_name}: {e}")
 
 
 def get_dict_cols(df):

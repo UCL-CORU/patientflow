@@ -8,14 +8,7 @@ snapshot dates to corresponding indices.
 
 Functions
 ---------
-prepare_for_inference(model_file_path, model_name, prediction_time=None,
-                      model_only=False, df=None, data_path=None,
-                      single_snapshot_per_visit=True, index_column='snapshot_id',
-                      sort_columns=None, eval_columns=None,
-                      exclude_from_training_data=None)
-    Loads a model and prepares data for inference.
-
-select_one_snapshot_per_visit(df, visit_col, seed=42)
+git select_one_snapshot_per_visit(df, visit_col, seed=42)
     Selects one snapshot per visit based on a random number and returns the filtered DataFrame.
 
 prepare_patient_snapshots(df, prediction_time, exclude_columns, single_snapshot_per_visit=True)
@@ -31,7 +24,7 @@ calculate_time_varying_arrival_rates(df, yta_time_interval)
 import pandas as pd
 import numpy as np
 import random
-from patientflow.load import load_saved_model, get_dict_cols, data_from_csv
+from patientflow.load import get_dict_cols
 from datetime import datetime, date
 
 
@@ -515,118 +508,6 @@ def prepare_patient_snapshots(
         )
         y = df_tod.pop(label_col).astype(int)
         return df_tod, y
-
-
-def prepare_for_inference(
-    model_file_path,
-    model_name,
-    prediction_time=None,
-    model_only=False,
-    df=None,
-    data_path=None,
-    single_snapshot_per_visit=True,
-    index_column="snapshot_id",
-    sort_columns=["visit_number", "snapshot_date", "prediction_time"],
-    eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
-    exclude_from_training_data=["visit_number", "snapshot_date", "prediction_time"],
-):
-    """
-    Load a trained model and prepare data for making predictions.
-
-    This function retrieves a trained model from a specified file path and,
-    if requested, prepares the data required for inference. The data can be
-    provided either as a DataFrame or as a file path to a CSV file. The function
-    allows filtering and processing of the data to match the model's requirements.
-    If available, it will use the calibrated pipeline instead of the regular pipeline.
-
-    Parameters
-    ----------
-    model_file_path : str
-        The file path where the trained model is saved.
-    model_name : str
-        The name of the model to be loaded.
-    prediction_time : str, optional
-        The time at which predictions are to be made. This is used to filter
-        the data for the relevant time snapshot.
-    model_only : bool, optional
-        If True, only the model is returned. If False, both the prepared data
-        and the model are returned. Default is False.
-    df : pandas.DataFrame, optional
-        The DataFrame containing the data to be used for inference. If not
-        provided, data_path must be specified.
-    data_path : str, optional
-        The file path to a CSV file containing the data to be used for inference.
-        Ignored if `df` is provided.
-    single_snapshot_per_visit : bool, optional
-        If True, only a single snapshot per visit is considered. Default is True.
-    index_column : str, optional
-        The name of the index column in the data. Default is 'snapshot_id'.
-    sort_columns : list of str, optional
-        The columns to sort the data by. Default is ["visit_number", "snapshot_date", "prediction_time"].
-    eval_columns : list of str, optional
-        The columns that require literal evaluation of their content when loading from csv.
-        Default is ["prediction_time", "consultation_sequence", "final_sequence"].
-    exclude_from_training_data : list of str, optional
-        The columns to be excluded from the training data. Default is ["visit_number", "snapshot_date", "prediction_time"].
-
-    Returns
-    -------
-    model : object
-        The loaded model (calibrated pipeline if available, otherwise regular pipeline).
-    X_test : pandas.DataFrame, optional
-        The features prepared for testing, returned only if model_only is False.
-    y_test : pandas.Series, optional
-        The labels corresponding to X_test, returned only if model_only is False.
-
-    Raises
-    ------
-    KeyError
-        If the 'training_validation_test' column is not found in the provided DataFrame.
-
-    Notes
-    -----
-    - Either `df` or `data_path` must be provided. If neither is provided or if `df`
-      is empty, the function will print an error message and return None.
-    - The function will automatically use a calibrated pipeline if one is available
-      in the model, otherwise it will fall back to the regular pipeline.
-    """
-
-    # retrieve model trained for this time of day
-    model = load_saved_model(model_file_path, model_name, prediction_time)
-
-    # Use calibrated pipeline if available, otherwise use regular pipeline
-    if hasattr(model, "calibrated_pipeline") and model.calibrated_pipeline is not None:
-        pipeline = model.calibrated_pipeline
-    else:
-        pipeline = model.pipeline
-
-    if model_only:
-        return pipeline
-
-    if data_path:
-        df = data_from_csv(data_path, index_column, sort_columns, eval_columns)
-    elif df is None or df.empty:
-        print("Please supply a dataset if not passing a data path")
-        return None
-
-    try:
-        test_df = (
-            df[df.training_validation_test == "test"]
-            .drop(columns="training_validation_test")
-            .copy()
-        )
-    except KeyError:
-        print("Column training_validation_test not found in dataframe")
-        return None
-
-    X_test, y_test = prepare_patient_snapshots(
-        test_df,
-        prediction_time,
-        exclude_from_training_data,
-        single_snapshot_per_visit,
-    )
-
-    return X_test, y_test, pipeline
 
 
 def prepare_group_snapshot_dict(df, start_dt=None, end_dt=None):
