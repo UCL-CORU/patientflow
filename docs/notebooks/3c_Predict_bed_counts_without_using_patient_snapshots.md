@@ -416,7 +416,6 @@ The `predict()` method will:
 
 ```python
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from joblib import dump, load
 
 yta_model =  WeightedPoissonPredictor(verbose=True)
 num_days = (start_validation_set - start_training_set).days
