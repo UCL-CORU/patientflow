@@ -1389,7 +1389,8 @@ for _prediction_time in ed_visits.prediction_time.unique():
         prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
             group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
             weights=filtered_prob_admission_to_specialty,
-            category_filter=admitted_to_specialty
+            category_filter=admitted_to_specialty, 
+            normal_approx_threshold=30
             ) 
 
 
