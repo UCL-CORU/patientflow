@@ -59,6 +59,36 @@
     
     
     
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+
   </head>
   
   
@@ -808,7 +838,7 @@
         <li class="md-nav__item">
   <a href="#generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
     <span class="md-ellipsis">
-      ## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
+      Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
     </span>
   </a>
   
@@ -1072,7 +1102,7 @@
         <li class="md-nav__item">
   <a href="#generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed" class="md-nav__link">
     <span class="md-ellipsis">
-      ## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
+      Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
     </span>
   </a>
   
@@ -1471,7 +1501,7 @@ for specialty in specialties:
 <li>The models struggle to capture the true variability in these departments</li>
 </ul>
 <p>However, the narrow, peaked histograms for these specialties suggest consistent, small overestimations rather than wild inaccuracy, which is a reasonable outcome given the small sample sizes. </p>
-<h2 id="generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed">## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED</h2>
+<h2 id="generate-predicted-distributions-and-observed-number-of-admissions-for-each-specialty-and-prediction-time-for-patients-yet-to-arrive-to-the-ed">Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED</h2>
 <p>As the predictions for yet-to-arrive patients are aspirational, these cannot be directly compared with observed numbers of patients who arrived after the moment of prediction, and were admitted within the prediction window. Due to slower than target processing of patients through the ED, these future arrivals would have a smaller likelihood of being admitted within the window than suggested by the aspirational target. </p>
 <p>We can, however, compare the predictions based on arrival rates at the front door of ED, that were learned from the training set, against observed arrival rates at the front door during the test set. The observed arrivals can be adjusted using the same time-dependent probability of admission during the window. I have used a deterministic weighting where each patient contributes fractionally to the total number of admissions, based on their arrival time. If for example a patient arriving 3 hours into the prediction window has a 0.8 probability of admission, they would contribute 0.8 to the weighted observed count.</p>
 <p>The function <code>get_prob_dist_without_patient_snapshots</code> saves a predicted distribution for each prediction moment in the test set, and the weighted observed count of patients later admitted who arrived during the prediction window, for later plotting.</p>

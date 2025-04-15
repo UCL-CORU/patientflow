@@ -57,6 +57,36 @@
     
     
     
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+
   </head>
   
   
@@ -400,9 +430,18 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
+  <a href="#development-installation-optional" class="md-nav__link">
     <span class="md-ellipsis">
-      Using the notebooks in this repository
+      Development Installation (optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-and-viewing-documentation-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building and Viewing Documentation (optional)
     </span>
   </a>
   
@@ -414,11 +453,71 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the notebooks in this repository
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about-the-uclh-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       About the UCLH implementation
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing-to-patientflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing to PatientFlow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Contributing to PatientFlow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Workflow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-style-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Style Guidelines
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitting-your-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Submitting Your Contribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reporting-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reporting Issues
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1097,9 +1196,18 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
+  <a href="#development-installation-optional" class="md-nav__link">
     <span class="md-ellipsis">
-      Using the notebooks in this repository
+      Development Installation (optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-and-viewing-documentation-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building and Viewing Documentation (optional)
     </span>
   </a>
   
@@ -1111,11 +1219,71 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-the-notebooks-in-this-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the notebooks in this repository
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#about-the-uclh-implementation" class="md-nav__link">
     <span class="md-ellipsis">
       About the UCLH implementation
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing-to-patientflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing to PatientFlow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Contributing to PatientFlow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Workflow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-style-guidelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      Code Style Guidelines
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitting-your-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Submitting Your Contribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reporting-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reporting Issues
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1254,11 +1422,31 @@ cd patientflow
 pip install -e &quot;.[test]&quot; #this will install the code in test mode
 
 </code></pre>
+<h3 id="development-installation-optional">Development Installation (optional)</h3>
+<p>If you plan to contribute to the project or run documentation locally, install the development and documentation dependencies:</p>
+<pre><code class="language-sh"># For development tools (linting, formatting, etc.)
+pip install -e &quot;.[dev]&quot;
+
+# For building documentation
+pip install -e &quot;.[docs]&quot;
+
+# For both development and documentation
+pip install -e &quot;.[dev,docs]&quot;
+</code></pre>
 <p>Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. This command will only work from the root repository. (To date, this has only been tested on Linux and Mac OS machines. If you are running Windows, there may be errors we don't know about. Please raise an issue on Github in that case.)</p>
 <pre><code class="language-sh">pytest
 </code></pre>
 <p>If you get errors running the pytest command, there may be other installations needed on your local machine.</p>
-<h3 id="using-the-notebooks-in-this-repository">Using the notebooks in this repository</h3>
+<h3 id="building-and-viewing-documentation-optional">Building and Viewing Documentation (optional)</h3>
+<p>After installing the documentation dependencies, you can build and view the documentation locally:</p>
+<pre><code class="language-sh"># Build and serve the documentation with live reloading
+mkdocs serve
+
+# Or just build the documentation
+mkdocs build
+</code></pre>
+<p>The documentation will be available at http://127.0.0.1:8000/ when using <code>mkdocs serve</code>.</p>
+<h2 id="using-the-notebooks-in-this-repository">Using the notebooks in this repository</h2>
 <p>The notebooks in this repository demonstrate the use of some of the functions provided in <code>patientflow</code>. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options</p>
 <ul>
 <li>step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on <a href="https://zenodo.org/records/14866057">Zenodo</a> to real patient data</li>
@@ -1271,6 +1459,49 @@ pip install -e &quot;.[test]&quot; #this will install the code in test mode
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </code></pre>
 <p>The <code>data_folder_name</code>argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository.</p>
+<h2 id="contributing-to-patientflow">Contributing to PatientFlow</h2>
+<p>We welcome contributions to the patientflow project. To contribute, follow the instructions below.</p>
+<h3 id="development-workflow">Development Workflow</h3>
+<ol>
+<li>Fork the repository on GitHub</li>
+<li>Clone your fork locally and set up your development environment following the <a href="#installation">installation instructions</a> above, making sure to install the development dependencies.</li>
+<li>Create a new branch for your changes:
+   <code>sh
+   git checkout -b feature/your-feature-name</code></li>
+<li>Make your changes following the code style guidelines</li>
+<li>Run tests as described in the installation section to ensure your changes don't break existing functionality</li>
+<li>Update documentation if needed using the documentation tools mentioned above</li>
+<li>Commit your changes with a descriptive message</li>
+</ol>
+<h3 id="code-style-guidelines">Code Style Guidelines</h3>
+<ul>
+<li>Follow PEP 8 guidelines for Python code</li>
+<li>Use type hints where appropriate</li>
+<li>Write docstrings for all functions, classes, and modules</li>
+<li>Add unit tests for new functionality</li>
+</ul>
+<h3 id="submitting-your-contribution">Submitting Your Contribution</h3>
+<ol>
+<li>Push your changes to your forked repository:
+   <code>sh
+   git push origin feature/your-feature-name</code></li>
+<li>Open a pull request from your fork to the main repository</li>
+<li>Provide a clear title and description</li>
+<li>Reference any relevant issues</li>
+<li>Include screenshots if applicable</li>
+<li>Address any feedback or review comments</li>
+</ol>
+<h3 id="reporting-issues">Reporting Issues</h3>
+<p>If you find a bug or have a suggestion:</p>
+<ol>
+<li>Check existing issues to avoid duplicates</li>
+<li>Open a new issue describing:</li>
+<li>What you expected to happen</li>
+<li>What actually happened</li>
+<li>Steps to reproduce</li>
+<li>Your environment details (OS, Python version, etc.)</li>
+</ol>
+<p>Thank you for contributing!</p>
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
@@ -1280,7 +1511,7 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 </ul>
 <h3 id="project-team">Project Team</h3>
 <ul>
-<li><a href="https://github.com/zmek">Dr Zella King</a>, Clinical Operational Research Unit (CORU), University College London (<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)</li>
+<li><a href="https://github.com/zmek">Dr Zella King</a>, Clinical Operational Research Unit (CORU), University College London (UCL)(<a href="mailto:zella.king@ucl.ac.uk">zella.king@ucl.ac.uk</a>)</li>
 <li><a href="https://github.com/jongillham">Jon Gillham</a>, Institute of Health Informatics, UCL</li>
 <li>Professor Sonya Crowe, CORU</li>
 <li>Professor Martin Utley, CORU</li>
