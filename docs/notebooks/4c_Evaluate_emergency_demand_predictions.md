@@ -401,7 +401,7 @@ The haematology/oncology and paediatric models have show a stepwise pattern of s
 
 However, the narrow, peaked histograms for these specialties suggest consistent, small overestimations rather than wild inaccuracy, which is a reasonable outcome given the small sample sizes.
 
-## ## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
+## Generate predicted distributions and observed number of admissions for each specialty and prediction time for patients yet-to-arrive to the ED
 
 As the predictions for yet-to-arrive patients are aspirational, these cannot be directly compared with observed numbers of patients who arrived after the moment of prediction, and were admitted within the prediction window. Due to slower than target processing of patients through the ED, these future arrivals would have a smaller likelihood of being admitted within the window than suggested by the aspirational target.
 

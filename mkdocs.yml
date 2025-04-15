@@ -15,6 +15,7 @@ validation:
 
 theme:
   name: "material"
+  custom_dir: docs/overrides
   features:
     - content.action.edit
   palette:

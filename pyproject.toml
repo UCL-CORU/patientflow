@@ -35,6 +35,8 @@ optional-dependencies = {dev = [
 ], docs = [
     "griffe",
     "mkdocs",
+    "mkdocs-autorefs",
+    "mkdocs-awesome-pages-plugin",
     "mkdocs-include-markdown-plugin",
     "mkdocs-material",
     "mkdocstrings",

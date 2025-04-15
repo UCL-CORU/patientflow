@@ -1,0 +1,31 @@
+{% extends "base.html" %} {% block extrahead %}
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+{% endblock %}

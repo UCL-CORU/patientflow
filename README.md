@@ -99,6 +99,21 @@ pip install -e ".[test]" #this will install the code in test mode
 
 ```
 
+### Development Installation (optional)
+
+If you plan to contribute to the project or run documentation locally, install the development and documentation dependencies:
+
+```sh
+# For development tools (linting, formatting, etc.)
+pip install -e ".[dev]"
+
+# For building documentation
+pip install -e ".[docs]"
+
+# For both development and documentation
+pip install -e ".[dev,docs]"
+```
+
 Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. This command will only work from the root repository. (To date, this has only been tested on Linux and Mac OS machines. If you are running Windows, there may be errors we don't know about. Please raise an issue on Github in that case.)
 
 ```sh
@@ -107,7 +122,21 @@ pytest
 
 If you get errors running the pytest command, there may be other installations needed on your local machine.
 
-### Using the notebooks in this repository
+### Building and Viewing Documentation (optional)
+
+After installing the documentation dependencies, you can build and view the documentation locally:
+
+```sh
+# Build and serve the documentation with live reloading
+mkdocs serve
+
+# Or just build the documentation
+mkdocs build
+```
+
+The documentation will be available at http://127.0.0.1:8000/ when using `mkdocs serve`.
+
+## Using the notebooks in this repository
 
 The notebooks in this repository demonstrate the use of some of the functions provided in `patientflow`. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options
 
@@ -127,6 +156,55 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 
 The `data_folder_name`argument specifies the name of the folder containing data. The function expects this folder to be directly below the root of the repository.
 
+## Contributing to PatientFlow
+
+We welcome contributions to the patientflow project. To contribute, follow the instructions below.
+
+### Development Workflow
+
+1. Fork the repository on GitHub
+2. Clone your fork locally and set up your development environment following the [installation instructions](#installation) above, making sure to install the development dependencies.
+3. Create a new branch for your changes:
+   ```sh
+   git checkout -b feature/your-feature-name
+   ```
+4. Make your changes following the code style guidelines
+5. Run tests as described in the installation section to ensure your changes don't break existing functionality
+6. Update documentation if needed using the documentation tools mentioned above
+7. Commit your changes with a descriptive message
+
+### Code Style Guidelines
+
+- Follow PEP 8 guidelines for Python code
+- Use type hints where appropriate
+- Write docstrings for all functions, classes, and modules
+- Add unit tests for new functionality
+
+### Submitting Your Contribution
+
+1. Push your changes to your forked repository:
+   ```sh
+   git push origin feature/your-feature-name
+   ```
+2. Open a pull request from your fork to the main repository
+   - Provide a clear title and description
+   - Reference any relevant issues
+   - Include screenshots if applicable
+3. Address any feedback or review comments
+
+### Reporting Issues
+
+If you find a bug or have a suggestion:
+
+1. Check existing issues to avoid duplicates
+2. Open a new issue describing:
+   - What you expected to happen
+   - What actually happened
+   - Steps to reproduce
+   - Your environment details (OS, Python version, etc.)
+
+Thank you for contributing!
+
 ## Roadmap
 
 - [x] Initial Research
@@ -136,7 +214,7 @@ The `data_folder_name`argument specifies the name of the folder containing data.
 
 ### Project Team
 
-- [Dr Zella King](https://github.com/zmek), Clinical Operational Research Unit (CORU), University College London ([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
+- [Dr Zella King](https://github.com/zmek), Clinical Operational Research Unit (CORU), University College London (UCL)([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
 - [Jon Gillham](https://github.com/jongillham), Institute of Health Informatics, UCL
 - Professor Sonya Crowe, CORU
 - Professor Martin Utley, CORU
