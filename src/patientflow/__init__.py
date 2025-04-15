@@ -5,6 +5,10 @@ This package provides tools and models for analysing patient flow data and
 making predictions about emergency demand, elective demand, and hospital discharges.
 """
 
-__version__ = "0.2.0"
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "0.0.0"  # Fallback for when not installed
+
 __author__ = "Zella King"
 __email__ = "zella.king@ucl.ac.uk"
