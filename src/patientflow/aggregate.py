@@ -101,22 +101,27 @@ model_input_to_pred_proba(model_input, model):
     array-like
         The predicted probabilities output by the model.
 
-pred_proba_to_agg_predicted(predictions_proba, weights):
+pred_proba_to_agg_predicted(predictions_proba, weights=None, normal_approx_threshold=30):
     Aggregates individual predicted probabilities into an overall prediction using provided weights.
+    Uses a Normal approximation for large datasets (> normal_approx_threshold) for better performance.
 
     Parameters
     ----------
-    predictions_proba : array-like
-        Predicted probabilities for individual patients.
-    weights : array-like
-        Weights corresponding to each patient's probability prediction.
+    predictions_proba : DataFrame
+        A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
+    weights : array-like, optional
+        An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
-    float
-        The aggregate predicted probability.
+    DataFrame
+        A DataFrame with a single column 'agg_proba' showing the aggregated probability,
+        indexed from 0 to n, where n is the number of predictions.
 
-get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_time):
+get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_time=False, y_test=None, category_filter=None, normal_approx_threshold=30):
     Computes predicted and observed probabilities for a specific prediction date.
 
     Parameters
@@ -128,17 +133,23 @@ get_prob_dist_for_prediction_moment(X_test, model, weights, y_test, inference_ti
         or a TrainedClassifier object containing a pipeline.
     weights : array-like, optional
         Weights for aggregating the predicted probabilities.
-    y_test : array-like
-        Observed target values corresponding to the test data (optional for inference).
     inference_time : bool
         Indicates whether the function is used in inference mode (i.e., whether observed data is available).
+    y_test : array-like
+        Observed target values corresponding to the test data (optional for inference).
+    category_filter : array-like, optional
+        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
+        Should be the same length as y_test.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
     dict
         A dictionary containing the predicted and, if applicable, observed probability distributions.
 
-get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
+get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False, category_filter=None, normal_approx_threshold=30):
     Computes probability distributions for multiple snapshot dates.
 
     Parameters
@@ -155,6 +166,14 @@ get_prob_dist(snapshots_dict, X_test, y_test, model, weights):
     weights : pandas.Series, optional
         A Series containing weights for the test data points, which may influence the prediction,
         by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
+    verbose : bool, optional (default=False)
+        If True, print progress information.
+    category_filter : array-like, optional
+        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
+        Should be the same length as y_test.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
@@ -322,9 +341,12 @@ def model_input_to_pred_proba(model_input, model):
         )
 
 
-def pred_proba_to_agg_predicted(predictions_proba, weights=None):
+def pred_proba_to_agg_predicted(
+    predictions_proba, weights=None, normal_approx_threshold=30
+):
     """
     Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
+    Uses a Normal approximation for large datasets (> normal_approx_threshold) for better performance.
 
     Parameters
     ----------
@@ -332,19 +354,59 @@ def pred_proba_to_agg_predicted(predictions_proba, weights=None):
         A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
     weights : array-like, optional
         An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
     DataFrame
         A DataFrame with a single column 'agg_proba' showing the aggregated probability,
         indexed from 0 to n, where n is the number of predictions.
-
     """
     n = len(predictions_proba)
 
     if n == 0:
         agg_predicted_dict = {0: 1}
+    elif normal_approx_threshold is not None and n > normal_approx_threshold:
+        # Apply a normal approximation for large datasets
+        import numpy as np
+        from scipy.stats import norm
+
+        # Apply weights if provided
+        if weights is not None:
+            probs = predictions_proba["pred_proba"].values * weights
+        else:
+            probs = predictions_proba["pred_proba"].values
+
+        # Calculate mean and variance for the normal approximation
+        # For a sum of Bernoulli variables, mean = sum of probabilities
+        mean = probs.sum()
+        # Variance = sum of p_i * (1-p_i)
+        variance = (probs * (1 - probs)).sum()
+
+        # Generate probabilities for each possible count using normal approximation
+        counts = np.arange(n + 1)
+        agg_predicted_dict = {}
+
+        for i in counts:
+            # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
+            if i == 0:
+                p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
+            elif i == n:
+                p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
+            else:
+                p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
+                    i - 0.5, loc=mean, scale=np.sqrt(variance)
+                )
+            agg_predicted_dict[i] = p
+
+        # Normalize to ensure the probabilities sum to 1
+        total = sum(agg_predicted_dict.values())
+        for i in agg_predicted_dict:
+            agg_predicted_dict[i] /= total
     else:
+        # Use the original symbolic computation for smaller datasets
         local_proba = predictions_proba.copy()
         if weights is not None:
             local_proba["pred_proba"] *= weights
@@ -361,7 +423,13 @@ def pred_proba_to_agg_predicted(predictions_proba, weights=None):
 
 
 def get_prob_dist_for_prediction_moment(
-    X_test, model, weights=None, inference_time=False, y_test=None, category_filter=None
+    X_test,
+    model,
+    weights=None,
+    inference_time=False,
+    y_test=None,
+    category_filter=None,
+    normal_approx_threshold=30,
 ):
     """
     Calculate both predicted distributions and observed values for a given date using test data.
@@ -382,6 +450,9 @@ def get_prob_dist_for_prediction_moment(
     category_filter : array-like, optional
         Boolean mask indicating which samples belong to the specific outcome category being analyzed.
         Should be the same length as y_test.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
@@ -412,7 +483,9 @@ def get_prob_dist_for_prediction_moment(
 
     if len(X_test) > 0:
         pred_proba = model_input_to_pred_proba(X_test, model)
-        agg_predicted = pred_proba_to_agg_predicted(pred_proba, weights)
+        agg_predicted = pred_proba_to_agg_predicted(
+            pred_proba, weights, normal_approx_threshold
+        )
         prediction_moment_dict["agg_predicted"] = agg_predicted
 
         if not inference_time:
@@ -439,6 +512,7 @@ def get_prob_dist(
     weights=None,
     verbose=False,
     category_filter=None,
+    normal_approx_threshold=30,
 ):
     """
     Calculate probability distributions for each snapshot date based on given model predictions.
@@ -462,6 +536,9 @@ def get_prob_dist(
     category_filter : array-like, optional
         Boolean mask indicating which samples belong to the specific outcome category being analyzed.
         Should be the same length as y_test.
+    normal_approx_threshold : int, optional (default=30)
+        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation.
+        Set to None or a very large number to always use the exact symbolic computation.
 
     Returns
     -------
@@ -539,13 +616,14 @@ def get_prob_dist(
                     snapshots_to_include
                 ]
 
-            # Compute the predicted and observed valuesfor the current snapshot date
+            # Pass the normal_approx_threshold to get_prob_dist_for_prediction_moment
             prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
                 X_test=X_test.loc[snapshots_to_include],
                 y_test=y_test.loc[snapshots_to_include],
                 model=model,
                 weights=prediction_moment_weights,
                 category_filter=prediction_moment_category_filter,
+                normal_approx_threshold=normal_approx_threshold,
             )
 
         # Increment the counter and notify the user every 10 snapshot dates processed
