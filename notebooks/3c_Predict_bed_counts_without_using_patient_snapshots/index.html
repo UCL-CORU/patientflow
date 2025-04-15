@@ -1343,7 +1343,6 @@ plot_curve(
 <li>convolute the distributions to return a single distribution for arrivals over all time intervals</li>
 </ul>
 <pre><code class="language-python">from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from joblib import dump, load
 
 yta_model =  WeightedPoissonPredictor(verbose=True)
 num_days = (start_validation_set - start_training_set).days
