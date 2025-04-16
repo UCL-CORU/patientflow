@@ -56,7 +56,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ secrets.GITHUB_TOKEN }}
-          approvers: your-github-username  # Replace with your GitHub username
+          approvers: zmek  
           minimum-approvals: 1
           issue-title: "Approve PyPI Deployment for ${{ github.event.release.tag_name }}"
           issue-body: "The package has been successfully published to TestPyPI and verified. Please approve to publish to PyPI."
