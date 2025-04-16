@@ -5,12 +5,8 @@
 [![Linting status][linting-badge]][linting-link]
 [![Documentation status][documentation-badge]][documentation-link]
 [![License][license-badge]](./LICENSE.md)
-
-<!--
 [![PyPI version][pypi-version]][pypi-link]
-[![Conda-Forge][conda-badge]][conda-link]
 [![PyPI platforms][pypi-platforms]][pypi-link]
--->
 
 <!-- prettier-ignore-start -->
 [tests-badge]:              https://github.com/zmek/patientflow/actions/workflows/tests.yml/badge.svg
@@ -19,14 +15,11 @@
 [linting-link]:             https://github.com/zmek/patientflow/actions/workflows/linting.yml
 [documentation-badge]:      https://github.com/zmek/patientflow/actions/workflows/docs.yml/badge.svg
 [documentation-link]:       https://github.com/zmek/patientflow/actions/workflows/docs.yml
-[conda-badge]:              https://img.shields.io/conda/vn/conda-forge/patientflow
-[conda-link]:               https://github.com/conda-forge/patientflow-feedstock
 [license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
-[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
-
-<!-- [pypi-link]:                https://pypi.org/project/patientflow/
+[pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
-[pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
+[pypi-version]:             https://img.shields.io/pypi/v/patientflow
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
 <!-- prettier-ignore-end -->
 
 ## Summary
@@ -90,18 +83,22 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ### Installation
 
-To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it.
+You can install `patientflow` directly from PyPI:
 
 ```sh
-git clone https://github.com/zmek/patientflow.git
-cd patientflow
-pip install -e ".[test]" #this will install the code in test mode
+pip install patientflow
+```
 
+To access the example notebooks and synthetic data, clone the repository:
+
+```sh
+git clone https://github.com/ucl-coru/patientflow.git
+cd patientflow
 ```
 
 ### Development Installation (optional)
 
-If you plan to contribute to the project or run documentation locally, install the development and documentation dependencies:
+If you want to contribute or modify the code, or run documentation locally, install the development and documentation dependencies:
 
 ```sh
 # For development tools (linting, formatting, etc.)
@@ -208,8 +205,8 @@ Thank you for contributing!
 ## Roadmap
 
 - [x] Initial Research
-- [x] Minimum viable product <-- You are Here
-- [ ] Alpha Release
+- [x] Minimum viable product
+- [x] Alpha Release (PyPI Package) <-- You are Here
 - [ ] Feature-Complete Release
 
 ### Project Team

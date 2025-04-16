@@ -1,0 +1,70 @@
+name: Publish Python Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build package
+        run: |
+          python -m build
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to TestPyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
+        run: |
+          twine upload --repository testpypi dist/*
+
+      # Updated verification step with basic import test instead of pytest
+      - name: Verify package from TestPyPI
+        run: |
+          # Wait for TestPyPI to process the upload
+          sleep 60
+
+          # Create a new virtual environment for testing
+          python -m venv test_env
+          source test_env/bin/activate
+
+          # Install the package from TestPyPI
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ patientflow
+
+          # Perform a basic import test (more reliable than requiring pytest)
+          python -c "import patientflow; print(f'Successfully installed patientflow version: {patientflow.__version__}')"
+
+          # Deactivate the virtual environment
+          deactivate
+
+      # Add a manual approval step before publishing to PyPI
+      - name: Request approval for PyPI publish
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          approvers: zmek
+          minimum-approvals: 1
+          issue-title: "Approve PyPI Deployment for ${{ github.event.release.tag_name }}"
+          issue-body: "The package has been successfully published to TestPyPI and verified. Please approve to publish to PyPI."
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/*
