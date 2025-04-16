@@ -31,3 +31,20 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
         run: |
           twine upload --repository testpypi dist/*
+          
+      # Add a verification step that installs from TestPyPI and tests the package
+      - name: Verify package from TestPyPI
+        run: |
+          sleep 60
+          python -m venv test_env
+          source test_env/bin/activate
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ patientflow
+          python -m pytest tests/installation_test.py  # Run a specific test for installation verification
+          deactivate
+      
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/*
