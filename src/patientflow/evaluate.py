@@ -71,7 +71,7 @@ def calculate_results(
 
 def calc_mae_mpe(
     prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]],
-    use_most_probable: bool = True,
+    use_most_probable: bool = False,
 ) -> Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]:
     """
     Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
@@ -79,7 +79,7 @@ def calc_mae_mpe(
 
     Args:
         prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
-        use_most_probable (bool, optional): Whether to use the most probable value or expected value. Defaults to True.
+        use_most_probable (bool, optional): Whether to use the most probable value or mathematical expectation of the distribution. Defaults to False.
 
     Returns:
         Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.
