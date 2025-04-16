@@ -1042,8 +1042,9 @@
    import patientflow
    print(f&quot;✓ patientflow {patientflow.__version__} imported successfully&quot;)
 except ImportError:
-   print(&quot;❌ patientflow not found - please check installation instructions in README&quot;)
-   print(&quot;   pip install -e '.[test]'&quot;)
+   print(&quot;❌ patientflow not found - please install using one of the following methods:&quot;)
+   print(&quot;   From PyPI: pip install patientflow&quot;)
+   print(&quot;   For development: pip install -e '.[test]'&quot;)
 except Exception as e:
    print(f&quot;❌ Error: {e}&quot;)
 </code></pre>

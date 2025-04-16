@@ -1349,18 +1349,11 @@
 <a href="https://github.com/zmek/patientflow/actions/workflows/tests.yml"><img alt="Tests status" src="https://github.com/zmek/patientflow/actions/workflows/tests.yml/badge.svg" /></a>
 <a href="https://github.com/zmek/patientflow/actions/workflows/linting.yml"><img alt="Linting status" src="https://github.com/zmek/patientflow/actions/workflows/linting.yml/badge.svg" /></a>
 <a href="https://github.com/zmek/patientflow/actions/workflows/docs.yml"><img alt="Documentation status" src="https://github.com/zmek/patientflow/actions/workflows/docs.yml/badge.svg" /></a>
-<a href="LICENSE/"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a></p>
-<!--
-[![PyPI version][pypi-version]][pypi-link]
-[![Conda-Forge][conda-badge]][conda-link]
-[![PyPI platforms][pypi-platforms]][pypi-link]
--->
-
+<a href="LICENSE/"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
+<a href="https://pypi.org/project/patientflow/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/patientflow" /></a>
+<a href="https://pypi.org/project/patientflow/"><img alt="PyPI platforms" src="https://img.shields.io/pypi/pyversions/patientflow" /></a></p>
 <!-- prettier-ignore-start -->
 <p><a href="https://orcid.org/0000-0001-7389-1527"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg" /></a></p>
-<!-- [pypi-link]:                https://pypi.org/project/patientflow/
-[pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
-[pypi-version]:             https://img.shields.io/pypi/v/patientflow -->
 <!-- prettier-ignore-end -->
 
 <h2 id="summary">Summary</h2>
@@ -1416,14 +1409,15 @@
 <h3 id="prerequisites">Prerequisites</h3>
 <p><code>patientflow</code> requires Python 3.10.</p>
 <h3 id="installation">Installation</h3>
-<p>To install the latest development version, clone it first (so that you have access to the synthetic data and the notebooks) and then install it.</p>
-<pre><code class="language-sh">git clone https://github.com/zmek/patientflow.git
+<p>You can install <code>patientflow</code> directly from PyPI:</p>
+<pre><code class="language-sh">pip install patientflow
+</code></pre>
+<p>To access the example notebooks and synthetic data, clone the repository:</p>
+<pre><code class="language-sh">git clone https://github.com/ucl-coru/patientflow.git
 cd patientflow
-pip install -e &quot;.[test]&quot; #this will install the code in test mode
-
 </code></pre>
 <h3 id="development-installation-optional">Development Installation (optional)</h3>
-<p>If you plan to contribute to the project or run documentation locally, install the development and documentation dependencies:</p>
+<p>If you want to contribute or modify the code, or run documentation locally, install the development and documentation dependencies:</p>
 <pre><code class="language-sh"># For development tools (linting, formatting, etc.)
 pip install -e &quot;.[dev]&quot;
 
@@ -1505,8 +1499,8 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 <h2 id="roadmap">Roadmap</h2>
 <ul class="task-list">
 <li class="task-list-item"><input type="checkbox" disabled checked/> Initial Research</li>
-<li class="task-list-item"><input type="checkbox" disabled checked/> Minimum viable product &lt;-- You are Here</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Alpha Release</li>
+<li class="task-list-item"><input type="checkbox" disabled checked/> Minimum viable product</li>
+<li class="task-list-item"><input type="checkbox" disabled checked/> Alpha Release (PyPI Package) &lt;-- You are Here</li>
 <li class="task-list-item"><input type="checkbox" disabled/> Feature-Complete Release</li>
 </ul>
 <h3 id="project-team">Project Team</h3>
