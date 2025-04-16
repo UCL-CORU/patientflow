@@ -24,8 +24,9 @@ try:
    import patientflow
    print(f"✓ patientflow {patientflow.__version__} imported successfully")
 except ImportError:
-   print("❌ patientflow not found - please check installation instructions in README")
-   print("   pip install -e '.[test]'")
+   print("❌ patientflow not found - please install using one of the following methods:")
+   print("   From PyPI: pip install patientflow")
+   print("   For development: pip install -e '.[test]'")
 except Exception as e:
    print(f"❌ Error: {e}")
 ```

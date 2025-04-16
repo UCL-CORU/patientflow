@@ -36,7 +36,15 @@ A set of notebooks follow, to show how we have used the functions in `patientflo
 
 ## Preparing your notebook environment
 
-The `PATH_TO_PATIENTFLOW` environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:
+### Installation
+
+You can install the `patientflow` package directly from PyPI:
+
+```bash
+pip install patientflow
+```
+
+For development purposes or to run these notebooks with the latest code, you may still want to use the Github repository directly. In that case, the `PATH_TO_PATIENTFLOW` environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:
 
 - use a virtual environment and set PATH_TO_PATIENTFLOW up within that
 - set PATH_TO_PATIENTFLOW globally on your computer
