@@ -21,6 +21,7 @@ def coru_plot(
     prob_dist_dict_all,
     model_name="admissions",
     return_figure=False,
+    return_dataframe=False,
     figsize=None,
     suptitle=None,
 ):
@@ -45,6 +46,8 @@ def coru_plot(
         Base name of the model to construct model keys, by default "admissions".
     return_figure : bool, optional
         If True, returns the figure object instead of displaying it, by default False.
+    return_dataframe : bool, optional
+        If True, returns a dictionary of observation dataframes by model_key, by default False.
     figsize : tuple of (float, float), optional
         Size of the figure in inches as (width, height). If None, calculated automatically
         based on number of plots, by default None.
@@ -53,8 +56,10 @@ def coru_plot(
     
     Returns
     -------
-    matplotlib.figure.Figure or None
+    matplotlib.figure.Figure or dict or tuple or None
         If return_figure is True, returns the figure object containing the CORU plots.
+        If return_dataframe is True, returns a dictionary of observation dataframes by model_key.
+        If both are True, returns a tuple (figure, dataframes_dict).
         Otherwise displays the plots and returns None.
     
     Notes
@@ -89,6 +94,9 @@ def coru_plot(
     # Handle case of single prediction time
     if num_plots == 1:
         axs = [axs]
+        
+    # Dictionary to store observation dataframes by model_key
+    all_obs_dfs = {}
 
     # Loop through each subplot
     for i, prediction_time in enumerate(prediction_times_sorted):
@@ -106,26 +114,30 @@ def coru_plot(
         for dt in prob_dist_dict:
             agg_predicted = np.array(prob_dist_dict[dt]["agg_predicted"])
             agg_observed = prob_dist_dict[dt]["agg_observed"]
+
+            # if agg_observed == 0:
+            #     print(f'{dt}: {agg_predicted}')
             
             # Calculate CDF values
             upper_cdf = agg_predicted.cumsum()
             lower_cdf = np.hstack((0, upper_cdf[:-1]))
             mid_cdf = (upper_cdf + lower_cdf) / 2
             
-            # Round observed value to nearest integer for indexing
-            agg_observed_int = int(round(agg_observed))
+            # # Round observed value to nearest integer for indexing
+            # agg_observed_int = int(round(agg_observed))
             
             # Record the CDF values at the observed point
             try:
                 observations.append({
-                    'lower_cdf': lower_cdf[agg_observed_int],
-                    'mid_cdf': mid_cdf[agg_observed_int],
-                    'upper_cdf': upper_cdf[agg_observed_int],
-                    'observed_value': agg_observed_int
+                    'date': dt,
+                    'lower_cdf': lower_cdf[agg_observed],
+                    'mid_cdf': mid_cdf[agg_observed],
+                    'upper_cdf': upper_cdf[agg_observed],
+                    'observed_value': agg_observed
                 })
             except IndexError:
                 # Handle case where observed value is out of range of predicted
-                print(f"Warning: Observed value {agg_observed_int} out of range for date {dt}")
+                print(f"Warning: Observed value {agg_observed} out of range for date {dt}")
                 continue
         
         if not observations:
@@ -133,6 +145,9 @@ def coru_plot(
         
         # Convert to DataFrame
         obs_df = pd.DataFrame(observations)
+        
+        # Store the observation dataframe
+        all_obs_dfs[model_key] = obs_df
         
         # Create plot data for lower, mid, and upper CDF values
         plot_data = []
@@ -206,7 +221,12 @@ def coru_plot(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
     
-    if return_figure:
+    # Determine what to return
+    if return_figure and return_dataframe:
+        return fig, all_obs_dfs
+    elif return_figure:
         return fig
+    elif return_dataframe:
+        return all_obs_dfs
     else:
         plt.show()
