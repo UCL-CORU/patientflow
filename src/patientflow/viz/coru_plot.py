@@ -1,14 +1,27 @@
 """
-Generate CORU plots comparing observed values with model predictions.
+Generate plots comparing observed values with model predictions for discrete distributions.
 
-These plots display the proportion of observed values that fall below each probability 
-threshold (CDF value) from the model's predictions. For a well-calibrated model, this
-proportion should match the probability threshold itself, resulting in points lying along
-the diagonal line y=x.
+These plots display the model's predicted CDF values alongside the actual observed values'
+positions within their predicted CDF intervals. For discrete distributions, each predicted
+value has an associated probability, and the CDF is calculated by sorting the values and
+computing cumulative probabilities.
+
+The plot shows three possible positions for each observation within its predicted interval:
+- lower bound of the interval
+- midpoint of the interval
+- upper bound of the interval
+
+For a well-calibrated model, the observed values should fall within their predicted 
+intervals, with the distribution of positions showing appropriate uncertainty.
 
 Key Functions:
-- coru_plot: Generates and plots the CORU plot based on the provided observed and predicted data.
+- coru_plot: Generates and plots the comparison of model predictions with observed values.
 """
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from patientflow.load import get_model_key
 
 import numpy as np
 import pandas as pd
@@ -26,13 +39,18 @@ def coru_plot(
     suptitle=None,
 ):
     """
-    Generate Calibration of Ranks Using probability (CORU) plots comparing observed values 
-    with model predictions.
+    Generate plots comparing model predictions with observed values for discrete distributions.
     
-    CORU plots display the proportion of observed values that fall below each probability 
-    threshold (CDF value) from the model's predictions. For a well-calibrated model, this
-    proportion should match the probability threshold itself, resulting in points lying along
-    the diagonal line y=x.
+    For discrete distributions, each predicted value has an associated probability. The CDF
+    is calculated by sorting the values and computing cumulative probabilities, normalized
+    by the number of time points. The plot shows three possible positions for each observation:
+    - lower bound of the interval (pink points)
+    - midpoint of the interval (green points)
+    - upper bound of the interval (light blue points)
+    
+    The black points represent the model's predicted CDF values, calculated from the sorted
+    values and their associated probabilities, while the colored points show where the actual
+    observations fall within their predicted intervals.
     
     Parameters
     ----------
@@ -41,7 +59,8 @@ def coru_plot(
     prob_dist_dict_all : dict
         Dictionary of probability distributions keyed by model_key. Each entry contains
         information about predicted distributions and observed values for different 
-        horizon dates.
+        horizon dates. The predicted distributions should be discrete probability mass
+        functions, with each value having an associated probability.
     model_name : str, optional
         Base name of the model to construct model keys, by default "admissions".
     return_figure : bool, optional
@@ -57,26 +76,34 @@ def coru_plot(
     Returns
     -------
     matplotlib.figure.Figure or dict or tuple or None
-        If return_figure is True, returns the figure object containing the CORU plots.
+        If return_figure is True, returns the figure object containing the plots.
         If return_dataframe is True, returns a dictionary of observation dataframes by model_key.
         If both are True, returns a tuple (figure, dataframes_dict).
         Otherwise displays the plots and returns None.
     
     Notes
     -----
-    The CORU plot shows three curves for each prediction:
+    For discrete distributions, the CDF is calculated by:
+    1. Sorting the predicted values
+    2. Computing cumulative probabilities for each value
+    3. Normalizing by the number of time points
+    
+    The plot shows three possible positions for each observation:
     - lower_cdf (pink): Uses the lower bound of the CDF interval
     - mid_cdf (green): Uses the midpoint of the CDF interval
     - upper_cdf (light blue): Uses the upper bound of the CDF interval
     
-    For a well-calibrated model, all three curves should closely follow the diagonal line.
-    Systematic deviations indicate over- or under-confidence in the model's predictions.
+    The black points represent the model's predicted CDF values, calculated from the sorted
+    values and their associated probabilities, while the colored points show where the actual
+    observations fall within their predicted intervals. For a well-calibrated model, the
+    observed values should fall within their predicted intervals, with the distribution of
+    positions showing appropriate uncertainty.
     
     Examples
     --------
     >>> prediction_times = [(8, 0), (12, 0), (16, 0)]
     >>> coru_plot(prediction_times, prob_dist_dict, model_name="bed_demand", 
-    ...           figsize=(15, 5), suptitle="Bed Demand Model Calibration")
+    ...           figsize=(15, 5), suptitle="Bed Demand Model Predictions vs Observations")
     """
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -107,101 +134,141 @@ def coru_plot(
         if not prob_dist_dict:
             continue
 
-        # Initialize lists to store data for observed values and their associated CDF positions
-        observations = []
-        
-        # Process data for current subplot
+        # ----- COLLECT MODEL PREDICTIONS -----
+        all_distributions = []
         for dt in prob_dist_dict:
-            agg_predicted = np.array(prob_dist_dict[dt]["agg_predicted"])
-            agg_observed = prob_dist_dict[dt]["agg_observed"]
-
-            # if agg_observed == 0:
-            #     print(f'{dt}: {agg_predicted}')
+            agg_predicted = np.array(prob_dist_dict[dt]["agg_predicted"]["agg_proba"])
             
             # Calculate CDF values
             upper_cdf = agg_predicted.cumsum()
             lower_cdf = np.hstack((0, upper_cdf[:-1]))
             mid_cdf = (upper_cdf + lower_cdf) / 2
             
-            # # Round observed value to nearest integer for indexing
-            # agg_observed_int = int(round(agg_observed))
-            
-            # Record the CDF values at the observed point
-            try:
-                observations.append({
-                    'date': dt,
-                    'lower_cdf': lower_cdf[agg_observed],
-                    'mid_cdf': mid_cdf[agg_observed],
-                    'upper_cdf': upper_cdf[agg_observed],
-                    'observed_value': agg_observed
+            # Store all predicted distributions for each time point
+            for j, prob in enumerate(agg_predicted):
+                all_distributions.append({
+                    'num_adm_pred': j,
+                    'prob': prob,
+                    'sample_time': dt,  # Using the same name as in R code
+                    'upper_M_discrete_value': upper_cdf[j],
+                    'lower_M_discrete_value': lower_cdf[j],
+                    'mid_M_discrete_value': mid_cdf[j]
                 })
-            except IndexError:
-                # Handle case where observed value is out of range of predicted
-                print(f"Warning: Observed value {agg_observed} out of range for date {dt}")
-                continue
         
-        if not observations:
+        # Create DataFrame with all distributions
+        distr_coll = pd.DataFrame(all_distributions)
+        
+        # ----- COLLECT OBSERVATIONS -----
+        all_observations = []
+        time_pts = []
+        num_time_points = len(prob_dist_dict.keys())
+        for dt in prob_dist_dict:
+            agg_observed = prob_dist_dict[dt]["agg_observed"]
+            time_pts.append(dt)
+            
+            # Store observation data
+            all_observations.append({
+                'date': dt,
+                'num_adm': agg_observed,
+                'sample_time': dt
+            })
+        
+        # Create DataFrame with all observations
+        adm_coll = pd.DataFrame(all_observations)
+        
+        # ----- MERGE OBSERVATIONS WITH PREDICTIONS (equivalent to R merge) -----
+        # This is the equivalent of the R code line:
+        # adm_coll = merge(adm_coll, distr_coll[, .(sample_time, num_adm = num_adm_pred, 
+        #                 lower_E = lower_M_discrete_value, upper_E = upper_M_discrete_value)], 
+        #                 by = c("sample_time", "num_adm"))
+        
+        merged_df = pd.merge(
+            adm_coll,
+            distr_coll.rename(columns={
+                'num_adm_pred': 'num_adm',
+                'lower_M_discrete_value': 'lower_E',
+                'mid_M_discrete_value': 'mid_E',
+                'upper_M_discrete_value': 'upper_E'
+            }),
+            on=['sample_time', 'num_adm'],
+            how='inner'
+        )
+        
+        if merged_df.empty:
             continue
         
-        # Convert to DataFrame
-        obs_df = pd.DataFrame(observations)
-        
         # Store the observation dataframe
-        all_obs_dfs[model_key] = obs_df
+        all_obs_dfs[model_key] = merged_df
         
-        # Create plot data for lower, mid, and upper CDF values
-        plot_data = []
-        
-        for cdf_type in ['lower_cdf', 'mid_cdf', 'upper_cdf']:
-            # Sort values
-            sorted_values = sorted(obs_df[cdf_type])
-            
-            # Calculate empirical CDF
-            n = len(sorted_values)
-            cdf_data = []
-            
-            # Group by unique CDF values and count occurrences
-            unique_values = pd.Series(sorted_values).value_counts().sort_index()
-            cumulative_prop = 0
-            
-            for value, count in unique_values.items():
-                proportion = count / n
-                cumulative_prop += proportion
-                cdf_data.append({
-                    'value': value,
-                    'cum_weight_normed': cumulative_prop,
-                    'dist': cdf_type
-                })
-            
-            plot_data.extend(cdf_data)
-        
-        # Convert to DataFrame for plotting
-        plot_df = pd.DataFrame(plot_data)
-        
-        # Plot on current subplot
+        # Set up the plot
         ax = axs[i]
         
-        # Reference line y=x
-        ax.plot([0, 1], [0, 1], linestyle='--', color='black')
+        # For lower, mid, and upper model predictions
+        for pred_type in ['lower', 'mid', 'upper']:
+            # Get the column name from distr_coll
+            col_name = f"{pred_type}_M_discrete_value"
+            
+            # Extract values and probabilities as a temporary dataframe
+            df_temp = distr_coll[[col_name, 'prob']].copy()
+            
+            # Sort by values - this is the key correction
+            df_temp = df_temp.sort_values(by=col_name)
+            
+            # Calculate cumulative weights after sorting
+            df_temp['cum_weight'] = df_temp['prob'].cumsum()
+            df_temp['cum_weight_normed'] = df_temp['prob'].cumsum() / num_time_points
+            
+            # Define colors for each prediction type (similar to the R code)
+            colors = {
+                'lower': 'deeppink',
+                'mid': 'chartreuse4',
+                'upper': 'lightblue'
+            }
+            
+            # Plot model predictions with appropriate colors
+            ax.scatter(
+                df_temp[col_name],  # Use the sorted values
+                df_temp['cum_weight_normed'],  # Use the correctly calculated normed weights
+                color='grey',
+                label=f"Model {pred_type}",
+                marker='o', 
+                s=10
+            )
         
-        # Plot points for different CDF types with smaller dots
+        # ----- PLOT ACTUAL OBSERVATIONS (COLORED POINTS) -----
+        
+        # Define colors for the observations
         colors = {
-            'lower_cdf': '#FF1493',  # approximate deeppink
-            'mid_cdf': '#228B22',    # approximate chartreuse4/forest green
-            'upper_cdf': '#ADD8E6'   # lightblue
+            'lower': '#FF1493',  # deeppink
+            'mid': '#228B22',    # chartreuse4/forest green
+            'upper': '#ADD8E6'   # lightblue
         }
         
-        for cdf_type in colors:
-            df_subset = plot_df[plot_df['dist'] == cdf_type]
-            if not df_subset.empty:
-                ax.scatter(
-                    df_subset['value'].values,
-                    df_subset['cum_weight_normed'].values,
-                    color=colors[cdf_type],
-                    label=cdf_type,
-                    marker='o',
-                    s=20  # Set size of dots (default is 36)
-                )
+        # For lower, mid, and upper actual observations
+        for obs_type in ['lower', 'mid', 'upper']:
+            # Get the column name from merged_df
+            col_name = f"{obs_type}_E"
+            
+            # Extract values
+            values = merged_df[col_name].values
+            
+            # Calculate distribution similar to R approach
+            sorted_values = np.sort(values)
+            n = len(sorted_values)
+            
+            # Calculate empirical CDF
+            unique_values, counts = np.unique(sorted_values, return_counts=True)
+            cum_weights = np.cumsum(counts) / n
+            
+            # Plot actual observations as colored points
+            ax.scatter(
+                unique_values, 
+                cum_weights,
+                color=colors[obs_type], 
+                label=f"Actual {obs_type}" if i == 0 else None,  # Only add label in first subplot
+                marker='o', 
+                s=20
+            )
         
         # Set labels and title
         hour, minutes = prediction_time
