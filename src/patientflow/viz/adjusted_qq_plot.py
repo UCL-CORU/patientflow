@@ -15,7 +15,7 @@ For a well-calibrated model, the observed values should fall within their predic
 intervals, with the distribution of positions showing appropriate uncertainty.
 
 Key Functions:
-- coru_plot: Generates and plots the comparison of model predictions with observed values.
+- adjusted_qq_plot: Generates and plots the comparison of model predictions with observed values.
 """
 
 import numpy as np
@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from patientflow.load import get_model_key
 
 
-def coru_plot(
+def adjusted_qq_plot(
     prediction_times,
     prob_dist_dict_all,
     model_name="admissions",
@@ -102,7 +102,7 @@ def coru_plot(
     Examples
     --------
     >>> prediction_times = [(8, 0), (12, 0), (16, 0)]
-    >>> coru_plot(prediction_times, prob_dist_dict, model_name="bed_demand", 
+    >>> adjusted_qq_plot(prediction_times, prob_dist_dict, model_name="bed_demand", 
     ...           figsize=(15, 5), suptitle="Bed Demand Model Predictions vs Observations")
     """
     # Sort prediction times by converting to minutes since midnight
@@ -232,7 +232,7 @@ def coru_plot(
                 color='grey',
                 label=f"Model {pred_type}",
                 marker='o', 
-                s=10
+                s=5
             )
         
         # ----- PLOT ACTUAL OBSERVATIONS (COLORED POINTS) -----
@@ -274,7 +274,7 @@ def coru_plot(
         hour, minutes = prediction_time
         ax.set_xlabel("CDF value (probability threshold)")
         ax.set_ylabel("Proportion of observations ≤ threshold")
-        ax.set_title(f"CORU Plot for {hour}:{minutes:02}")
+        ax.set_title(f"Adjusted QQ plot for {hour}:{minutes:02}")
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
         
