@@ -604,12 +604,13 @@ def additional_details(column, col_name):
         # Handle enum instances
         try:
             from enum import Enum
+
             if any(isinstance(x, Enum) for x in column.dropna().unique()):
                 # Convert enum instances to their values for counting
                 column = column.apply(lambda x: x.value if isinstance(x, Enum) else x)
         except ImportError:
             pass
-        
+
         if len(column.value_counts()) <= 12:
             value_counts = column.value_counts(dropna=False).to_dict()
             value_counts = dict(sorted(value_counts.items(), key=lambda x: str(x[0])))

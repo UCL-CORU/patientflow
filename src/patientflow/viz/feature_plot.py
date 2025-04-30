@@ -36,8 +36,6 @@ def plot_features(
         axs = [axs]
 
     for i, trained_model in enumerate(trained_models_sorted):
-
-        
         # Always use regular pipeline
         pipeline: Pipeline = trained_model.pipeline
         prediction_time = trained_model.training_results.prediction_time

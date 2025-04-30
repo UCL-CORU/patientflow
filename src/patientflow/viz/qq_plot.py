@@ -28,8 +28,8 @@ from patientflow.load import get_model_key
 
 def qq_plot(
     prediction_times,
-    prob_dist_dict_all,  
-    model_name="admissions",  
+    prob_dist_dict_all,
+    model_name="admissions",
     return_figure=False,
     figsize=None,
     suptitle=None,

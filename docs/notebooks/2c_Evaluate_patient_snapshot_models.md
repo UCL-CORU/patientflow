@@ -98,12 +98,12 @@ ed_visits.head()
       <th>total_locations_visited</th>
       <th>num_obs</th>
       <th>...</th>
-      <th>latest_lab_results_na</th>
       <th>latest_lab_results_pco2</th>
       <th>latest_lab_results_ph</th>
       <th>latest_lab_results_wcc</th>
       <th>latest_lab_results_alb</th>
       <th>latest_lab_results_htrt</th>
+      <th>training_validation_test</th>
       <th>final_sequence</th>
       <th>is_admitted</th>
       <th>random_number</th>
@@ -153,7 +153,7 @@ ed_visits.head()
       <td>NaN</td>
       <td>NaN</td>
       <td>NaN</td>
-      <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>15795</td>
@@ -172,12 +172,12 @@ ed_visits.head()
       <td>5</td>
       <td>138</td>
       <td>...</td>
-      <td>138.0</td>
       <td>4.61</td>
       <td>7.474</td>
       <td>8.77</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>860</td>
@@ -196,12 +196,12 @@ ed_visits.head()
       <td>4</td>
       <td>127</td>
       <td>...</td>
-      <td>140.0</td>
       <td>4.82</td>
       <td>7.433</td>
       <td>6.59</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>test</td>
       <td>[]</td>
       <td>False</td>
       <td>76820</td>
@@ -225,7 +225,7 @@ ed_visits.head()
       <td>NaN</td>
       <td>NaN</td>
       <td>NaN</td>
-      <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>54886</td>
@@ -244,12 +244,12 @@ ed_visits.head()
       <td>4</td>
       <td>375</td>
       <td>...</td>
-      <td>139.0</td>
       <td>4.00</td>
       <td>7.536</td>
       <td>13.03</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>6265</td>
@@ -257,7 +257,7 @@ ed_visits.head()
     </tr>
   </tbody>
 </table>
-<p>5 rows × 68 columns</p>
+<p>5 rows × 69 columns</p>
 </div>
 
 The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of `patientflow`.
@@ -484,7 +484,7 @@ plot_calibration(
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
-    suptitle="Base model with imbalanced training data"  # optional
+    # suptitle="Base model with imbalanced training data"  # optional
 )
 ```
 
@@ -520,6 +520,7 @@ In the previous notebook I showed that the `train_classifier()` function will ba
 ```python
 from patientflow.train.classifiers import train_classifier
 
+
 trained_models = []
 
 # Loop through each prediction time
@@ -553,6 +554,10 @@ for prediction_time in prediction_times:
 From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot, and the MADCAP lines are closer. The model slightly underestimates probability of admission at 06:00, 09:30 and 22:00, and slightly overestimates at 12:00 and 15:30. These improvements have been achieved while maintaining good calibration for the most part, although the 09:30 model deviates in the upper part.
 
 ```python
+from patientflow.viz.distribution_plots import plot_prediction_distributions
+from patientflow.viz.calibration_plot import plot_calibration
+from patientflow.viz.madcap_plot import generate_madcap_plots
+
 plot_prediction_distributions(
     trained_models=trained_models,  # Convert dict values to list
     test_visits=test_visits,
@@ -563,7 +568,7 @@ plot_calibration(
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
-    suptitle="Base model with imbalanced training data"  # optional
+    # suptitle="Base model with balanced training data"  # optional
 )
 
 generate_madcap_plots(
@@ -609,6 +614,51 @@ generate_madcap_plots_by_group(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png)
 
+## Feature importances and Shap plots
+
+`patientflow` offers functions that generate Shap and feature importance plots for each prediction time.
+
+```python
+from patientflow.viz.feature_plot import plot_features
+
+plot_features(
+    trained_models)
+
+```
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png)
+
+```python
+from patientflow.viz.shap_plot import plot_shap
+
+plot_shap(
+    trained_models,
+    test_visits,
+    exclude_from_training_data)
+
+
+```
+
+    Predicted classification (not admitted, admitted):  [1178  654]
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_1.png)
+
+    Predicted classification (not admitted, admitted):  [1769 1005]
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_3.png)
+
+    Predicted classification (not admitted, admitted):  [2966 1771]
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_5.png)
+
+    Predicted classification (not admitted, admitted):  [3485 2041]
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_7.png)
+
+    Predicted classification (not admitted, admitted):  [2899 1726]
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_9.png)
+
 ## Conclusion
 
 Here I have shown how visualations within `patientflow` can help you
@@ -617,5 +667,7 @@ Here I have shown how visualations within `patientflow` can help you
 - identify areas of weakness in your models by comparing predictions across different patient groups
 
 I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data.
+
+I demonstrated convenient functions to plot feature importances and Shap plots for the trained models.
 
 This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots.

@@ -369,7 +369,6 @@ def pred_proba_to_agg_predicted(
     if n == 0:
         agg_predicted_dict = {0: 1}
     elif normal_approx_threshold is not None and n > normal_approx_threshold:
-        print(f"Using normal approximation for {n} predictions")
         # Apply a normal approximation for large datasets
         import numpy as np
         from scipy.stats import norm
@@ -414,7 +413,6 @@ def pred_proba_to_agg_predicted(
                 agg_predicted_dict[i] = 1.0 / n
     else:
         # Use the original symbolic computation for smaller datasets
-        print(f"Using symbolic computation for {n} predictions")
         local_proba = predictions_proba.copy()
         if weights is not None:
             local_proba["pred_proba"] *= weights
