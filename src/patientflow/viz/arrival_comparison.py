@@ -284,7 +284,7 @@ def plot_multiple_deltas(df, prediction_time, snapshot_dates, prediction_window,
         if np.any(valid_mask):
             ax.step([t for t, m in zip(common_times, valid_mask) if m],
                    avg_delta[valid_mask],
-                   where='post', color='black', linewidth=2)
+                   where='post', color='red', linewidth=2)
     
     # Add horizontal line at y=0
     ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)

@@ -38,6 +38,15 @@ def plot_shap(
     )
 
     for trained_model in trained_models_sorted:
+
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_model, "calibrated_pipeline")
+            and trained_model.calibrated_pipeline is not None
+        ):
+            pipeline = trained_model.calibrated_pipeline
+        else:
+            pipeline = trained_model.pipeline
         fig, ax = plt.subplots(figsize=(8, 12))
 
         pipeline: Pipeline = trained_model.pipeline
