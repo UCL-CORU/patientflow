@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -649,9 +649,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#qq-plots" class="md-nav__link">
+  <a href="#qq-plots-and-adjusted-qq-plots" class="md-nav__link">
     <span class="md-ellipsis">
-      QQ Plots
+      QQ Plots and Adjusted QQ plots
     </span>
   </a>
   
@@ -723,6 +723,15 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adjusted-qq-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adjusted QQ plot
+    </span>
+  </a>
   
 </li>
       
@@ -1016,9 +1025,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#qq-plots" class="md-nav__link">
+  <a href="#qq-plots-and-adjusted-qq-plots" class="md-nav__link">
     <span class="md-ellipsis">
-      QQ Plots
+      QQ Plots and Adjusted QQ plots
     </span>
   </a>
   
@@ -1094,6 +1103,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#adjusted-qq-plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adjusted QQ plot
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#conclusions" class="md-nav__link">
     <span class="md-ellipsis">
       Conclusions
@@ -1128,12 +1146,14 @@
 
 <h1 id="3b-evaluate-group-snapshots">3b. Evaluate group snapshots</h1>
 <p>In the last notebook, I showed how to prepare group snapshots using <code>patientflow</code>. Now, let's think about how to evaluate those models. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts at each prediction time over the period of the test set. </p>
-<p>There are various approaches. Here I demonstrate two. </p>
+<p>There are various approaches. Here I demonstrate three. </p>
 <h3 id="mean-absolute-error-and-mean-percentage-error">Mean Absolute Error and Mean Percentage Error</h3>
 <p>For each prediction moment, subtract the expected value from the predicted probability distribution from the observed number of admissions to get an error value for each prediction time. Over the whole test set, calculate the Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE). </p>
-<p>This is a common approach so it is worth showing. I also plot the difference between expected and observed, which is more revealing the calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate. </p>
-<h3 id="qq-plots">QQ Plots</h3>
-<p>Other methods appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution on 10% of prediction moments, and likewise in the highest tenth on 10% of prediction moments. A Quantile-Quantile (QQ) Plot can be used to compare one probability distribution with another. The observed values across the test set are treated as a distribution, and compared with predicted distribution</p>
+<p>This is a common approach so it is worth showing. I also plot the difference between expected and observed, which is more revealing than calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate. </p>
+<h3 id="qq-plots-and-adjusted-qq-plots">QQ Plots and Adjusted QQ plots</h3>
+<p>Other methods appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution on 10% of prediction moments, and likewise in the highest tenth on 10% of prediction moments. </p>
+<p>A Quantile-Quantile (QQ) Plot can be used to compare one probability distribution with another. The observed values across the test set are treated as a distribution, and compared with predicted distribution. The plot compares quantiles from the model's predicted distribution with quantiles from the observed distribution. </p>
+<p>With discrete distributions such as bed counts, a QQ plot can be problematic if values are low or zero. We developed an alternative plot, called an Adjusted QQ plot, for the evaluation of discrete distributions. I will show both below to illustrate their differences. </p>
 <h3 id="about-the-data-used-in-this-notebook">About the data used in this notebook</h3>
 <p>I'm going to use real patient data from visits to the Emergency Department (ED) at UCLH to demonstrate the evaluation. The methods shown will work on any data in the same structure. </p>
 <p>You can request the datasets that are used here on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from <code>data_folder_name='data-public'</code> to <code>data_folder_name='data-synthetic'</code>.</p>
@@ -1247,7 +1267,7 @@ ordinal_mappings = {
 </code></pre>
 <pre><code>Split sizes: [53801, 6519, 19494]
 </code></pre>
-<p>We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set. </p>
+<p>We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set. Here I'm using a minimal hyperparameter grid for expediency. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
 
@@ -1340,24 +1360,23 @@ for prediction_time, values in results.items():
 </code></pre>
 <pre><code>Time    MAE    MPE
 ----------------------
-06:00  1.49    41.43%
-09:30  1.46    36.29%
-12:00  2.05    37.41%
-15:30  2.61    29.19%
-22:00  2.99    26.67%
+06:00  1.48    42.20%
+09:30  1.47    39.71%
+12:00  2.06    37.85%
+15:30  2.59    29.74%
+22:00  2.99    27.71%
 </code></pre>
-<p>The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally more accurate relative to the actual values. </p>
-<p>Similar observations can be drawn from plotting the observed values against the expected, as shown below.</p>
+<p>The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values. </p>
+<p>We can plot the observed values against the expected, as shown below.</p>
 <pre><code class="language-python">from patientflow.viz.evaluation_plots import plot_observed_against_expected
 plot_observed_against_expected(results)
 </code></pre>
 <p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png" /></p>
 <p>Fro the plots above: 
-* The 06:00 data shows a slight positive bias, with most error values indicating that actual admissions were typically higher than predicted.
-* The 09:30 data has a similar positive skew but with errors more tightly clustered around 1, confirming its lower MAE.
-* The 12:00 distribution appears more spread out with a wider range of errors.
-* The 15:30 time slot shows the most balanced distribution around zero, which aligns with its lower MPE.
-* The 22:00 time slot displays a distinct positive skew, with most values above zero, suggesting consistent under-prediction (observed values higher than expected).</p>
+* The 06:00 and 09:30 models data shows a slight positive bias, with more values above zero than below, suggesting under-prediction (observed values higher than expected)
+* The 12:00 model appears more spread out with a wider range of error
+* The 15:30 model has a slight negative bias
+* The 22:00 time slot displays a distinct positive skew, with most values above zero, suggesting consistent under-prediction</p>
 <h3 id="qq-quantile-quantile-plots">QQ (quantile-quantile) Plots</h3>
 <p>A QQ plot compares a predicted distribution to an observed distribution. In this case, the predicted distribution is the combined set of probability distributions (one for each snapshot date in the test set) at the given prediction time. The observed distribution is derived from the actual number of patients in each group snapshot who were later admitted. </p>
 <p>If the predicted and observed distributions are similar, the qq plot should adhere closely to the y = x line in the plot. </p>
@@ -1368,12 +1387,33 @@ qq_plot(prediction_times,
         model_name=&quot;admissions&quot;)
 </code></pre>
 <p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_18_0.png" /></p>
-<p>The 12:00 distributions show the closest adherence to the theoretical distribution (closest to the diagonal line). The 15:30 plot shows reasonable alignment but with some deviation in the lower range. The 06:00 and 09:30 show greater deviations in the middle range, suggesting some bias in predictions, and the 22:00 QQ plot shows significant deviation from the theoretical distribution, with a particularly strong departure in the upper quantiles.</p>
+<p>The 12:00 distributions show the closest adherence to the predicted distribution (closest to the diagonal line). The 06:00 and 09:30 deviate in the middle range, suggesting some bias in predictions, and the 22:00 QQ plot shows significant deviation. From an <a href="../2c_Evaluate_patient_snapshot_models/">earlier notebook</a>, we know that the 09:30 and 22:00 admissions models both slightly underestimate each patient's probability of admission. We see this underestimate being propogated here; for both prediction times the points fall below the y=x line. However the 22:00 points fall substantially below; the observed values deviate markedly at the lower end of the distribution. More patients are being admitted than the model expects. </p>
+<p>However, QQ plots can be problematic when used with discrete distributions. In a discrete distribution, probability mass is assigned in 'chunks' to each discrete value, which makes certain regions of the QQ plot impossible. </p>
+<p>Over larger ranges this problem is less marked, because the observed values fall on a greater variety of points on their predicted distributions. However, if the numbers are small (for example if there are two children in the ED, possible values for the predicted distribution will be 0, 1 or 2), the integer nature of a discrete distribution is very marked. Observed values for these small ranges tend to fall at the same points on their predicted distributions, creating a staircase effect in the QQ plot. We will see this when we start making predictions by subplots in the following notebooks.</p>
+<h2 id="adjusted-qq-plot">Adjusted QQ plot</h2>
+<p>We handle the dicrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in <a href="https://www.sciencedirect.com/science/article/pii/S2211692316300418">Pagel et al (2017)</a>.</p>
+<p>When mapping an observed value to its is Cumulative Distribution Function (CDF), there is an arbitrary choice as to whether to read the lower or upper value of the CDF at that point, or the mid point between the two. The QQ plots above use the mid point. </p>
+<p>In the Adjusted QQ Plot the x axis represents the CDF from the model's predictions and the y axis represents the proportion of observed values that fall below that threshold. For the observed values, there are three CDFs shown on the plot (in colour) and for the model there are three (in grey)</p>
+<ul>
+<li>The lower CDF at a point is the sum of probabilities for all values less than that value</li>
+<li>The upper CDF at a point is the sum of probabilities for all values less than or equal to that value</li>
+<li>The mid CDF is the average of upper and lower</li>
+</ul>
+<p>If the observed cdf points track the model cdfs, the model performs well. </p>
+<pre><code class="language-python">from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+
+adjusted_qq_plot(prediction_times, 
+        prob_dist_dict_all,
+        model_name=&quot;admissions&quot;)
+</code></pre>
+<p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_21_0.png" /></p>
+<p>In the plot above, the 06:00 and 09:30 models perform well. At 12:00 and 15:30 the predicted probabilities are consistently lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects. </p>
+<p>There appears to be some bias introduded at the aggregation step, that has not been propogated through from the patient-level predictions. </p>
+<p>The Adjusted QQ Plot demonstrates that further work is needed to isolate the reason for this bias. </p>
 <h2 id="conclusions">Conclusions</h2>
-<p>Here I have demonstrated some methods for evaluating predicted distributions. </p>
-<p>We prefer the QQ plot for evaluating probability distribution predictions for several reasons.</p>
-<p>QQ plots directly compare the entire predicted and observed distributions across the full probability range. Unlike summary statistics like MAE or MPE that reduce information to single values, QQ plots preserve and visualise the whole distribution. A comprehensive view can be particularly valuable for detecting issues in the tails of distributions. For instance, in the 22:00 time slot from the UCLH data, the QQ plot reveals deviations in the upper quantiles that summary statistics would obscure.</p>
-<p>QQ plots are good for identifying specific types of mismatches — for example whether a model systematically under-predicts high values, over-predicts low values, or misses multimodality in the data. These insights can inform model improvement by showing where and how the predicted distribution fails.</p>
+<p>Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, QQ Plots and Adjusted QQ Plots.  </p>
+<p>We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure.</p>
+<p>I noted above that plots for discrete distributions can be problematic, and demonstrated an Adjusted QQ plot that is designed to evaluate them. It helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further. I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty. </p>
 
 
 

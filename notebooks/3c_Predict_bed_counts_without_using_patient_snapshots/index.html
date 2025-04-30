@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1797,13 +1797,6 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 <div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;WeightedPoissonPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 <p>Below we view the results of the fit method for the 09:30 prediction time. </p>
-<pre><code class="language-python">round(v, 3) for v in arrival_rates_by_time_interval[0:10]
-</code></pre>
-<pre><code>  Cell In[24], line 1
-    round(v, 3) for v in arrival_rates_by_time_interval[0:10]
-                ^
-SyntaxError: invalid syntax
-</code></pre>
 <pre><code class="language-python">arrival_rates_by_time_interval = yta_model.weights['unfiltered'][(9,30)]['arrival_rates']
 print(
     f'The calculated arrival rates for the first 10 discrete time intervals '
@@ -1835,7 +1828,7 @@ prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
     include_titles=True,
     truncate_at_beds=20)
 </code></pre>
-<p><img alt="png" src="../3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_32_0.png" /></p>
+<p><img alt="png" src="../3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_31_0.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have demonstrated the use of <code>patientflow</code> to generate bed counts for groups of patients, without using patient snapshots. </p>
 <p>If you have count data on past visits that approximate to a statistical distribution, preparing a  model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need <code>patientflow</code> functions for that. </p>

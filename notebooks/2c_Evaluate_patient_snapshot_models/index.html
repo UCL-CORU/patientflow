@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -682,6 +682,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#feature-importances-and-shap-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Feature importances and Shap plots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#conclusion" class="md-nav__link">
     <span class="md-ellipsis">
       Conclusion
@@ -1142,6 +1151,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#feature-importances-and-shap-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      Feature importances and Shap plots
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#conclusion" class="md-nav__link">
     <span class="md-ellipsis">
       Conclusion
@@ -1254,12 +1272,12 @@ ed_visits = load_data(data_file_path,
       <th>total_locations_visited</th>
       <th>num_obs</th>
       <th>...</th>
-      <th>latest_lab_results_na</th>
       <th>latest_lab_results_pco2</th>
       <th>latest_lab_results_ph</th>
       <th>latest_lab_results_wcc</th>
       <th>latest_lab_results_alb</th>
       <th>latest_lab_results_htrt</th>
+      <th>training_validation_test</th>
       <th>final_sequence</th>
       <th>is_admitted</th>
       <th>random_number</th>
@@ -1309,7 +1327,7 @@ ed_visits = load_data(data_file_path,
       <td>NaN</td>
       <td>NaN</td>
       <td>NaN</td>
-      <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>15795</td>
@@ -1328,12 +1346,12 @@ ed_visits = load_data(data_file_path,
       <td>5</td>
       <td>138</td>
       <td>...</td>
-      <td>138.0</td>
       <td>4.61</td>
       <td>7.474</td>
       <td>8.77</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>860</td>
@@ -1352,12 +1370,12 @@ ed_visits = load_data(data_file_path,
       <td>4</td>
       <td>127</td>
       <td>...</td>
-      <td>140.0</td>
       <td>4.82</td>
       <td>7.433</td>
       <td>6.59</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>test</td>
       <td>[]</td>
       <td>False</td>
       <td>76820</td>
@@ -1381,7 +1399,7 @@ ed_visits = load_data(data_file_path,
       <td>NaN</td>
       <td>NaN</td>
       <td>NaN</td>
-      <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>54886</td>
@@ -1400,12 +1418,12 @@ ed_visits = load_data(data_file_path,
       <td>4</td>
       <td>375</td>
       <td>...</td>
-      <td>139.0</td>
       <td>4.00</td>
       <td>7.536</td>
       <td>13.03</td>
       <td>NaN</td>
       <td>NaN</td>
+      <td>train</td>
       <td>[]</td>
       <td>False</td>
       <td>6265</td>
@@ -1413,7 +1431,7 @@ ed_visits = load_data(data_file_path,
     </tr>
   </tbody>
 </table>
-<p>5 rows × 68 columns</p>
+<p>5 rows × 69 columns</p>
 </div>
 
 <p>The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of <code>patientflow</code>.</p>
@@ -1608,7 +1626,7 @@ plot_calibration(
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy=&quot;quantile&quot;,  # optional
-    suptitle=&quot;Base model with imbalanced training data&quot;  # optional
+    # suptitle=&quot;Base model with imbalanced training data&quot;  # optional
 )
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png" /></p>
@@ -1630,6 +1648,7 @@ generate_madcap_plots(
 <h2 id="inspecting-a-balanced-and-calibrated-model">Inspecting a balanced and calibrated model</h2>
 <p>In the previous notebook I showed that the <code>train_classifier()</code> function will balance the training set, by under-sampling the negative class, and then re-calibrate the data using the validation set. Below I train the models with these arguments set to true, and re-run the plots. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+
 
 trained_models = []  
 
@@ -1661,7 +1680,11 @@ Training model for (9, 30)
 Training model for (22, 0)
 </code></pre>
 <p>From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot, and the MADCAP lines are closer. The model slightly underestimates probability of admission at 06:00, 09:30 and 22:00, and slightly overestimates at 12:00 and 15:30. These improvements have been achieved while maintaining good calibration for the most part, although the 09:30 model deviates in the upper part.   </p>
-<pre><code class="language-python">plot_prediction_distributions(
+<pre><code class="language-python">from patientflow.viz.distribution_plots import plot_prediction_distributions
+from patientflow.viz.calibration_plot import plot_calibration
+from patientflow.viz.madcap_plot import generate_madcap_plots
+
+plot_prediction_distributions(
     trained_models=trained_models,  # Convert dict values to list
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -1671,7 +1694,7 @@ plot_calibration(
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy=&quot;quantile&quot;,  # optional
-    suptitle=&quot;Base model with imbalanced training data&quot;  # optional
+    # suptitle=&quot;Base model with balanced training data&quot;  # optional
 )
 
 generate_madcap_plots(
@@ -1702,6 +1725,39 @@ generate_madcap_plots_by_group(
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png" /></p>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png" /></p>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png" /></p>
+<h2 id="feature-importances-and-shap-plots">Feature importances and Shap plots</h2>
+<p><code>patientflow</code> offers functions that generate Shap and feature importance plots for each prediction time. </p>
+<pre><code class="language-python">from patientflow.viz.feature_plot import plot_features
+
+plot_features(
+    trained_models)
+
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png" /></p>
+<pre><code class="language-python">from patientflow.viz.shap_plot import plot_shap
+
+plot_shap(
+    trained_models, 
+    test_visits,
+    exclude_from_training_data)
+
+
+</code></pre>
+<pre><code>Predicted classification (not admitted, admitted):  [1178  654]
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_1.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [1769 1005]
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_3.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [2966 1771]
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_5.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [3485 2041]
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_7.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [2899 1726]
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_9.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>
@@ -1709,6 +1765,7 @@ generate_madcap_plots_by_group(
 <li>identify areas of weakness in your models by comparing predictions across different patient groups</li>
 </ul>
 <p>I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data. </p>
+<p>I demonstrated convenient functions to plot feature importances and Shap plots for the trained models. </p>
 <p>This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where <code>patientflow</code> comes into its own. In the next notebook, I show how to create group snapshots. </p>
 
 
