@@ -1224,18 +1224,18 @@ Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
 print(ed_visits.prediction_time.unique())
 </code></pre>
 <pre><code>Times of day at which predictions will be made
-[(12, 0) (15, 30) (6, 0) (9, 30) (22, 0)]
+[(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
 </code></pre>
 <pre><code class="language-python">print(&quot;\nNumber of observations for each prediction time&quot;)
 print(ed_visits.prediction_time.value_counts())
 </code></pre>
 <pre><code>Number of observations for each prediction time
 prediction_time
-(15, 30)    22279
-(12, 0)     19075
-(22, 0)     18842
-(9, 30)     11421
-(6, 0)       8197
+(15, 30)    35310
+(12, 0)     29942
+(22, 0)     28457
+(9, 30)     17642
+(6, 0)      11984
 Name: count, dtype: int64
 </code></pre>
 <h2 id="apply-temporal-splits">Apply temporal splits</h2>
@@ -1259,8 +1259,8 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
     col_name=&quot;arrival_datetime&quot;,
 )
 </code></pre>
-<pre><code>Split sizes: [53801, 6519, 19494]
-Split sizes: [7730, 1244, 3701]
+<pre><code>Split sizes: [62071, 10415, 29134]
+Split sizes: [7716, 1285, 3898]
 </code></pre>
 <h2 id="train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed">Train models to predict bed count distributions for patients currently in the ED</h2>
 <pre><code class="language-python">
@@ -1313,11 +1313,11 @@ for prediction_time in ed_visits.prediction_time.unique():
 
     admissions_models[model_key] = model
 </code></pre>
-<pre><code>Training model for (12, 0)
+<pre><code>Training model for (22, 0)
 Training model for (15, 30)
 Training model for (6, 0)
+Training model for (12, 0)
 Training model for (9, 30)
-Training model for (22, 0)
 </code></pre>
 <h2 id="train-specialty-model">Train specialty model</h2>
 <p>The <code>SequencePredictor</code> is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model. </p>
@@ -1360,7 +1360,7 @@ print(f'Number of patients under the age of 18 in the ED at {format_prediction_t
 # format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
     df=prediction_snapshots, 
-    prediction_time=(9,30), 
+    prediction_time=random_prediction_time, 
     single_snapshot_per_visit=False,
     exclude_columns=exclude_from_training_data, 
     visit_col='visit_number'
@@ -1374,8 +1374,8 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots[prediction_snapshots.age_group != &quot;0-17&quot;]
     )
 </code></pre>
-<pre><code>Number of adult patients in the ED at 09:30 on 2031-12-20: 21
-Number of patients under the age of 18 in the ED at 09:30 on 2031-12-20: 1
+<pre><code>Number of adult patients in the ED at 22:00 on 2031-10-09: 69
+Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 </code></pre>
 <p>The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots: </p>
 <ul>
@@ -1507,10 +1507,10 @@ create_predictions(
     x2 = x2, 
     y2 = y2)
 </code></pre>
-<pre><code>{'medical': {'in_ed': [1, 0], 'yet_to_arrive': [5, 3]},
- 'surgical': {'in_ed': [0, 0], 'yet_to_arrive': [2, 1]},
- 'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
- 'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [1, 0]}}
+<pre><code>{'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
+ 'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+ 'haem/onc': {'in_ed': [1, 1], 'yet_to_arrive': [0, 0]},
+ 'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 </code></pre>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how <code>patientflow</code> is used at UCLH to generate predictions of emergency demand for beds in the next 8 hours. There are two elements to the predictions. </p>

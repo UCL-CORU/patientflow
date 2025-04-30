@@ -1242,7 +1242,7 @@ ordinal_mappings = {
         &quot;45-54&quot;,
         &quot;55-64&quot;,
         &quot;65-74&quot;,
-        &quot;75-102&quot;,
+        &quot;75-115&quot;,
     ],
     &quot;latest_obs_manchester_triage_acuity&quot;: [
         &quot;Blue&quot;,
@@ -1265,7 +1265,7 @@ ordinal_mappings = {
         &quot;U&quot; #unconscious - no response to pain or voice stimulus
     ]    }
 </code></pre>
-<pre><code>Split sizes: [53801, 6519, 19494]
+<pre><code>Split sizes: [62071, 10415, 29134]
 </code></pre>
 <p>We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set. Here I'm using a minimal hyperparameter grid for expediency. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
@@ -1295,11 +1295,11 @@ for prediction_time in prediction_times:
 
     trained_models[model_key] = model
 </code></pre>
-<pre><code>Training model for (12, 0)
+<pre><code>Training model for (22, 0)
 Training model for (15, 30)
 Training model for (6, 0)
+Training model for (12, 0)
 Training model for (9, 30)
-Training model for (22, 0)
 </code></pre>
 <h2 id="prepare-group-snapshots">Prepare group snapshots</h2>
 <p>We will now iterate over all group snapshots, to create the following</p>
@@ -1333,15 +1333,15 @@ for _prediction_time in prediction_times:
             group_snapshots_dict, X_test, y_test, trained_models[model_key]
         )
 </code></pre>
-<pre><code>Processing :(12, 0)
+<pre><code>Processing :(22, 0)
 
 Processing :(15, 30)
 
 Processing :(6, 0)
 
-Processing :(9, 30)
+Processing :(12, 0)
 
-Processing :(22, 0)
+Processing :(9, 30)
 </code></pre>
 <h2 id="evaluate-group-snapshots">Evaluate group snapshots</h2>
 <h3 id="comparing-observed-with-expected-values">Comparing observed with expected values</h3>
@@ -1360,11 +1360,11 @@ for prediction_time, values in results.items():
 </code></pre>
 <pre><code>Time    MAE    MPE
 ----------------------
-06:00  1.48    42.20%
-09:30  1.47    39.71%
-12:00  2.06    37.85%
-15:30  2.59    29.74%
-22:00  2.99    27.71%
+06:00  1.47    31.01%
+09:30  1.51    36.08%
+12:00  2.21    32.29%
+15:30  2.67    22.75%
+22:00  3.21    24.90%
 </code></pre>
 <p>The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values. </p>
 <p>We can plot the observed values against the expected, as shown below.</p>
