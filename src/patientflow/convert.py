@@ -67,7 +67,7 @@ def prepare_age_and_dates(df):
     ).apply(lambda x: np.floor(x) if pd.notna(x) else x)
 
     bins = [-1, 18, 25, 35, 45, 55, 65, 75, 102]
-    labels = ["0-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-102"]
+    labels = ["0-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-115"]
     df["age_group"] = pd.cut(df["age_on_arrival"], bins=bins, labels=labels, right=True)
 
     if "snapshot_datetime" in df.columns:

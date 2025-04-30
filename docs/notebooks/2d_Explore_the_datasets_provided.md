@@ -208,7 +208,7 @@ ed_visits.head()
       <td>36297</td>
       <td>9180</td>
       <td>M</td>
-      <td>75-102</td>
+      <td>75-115</td>
       <td>NaN</td>
       <td>majors</td>
       <td>4</td>
@@ -408,7 +408,7 @@ ed_visits.head(10)
       <td>36297</td>
       <td>9180</td>
       <td>M</td>
-      <td>75-102</td>
+      <td>75-115</td>
       <td>NaN</td>
       <td>majors</td>
       <td>4</td>
@@ -670,7 +670,7 @@ ordinal_mappings = {
         "45-54",
         "55-64",
         "65-74",
-        "75-102",
+        "75-115",
     ],
     # triage score
     "latest_obs_manchester_triage_acuity": ["Blue", "Green", "Yellow", "Orange", "Red"],
