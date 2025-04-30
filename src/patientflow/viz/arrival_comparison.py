@@ -103,7 +103,7 @@ def plot_arrival_comparison(
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
         ax = ax1
     else:
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(10, 4))
         ax = plt.gca()
 
     # Ensure arrivals index is timezone-aware

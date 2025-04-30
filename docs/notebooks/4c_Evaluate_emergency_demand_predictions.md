@@ -22,6 +22,9 @@ We can, however, evaluate the predictions in a slightly different way.
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -105,7 +108,7 @@ train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_spl
 )
 ```
 
-    Split sizes: [62103, 10417, 29135]
+    Split sizes: [62071, 10415, 29134]
     Split sizes: [7716, 1285, 3898]
 
 ## Train models to predict bed count distributions for patients currently in the ED
@@ -168,11 +171,11 @@ for prediction_time in ed_visits.prediction_time.unique():
     admissions_models[model_key] = model
 ```
 
-    Training model for (12, 0)
+    Training model for (22, 0)
     Training model for (15, 30)
     Training model for (6, 0)
+    Training model for (12, 0)
     Training model for (9, 30)
-    Training model for (22, 0)
 
 ## Train specialty model
 
@@ -307,7 +310,7 @@ for _prediction_time in ed_visits.prediction_time.unique():
 
 ```
 
-    Processing :(12, 0)
+    Processing :(22, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
@@ -325,13 +328,13 @@ for _prediction_time in ed_visits.prediction_time.unique():
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
 
-    Processing :(9, 30)
+    Processing :(12, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
 
-    Processing :(22, 0)
+    Processing :(9, 30)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set

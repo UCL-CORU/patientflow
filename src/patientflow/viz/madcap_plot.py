@@ -77,7 +77,7 @@ def classify_age(age):
             return "children"
         elif age in ["18-24", "25-34", "35-44", "45-54", "55-64"]:
             return "adults"
-        elif age in ["65-74", "75-102"]:
+        elif age in ["65-74", "75-115"]:
             return "65 or over"
         else:
             return "unknown"

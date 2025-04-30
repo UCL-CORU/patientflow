@@ -62,203 +62,22 @@ ed_visits = load_data(data_file_path,
 
     Inferred project root: /Users/zellaking/Repos/patientflow
 
-Inspecting the data that has been loaded, we can see that it is similar in structure to the fake data that was generated on the fly in the previous notebooks. The dates have been pushed into the future, to minimise the likelihood of re-identifcation of patients.
-
 ```python
-ed_visits.head()
+ed_visits.age_group.value_counts()
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
+    age_group
+    25-34     23515
+    35-44     17700
+    18-24     15400
+    45-54     14860
+    55-64     14846
+    0-17      13586
+    75-115    12200
+    65-74     11228
+    Name: count, dtype: int64
 
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>snapshot_date</th>
-      <th>prediction_time</th>
-      <th>visit_number</th>
-      <th>elapsed_los</th>
-      <th>sex</th>
-      <th>age_group</th>
-      <th>arrival_method</th>
-      <th>current_location_type</th>
-      <th>total_locations_visited</th>
-      <th>num_obs</th>
-      <th>...</th>
-      <th>latest_lab_results_pco2</th>
-      <th>latest_lab_results_ph</th>
-      <th>latest_lab_results_wcc</th>
-      <th>latest_lab_results_alb</th>
-      <th>latest_lab_results_htrt</th>
-      <th>training_validation_test</th>
-      <th>final_sequence</th>
-      <th>is_admitted</th>
-      <th>random_number</th>
-      <th>specialty</th>
-    </tr>
-    <tr>
-      <th>snapshot_id</th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>4/17/2031</td>
-      <td>(12, 0)</td>
-      <td>30767</td>
-      <td>1920</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>107</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>train</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>15795</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>4/17/2031</td>
-      <td>(15, 30)</td>
-      <td>30767</td>
-      <td>14520</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>5</td>
-      <td>138</td>
-      <td>...</td>
-      <td>4.61</td>
-      <td>7.474</td>
-      <td>8.77</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>train</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>860</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>12/10/2031</td>
-      <td>(15, 30)</td>
-      <td>36297</td>
-      <td>9180</td>
-      <td>M</td>
-      <td>75-102</td>
-      <td>NaN</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>127</td>
-      <td>...</td>
-      <td>4.82</td>
-      <td>7.433</td>
-      <td>6.59</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>test</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>76820</td>
-      <td>surgical</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>3/28/2031</td>
-      <td>(6, 0)</td>
-      <td>53554</td>
-      <td>2220</td>
-      <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>rat</td>
-      <td>3</td>
-      <td>356</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>train</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>54886</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>3/28/2031</td>
-      <td>(9, 30)</td>
-      <td>53554</td>
-      <td>14820</td>
-      <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>375</td>
-      <td>...</td>
-      <td>4.00</td>
-      <td>7.536</td>
-      <td>13.03</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>train</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>6265</td>
-      <td>medical</td>
-    </tr>
-  </tbody>
-</table>
-<p>5 rows × 69 columns</p>
-</div>
+Inspecting the data that has been loaded, we can see that it is similar in structure to the fake data that was generated on the fly in the previous notebooks. The dates have been pushed into the future, to minimise the likelihood of re-identifcation of patients.
 
 The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of `patientflow`.
 
@@ -310,7 +129,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
 
 ```
 
-    Split sizes: [53801, 6519, 19494]
+    Split sizes: [62071, 10415, 29134]
 
 Next we specify the times of day at which are predictions are to be made. Here I'm deriving from the dataset. Note that there are many more snapshots in the later part of the day 12:00, 15:30 and 22:00
 
@@ -324,15 +143,15 @@ print(ed_visits.prediction_time.value_counts())
 ```
 
     Models will be trained for the following prediction times. Note that each prediction time is a tuple of (hour, minute):
-    [(12, 0) (15, 30) (6, 0) (9, 30) (22, 0)]
+    [(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
 
     Number of observations for each prediction time:
     prediction_time
-    (15, 30)    22279
-    (12, 0)     19075
-    (22, 0)     18842
-    (9, 30)     11421
-    (6, 0)       8197
+    (15, 30)    35310
+    (12, 0)     29942
+    (22, 0)     28457
+    (9, 30)     17642
+    (6, 0)      11984
     Name: count, dtype: int64
 
 Define ordinal mappings where appropriate. These include:
@@ -352,7 +171,7 @@ ordinal_mappings = {
         "45-54",
         "55-64",
         "65-74",
-        "75-102",
+        "75-115",
     ],
     "latest_obs_manchester_triage_acuity": [
         "Blue",
@@ -410,16 +229,16 @@ for prediction_time in prediction_times:
     trained_models.append(model)
 ```
 
-    Training model for (12, 0)
-    (12, 0)
+    Training model for (22, 0)
+    (22, 0)
     Training model for (15, 30)
     (15, 30)
     Training model for (6, 0)
     (6, 0)
+    Training model for (12, 0)
+    (12, 0)
     Training model for (9, 30)
     (9, 30)
-    Training model for (22, 0)
-    (22, 0)
 
 ## Inspecting the base model
 
@@ -497,9 +316,9 @@ A MADCAP (Model Accuracy Diagnostic Calibration Plot) visually compares the pred
 The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
 The orange line represents the cumulative observed outcomes, calculated based on the actual labels in the dataset, averaged over the same sorted order of predicted probabilities.
 
-If the model is well calibrated, these two lines will closely follow each other, and the curves will bow to the bottom left.
+If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom left.
 
-Below, we see that the models under-predict the likelihood of admissions, as the blue line (predicted outcomes) consistently falls below the orange line (actual outcomes). The models are systematically assigning lower probabilities than they should, meaning that (later) we will under-predict the number of beds needed for these patients.
+Below, we see that some models under-predict the likelihood of admissions, as the blue line (predicted outcomes) falls below the orange line (actual outcomes). The models are assigning lower probabilities than they should, meaning that (later) we will under-predict the number of beds needed for these patients.
 
 ```python
 ## without balanced training
@@ -513,9 +332,11 @@ generate_madcap_plots(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png)
 
-## Inspecting a balanced and calibrated model
+## Inspecting a balanced model
 
-In the previous notebook I showed that the `train_classifier()` function will balance the training set, by under-sampling the negative class, and then re-calibrate the data using the validation set. Below I train the models with these arguments set to true, and re-run the plots.
+These results are not bad, but it is common to attempt to handle unbalanced classes by under-sampling the majority class.
+
+The `train_classifier()` function will balance the training set, if `use_balanced_training` is set to True, as shown below.
 
 ```python
 from patientflow.train.classifiers import train_classifier
@@ -535,7 +356,7 @@ for prediction_time in prediction_times:
         ordinal_mappings=ordinal_mappings,
         prediction_time=prediction_time,
         visit_col="visit_number",
-        calibrate_probabilities=True,
+        calibrate_probabilities=False,
         calibration_method="sigmoid",
         use_balanced_training=True,
     )
@@ -545,13 +366,13 @@ for prediction_time in prediction_times:
 
 ```
 
-    Training model for (12, 0)
+    Training model for (22, 0)
     Training model for (15, 30)
     Training model for (6, 0)
+    Training model for (12, 0)
     Training model for (9, 30)
-    Training model for (22, 0)
 
-From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot, and the MADCAP lines are closer. The model slightly underestimates probability of admission at 06:00, 09:30 and 22:00, and slightly overestimates at 12:00 and 15:30. These improvements have been achieved while maintaining good calibration for the most part, although the 09:30 model deviates in the upper part.
+From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the whole test set, without undersampling the majority class, as shown in the calibation plot and MADCAP plots.
 
 ```python
 from patientflow.viz.distribution_plots import plot_prediction_distributions
@@ -584,6 +405,70 @@ generate_madcap_plots(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_2.png)
 
+## Inspecting a balanced and calibrated model
+
+A solution is to use the validation set to re-calibrate the probabilities generated by the model, so that they generate predictions that align with the true proportion of positive classes. From the plots below, we can see that calibration has been improved, but the calibration process has led to a truncation of the range of the predicted probabilities.
+
+```python
+from patientflow.train.classifiers import train_classifier
+from patientflow.viz.distribution_plots import plot_prediction_distributions
+from patientflow.viz.calibration_plot import plot_calibration
+from patientflow.viz.madcap_plot import generate_madcap_plots
+
+trained_models = []
+
+# Loop through each prediction time
+for prediction_time in prediction_times:
+    print(f"Training model for {prediction_time}")
+    model = train_classifier(
+        train_visits=train_visits,
+        valid_visits=valid_visits,
+        test_visits=test_visits,
+        grid={"n_estimators": [20, 30, 40]},
+        exclude_from_training_data=exclude_from_training_data,
+        ordinal_mappings=ordinal_mappings,
+        prediction_time=prediction_time,
+        visit_col="visit_number",
+        calibrate_probabilities=True,
+        calibration_method="sigmoid",
+        use_balanced_training=True,
+    )
+
+    trained_models.append(model)
+
+
+plot_prediction_distributions(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+plot_calibration(
+    trained_models=trained_models,  # Convert dict values to list
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data,
+    # strategy="quantile",  # optional
+    # suptitle="Base model with balanced training data"  # optional
+)
+
+generate_madcap_plots(
+    trained_models=trained_models,
+    test_visits=test_visits,
+    exclude_from_training_data=exclude_from_training_data
+)
+```
+
+    Training model for (22, 0)
+    Training model for (15, 30)
+    Training model for (6, 0)
+    Training model for (12, 0)
+    Training model for (9, 30)
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png)
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png)
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png)
+
 ## MADCAP plots by age
 
 It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.
@@ -604,15 +489,15 @@ generate_madcap_plots_by_group(
 )
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_1.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_2.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_3.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_4.png)
 
 ## Feature importances and Shap plots
 
@@ -626,7 +511,7 @@ plot_features(
 
 ```
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_33_0.png)
 
 ```python
 from patientflow.viz.shap_plot import plot_shap
@@ -639,25 +524,25 @@ plot_shap(
 
 ```
 
-    Predicted classification (not admitted, admitted):  [1178  654]
+    Predicted classification (not admitted, admitted):  [1666  952]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_1.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
 
-    Predicted classification (not admitted, admitted):  [1769 1005]
+    Predicted classification (not admitted, admitted):  [2823 1326]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_3.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
 
-    Predicted classification (not admitted, admitted):  [2966 1771]
+    Predicted classification (not admitted, admitted):  [4687 2547]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_5.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
 
-    Predicted classification (not admitted, admitted):  [3485 2041]
+    Predicted classification (not admitted, admitted):  [5609 2914]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_7.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
 
-    Predicted classification (not admitted, admitted):  [2899 1726]
+    Predicted classification (not admitted, admitted):  [4256 2354]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_9.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
 
 ## Conclusion
 

@@ -96,7 +96,7 @@ print(ed_visits.prediction_time.unique())
 ```
 
     Times of day at which predictions will be made
-    [(12, 0) (15, 30) (6, 0) (9, 30) (22, 0)]
+    [(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
 
 ```python
 print("\nNumber of observations for each prediction time")
@@ -105,11 +105,11 @@ print(ed_visits.prediction_time.value_counts())
 
     Number of observations for each prediction time
     prediction_time
-    (15, 30)    22279
-    (12, 0)     19075
-    (22, 0)     18842
-    (9, 30)     11421
-    (6, 0)       8197
+    (15, 30)    35310
+    (12, 0)     29942
+    (22, 0)     28457
+    (9, 30)     17642
+    (6, 0)      11984
     Name: count, dtype: int64
 
 ## Apply temporal splits
@@ -136,8 +136,8 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
 )
 ```
 
-    Split sizes: [53801, 6519, 19494]
-    Split sizes: [7730, 1244, 3701]
+    Split sizes: [62071, 10415, 29134]
+    Split sizes: [7716, 1285, 3898]
 
 ## Train models to predict bed count distributions for patients currently in the ED
 
@@ -193,11 +193,11 @@ for prediction_time in ed_visits.prediction_time.unique():
     admissions_models[model_key] = model
 ```
 
-    Training model for (12, 0)
+    Training model for (22, 0)
     Training model for (15, 30)
     Training model for (6, 0)
+    Training model for (12, 0)
     Training model for (9, 30)
-    Training model for (22, 0)
 
 ## Train specialty model
 
@@ -249,7 +249,7 @@ print(f'Number of patients under the age of 18 in the ED at {format_prediction_t
 # format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
     df=prediction_snapshots,
-    prediction_time=(9,30),
+    prediction_time=random_prediction_time,
     single_snapshot_per_visit=False,
     exclude_columns=exclude_from_training_data,
     visit_col='visit_number'
@@ -264,8 +264,8 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     )
 ```
 
-    Number of adult patients in the ED at 09:30 on 2031-12-20: 21
-    Number of patients under the age of 18 in the ED at 09:30 on 2031-12-20: 1
+    Number of adult patients in the ED at 22:00 on 2031-10-09: 69
+    Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 
 The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots:
 
@@ -427,10 +427,10 @@ create_predictions(
     y2 = y2)
 ```
 
-    {'medical': {'in_ed': [1, 0], 'yet_to_arrive': [5, 3]},
-     'surgical': {'in_ed': [0, 0], 'yet_to_arrive': [2, 1]},
-     'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
-     'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [1, 0]}}
+    {'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
+     'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [1, 1], 'yet_to_arrive': [0, 0]},
+     'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
 ## Conclusion
 

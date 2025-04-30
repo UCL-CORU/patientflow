@@ -120,7 +120,7 @@ ordinal_mappings = {
         "45-54",
         "55-64",
         "65-74",
-        "75-102",
+        "75-115",
     ],
     "latest_obs_manchester_triage_acuity": [
         "Blue",
@@ -144,7 +144,7 @@ ordinal_mappings = {
     ]    }
 ```
 
-    Split sizes: [53801, 6519, 19494]
+    Split sizes: [62071, 10415, 29134]
 
 We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set. Here I'm using a minimal hyperparameter grid for expediency.
 
@@ -177,11 +177,11 @@ for prediction_time in prediction_times:
     trained_models[model_key] = model
 ```
 
-    Training model for (12, 0)
+    Training model for (22, 0)
     Training model for (15, 30)
     Training model for (6, 0)
+    Training model for (12, 0)
     Training model for (9, 30)
-    Training model for (22, 0)
 
 ## Prepare group snapshots
 
@@ -218,15 +218,15 @@ for _prediction_time in prediction_times:
         )
 ```
 
-    Processing :(12, 0)
+    Processing :(22, 0)
 
     Processing :(15, 30)
 
     Processing :(6, 0)
 
-    Processing :(9, 30)
+    Processing :(12, 0)
 
-    Processing :(22, 0)
+    Processing :(9, 30)
 
 ## Evaluate group snapshots
 
@@ -250,11 +250,11 @@ for prediction_time, values in results.items():
 
     Time    MAE    MPE
     ----------------------
-    06:00  1.48    42.20%
-    09:30  1.47    39.71%
-    12:00  2.06    37.85%
-    15:30  2.59    29.74%
-    22:00  2.99    27.71%
+    06:00  1.47    31.01%
+    09:30  1.51    36.08%
+    12:00  2.21    32.29%
+    15:30  2.67    22.75%
+    22:00  3.21    24.90%
 
 The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
 

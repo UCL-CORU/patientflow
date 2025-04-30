@@ -482,7 +482,7 @@ def main(data_folder_name=None):
             "45-54",
             "55-64",
             "65-74",
-            "75-102",
+            "75-115",
         ],
         "latest_acvpu": ["A", "C", "V", "P", "U"],
         "latest_obs_manchester_triage_acuity": [

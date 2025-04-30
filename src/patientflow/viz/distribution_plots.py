@@ -107,6 +107,7 @@ def plot_prediction_distributions(
         ax.set_title(f"Prediction Distribution at {hour}:{minutes:02}", fontsize=14)
         ax.set_xlabel("Predicted Probability", fontsize=12)
         ax.set_ylabel("Density", fontsize=12)
+        ax.set_xlim(0, 1)
         ax.legend()
 
     plt.tight_layout()
