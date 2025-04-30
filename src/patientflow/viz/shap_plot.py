@@ -5,7 +5,6 @@ from patientflow.model_artifacts import TrainedClassifier
 import shap
 import scipy.sparse
 import numpy as np
-from sklearn.pipeline import Pipeline
 from typing import Optional
 from pathlib import Path
 
@@ -38,9 +37,16 @@ def plot_shap(
     )
 
     for trained_model in trained_models_sorted:
+        # Use calibrated pipeline if available, otherwise use regular pipeline
+        if (
+            hasattr(trained_model, "calibrated_pipeline")
+            and trained_model.calibrated_pipeline is not None
+        ):
+            pipeline = trained_model.calibrated_pipeline
+        else:
+            pipeline = trained_model.pipeline
         fig, ax = plt.subplots(figsize=(8, 12))
 
-        pipeline: Pipeline = trained_model.pipeline
         prediction_time = trained_model.training_results.prediction_time
 
         # Get test data for this prediction time

@@ -49,17 +49,27 @@ def calculate_results(
     expected_array: np.ndarray = np.array(expected_values)
     observed_array: np.ndarray = np.array(observed_values)
 
+    if len(expected_array) == 0 or len(observed_array) == 0:
+        return {
+            "expected": expected_values,
+            "observed": observed_values,
+            "mae": 0.0,
+            "mpe": 0.0,
+        }
+
     absolute_errors: np.ndarray = np.abs(expected_array - observed_array)
-    mae: float = float(np.mean(absolute_errors))
+    mae: float = float(np.mean(absolute_errors)) if len(absolute_errors) > 0 else 0.0
 
     non_zero_mask: np.ndarray = observed_array != 0
     filtered_absolute_errors: np.ndarray = absolute_errors[non_zero_mask]
     filtered_observed_array: np.ndarray = observed_array[non_zero_mask]
 
-    percentage_errors: np.ndarray = (
-        filtered_absolute_errors / filtered_observed_array * 100
-    )
-    mpe: float = float(np.mean(percentage_errors))
+    mpe: float = 0.0
+    if len(filtered_absolute_errors) > 0 and len(filtered_observed_array) > 0:
+        percentage_errors: np.ndarray = (
+            filtered_absolute_errors / filtered_observed_array * 100
+        )
+        mpe = float(np.mean(percentage_errors))
 
     return {
         "expected": expected_values,
@@ -71,7 +81,7 @@ def calculate_results(
 
 def calc_mae_mpe(
     prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]],
-    use_most_probable: bool = True,
+    use_most_probable: bool = False,
 ) -> Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]:
     """
     Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
@@ -79,7 +89,7 @@ def calc_mae_mpe(
 
     Args:
         prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
-        use_most_probable (bool, optional): Whether to use the most probable value or expected value. Defaults to True.
+        use_most_probable (bool, optional): Whether to use the most probable value or mathematical expectation of the distribution. Defaults to False.
 
     Returns:
         Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.

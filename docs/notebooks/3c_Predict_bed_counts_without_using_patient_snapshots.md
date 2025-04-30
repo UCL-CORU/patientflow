@@ -842,15 +842,6 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 Below we view the results of the fit method for the 09:30 prediction time.
 
 ```python
-round(v, 3) for v in arrival_rates_by_time_interval[0:10]
-```
-
-      Cell In[24], line 1
-        round(v, 3) for v in arrival_rates_by_time_interval[0:10]
-                    ^
-    SyntaxError: invalid syntax
-
-```python
 arrival_rates_by_time_interval = yta_model.weights['unfiltered'][(9,30)]['arrival_rates']
 print(
     f'The calculated arrival rates for the first 10 discrete time intervals '
@@ -889,7 +880,7 @@ prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
     truncate_at_beds=20)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_32_0.png)
+![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_31_0.png)
 
 ## Conclusion
 

@@ -403,8 +403,14 @@ def pred_proba_to_agg_predicted(
 
         # Normalize to ensure the probabilities sum to 1
         total = sum(agg_predicted_dict.values())
-        for i in agg_predicted_dict:
-            agg_predicted_dict[i] /= total
+        if total > 0:
+            for i in agg_predicted_dict:
+                agg_predicted_dict[i] /= total
+        else:
+            # If all probabilities are zero, set a uniform distribution
+            n = len(agg_predicted_dict)
+            for i in agg_predicted_dict:
+                agg_predicted_dict[i] = 1.0 / n
     else:
         # Use the original symbolic computation for smaller datasets
         local_proba = predictions_proba.copy()
