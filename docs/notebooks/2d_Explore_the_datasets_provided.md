@@ -35,6 +35,9 @@ I recorded a webinar to demonstrate how we converted data from the UCLH Electron
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -107,25 +110,25 @@ ed_visits.head()
       <th></th>
       <th>snapshot_date</th>
       <th>prediction_time</th>
-      <th>visit_number</th>
       <th>elapsed_los</th>
       <th>sex</th>
-      <th>age_group</th>
       <th>arrival_method</th>
-      <th>current_location_type</th>
-      <th>total_locations_visited</th>
       <th>num_obs</th>
+      <th>num_obs_events</th>
+      <th>num_obs_types</th>
+      <th>num_lab_batteries_ordered</th>
+      <th>has_consultation</th>
       <th>...</th>
-      <th>latest_lab_results_na</th>
-      <th>latest_lab_results_pco2</th>
-      <th>latest_lab_results_ph</th>
-      <th>latest_lab_results_wcc</th>
-      <th>latest_lab_results_alb</th>
-      <th>latest_lab_results_htrt</th>
-      <th>final_sequence</th>
+      <th>visited_waiting</th>
+      <th>visited_unknown</th>
+      <th>latest_obs_respirations</th>
+      <th>latest_obs_temperature</th>
+      <th>latest_obs_news_score_result</th>
+      <th>latest_obs_objective_pain_score</th>
+      <th>visit_number</th>
       <th>is_admitted</th>
-      <th>random_number</th>
       <th>specialty</th>
+      <th>final_sequence</th>
     </tr>
     <tr>
       <th>snapshot_id</th>
@@ -154,124 +157,124 @@ ed_visits.head()
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>4/17/2031</td>
-      <td>(12, 0)</td>
-      <td>30767</td>
-      <td>1920</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>107</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>15795</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>4/17/2031</td>
-      <td>(15, 30)</td>
-      <td>30767</td>
-      <td>14520</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>5</td>
-      <td>138</td>
-      <td>...</td>
-      <td>138.0</td>
-      <td>4.61</td>
-      <td>7.474</td>
-      <td>8.77</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>860</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>12/10/2031</td>
-      <td>(15, 30)</td>
-      <td>36297</td>
-      <td>9180</td>
+      <th>98242</th>
+      <td>2031-01-14</td>
+      <td>(22, 0)</td>
+      <td>20740.0</td>
       <td>M</td>
-      <td>75-115</td>
-      <td>NaN</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>127</td>
+      <td>Amb no medic</td>
+      <td>74</td>
+      <td>6</td>
+      <td>23</td>
+      <td>8</td>
+      <td>True</td>
       <td>...</td>
-      <td>140.0</td>
-      <td>4.82</td>
-      <td>7.433</td>
-      <td>6.59</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
+      <td>True</td>
       <td>False</td>
-      <td>76820</td>
+      <td>19.0</td>
+      <td>96.8</td>
+      <td>1.0</td>
+      <td>NaN</td>
+      <td>000019a46d7c</td>
+      <td>True</td>
       <td>surgical</td>
+      <td>['surgical']</td>
     </tr>
     <tr>
-      <th>3</th>
-      <td>3/28/2031</td>
-      <td>(6, 0)</td>
-      <td>53554</td>
-      <td>2220</td>
+      <th>100119</th>
+      <td>2031-01-19</td>
+      <td>(15, 30)</td>
+      <td>3780.0</td>
       <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>rat</td>
+      <td>Walk-in</td>
+      <td>29</td>
       <td>3</td>
-      <td>356</td>
+      <td>23</td>
+      <td>1</td>
+      <td>False</td>
       <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
+      <td>True</td>
+      <td>False</td>
+      <td>16.0</td>
+      <td>98.4</td>
+      <td>1.0</td>
+      <td>Mild</td>
+      <td>00015db18883</td>
+      <td>False</td>
       <td>NaN</td>
       <td>[]</td>
-      <td>False</td>
-      <td>54886</td>
-      <td>medical</td>
     </tr>
     <tr>
-      <th>4</th>
-      <td>3/28/2031</td>
-      <td>(9, 30)</td>
-      <td>53554</td>
-      <td>14820</td>
+      <th>189750</th>
+      <td>2031-09-29</td>
+      <td>(22, 0)</td>
+      <td>10466.0</td>
       <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>375</td>
+      <td>Walk-in</td>
+      <td>12</td>
+      <td>2</td>
+      <td>12</td>
+      <td>0</td>
+      <td>False</td>
       <td>...</td>
-      <td>139.0</td>
-      <td>4.00</td>
-      <td>7.536</td>
-      <td>13.03</td>
+      <td>True</td>
+      <td>False</td>
+      <td>32.0</td>
+      <td>97.9</td>
       <td>NaN</td>
+      <td>Nil</td>
+      <td>0001fbabb70e</td>
+      <td>False</td>
       <td>NaN</td>
       <td>[]</td>
+    </tr>
+    <tr>
+      <th>192732</th>
+      <td>2031-10-07</td>
+      <td>(22, 0)</td>
+      <td>13729.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>14</td>
+      <td>1</td>
+      <td>14</td>
+      <td>7</td>
+      <td>True</td>
+      <td>...</td>
+      <td>True</td>
       <td>False</td>
-      <td>6265</td>
-      <td>medical</td>
+      <td>NaN</td>
+      <td>97.7</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>00021c715ac7</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>['surgical']</td>
+    </tr>
+    <tr>
+      <th>119891</th>
+      <td>2031-03-12</td>
+      <td>(6, 0)</td>
+      <td>2504.0</td>
+      <td>M</td>
+      <td>Walk-in</td>
+      <td>9</td>
+      <td>1</td>
+      <td>9</td>
+      <td>0</td>
+      <td>False</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>0002af190380</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
     </tr>
   </tbody>
 </table>
@@ -307,25 +310,25 @@ ed_visits.head(10)
       <th></th>
       <th>snapshot_date</th>
       <th>prediction_time</th>
-      <th>visit_number</th>
       <th>elapsed_los</th>
       <th>sex</th>
-      <th>age_group</th>
       <th>arrival_method</th>
-      <th>current_location_type</th>
-      <th>total_locations_visited</th>
       <th>num_obs</th>
+      <th>num_obs_events</th>
+      <th>num_obs_types</th>
+      <th>num_lab_batteries_ordered</th>
+      <th>has_consultation</th>
       <th>...</th>
-      <th>latest_lab_results_na</th>
-      <th>latest_lab_results_pco2</th>
-      <th>latest_lab_results_ph</th>
-      <th>latest_lab_results_wcc</th>
-      <th>latest_lab_results_alb</th>
-      <th>latest_lab_results_htrt</th>
-      <th>final_sequence</th>
+      <th>visited_waiting</th>
+      <th>visited_unknown</th>
+      <th>latest_obs_respirations</th>
+      <th>latest_obs_temperature</th>
+      <th>latest_obs_news_score_result</th>
+      <th>latest_obs_objective_pain_score</th>
+      <th>visit_number</th>
       <th>is_admitted</th>
-      <th>random_number</th>
       <th>specialty</th>
+      <th>final_sequence</th>
     </tr>
     <tr>
       <th>snapshot_id</th>
@@ -354,244 +357,244 @@ ed_visits.head(10)
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>4/17/2031</td>
-      <td>(12, 0)</td>
-      <td>30767</td>
-      <td>1920</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>107</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>15795</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>4/17/2031</td>
-      <td>(15, 30)</td>
-      <td>30767</td>
-      <td>14520</td>
-      <td>F</td>
-      <td>55-64</td>
-      <td>Ambulance</td>
-      <td>majors</td>
-      <td>5</td>
-      <td>138</td>
-      <td>...</td>
-      <td>138.0</td>
-      <td>4.61</td>
-      <td>7.474</td>
-      <td>8.77</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>860</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>12/10/2031</td>
-      <td>(15, 30)</td>
-      <td>36297</td>
-      <td>9180</td>
-      <td>M</td>
-      <td>75-115</td>
-      <td>NaN</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>127</td>
-      <td>...</td>
-      <td>140.0</td>
-      <td>4.82</td>
-      <td>7.433</td>
-      <td>6.59</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>76820</td>
-      <td>surgical</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>3/28/2031</td>
-      <td>(6, 0)</td>
-      <td>53554</td>
-      <td>2220</td>
-      <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>rat</td>
-      <td>3</td>
-      <td>356</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>54886</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>3/28/2031</td>
-      <td>(9, 30)</td>
-      <td>53554</td>
-      <td>14820</td>
-      <td>F</td>
-      <td>35-44</td>
-      <td>Public Trans</td>
-      <td>majors</td>
-      <td>4</td>
-      <td>375</td>
-      <td>...</td>
-      <td>139.0</td>
-      <td>4.00</td>
-      <td>7.536</td>
-      <td>13.03</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>[]</td>
-      <td>False</td>
-      <td>6265</td>
-      <td>medical</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>03/05/2031</td>
+      <th>98242</th>
+      <td>2031-01-14</td>
       <td>(22, 0)</td>
-      <td>60303</td>
-      <td>14880</td>
+      <td>20740.0</td>
       <td>M</td>
-      <td>65-74</td>
-      <td>NaN</td>
-      <td>rat</td>
+      <td>Amb no medic</td>
+      <td>74</td>
       <td>6</td>
-      <td>19</td>
+      <td>23</td>
+      <td>8</td>
+      <td>True</td>
       <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>['haem_onc']</td>
+      <td>True</td>
       <td>False</td>
-      <td>37194</td>
-      <td>haem/onc</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>7/17/2031</td>
-      <td>(12, 0)</td>
-      <td>62538</td>
-      <td>50340</td>
-      <td>F</td>
-      <td>25-34</td>
-      <td>Walk-in</td>
-      <td>sdec</td>
-      <td>6</td>
-      <td>972</td>
-      <td>...</td>
+      <td>19.0</td>
+      <td>96.8</td>
+      <td>1.0</td>
       <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>['surgical']</td>
-      <td>False</td>
-      <td>16023</td>
+      <td>000019a46d7c</td>
+      <td>True</td>
       <td>surgical</td>
+      <td>['surgical']</td>
     </tr>
     <tr>
-      <th>9</th>
-      <td>7/17/2031</td>
+      <th>100119</th>
+      <td>2031-01-19</td>
       <td>(15, 30)</td>
-      <td>62538</td>
-      <td>62940</td>
+      <td>3780.0</td>
       <td>F</td>
-      <td>25-34</td>
       <td>Walk-in</td>
-      <td>sdec</td>
-      <td>6</td>
-      <td>989</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>['surgical']</td>
+      <td>29</td>
+      <td>3</td>
+      <td>23</td>
+      <td>1</td>
       <td>False</td>
-      <td>41090</td>
-      <td>surgical</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>16.0</td>
+      <td>98.4</td>
+      <td>1.0</td>
+      <td>Mild</td>
+      <td>00015db18883</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
     </tr>
     <tr>
-      <th>6</th>
-      <td>7/17/2031</td>
+      <th>189750</th>
+      <td>2031-09-29</td>
+      <td>(22, 0)</td>
+      <td>10466.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>12</td>
+      <td>2</td>
+      <td>12</td>
+      <td>0</td>
+      <td>False</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>32.0</td>
+      <td>97.9</td>
+      <td>NaN</td>
+      <td>Nil</td>
+      <td>0001fbabb70e</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>192732</th>
+      <td>2031-10-07</td>
+      <td>(22, 0)</td>
+      <td>13729.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>14</td>
+      <td>1</td>
+      <td>14</td>
+      <td>7</td>
+      <td>True</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>97.7</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>00021c715ac7</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>['surgical']</td>
+    </tr>
+    <tr>
+      <th>119891</th>
+      <td>2031-03-12</td>
       <td>(6, 0)</td>
-      <td>62538</td>
-      <td>28740</td>
-      <td>F</td>
-      <td>25-34</td>
+      <td>2504.0</td>
+      <td>M</td>
       <td>Walk-in</td>
-      <td>sdec</td>
-      <td>6</td>
-      <td>920</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>['surgical']</td>
+      <td>9</td>
+      <td>1</td>
+      <td>9</td>
+      <td>0</td>
       <td>False</td>
-      <td>44131</td>
-      <td>surgical</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>0002af190380</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
     </tr>
     <tr>
-      <th>7</th>
-      <td>7/17/2031</td>
-      <td>(9, 30)</td>
-      <td>62538</td>
-      <td>41340</td>
+      <th>157035</th>
+      <td>2031-06-27</td>
+      <td>(15, 30)</td>
+      <td>1548.0</td>
       <td>F</td>
-      <td>25-34</td>
       <td>Walk-in</td>
-      <td>sdec</td>
-      <td>6</td>
-      <td>953</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>['surgical']</td>
+      <td>14</td>
+      <td>1</td>
+      <td>14</td>
+      <td>4</td>
       <td>False</td>
-      <td>60263</td>
-      <td>surgical</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>18.0</td>
+      <td>97.7</td>
+      <td>NaN</td>
+      <td>Moderate</td>
+      <td>00033228d206</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>209659</th>
+      <td>2031-11-30</td>
+      <td>(6, 0)</td>
+      <td>15020.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>33</td>
+      <td>3</td>
+      <td>24</td>
+      <td>9</td>
+      <td>True</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>17.0</td>
+      <td>98.2</td>
+      <td>0.0</td>
+      <td>Nil</td>
+      <td>0003d8c503cf</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>['obs_gyn']</td>
+    </tr>
+    <tr>
+      <th>105648</th>
+      <td>2031-02-03</td>
+      <td>(12, 0)</td>
+      <td>3502.0</td>
+      <td>M</td>
+      <td>Walk-in</td>
+      <td>9</td>
+      <td>1</td>
+      <td>9</td>
+      <td>0</td>
+      <td>False</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>00043419ec6b</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
+    </tr>
+    <tr>
+      <th>172620</th>
+      <td>2031-08-12</td>
+      <td>(22, 0)</td>
+      <td>7274.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>14</td>
+      <td>2</td>
+      <td>14</td>
+      <td>0</td>
+      <td>False</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>97.5</td>
+      <td>NaN</td>
+      <td>Mild</td>
+      <td>0004c73468a6</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>['obs_gyn']</td>
+    </tr>
+    <tr>
+      <th>96560</th>
+      <td>2031-01-09</td>
+      <td>(22, 0)</td>
+      <td>19768.0</td>
+      <td>F</td>
+      <td>Walk-in</td>
+      <td>30</td>
+      <td>3</td>
+      <td>21</td>
+      <td>0</td>
+      <td>False</td>
+      <td>...</td>
+      <td>True</td>
+      <td>False</td>
+      <td>17.0</td>
+      <td>98.2</td>
+      <td>0.0</td>
+      <td>Moderate</td>
+      <td>0004eacbae15</td>
+      <td>False</td>
+      <td>NaN</td>
+      <td>[]</td>
     </tr>
   </tbody>
 </table>
@@ -625,13 +628,13 @@ for key, value in dict_cols.items():
     ['num_obs', 'num_obs_events', 'num_obs_types', 'num_lab_batteries_ordered']
 
     Columns in group called location:
-    ['current_location_type', 'total_locations_visited', 'visited_majors', 'visited_otf', 'visited_paeds', 'visited_rat', 'visited_resus', 'visited_sdec', 'visited_sdec_waiting', 'visited_unknown', 'visited_utc', 'visited_waiting']
+    ['current_location_type', 'total_locations_visited', 'visited_majors', 'visited_otf', 'visited_paeds', 'visited_rat', 'visited_resus', 'visited_sdec', 'visited_sdec_waiting', 'visited_taf', 'visited_utc', 'visited_waiting', 'visited_unknown']
 
     Columns in group called observations:
-    ['num_obs_blood_pressure', 'num_obs_pulse', 'num_obs_air_or_oxygen', 'num_obs_glasgow_coma_scale_best_motor_response', 'num_obs_level_of_consciousness', 'num_obs_news_score_result', 'num_obs_manchester_triage_acuity', 'num_obs_objective_pain_score', 'num_obs_subjective_pain_score', 'num_obs_temperature', 'num_obs_oxygen_delivery_method', 'num_obs_pupil_reaction_right', 'num_obs_oxygen_flow_rate', 'num_obs_uclh_sskin_areas_observed', 'latest_obs_pulse', 'latest_obs_respirations', 'latest_obs_level_of_consciousness', 'latest_obs_news_score_result', 'latest_obs_manchester_triage_acuity', 'latest_obs_objective_pain_score', 'latest_obs_temperature']
+    ['num_obs_blood_pressure', 'num_obs_pulse', 'num_obs_air_or_oxygen', 'num_obs_level_of_consciousness', 'num_obs_news_score_result', 'num_obs_temperature', 'num_obs_manchester_triage_acuity', 'num_obs_objective_pain_score', 'num_obs_subjective_pain_score', 'num_obs_glasgow_coma_scale_best_motor_response', 'num_obs_oxygen_delivery_method', 'num_obs_oxygen_flow_rate', 'num_obs_pupil_reaction_right', 'num_obs_uclh_sskin_areas_observed', 'latest_obs_pulse', 'latest_obs_level_of_consciousness', 'latest_obs_manchester_triage_acuity', 'latest_obs_respirations', 'latest_obs_temperature', 'latest_obs_news_score_result', 'latest_obs_objective_pain_score']
 
     Columns in group called lab orders and results:
-    ['lab_orders_bc', 'lab_orders_bon', 'lab_orders_crp', 'lab_orders_csnf', 'lab_orders_ddit', 'lab_orders_ncov', 'lab_orders_rflu', 'lab_orders_xcov', 'latest_lab_results_crea', 'latest_lab_results_hctu', 'latest_lab_results_k', 'latest_lab_results_lac', 'latest_lab_results_na', 'latest_lab_results_pco2', 'latest_lab_results_ph', 'latest_lab_results_wcc', 'latest_lab_results_alb', 'latest_lab_results_htrt']
+    ['lab_orders_bc', 'lab_orders_crp', 'lab_orders_csnf', 'lab_orders_ddit', 'lab_orders_rflu', 'latest_lab_results_crea', 'latest_lab_results_hctu', 'latest_lab_results_k', 'latest_lab_results_lac', 'latest_lab_results_na', 'latest_lab_results_pco2', 'latest_lab_results_ph', 'latest_lab_results_wcc', 'latest_lab_results_htrt', 'latest_lab_results_alb', 'lab_orders_bon', 'lab_orders_ncov', 'lab_orders_xcov']
 
     Columns in group called consults:
     ['has_consultation', 'consultation_sequence', 'final_sequence', 'specialty']
@@ -829,6 +832,8 @@ for col_name in dict_cols['location'][1:]:
 
 ![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_10.png)
 
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_11.png)
+
 ### Observations variables
 
 The variables in the observations group record vital signs, triage scores, and also the number of times certain observations have been recorded, up to the moment of the snapshot.
@@ -840,24 +845,24 @@ dict_cols['observations']
     ['num_obs_blood_pressure',
      'num_obs_pulse',
      'num_obs_air_or_oxygen',
-     'num_obs_glasgow_coma_scale_best_motor_response',
      'num_obs_level_of_consciousness',
      'num_obs_news_score_result',
+     'num_obs_temperature',
      'num_obs_manchester_triage_acuity',
      'num_obs_objective_pain_score',
      'num_obs_subjective_pain_score',
-     'num_obs_temperature',
+     'num_obs_glasgow_coma_scale_best_motor_response',
      'num_obs_oxygen_delivery_method',
-     'num_obs_pupil_reaction_right',
      'num_obs_oxygen_flow_rate',
+     'num_obs_pupil_reaction_right',
      'num_obs_uclh_sskin_areas_observed',
      'latest_obs_pulse',
-     'latest_obs_respirations',
      'latest_obs_level_of_consciousness',
-     'latest_obs_news_score_result',
      'latest_obs_manchester_triage_acuity',
-     'latest_obs_objective_pain_score',
-     'latest_obs_temperature']
+     'latest_obs_respirations',
+     'latest_obs_temperature',
+     'latest_obs_news_score_result',
+     'latest_obs_objective_pain_score']
 
 I first plot the variables that count the number of times something was recorded.
 
@@ -966,13 +971,10 @@ dict_cols['lab orders and results']
 ```
 
     ['lab_orders_bc',
-     'lab_orders_bon',
      'lab_orders_crp',
      'lab_orders_csnf',
      'lab_orders_ddit',
-     'lab_orders_ncov',
      'lab_orders_rflu',
-     'lab_orders_xcov',
      'latest_lab_results_crea',
      'latest_lab_results_hctu',
      'latest_lab_results_k',
@@ -981,8 +983,11 @@ dict_cols['lab orders and results']
      'latest_lab_results_pco2',
      'latest_lab_results_ph',
      'latest_lab_results_wcc',
+     'latest_lab_results_htrt',
      'latest_lab_results_alb',
-     'latest_lab_results_htrt']
+     'lab_orders_bon',
+     'lab_orders_ncov',
+     'lab_orders_xcov']
 
 #### Lab orders
 
@@ -1083,8 +1088,8 @@ inpatient_arrivals.head()
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>sex</th>
       <th>specialty</th>
+      <th>sex</th>
       <th>is_child</th>
       <th>is_admitted</th>
     </tr>
@@ -1098,37 +1103,37 @@ inpatient_arrivals.head()
   </thead>
   <tbody>
     <tr>
-      <th>2031-04-24 19:21:00+00:00</th>
-      <td>M</td>
-      <td>haem/onc</td>
-      <td>false</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2031-04-25 12:42:00+00:00</th>
-      <td>F</td>
+      <th>2031-02-26 11:28:00+00:00</th>
       <td>medical</td>
-      <td>false</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2031-03-20 19:54:00+00:00</th>
-      <td>F</td>
-      <td>haem/onc</td>
-      <td>false</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2031-03-04 22:03:00+00:00</th>
-      <td>F</td>
-      <td>haem/onc</td>
-      <td>false</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2031-03-01 11:10:44+00:00</th>
       <td>M</td>
+      <td>false</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2031-01-14 16:51:00+00:00</th>
       <td>surgical</td>
+      <td>F</td>
+      <td>false</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2031-02-06 20:51:00+00:00</th>
+      <td>surgical</td>
+      <td>M</td>
+      <td>false</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2031-01-10 13:43:00+00:00</th>
+      <td>haem/onc</td>
+      <td>M</td>
+      <td>false</td>
+      <td>True</td>
+    </tr>
+    <tr>
+      <th>2031-01-02 13:55:00+00:00</th>
+      <td>haem/onc</td>
+      <td>F</td>
       <td>false</td>
       <td>True</td>
     </tr>
