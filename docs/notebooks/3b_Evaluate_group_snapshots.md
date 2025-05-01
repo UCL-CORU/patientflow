@@ -32,6 +32,9 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 import pandas as pd
 from patientflow.load import set_file_paths, load_data
