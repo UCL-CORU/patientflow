@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1234,6 +1234,9 @@
 %load_ext autoreload 
 %autoreload 2
 </code></pre>
+<pre><code>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+</code></pre>
 <h2 id="loading-real-patient-data">Loading real patient data</h2>
 <p>I load the data using a <code>load_data</code> function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the <code>data_folder_name</code> or (better, since it will solve the problem for all notebooks) copy the synthetic data from <code>data-synthetic</code> to <code>data-public</code>. </p>
 <pre><code class="language-python">import pandas as pd
@@ -1382,13 +1385,14 @@ Name: count, dtype: int64
 </code></pre>
 <p>We loop through each prediction time, training a model. To start with, we will not balance the dataset. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
 
-trained_models = []  
+
+trained_models = {} 
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
     print(f&quot;Training model for {prediction_time}&quot;)
-    print(prediction_time)
     model = train_classifier(
         train_visits=train_visits,
         valid_visits=valid_visits,
@@ -1402,18 +1406,16 @@ for prediction_time in prediction_times:
         use_balanced_training=False,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
+
+    trained_models[model_key] = model
 </code></pre>
 <pre><code>Training model for (22, 0)
-(22, 0)
 Training model for (15, 30)
-(15, 30)
 Training model for (6, 0)
-(6, 0)
 Training model for (12, 0)
-(12, 0)
 Training model for (9, 30)
-(9, 30)
 </code></pre>
 <h2 id="inspecting-the-base-model">Inspecting the base model</h2>
 <p>Below I show three different charts, all showing the calibration and discrimination of the models, in slightly different ways. </p>
@@ -1438,7 +1440,7 @@ Training model for (9, 30)
 <pre><code class="language-python"># without balanced training
 from patientflow.viz.distribution_plots import plot_prediction_distributions
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
@@ -1460,7 +1462,7 @@ plot_prediction_distributions(
 from patientflow.viz.calibration_plot import plot_calibration
 
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy=&quot;quantile&quot;,  # optional
@@ -1487,9 +1489,9 @@ generate_madcap_plots(
 <p>These results are not bad, but it is common to attempt to handle unbalanced classes by under-sampling the majority class. </p>
 <p>The <code>train_classifier()</code> function will balance the training set, if <code>use_balanced_training</code> is set to True, as shown below. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
 
-
-trained_models = []  
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
@@ -1508,8 +1510,10 @@ for prediction_time in prediction_times:
         use_balanced_training=True,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
 
+    trained_models[model_key] = model
 
 </code></pre>
 <pre><code>Training model for (22, 0)
@@ -1524,12 +1528,12 @@ from patientflow.viz.calibration_plot import plot_calibration
 from patientflow.viz.madcap_plot import generate_madcap_plots
 
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy=&quot;quantile&quot;,  # optional
@@ -1551,8 +1555,9 @@ generate_madcap_plots(
 from patientflow.viz.distribution_plots import plot_prediction_distributions
 from patientflow.viz.calibration_plot import plot_calibration
 from patientflow.viz.madcap_plot import generate_madcap_plots
+from patientflow.load import get_model_key
 
-trained_models = []  
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
@@ -1571,16 +1576,18 @@ for prediction_time in prediction_times:
         use_balanced_training=True,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
 
+    trained_models[model_key] = model
 
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy=&quot;quantile&quot;,  # optional
@@ -1608,7 +1615,7 @@ Training model for (9, 30)
 <p>Analysis like this helps understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment. </p>
 <pre><code class="language-python">from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
 generate_madcap_plots_by_group(
-    trained_models=list(trained_models),
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     grouping_var=&quot;age_group&quot;,
@@ -1640,20 +1647,40 @@ plot_shap(
 
 </code></pre>
 <pre><code>Predicted classification (not admitted, admitted):  [1666  952]
+
+
+/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+  show=False,
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_2.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [2823 1326]
-</code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [4687 2547]
+
+
+/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+  show=False,
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [4687 2547]
+
+
+/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+  show=False,
+</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_8.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [5609 2914]
+
+
+/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+  show=False,
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_11.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [4256 2354]
+
+
+/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+  show=False,
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_14.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>
@@ -1730,10 +1757,10 @@ plot_shap(
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>

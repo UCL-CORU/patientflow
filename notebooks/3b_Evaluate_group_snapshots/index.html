@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -1391,7 +1391,7 @@ qq_plot(prediction_times,
 <p>However, QQ plots can be problematic when used with discrete distributions. In a discrete distribution, probability mass is assigned in 'chunks' to each discrete value, which makes certain regions of the QQ plot impossible. </p>
 <p>Over larger ranges this problem is less marked, because the observed values fall on a greater variety of points on their predicted distributions. However, if the numbers are small (for example if there are two children in the ED, possible values for the predicted distribution will be 0, 1 or 2), the integer nature of a discrete distribution is very marked. Observed values for these small ranges tend to fall at the same points on their predicted distributions, creating a staircase effect in the QQ plot. We will see this when we start making predictions by subplots in the following notebooks.</p>
 <h2 id="adjusted-qq-plot">Adjusted QQ plot</h2>
-<p>We handle the dicrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in <a href="https://www.sciencedirect.com/science/article/pii/S2211692316300418">Pagel et al (2017)</a>.</p>
+<p>We handle the discrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in <a href="https://www.sciencedirect.com/science/article/pii/S2211692316300418">Pagel et al (2017)</a>.</p>
 <p>When mapping an observed value to its is Cumulative Distribution Function (CDF), there is an arbitrary choice as to whether to read the lower or upper value of the CDF at that point, or the mid point between the two. The QQ plots above use the mid point. </p>
 <p>In the Adjusted QQ Plot the x axis represents the CDF from the model's predictions and the y axis represents the proportion of observed values that fall below that threshold. For the observed values, there are three CDFs shown on the plot (in colour) and for the model there are three (in grey)</p>
 <ul>
@@ -1481,10 +1481,10 @@ adjusted_qq_plot(prediction_times,
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>
