@@ -101,14 +101,18 @@ cd patientflow
 If you want to contribute or modify the code, or run documentation locally, install the development and documentation dependencies:
 
 ```sh
+# For contributors (includes development tools, documentation, and testing)
+pip install -e ".[dev,docs,test]"
+
+# For specific purposes only:
 # For development tools (linting, formatting, etc.)
 pip install -e ".[dev]"
 
 # For building documentation
 pip install -e ".[docs]"
 
-# For both development and documentation
-pip install -e ".[dev,docs]"
+# For running tests
+pip install -e ".[test]"
 ```
 
 Navigate to the patientflow folder and run tests to confirm that the installation worked correctly. This command will only work from the root repository. (To date, this has only been tested on Linux and Mac OS machines. If you are running Windows, there may be errors we don't know about. Please raise an issue on Github in that case.)

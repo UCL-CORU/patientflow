@@ -22,9 +22,6 @@ We can, however, evaluate the predictions in a slightly different way.
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()

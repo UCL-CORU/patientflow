@@ -301,7 +301,7 @@ Over larger ranges this problem is less marked, because the observed values fall
 
 ## Adjusted QQ plot
 
-We handle the dicrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418).
+We handle the discrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418).
 
 When mapping an observed value to its is Cumulative Distribution Function (CDF), there is an arbitrary choice as to whether to read the lower or upper value of the CDF at that point, or the mid point between the two. The QQ plots above use the mid point.
 
