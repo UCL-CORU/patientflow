@@ -10,7 +10,7 @@ Functions
 ---------
 prob_dist_plot(prob_dist_data, title, directory_path=None, figsize=(6, 3),
                include_titles=False, truncate_at_beds=(0, 20), text_size=None,
-               bar_colour="#5B9BD5", file_name=None, min_beds_lines=None,
+               bar_colour="#5B9BD5", media_file_name=None, min_beds_lines=None,
                plot_min_beds_lines=True, plot_bed_base=None, xlabel="Number of beds")
     Plots a bar chart of a probability distribution with optional customization for
     titles, labels, and additional markers.
@@ -82,7 +82,7 @@ def prob_dist_plot(
     truncate_at_beds=None,
     text_size=None,
     bar_colour="#5B9BD5",
-    file_name=None,
+    media_file_name=None,
     probability_thresholds=None,  # Renamed from min_beds_lines
     show_probability_thresholds=True,  # Renamed from plot_min_beds_lines
     probability_levels=None,  # New parameter for automatic threshold calculation
@@ -132,7 +132,7 @@ def prob_dist_plot(
     bar_colour : str, optional, default="#5B9BD5"
         The color of the bars in the plot.
 
-    file_name : str, optional
+    media_file_name : str, optional
         Name of the file to save the plot. If not provided, the title is used to generate
         a file name.
 
@@ -257,8 +257,8 @@ def prob_dist_plot(
     # Create the plot
     fig = plt.figure(figsize=figsize)
 
-    if not file_name:
-        file_name = (
+    if not media_file_name:
+        media_file_name = (
             title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
 
@@ -329,7 +329,7 @@ def prob_dist_plot(
 
     # Save or display the figure
     if directory_path:
-        plt.savefig(directory_path / file_name.replace(" ", "_"), dpi=300)
+        plt.savefig(directory_path / media_file_name.replace(" ", "_"), dpi=300)
 
     if return_figure:
         return fig

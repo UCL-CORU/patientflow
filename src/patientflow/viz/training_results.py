@@ -4,7 +4,11 @@ from typing import List
 from patientflow.model_artifacts import HyperParameterTrial
 
 
-def plot_trial_results(trials_list: List[HyperParameterTrial]):
+def plot_trial_results(
+    trials_list: List[HyperParameterTrial],
+    media_file_path=None,
+    return_figure=False,
+):
     """
     Function to plot AUROC and log loss for hyperparameter trials as dots.
 
@@ -12,6 +16,10 @@ def plot_trial_results(trials_list: List[HyperParameterTrial]):
     ----------
     trials_list : List[HyperParameterTrial]
         List of hyperparameter trials to visualize
+    media_file_path : Path, optional
+        Path to save the plot
+    return_figure : bool, optional
+        If True, returns the figure instead of displaying it
     """
     # Extract metrics from trials
     auroc_values = [trial.cv_results.get("valid_auc", 0) for trial in trials_list]
@@ -97,4 +105,11 @@ def plot_trial_results(trials_list: List[HyperParameterTrial]):
     # Adjust layout
     plt.tight_layout()
 
-    return fig
+    if media_file_path:
+        plt.savefig(media_file_path / "trial_results.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()

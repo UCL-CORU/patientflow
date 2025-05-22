@@ -34,6 +34,9 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ## Loading real patient data
 
 I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
@@ -206,13 +209,14 @@ We loop through each prediction time, training a model. To start with, we will n
 
 ```python
 from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
 
-trained_models = []
+
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
     print(f"Training model for {prediction_time}")
-    print(prediction_time)
     model = train_classifier(
         train_visits=train_visits,
         valid_visits=valid_visits,
@@ -226,19 +230,17 @@ for prediction_time in prediction_times:
         use_balanced_training=False,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
+
+    trained_models[model_key] = model
 ```
 
     Training model for (22, 0)
-    (22, 0)
     Training model for (15, 30)
-    (15, 30)
     Training model for (6, 0)
-    (6, 0)
     Training model for (12, 0)
-    (12, 0)
     Training model for (9, 30)
-    (9, 30)
 
 ## Inspecting the base model
 
@@ -269,7 +271,7 @@ From the plot below, we see that the model is discriminating poorly, with a high
 # without balanced training
 from patientflow.viz.distribution_plots import plot_prediction_distributions
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
@@ -299,7 +301,7 @@ Below, we see reasonable calibration at the lower end, but deteriorating towards
 from patientflow.viz.calibration_plot import plot_calibration
 
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -340,9 +342,9 @@ The `train_classifier()` function will balance the training set, if `use_balance
 
 ```python
 from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
 
-
-trained_models = []
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
@@ -361,8 +363,10 @@ for prediction_time in prediction_times:
         use_balanced_training=True,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
 
+    trained_models[model_key] = model
 
 ```
 
@@ -380,12 +384,12 @@ from patientflow.viz.calibration_plot import plot_calibration
 from patientflow.viz.madcap_plot import generate_madcap_plots
 
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -414,8 +418,9 @@ from patientflow.train.classifiers import train_classifier
 from patientflow.viz.distribution_plots import plot_prediction_distributions
 from patientflow.viz.calibration_plot import plot_calibration
 from patientflow.viz.madcap_plot import generate_madcap_plots
+from patientflow.load import get_model_key
 
-trained_models = []
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
@@ -434,16 +439,18 @@ for prediction_time in prediction_times:
         use_balanced_training=True,
     )
 
-    trained_models.append(model)
+    model_name = 'admissions'
+    model_key = get_model_key(model_name, prediction_time)
 
+    trained_models[model_key] = model
 
 plot_prediction_distributions(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  # Convert dict values to list
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -480,7 +487,7 @@ Analysis like this helps understand the limitations of the modelling, and consid
 ```python
 from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
 generate_madcap_plots_by_group(
-    trained_models=list(trained_models),
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     grouping_var="age_group",
@@ -526,23 +533,43 @@ plot_shap(
 
     Predicted classification (not admitted, admitted):  [1666  952]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
+
+    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+      show=False,
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_2.png)
 
     Predicted classification (not admitted, admitted):  [2823 1326]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
 
-    Predicted classification (not admitted, admitted):  [4687 2547]
+    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+      show=False,
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
 
+    Predicted classification (not admitted, admitted):  [4687 2547]
+
+
+    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+      show=False,
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_8.png)
+
     Predicted classification (not admitted, admitted):  [5609 2914]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
+
+    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+      show=False,
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_11.png)
 
     Predicted classification (not admitted, admitted):  [4256 2354]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
+
+    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
+      show=False,
+
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_14.png)
 
 ## Conclusion
 

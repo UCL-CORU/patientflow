@@ -11,6 +11,8 @@ from sklearn.model_selection import TimeSeriesSplit, ParameterGrid
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
+
 
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.load import get_model_key
@@ -441,9 +443,8 @@ def train_classifier(
         X_valid_transformed = best_feature_transformer.transform(X_valid)
 
         calibrated_classifier = CalibratedClassifierCV(
-            estimator=best_classifier,
+            estimator=FrozenEstimator(best_classifier),
             method=calibration_method,
-            cv="prefit",
         )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 

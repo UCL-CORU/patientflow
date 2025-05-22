@@ -15,6 +15,8 @@ def plot_arrival_comparison(
     show_delta=True,
     show_only_delta=False,
     yta_time_interval=15,
+    media_file_path=None,
+    return_figure=False,
 ):
     """
     Plot comparison between observed arrivals and expected arrival rates.
@@ -27,6 +29,8 @@ def plot_arrival_comparison(
         show_delta (bool): If True, plot the difference between actual and expected arrivals
         show_only_delta (bool): If True, only plot the delta between actual and expected arrivals
         yta_time_interval (int): Time interval in minutes for calculating arrival rates
+        media_file_path (Path, optional): Path to save the plot
+        return_figure (bool, optional): If True, returns the figure instead of displaying it
     """
     # Convert prediction time to datetime objects
     prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
@@ -220,11 +224,24 @@ def plot_arrival_comparison(
     # Remove padding by setting x-axis limits
     ax.set_xlim(left=min_time)
 
-    plt.show()
+    if media_file_path:
+        plt.savefig(media_file_path / "arrival_comparison.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()
 
 
 def plot_multiple_deltas(
-    df, prediction_time, snapshot_dates, prediction_window, yta_time_interval=15
+    df,
+    prediction_time,
+    snapshot_dates,
+    prediction_window,
+    yta_time_interval=15,
+    media_file_path=None,
+    return_figure=False,
 ):
     """
     Plot delta charts for multiple snapshot dates on the same figure.
@@ -235,9 +252,11 @@ def plot_multiple_deltas(
         snapshot_dates (list): List of datetime.date objects to analyze
         prediction_window (int): Prediction window in minutes
         yta_time_interval (int): Time interval in minutes for calculating arrival rates
+        media_file_path (Path, optional): Path to save the plot
+        return_figure (bool, optional): If True, returns the figure instead of displaying it
     """
     # Create figure with subplots
-    _ = plt.figure(figsize=(15, 6))
+    fig = plt.figure(figsize=(15, 6))
     gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
@@ -465,4 +484,12 @@ def plot_multiple_deltas(
         )
 
     plt.tight_layout()
-    plt.show()
+
+    if media_file_path:
+        plt.savefig(media_file_path / "multiple_deltas.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()

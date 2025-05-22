@@ -1,7 +1,5 @@
 # PatientFlow: A Python package for converting patient-level predictions into output that is useful for bed managers in hospitals
 
-Our intention is to release this on PyPi so that can be installed using common methods like `pip install`
-
 The package will support predictions of bed demand and discharges by providing functions that
 
 - predict patient-level probabilities of admission and discharge, by specialty

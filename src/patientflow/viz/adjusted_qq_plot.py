@@ -32,6 +32,7 @@ def adjusted_qq_plot(
     return_dataframe=False,
     figsize=None,
     suptitle=None,
+    media_file_path=None,
 ):
     """
     Generate plots comparing model predictions with observed values for discrete distributions.
@@ -67,6 +68,8 @@ def adjusted_qq_plot(
         based on number of plots, by default None.
     suptitle : str, optional
         Super title for the entire figure, displayed above all subplots, by default None.
+    media_file_path : Path, optional
+        Path to save the plot, by default None.
 
     Returns
     -------
@@ -286,12 +289,18 @@ def adjusted_qq_plot(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
 
+    if media_file_path:
+        plt.savefig(media_file_path / "adjusted_qq_plot.png", dpi=300)
+
     # Determine what to return
-    if return_figure and return_dataframe:
-        return fig, all_obs_dfs
-    elif return_figure:
+    if return_figure:
+        if return_dataframe:
+            return fig, all_obs_dfs
         return fig
     elif return_dataframe:
+        plt.show()
+        plt.close()
         return all_obs_dfs
     else:
         plt.show()
+        plt.close()

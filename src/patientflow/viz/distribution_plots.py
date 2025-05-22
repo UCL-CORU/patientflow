@@ -15,23 +15,30 @@ secondary_color = "#ff7f0e"
 
 
 def plot_prediction_distributions(
-    trained_models: list[TrainedClassifier],
+    trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
     exclude_from_training_data,
     bins=30,
     media_file_path: Optional[Path] = None,
     suptitle: Optional[str] = None,
+    return_figure=False,
 ):
     """
     Plot prediction distributions for multiple models.
 
     Args:
-        trained_models: List of TrainedClassifier objects
+        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
         test_visits: DataFrame containing test visit data
         exclude_from_training_data: Columns to exclude from the test data
         bins: Number of bins for the histogram (default: 30)
         media_file_path: Path to save the plot (default: None)
+        suptitle: Optional super title for the plot
+        return_figure: If True, returns the figure instead of displaying it
     """
+
+    # Convert dict to list if needed
+    if isinstance(trained_models, dict):
+        trained_models = list(trained_models.values())
 
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -117,11 +124,13 @@ def plot_prediction_distributions(
         plt.suptitle(suptitle, y=1.05, fontsize=16)
 
     if media_file_path:
-        dist_plot_path = media_file_path / "distribution_plot"
-        dist_plot_path = dist_plot_path.with_suffix(".png")
+        plt.savefig(media_file_path / "prediction_distributions.png", dpi=300)
 
-        plt.savefig(dist_plot_path)
-    plt.show()
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()
 
 
 def plot_data_distributions(
@@ -134,6 +143,8 @@ def plot_data_distributions(
     rotate_x_labels=False,
     is_discrete=False,
     ordinal_order=None,
+    media_file_path=None,
+    return_figure=False,
 ):
     sns.set_theme(style="whitegrid")
 
@@ -195,4 +206,11 @@ def plot_data_distributions(
             f"Distribution of {col_name} grouped by {grouping_var_name}", fontsize=14
         )
 
-    plt.show()
+    if media_file_path:
+        plt.savefig(media_file_path / "data_distributions.png", dpi=300)
+
+    if return_figure:
+        return g
+    else:
+        plt.show()
+        plt.close()

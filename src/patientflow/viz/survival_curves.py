@@ -2,7 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_admission_time_survival_curve(df, title):
+def plot_admission_time_survival_curve(
+    df,
+    title,
+    media_file_path=None,
+    return_figure=False,
+):
     """
     Creates a survival curve for the time it takes patients to be admitted to a ward
     without using the lifelines package.
@@ -13,6 +18,12 @@ def plot_admission_time_survival_curve(df, title):
         DataFrame containing patient visit data with columns:
         - arrival_datetime: when the patient arrived
         - admitted_to_ward_datetime: when the patient was admitted to a ward
+    title : str
+        Title for the plot
+    media_file_path : Path, optional
+        Path to save the plot
+    return_figure : bool, optional
+        If True, returns the figure instead of displaying it
 
     Returns:
     -------
@@ -48,7 +59,7 @@ def plot_admission_time_survival_curve(df, title):
     survival_prob = np.insert(survival_prob, 0, 1.0)
 
     # Create the plot
-    plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=(10, 6))
     plt.step(
         unique_times, survival_prob, where="post", label="Admission Survival Curve"
     )
@@ -116,4 +127,12 @@ def plot_admission_time_survival_curve(df, title):
         )
 
     plt.tight_layout()
-    return
+
+    if media_file_path:
+        plt.savefig(media_file_path / "survival_curve.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()
