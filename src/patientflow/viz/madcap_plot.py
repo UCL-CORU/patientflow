@@ -86,7 +86,7 @@ def classify_age(age):
 
 
 def generate_madcap_plots(
-    trained_models: list[TrainedClassifier],
+    trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     media_file_path: Optional[Path] = None,
@@ -99,8 +99,8 @@ def generate_madcap_plots(
 
     Parameters
     ----------
-    trained_models : list[TrainedClassifier]
-        List of trained classifier objects
+    trained_models : list[TrainedClassifier] | dict[str, TrainedClassifier]
+        List of trained classifier objects or dictionary with TrainedClassifier values
     media_file_path : str or Path or None
         Directory path where the generated plots will be saved
     test_visits : pd.DataFrame
@@ -117,6 +117,10 @@ def generate_madcap_plots(
     matplotlib.figure.Figure or None
         Returns the figure if return_figure is True, otherwise displays the plot and returns None
     """
+    # Convert dict to list if needed
+    if isinstance(trained_models, dict):
+        trained_models = list(trained_models.values())
+
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
@@ -385,7 +389,7 @@ def plot_madcap_by_group(
 
 
 def generate_madcap_plots_by_group(
-    trained_models: list[TrainedClassifier],
+    trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     grouping_var: str,
@@ -399,8 +403,8 @@ def generate_madcap_plots_by_group(
 
     Parameters
     ----------
-    trained_models : list[TrainedClassifier]
-        List of trained classifier objects
+    trained_models : list[TrainedClassifier] | dict[str, TrainedClassifier]
+        List of trained classifier objects or dictionary with TrainedClassifier values
     media_file_path : str or Path or None
         Directory path where the generated plots will be saved
     test_visits : pd.DataFrame
@@ -421,6 +425,11 @@ def generate_madcap_plots_by_group(
     List[matplotlib.figure.Figure] or None
         Returns a list of figures if return_figure is True, otherwise displays the plots and returns None
     """
+
+    # Convert dict to list if needed
+    if isinstance(trained_models, dict):
+        trained_models = list(trained_models.values())
+
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,

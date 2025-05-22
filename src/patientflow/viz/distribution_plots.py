@@ -15,7 +15,7 @@ secondary_color = "#ff7f0e"
 
 
 def plot_prediction_distributions(
-    trained_models: list[TrainedClassifier],
+    trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
     exclude_from_training_data,
     bins=30,
@@ -27,7 +27,7 @@ def plot_prediction_distributions(
     Plot prediction distributions for multiple models.
 
     Args:
-        trained_models: List of TrainedClassifier objects
+        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
         test_visits: DataFrame containing test visit data
         exclude_from_training_data: Columns to exclude from the test data
         bins: Number of bins for the histogram (default: 30)
@@ -35,6 +35,10 @@ def plot_prediction_distributions(
         suptitle: Optional super title for the plot
         return_figure: If True, returns the figure instead of displaying it
     """
+
+    # Convert dict to list if needed
+    if isinstance(trained_models, dict):
+        trained_models = list(trained_models.values())
 
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(

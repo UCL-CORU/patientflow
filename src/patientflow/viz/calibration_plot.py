@@ -12,7 +12,7 @@ secondary_color = "#aec7e8"
 
 
 def plot_calibration(
-    trained_models: list[TrainedClassifier],
+    trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
     exclude_from_training_data,
     strategy="uniform",
@@ -24,7 +24,7 @@ def plot_calibration(
     Plot calibration curves for multiple models.
 
     Args:
-        trained_models: List of TrainedClassifier objects
+        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
         media_file_path: Path where the plot should be saved
         test_visits: DataFrame containing test visit data
         exclude_from_training_data: Columns to exclude from the test data
@@ -32,6 +32,10 @@ def plot_calibration(
         suptitle: Optional super title for the entire figure
         return_figure: If True, returns the figure instead of displaying it
     """
+    # Convert dict to list if needed
+    if isinstance(trained_models, dict):
+        trained_models = list(trained_models.values())
+
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
         trained_models,
