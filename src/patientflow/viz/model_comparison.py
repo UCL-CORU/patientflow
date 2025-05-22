@@ -47,7 +47,14 @@ def load_model_results(model_file_path, prediction_times, models):
     return results
 
 
-def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8, 6)):
+def plot_model_comparisons(
+    model_file_path,
+    prediction_times,
+    models,
+    figsize=(8, 6),
+    media_file_path=None,
+    return_figure=False,
+):
     """
     Load data and plot model comparison metrics.
 
@@ -57,9 +64,11 @@ def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8
     models (dict): Dictionary mapping model names to their metadata filenames
                   e.g. {'admissions_minimal': 'minimal_model_metadata.json'}
     figsize (tuple): Figure size in inches (width, height)
+    media_file_path (Path, optional): Path to save the plot
+    return_figure (bool): If True, returns the figure instead of displaying it
 
     Returns:
-    matplotlib.figure.Figure: The created figure
+    matplotlib.figure.Figure: The created figure if return_figure is True
     """
     # Load results
     results = load_model_results(model_file_path, prediction_times, models)
@@ -116,7 +125,14 @@ def plot_model_comparisons(model_file_path, prediction_times, models, figsize=(8
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.15)
 
-    return fig
+    if media_file_path:
+        plt.savefig(media_file_path / "model_comparison.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()
 
 
 def print_model_results(

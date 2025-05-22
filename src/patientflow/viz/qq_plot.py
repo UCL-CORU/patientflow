@@ -33,20 +33,33 @@ def qq_plot(
     return_figure=False,
     figsize=None,
     suptitle=None,
+    media_file_path=None,
 ):
     """
     Generate multiple QQ plots comparing observed values with model predictions.
 
     Parameters
-    - prediction_times (list): List of (hour, minute) tuples for prediction times
-    - prob_dist_dict_all (dict): Dictionary of probability distributions keyed by model_key
-    - model_name (str): Base name of the model to construct model keys
-    - return_figure (bool): If True, returns the figure object
-    - figsize (tuple): Optional size of the figure. If None, calculated automatically
-    - suptitle (str): Optional super title for the entire figure
+    ----------
+    prediction_times : list of tuple
+        List of (hour, minute) tuples for prediction times
+    prob_dist_dict_all : dict
+        Dictionary of probability distributions keyed by model_key
+    model_name : str, optional
+        Base name of the model to construct model keys, by default "admissions"
+    return_figure : bool, optional
+        If True, returns the figure object instead of displaying it, by default False
+    figsize : tuple of (float, float), optional
+        Size of the figure in inches as (width, height). If None, calculated automatically
+        based on number of plots, by default None
+    suptitle : str, optional
+        Super title for the entire figure, displayed above all subplots, by default None
+    media_file_path : Path, optional
+        Path to save the plot, by default None
 
     Returns
-    - matplotlib.figure.Figure: A figure object containing the QQ plots if return_figure is True
+    -------
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot and returns None
     """
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -142,7 +155,11 @@ def qq_plot(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
 
+    if media_file_path:
+        plt.savefig(media_file_path / "qq_plot.png", dpi=300)
+
     if return_figure:
         return fig
     else:
         plt.show()
+        plt.close(fig)

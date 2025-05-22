@@ -91,7 +91,8 @@ def generate_madcap_plots(
     exclude_from_training_data: List[str],
     media_file_path: Optional[Path] = None,
     suptitle: Optional[str] = None,
-) -> None:
+    return_figure: bool = False,
+) -> Optional[plt.Figure]:
     """
     Generates MADCAP plots for a list of trained models, comparing predicted probabilities
     to actual admissions.
@@ -108,6 +109,13 @@ def generate_madcap_plots(
         List of columns to exclude from training data
     suptitle : str, optional
         Suptitle for the plot
+    return_figure : bool, optional
+        If True, returns the figure object instead of displaying it, by default False
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot and returns None
     """
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -203,8 +211,12 @@ def generate_madcap_plots(
         madcap_plot_path = Path(media_file_path) / plot_name
         plt.savefig(madcap_plot_path, bbox_inches="tight")
 
-    plt.show()
-    plt.close(fig)
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close(fig)
+        return None
 
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
@@ -264,6 +276,7 @@ def plot_madcap_by_group(
     group_name,
     media_path=None,
     plot_difference=True,
+    return_figure=False,
 ):
     """
     Generates MADCAP plots for specific groups (e.g., age groups) at a given prediction time.
@@ -284,6 +297,13 @@ def plot_madcap_by_group(
         Path to save the generated plot, if specified.
     plot_difference : bool, optional
         If True, includes an additional plot showing the difference between predicted and observed admissions.
+    return_figure : bool, optional
+        If True, returns the figure object instead of displaying it, by default False
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Returns the figure if return_figure is True, otherwise displays the plot and returns None
     """
     # Remove those with unknown age
     mask_known = group != "unknown"
@@ -355,7 +375,13 @@ def plot_madcap_by_group(
         )
         madcap_plot_path = Path(media_path) / plot_name
         plt.savefig(madcap_plot_path, dpi=300, bbox_inches="tight")
-    plt.show()
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close(fig)
+        return None
 
 
 def generate_madcap_plots_by_group(
@@ -366,7 +392,8 @@ def generate_madcap_plots_by_group(
     grouping_var_name: str,
     media_file_path: Optional[Path] = None,
     plot_difference: bool = False,
-) -> None:
+    return_figure: bool = False,
+) -> Optional[List[plt.Figure]]:
     """
     Generates MADCAP plots for different groups across multiple prediction times.
 
@@ -386,6 +413,13 @@ def generate_madcap_plots_by_group(
         A descriptive name for the grouping variable, used in plot titles
     plot_difference : bool, optional
         If True, includes difference plot between predicted and observed admissions
+    return_figure : bool, optional
+        If True, returns a list of figure objects instead of displaying them, by default False
+
+    Returns
+    -------
+    List[matplotlib.figure.Figure] or None
+        Returns a list of figures if return_figure is True, otherwise displays the plots and returns None
     """
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -394,6 +428,7 @@ def generate_madcap_plots_by_group(
         + x.training_results.prediction_time[1],
     )
 
+    figures = []
     for trained_model in trained_models_sorted:
         # Use calibrated pipeline if available, otherwise use regular pipeline
         if (
@@ -429,7 +464,7 @@ def generate_madcap_plots_by_group(
         else:
             group = X_test[grouping_var]
 
-        plot_madcap_by_group(
+        fig = plot_madcap_by_group(
             predict_proba,
             y_test,
             group,
@@ -437,4 +472,12 @@ def generate_madcap_plots_by_group(
             grouping_var_name,
             media_file_path,
             plot_difference,
+            return_figure=True,
         )
+        if return_figure:
+            figures.append(fig)
+
+    if return_figure:
+        return figures
+    else:
+        return None

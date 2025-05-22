@@ -15,6 +15,7 @@ def plot_shap(
     test_visits,
     exclude_from_training_data,
     media_file_path: Optional[Path] = None,
+    return_figure=False,
 ):
     """
     Generate SHAP plots for multiple trained models.
@@ -29,6 +30,8 @@ def plot_shap(
         DataFrame containing the test visit data
     exclude_from_training_data : list[str]
         List of columns to exclude from training data
+    return_figure : bool
+        If True, returns the figure instead of displaying it
     """
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -104,5 +107,8 @@ def plot_shap(
             )
             plt.savefig(shap_plot_path)
 
-        plt.show()
-        plt.close(fig)
+        if return_figure:
+            return fig
+        else:
+            plt.show()
+            plt.close(fig)

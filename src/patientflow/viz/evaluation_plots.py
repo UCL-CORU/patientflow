@@ -11,7 +11,31 @@ def plot_observed_against_expected(
     title2=None,
     main_title="Histograms of Observed - Expected Values",
     xlabel="Observed minus expected number of admissions",
+    media_file_path=None,
+    return_figure=False,
 ):
+    """
+    Plot histograms of observed minus expected values.
+
+    Parameters
+    ----------
+    results1 : dict
+        First set of results
+    results2 : dict, optional
+        Second set of results for comparison
+    title1 : str, optional
+        Title for first set of results
+    title2 : str, optional
+        Title for second set of results
+    main_title : str
+        Main title for the plot
+    xlabel : str
+        Label for x-axis
+    media_file_path : Path, optional
+        Path to save the plot
+    return_figure : bool, optional
+        If True, returns the figure instead of displaying it
+    """
     # Calculate the number of subplots needed
     num_plots = len(results1)
 
@@ -106,4 +130,12 @@ def plot_observed_against_expected(
         fig.delaxes(axes[j])
 
     plt.tight_layout()
-    plt.show()
+
+    if media_file_path:
+        plt.savefig(media_file_path / "observed_vs_expected.png", dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()

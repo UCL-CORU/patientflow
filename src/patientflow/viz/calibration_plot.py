@@ -18,6 +18,7 @@ def plot_calibration(
     strategy="uniform",
     media_file_path: Optional[Path] = None,
     suptitle=None,
+    return_figure=False,
 ):
     """
     Plot calibration curves for multiple models.
@@ -29,6 +30,7 @@ def plot_calibration(
         exclude_from_training_data: Columns to exclude from the test data
         strategy: Strategy for calibration curve binning ('uniform' or 'quantile')
         suptitle: Optional super title for the entire figure
+        return_figure: If True, returns the figure instead of displaying it
     """
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -101,7 +103,10 @@ def plot_calibration(
     if media_file_path:
         calib_plot_path = media_file_path / "calibration_plot"
         calib_plot_path = calib_plot_path.with_suffix(".png")
-
         plt.savefig(calib_plot_path)
-    plt.show()
-    plt.close()
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()

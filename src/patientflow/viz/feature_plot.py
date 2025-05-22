@@ -11,6 +11,7 @@ def plot_features(
     media_file_path: Optional[Path] = None,
     top_n: int = 20,
     suptitle: Optional[str] = None,
+    return_figure: bool = False,
 ):
     """
     Plot feature importance for multiple models.
@@ -20,6 +21,7 @@ def plot_features(
         media_file_path: Path where the plot should be saved
         top_n: Number of top features to display (default: 20)
         suptitle: Optional super title for the entire figure (default: None)
+        return_figure: If True, returns the figure instead of displaying it
     """
     # Sort trained_models by prediction time
     trained_models_sorted = sorted(
@@ -73,5 +75,9 @@ def plot_features(
         # Save and display plot
         feature_plot_path = media_file_path / "feature_importance_plots.png"
         plt.savefig(feature_plot_path, bbox_inches="tight")
-    plt.show()
-    plt.close(fig)
+
+    if return_figure:
+        return fig
+    else:
+        plt.show()
+        plt.close()
