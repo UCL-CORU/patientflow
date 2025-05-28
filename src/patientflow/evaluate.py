@@ -2,7 +2,7 @@
 Patient Flow Evaluation Module
 
 This module provides functions for evaluating and comparing different prediction models
-for patient admissions in a healthcare setting. It includes utilities for calculating
+for non-clincal outcomes in a healthcare setting. It includes utilities for calculating
 metrics such as Mean Absolute Error (MAE) and Mean Percentage Error (MPE), as well as
 functions for predicting admissions based on historical data and combining different
 prediction models.

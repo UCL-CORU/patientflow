@@ -10,7 +10,7 @@ def plot_observed_against_expected(
     title1=None,
     title2=None,
     main_title="Histograms of Observed - Expected Values",
-    xlabel="Observed minus expected number of admissions",
+    xlabel="Observed minus expected",
     media_file_path=None,
     return_figure=False,
 ):

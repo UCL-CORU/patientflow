@@ -256,7 +256,7 @@ def create_predictions(
 
     Notes
     -----
-    The admissions models in the models dictionary must be ModelResults objects
+    The models in the models dictionary must be ModelResults objects
     that contain either a 'pipeline' or 'calibrated_pipeline' attribute. The pipeline
     will be used for making predictions, with calibrated_pipeline taking precedence
     if both exist.

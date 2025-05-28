@@ -1,25 +1,27 @@
 """
 Module for generating MADCAP (Model Accuracy and Discriminative Calibration Plots) visualizations.
 
-This module provides functions for creating MADCAP plots, which compare model-predicted probabilities to observed outcomes.
-MADCAP plots can be generated for individual prediction times or for specific groups (e.g., age groups).
+MADCAP plots compare model-predicted probabilities to observed outcomes, helping to assess
+model calibration and discrimination. The plots can be generated for individual
+prediction times or for specific groups (e.g., age groups).
 
 Functions
 ---------
-classify_age_group(age_group)
-    Classifies patients into age categories based on predefined age group ranges.
+classify_age : function
+    Classifies age into categories based on numeric values or age group strings.
 
-classify_age(age_on_arrival)
-    Classifies patients based on their age on arrival, categorizing them as 'children', 'adults', or '65 or over'.
+generate_madcap_plots : function
+    Generates MADCAP plots for a list of trained models, comparing predicted probabilities
+    to observed values.
 
-generate_madcap_plots(prediction_times, model_file_path, media_file_path, visits_csv_path)
-    Generates MADCAP plots for a series of prediction times, plotting the model vs. observed cumulative admissions.
+plot_madcap_subplot : function
+    Plots a single MADCAP subplot showing cumulative predicted and observed values.
 
-plot_madcap_subplot(predict_proba, label, _prediction_time, ax)
-    Helper function to plot a single MADCAP subplot for a given prediction time.
+plot_madcap_by_group : function
+    Generates MADCAP plots for specific groups at a given prediction time.
 
-plot_madcap_by_group(predict_proba, label, _prediction_time, group_name, media_path=None, plot_difference=True)
-    Generates MADCAP plots for subgroups (e.g., age groups) at a specific prediction time.
+generate_madcap_plots_by_group : function
+    Generates MADCAP plots for different groups across multiple prediction times.
 
 generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_path, visits_csv_path, grouping_var, grouping_var_name)
     Generates MADCAP plots for groups (e.g., age groups) across a series of prediction times.
@@ -45,42 +47,68 @@ exclude_from_training_data = [
     "final_sequence",
 ]
 
+# Default age categories for classification
+DEFAULT_AGE_CATEGORIES = {
+    "children": {
+        "numeric": {"max": 17},
+        "groups": ["0-17"]
+    },
+    "adults": {
+        "numeric": {"min": 18, "max": 64},
+        "groups": ["18-24", "25-34", "35-44", "45-54", "55-64"]
+    },
+    "65 or over": {
+        "numeric": {"min": 65},
+        "groups": ["65-74", "75-115"]
+    }
+}
 
-def classify_age(age):
-    """
-    Classifies age into categories, either based on a direct age value or an age group string.
+def classify_age(age, age_categories=None):
+    """Classify age into categories based on numeric values or age group strings.
 
     Parameters
     ----------
     age : int, float, or str
         Age value (e.g., 30) or age group string (e.g., '18-24').
+    age_categories : dict, optional
+        Dictionary defining age categories and their ranges. If not provided, uses DEFAULT_AGE_CATEGORIES.
+        Expected format:
+        {
+            "category_name": {
+                "numeric": {"min": min_age, "max": max_age},
+                "groups": ["age_group1", "age_group2", ...]
+            }
+        }
 
     Returns
     -------
     str
-        'children' if the age is less than 18 or the age group is '0-17',
-        'adults' if the age is between 18 and 64 or the age group is between '18-64',
-        '65 or over' if the age is 65 or above or the age group is '65-102',
-        'unknown' for unexpected or invalid values.
+        Category name based on the age or age group, or 'unknown' for unexpected or invalid values.
+
+    Examples
+    --------
+    >>> classify_age(25)
+    'adults'
+    >>> classify_age('65-74')
+    '65 or over'
     """
+    if age_categories is None:
+        age_categories = DEFAULT_AGE_CATEGORIES
+
     if isinstance(age, (int, float)):
-        if age < 18:
-            return "children"
-        elif age < 65:
-            return "adults"
-        elif age >= 65:
-            return "65 or over"
-        else:
-            return "unknown"
+        for category, rules in age_categories.items():
+            numeric_rules = rules.get("numeric", {})
+            min_age = numeric_rules.get("min", float("-inf"))
+            max_age = numeric_rules.get("max", float("inf"))
+            
+            if min_age <= age <= max_age:
+                return category
+        return "unknown"
     elif isinstance(age, str):
-        if age in ["0-17"]:
-            return "children"
-        elif age in ["18-24", "25-34", "35-44", "45-54", "55-64"]:
-            return "adults"
-        elif age in ["65-74", "75-115"]:
-            return "65 or over"
-        else:
-            return "unknown"
+        for category, rules in age_categories.items():
+            if age in rules.get("groups", []):
+                return category
+        return "unknown"
     else:
         return "unknown"
 
@@ -93,29 +121,32 @@ def generate_madcap_plots(
     suptitle: Optional[str] = None,
     return_figure: bool = False,
 ) -> Optional[plt.Figure]:
-    """
-    Generates MADCAP plots for a list of trained models, comparing predicted probabilities
-    to actual admissions.
+    """Generate MADCAP plots for a list of trained models.
 
     Parameters
     ----------
-    trained_models : list[TrainedClassifier] | dict[str, TrainedClassifier]
-        List of trained classifier objects or dictionary with TrainedClassifier values
-    media_file_path : str or Path or None
-        Directory path where the generated plots will be saved
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
-        DataFrame containing the test visit data
+        DataFrame containing the test visit data.
     exclude_from_training_data : List[str]
-        List of columns to exclude from training data
+        List of columns to exclude from training data.
+    media_file_path : Path, optional
+        Directory path where the generated plots will be saved.
     suptitle : str, optional
-        Suptitle for the plot
-    return_figure : bool, optional
-        If True, returns the figure object instead of displaying it, by default False
+        Suptitle for the plot.
+    return_figure : bool, default=False
+        If True, returns the figure object instead of displaying it.
 
     Returns
     -------
     matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot and returns None
+        Returns the figure if return_figure is True, otherwise displays the plot and returns None.
+
+    Notes
+    -----
+    The function generates a grid of MADCAP plots, one for each prediction time.
+    Each plot shows the cumulative predicted probabilities versus observed outcomes.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -224,19 +255,25 @@ def generate_madcap_plots(
 
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
-    """
-    Plots a single MADCAP subplot showing cumulative predicted and observed admissions.
+    """Plot a single MADCAP subplot showing cumulative predicted and observed values.
 
     Parameters
     ----------
     predict_proba : array-like
         Array of predicted probabilities.
     label : array-like
-        Array of true labels (admissions).
+        Array of true labels.
     _prediction_time : tuple
         Prediction time as (hour, minute).
     ax : matplotlib.axes.Axes
         The axis on which the subplot will be drawn.
+
+    Notes
+    -----
+    The plot shows:
+    - X-axis: Cases ordered by predicted probability
+    - Y-axis: Cumulative count of positive outcomes
+    - Two lines: predicted (blue) and observed (orange) cumulative counts
     """
     hour, minutes = _prediction_time
     # Ensure inputs are numpy arrays
@@ -263,11 +300,11 @@ def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     x = np.arange(len(sorted_proba))
 
     # Plot
-    ax.plot(x, model, label="model")
+    ax.plot(x, model, label="predicted")
     ax.plot(x, observed, label="observed")
     ax.legend(loc="upper left", fontsize="x-small")
-    ax.set_xlabel("Test set visits ordered by predicted probability", fontsize=12)
-    ax.set_ylabel("Number of admissions", fontsize=12)
+    ax.set_xlabel("Cases ordered by predicted probability", fontsize=12)
+    ax.set_ylabel("Cumulative count of positive outcomes", fontsize=12)
     ax.set_title(f"MADCAP Plot for {hour}:{minutes:02}", fontsize=14)
     ax.tick_params(axis="both", which="major", labelsize="x-small")
 
@@ -282,32 +319,38 @@ def plot_madcap_by_group(
     plot_difference=True,
     return_figure=False,
 ):
-    """
-    Generates MADCAP plots for specific groups (e.g., age groups) at a given prediction time.
+    """Generate MADCAP plots for specific groups at a given prediction time.
 
     Parameters
     ----------
     predict_proba : array-like
         Array of predicted probabilities.
     label : array-like
-        Array of true labels (admissions).
+        Array of true labels.
     group : array-like
-        Array of group labels for each visit (e.g., age group).
+        Array of group labels for each case (e.g., age group).
     _prediction_time : tuple
         Prediction time as (hour, minute).
     group_name : str
         Name of the group variable being plotted (e.g., 'Age Group').
     media_path : str or Path, optional
-        Path to save the generated plot, if specified.
-    plot_difference : bool, optional
-        If True, includes an additional plot showing the difference between predicted and observed admissions.
-    return_figure : bool, optional
-        If True, returns the figure object instead of displaying it, by default False
+        Path to save the generated plot.
+    plot_difference : bool, default=True
+        If True, includes an additional plot showing the difference between predicted
+        and observed outcomes.
+    return_figure : bool, default=False
+        If True, returns the figure object instead of displaying it.
 
     Returns
     -------
     matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot and returns None
+        Returns the figure if return_figure is True, otherwise displays the plot and returns None.
+
+    Notes
+    -----
+    For each group, generates:
+    - A MADCAP plot showing predicted vs observed cumulative counts
+    - Optionally, a difference plot showing predicted minus observed counts
     """
     # Remove those with unknown age
     mask_known = group != "unknown"
@@ -341,26 +384,26 @@ def plot_madcap_by_group(
         observed = np.cumsum(mean_labels[inverse_indices])
         x = np.arange(len(sorted_proba))
 
-        ax[0, i].plot(x, model, label="model")
+        ax[0, i].plot(x, model, label="predicted")
         ax[0, i].plot(x, observed, label="observed")
         ax[0, i].legend(loc="upper left", fontsize=8)
         ax[0, i].set_xlabel(
-            "Test set visits ordered by predicted probability", fontsize=8
+            "Cases ordered by predicted probability", fontsize=8
         )
-        ax[0, i].set_ylabel("Number of admissions", fontsize=8)
+        ax[0, i].set_ylabel("Cumulative count of positive outcomes", fontsize=8)
         ax[0, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
         ax[0, i].tick_params(axis="both", which="major", labelsize=8)
 
         if plot_difference:
             ax[1, i].plot(x, model - observed)
             ax[1, i].set_xlabel(
-                "Test set visits ordered by predicted probability", fontsize=8
+                "Cases ordered by predicted probability", fontsize=8
             )
-            ax[1, i].set_ylabel("Expected number of admissions - observed", fontsize=8)
+            ax[1, i].set_ylabel("Predicted - observed count", fontsize=8)
             ax[1, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
             ax[1, i].tick_params(axis="both", which="major", labelsize=8)
 
-        # Adjust layout first
+    # Adjust layout first
     fig.tight_layout(pad=1.08)
 
     # Then add super title
@@ -398,32 +441,39 @@ def generate_madcap_plots_by_group(
     plot_difference: bool = False,
     return_figure: bool = False,
 ) -> Optional[List[plt.Figure]]:
-    """
-    Generates MADCAP plots for different groups across multiple prediction times.
+    """Generate MADCAP plots for different groups across multiple prediction times.
 
     Parameters
     ----------
-    trained_models : list[TrainedClassifier] | dict[str, TrainedClassifier]
-        List of trained classifier objects or dictionary with TrainedClassifier values
-    media_file_path : str or Path or None
-        Directory path where the generated plots will be saved
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
-        DataFrame containing the test visit data
+        DataFrame containing the test visit data.
     exclude_from_training_data : List[str]
-        List of columns to exclude from training data
+        List of columns to exclude from training data.
     grouping_var : str
-        The column name in the dataset that defines the grouping variable
+        The column name in the dataset that defines the grouping variable.
     grouping_var_name : str
-        A descriptive name for the grouping variable, used in plot titles
-    plot_difference : bool, optional
-        If True, includes difference plot between predicted and observed admissions
-    return_figure : bool, optional
-        If True, returns a list of figure objects instead of displaying them, by default False
+        A descriptive name for the grouping variable, used in plot titles.
+    media_file_path : Path, optional
+        Directory path where the generated plots will be saved.
+    plot_difference : bool, default=False
+        If True, includes difference plot between predicted and observed outcomes.
+    return_figure : bool, default=False
+        If True, returns a list of figure objects instead of displaying them.
 
     Returns
     -------
     List[matplotlib.figure.Figure] or None
-        Returns a list of figures if return_figure is True, otherwise displays the plots and returns None
+        Returns a list of figures if return_figure is True, otherwise displays the plots
+        and returns None.
+
+    Notes
+    -----
+    Generates a series of MADCAP plots, one for each prediction time, showing model
+    performance across different groups. Each plot includes:
+    - A MADCAP plot for each group showing predicted vs observed cumulative counts
+    - Optionally, a difference plot for each group
     """
 
     # Convert dict to list if needed
