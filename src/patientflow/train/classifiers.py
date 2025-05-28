@@ -260,6 +260,7 @@ def train_classifier(
     calibrate_probabilities: bool = True,
     calibration_method: str = "sigmoid",
     single_snapshot_per_visit: bool = True,
+    label_col: str = "is_admitted",
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
@@ -295,6 +296,8 @@ def train_classifier(
         Method for probability calibration ('isotonic' or 'sigmoid')
     single_snapshot_per_visit : bool, default=True
         Whether to select only one snapshot per visit. If True, visit_col must be provided.
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels
 
     Returns:
     --------
@@ -313,6 +316,7 @@ def train_classifier(
         exclude_from_training_data,
         visit_col=visit_col,
         single_snapshot_per_visit=single_snapshot_per_visit,
+        label_col=label_col,
     )
     X_valid, y_valid = prepare_patient_snapshots(
         valid_visits,
@@ -320,6 +324,7 @@ def train_classifier(
         exclude_from_training_data,
         visit_col=visit_col,
         single_snapshot_per_visit=single_snapshot_per_visit,
+        label_col=label_col,
     )
     X_test, y_test = prepare_patient_snapshots(
         test_visits,
@@ -327,6 +332,7 @@ def train_classifier(
         exclude_from_training_data,
         visit_col=visit_col,
         single_snapshot_per_visit=single_snapshot_per_visit,
+        label_col=label_col,
     )
 
     # Get dataset metadata before any balancing
@@ -478,6 +484,7 @@ def train_multiple_classifiers(
     calibration_method: str = "isotonic",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
+    label_col: str = "is_admitted",
 ) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times."""
     trained_models: Dict[str, TrainedClassifier] = {}
@@ -500,6 +507,7 @@ def train_multiple_classifiers(
             majority_to_minority_ratio=majority_to_minority_ratio,
             calibrate_probabilities=calibrate_probabilities,
             calibration_method=calibration_method,
+            label_col=label_col,
         )
 
         trained_models[model_key] = best_model

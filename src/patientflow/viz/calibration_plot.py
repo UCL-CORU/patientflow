@@ -19,6 +19,7 @@ def plot_calibration(
     media_file_path: Optional[Path] = None,
     suptitle=None,
     return_figure=False,
+    label_col: str = "is_admitted",
 ):
     """
     Plot calibration curves for multiple models.
@@ -31,6 +32,7 @@ def plot_calibration(
         strategy: Strategy for calibration curve binning ('uniform' or 'quantile')
         suptitle: Optional super title for the entire figure
         return_figure: If True, returns the figure instead of displaying it
+        label_col: Name of the column containing the target labels, defaults to "is_admitted"
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -67,6 +69,7 @@ def plot_calibration(
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
+            label_col=label_col,
         )
 
         X_test = add_missing_columns(pipeline, X_test)

@@ -120,6 +120,7 @@ def generate_madcap_plots(
     media_file_path: Optional[Path] = None,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
+    label_col: str = "is_admitted",
 ) -> Optional[plt.Figure]:
     """Generate MADCAP plots for a list of trained models.
 
@@ -128,7 +129,7 @@ def generate_madcap_plots(
     trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
-        DataFrame containing the test visit data.
+        DataFrame containing test visit data
     exclude_from_training_data : List[str]
         List of columns to exclude from training data.
     media_file_path : Path, optional
@@ -137,16 +138,13 @@ def generate_madcap_plots(
         Suptitle for the plot.
     return_figure : bool, default=False
         If True, returns the figure object instead of displaying it.
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels.
 
     Returns
     -------
-    matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot and returns None.
-
-    Notes
-    -----
-    The function generates a grid of MADCAP plots, one for each prediction time.
-    Each plot shows the cumulative predicted probabilities versus observed outcomes.
+    Optional[plt.Figure]
+        The figure if return_figure is True, None otherwise
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -188,6 +186,7 @@ def generate_madcap_plots(
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
+            label_col=label_col,
         )
 
         X_test = add_missing_columns(pipeline, X_test)
@@ -218,6 +217,7 @@ def generate_madcap_plots(
                 prediction_time=prediction_time,
                 exclude_columns=exclude_from_training_data,
                 single_snapshot_per_visit=False,
+                label_col=label_col,
             )
 
             X_test = add_missing_columns(pipeline, X_test)
@@ -440,6 +440,7 @@ def generate_madcap_plots_by_group(
     media_file_path: Optional[Path] = None,
     plot_difference: bool = False,
     return_figure: bool = False,
+    label_col: str = "is_admitted",
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -461,21 +462,14 @@ def generate_madcap_plots_by_group(
         If True, includes difference plot between predicted and observed outcomes.
     return_figure : bool, default=False
         If True, returns a list of figure objects instead of displaying them.
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels.
 
     Returns
     -------
-    List[matplotlib.figure.Figure] or None
-        Returns a list of figures if return_figure is True, otherwise displays the plots
-        and returns None.
-
-    Notes
-    -----
-    Generates a series of MADCAP plots, one for each prediction time, showing model
-    performance across different groups. Each plot includes:
-    - A MADCAP plot for each group showing predicted vs observed cumulative counts
-    - Optionally, a difference plot for each group
+    Optional[List[plt.Figure]]
+        List of figures if return_figure is True, None otherwise
     """
-
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
         trained_models = list(trained_models.values())
@@ -506,6 +500,7 @@ def generate_madcap_plots_by_group(
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
+            label_col=label_col,
         )
 
         # Check if the grouping variable exists in X_test columns

@@ -16,6 +16,7 @@ def plot_shap(
     exclude_from_training_data,
     media_file_path: Optional[Path] = None,
     return_figure=False,
+    label_col: str = "is_admitted",
 ):
     """
     Generate SHAP plots for multiple trained models.
@@ -32,6 +33,8 @@ def plot_shap(
         List of columns to exclude from training data
     return_figure : bool
         If True, returns the figure instead of displaying it
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -57,6 +60,7 @@ def plot_shap(
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
+            label_col=label_col,
         )
 
         X_test = add_missing_columns(pipeline, X_test)

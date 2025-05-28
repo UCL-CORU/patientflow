@@ -22,6 +22,7 @@ def plot_prediction_distributions(
     media_file_path: Optional[Path] = None,
     suptitle: Optional[str] = None,
     return_figure=False,
+    label_col: str = "is_admitted",
 ):
     """
     Plot prediction distributions for multiple models.
@@ -30,12 +31,12 @@ def plot_prediction_distributions(
         trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
         test_visits: DataFrame containing test visit data
         exclude_from_training_data: Columns to exclude from the test data
-        bins: Number of bins for the histogram (default: 30)
-        media_file_path: Path to save the plot (default: None)
-        suptitle: Optional super title for the plot
+        bins: Number of bins for the histograms
+        media_file_path: Path where the plot should be saved
+        suptitle: Optional super title for the entire figure
         return_figure: If True, returns the figure instead of displaying it
+        label_col: Name of the column containing the target labels, defaults to "is_admitted"
     """
-
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
         trained_models = list(trained_models.values())
@@ -71,6 +72,7 @@ def plot_prediction_distributions(
             prediction_time=prediction_time,
             exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
+            label_col=label_col,
         )
 
         X_test = add_missing_columns(pipeline, X_test)
