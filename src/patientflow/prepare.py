@@ -92,6 +92,7 @@ def assign_patient_ids(
     date_col: str = "arrival_datetime",
     patient_id: str = "mrn",
     visit_col: str = "encounter",
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Probabilistically assign patient IDs to train/validation/test sets.
 
@@ -104,6 +105,7 @@ def assign_patient_ids(
         date_col: Column name for temporal splitting
         patient_id: Column name for patient identifier (default: 'mrn')
         visit_col: Column name for visit identifier (default: 'encounter')
+        seed: Random seed for reproducible results (default: 42)
 
     Returns:
         DataFrame with patient ID assignments based on weighted random sampling
@@ -113,6 +115,9 @@ def assign_patient_ids(
         - Randomly assigns each patient ID to one set, weighted by their temporal distribution
         - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
     """
+    # Set random seed for reproducibility
+    random.seed(seed)
+    
     patients: pd.DataFrame = (
         df.groupby([patient_id, visit_col])[date_col].max().reset_index()
     )
@@ -189,6 +194,7 @@ def create_temporal_splits(
     col_name: str = "arrival_datetime",
     patient_id: str = "mrn",
     visit_col: str = "encounter",
+    seed: int = 42,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split dataset into temporal train/validation/test sets.
 
@@ -204,6 +210,7 @@ def create_temporal_splits(
         col_name: Primary datetime column for splitting
         patient_id: Column name for patient identifier (default: 'mrn')
         visit_col: Column name for visit identifier (default: 'encounter')
+        seed: Random seed for reproducible results (default: 42)
 
     Returns:
         tuple: (train_df, valid_df, test_df) Split dataframes
@@ -226,6 +233,7 @@ def create_temporal_splits(
             col_name,
             patient_id,
             visit_col,
+            seed=seed,
         )
         patient_sets: Dict[str, Set] = {
             k: set(set_assignment[set_assignment.training_validation_test == v].index)
