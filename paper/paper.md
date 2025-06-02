@@ -28,10 +28,12 @@ affiliations:
    index: 1
  - name: Institute of Health Informatics, University College London, United Kingdom
    index: 2
-date: 2024-03-19
+date: 2025-06-02
 bibliography: paper.bib
 
 ---
+
+# patientflow: A Python package for predicting demand for hospital beds using real-time data
 
 # Summary
 
@@ -45,32 +47,10 @@ This package is intended to make it easier for you, as a researcher, to create p
 
 Our intention is that the package will help you demonstrate the practical value of your predictive models for hospital management. Step through a series of notebooks to learn how to use the package and see examples based on fake and synthetic data [@patientflow_github]. You also have the option to download real patient data from Zenodo to use with the notebooks [@patientflow_data]. patientflow includes a fully worked example of how the package has been used in a live application at University College London Hospital to predict demand for emergency beds. 
 
-# Citations
-
-Citations to entries in paper.bib should be in
-[rMarkdown](http://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html)
-format.
-
-If you want to cite a software repository URL (e.g. something on GitHub without a preferred
-citation) then you can do it with the example BibTeX entry below for @fidgit.
-
-For a quick reference, the following citation commands can be used:
-- `@author:2001`  ->  "Author et al. (2001)"
-- `[@author:2001]` -> "(Author et al., 2001)"
-- `[@author1:2001; @author2:2001]` -> "(Author1 et al., 2001; Author2 et al., 2002)"
-
-# Figures
-
-Figures can be included like this:
-![Caption for example figure.\label{fig:example}](figure.png)
-and referenced from text using \autoref{fig:example}.
-
-Figure sizes can be customized by adding an optional second parameter:
-![Caption for example figure.](figure.png){ width=20% }
-
 # Acknowledgements
 
-We acknowledge contributions from Brigitta Sipocz, Syrtis Major, and Semyeong
-Oh, and support from Kathryn Johnston during the genesis of this project.
+The py-pi template developed by Tom Monks inspired us to create a Python package. This repository is based on a template developed by the Centre for Advanced Research Computing, University College London. We are grateful to Lawrence Lai for creation of the synthetic dataset.
+
+The development of this repository/package was funded by UCL's QR Policy Support Fund, which is funded by Research England. 
 
 # References
