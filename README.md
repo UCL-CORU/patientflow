@@ -217,8 +217,9 @@ Thank you for contributing!
 
 - [Dr Zella King](https://github.com/zmek), Clinical Operational Research Unit (CORU), University College London (UCL)([zella.king@ucl.ac.uk](mailto:zella.king@ucl.ac.uk))
 - [Jon Gillham](https://github.com/jongillham), Institute of Health Informatics, UCL
-- Professor Sonya Crowe, CORU
-- Professor Martin Utley, CORU
+- Professor Martin Utley, Clinical Operational Research Unit, UCL
+- Matt Graham, Advanced Research Computing, UCL
+- Professor Sonya Crowe, Clinical Operational Research Unit, UCL
 
 ## Acknowledgements
 
