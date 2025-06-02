@@ -1,17 +1,17 @@
 # patientflow: A Python package for predicting demand for hospital beds using real-time data
 
-**Authors:**  
-Zella King (ORCID: 0000-0001-7389-1527)¹  
-Jon Gillham (ORCID: 0009-0007-4110-7284)²  
-Martin Utley (ORCID: 0000-0001-9928-1516)¹  
-Matt Graham¹  
+**Authors:**
+Zella King (ORCID: 0000-0001-7389-1527)¹
+Jon Gillham (ORCID: 0009-0007-4110-7284)²
+Martin Utley (ORCID: 0000-0001-9928-1516)¹
+Matt Graham¹
 Sonya Crowe (ORCID: 0000-0003-1882-5476)¹
 
-**Affiliations:**  
-¹ Clinical Operational Research Unit (CORU), University College London, United Kingdom  
+**Affiliations:**
+¹ Clinical Operational Research Unit (CORU), University College London, United Kingdom
 ² Institute of Health Informatics, University College London, United Kingdom
 
-**Tags:** Python, patient, hospital, bed, demand, real-time, electronic health records  
+**Tags:** Python, patient, hospital, bed, demand, real-time, electronic health records
 **Date:** June 2 2025
 
 ## Summary
@@ -40,4 +40,4 @@ King, Z., Gillham, J., Utley, M., Graham, M., and Crowe, S. (2025). patientflow 
 
 King, Z., Gillham, J., Utley, M., Graham, M., and Crowe, S. (2024). patientflow: Code and explanatory notebooks for predicting short-term hospital bed demand using real-time data. GitHub. https://github.com/ucl-coru/patientflow
 
-King, Z. and Crowe, S. (2025). Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository. Zenodo. https://doi.org/10.5281/zenodo.14866056 
+King, Z. and Crowe, S. (2025). Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository. Zenodo. https://doi.org/10.5281/zenodo.14866056

@@ -1,3 +1,14 @@
+"""SHAP (SHapley Additive exPlanations) visualization module.
+
+This module provides functionality for generating SHAP plots. These are useful for
+visualizing feature importance and their impact on model decisions.
+
+Functions
+---------
+plot_shap : function
+    Generate SHAP plots for multiple trained models.
+"""
+
 from matplotlib import pyplot as plt
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.predict.emergency_demand import add_missing_columns
@@ -18,23 +29,32 @@ def plot_shap(
     return_figure=False,
     label_col: str = "is_admitted",
 ):
-    """
-    Generate SHAP plots for multiple trained models.
+    """Generate SHAP plots for multiple trained models.
+
+    This function creates SHAP (SHapley Additive exPlanations) summary plots for each
+    trained model, showing the impact of features on model predictions. The plots can
+    be saved to a specified media file path or displayed directly.
 
     Parameters
     ----------
-    trained_models : list[TrainedClassifier] | dict[str, TrainedClassifier]
-        List of trained classifier objects or dictionary with TrainedClassifier values
-    media_file_path : Path
-        Directory path where the generated plots will be saved
-    test_visits : pd.DataFrame
-        DataFrame containing the test visit data
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of trained classifier objects or dictionary with TrainedClassifier values.
+    test_visits : pandas.DataFrame
+        DataFrame containing the test visit data.
     exclude_from_training_data : list[str]
-        List of columns to exclude from training data
-    return_figure : bool
-        If True, returns the figure instead of displaying it
+        List of columns to exclude from training data.
+    media_file_path : Path, optional
+        Directory path where the generated plots will be saved. If None, plots are
+        only displayed.
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it.
     label_col : str, default="is_admitted"
-        Name of the column containing the target labels
+        Name of the column containing the target labels.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        If return_figure is True, returns the generated figure. Otherwise, returns None.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):

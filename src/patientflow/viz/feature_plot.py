@@ -1,3 +1,14 @@
+"""Visualization module for plotting feature importances from trained models.
+
+This module provides functionality to visualize feature importances from trained
+classifiers, allowing for comparison across different prediction time points.
+
+Functions
+---------
+plot_features : function
+    Plot feature importance for multiple models
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from patientflow.model_artifacts import TrainedClassifier
@@ -12,16 +23,32 @@ def plot_features(
     top_n: int = 20,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
-):
-    """
-    Plot feature importance for multiple models.
+) -> Optional[plt.Figure]:
+    """Plot feature importance for multiple models.
 
-    Args:
-        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
-        media_file_path: Path where the plot should be saved
-        top_n: Number of top features to display (default: 20)
-        suptitle: Optional super title for the entire figure (default: None)
-        return_figure: If True, returns the figure instead of displaying it
+    Parameters
+    ----------
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of TrainedClassifier objects or dictionary with TrainedClassifier values.
+    media_file_path : Path, optional
+        Path where the plot should be saved. If None, the plot is only displayed.
+    top_n : int, default=20
+        Number of top features to display.
+    suptitle : str, optional
+        Super title for the entire figure.
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it.
+
+    Returns
+    -------
+    plt.Figure or None
+        The matplotlib figure if return_figure is True, otherwise None.
+
+    Notes
+    -----
+    The function sorts models by prediction time and creates a horizontal bar plot
+    for each model showing the top N most important features. Feature names are
+    truncated to 25 characters for better display.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -85,3 +112,4 @@ def plot_features(
     else:
         plt.show()
         plt.close()
+        return None

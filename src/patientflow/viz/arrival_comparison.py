@@ -1,3 +1,16 @@
+"""Visualization functions for comparing actual and predicted patient arrivals.
+
+This module provides functions to visualize and analyze the difference between
+actual patient arrivals and predicted arrival rates over time.
+
+Functions
+---------
+plot_arrival_comparison : function
+    Plot comparison between observed arrivals and expected arrival rates
+plot_multiple_deltas : function
+    Plot delta charts for multiple snapshot dates on the same figure
+"""
+
 from datetime import timedelta, datetime, time
 from patientflow.calculate.arrival_rates import time_varying_arrival_rates
 import matplotlib.pyplot as plt
@@ -6,7 +19,6 @@ import numpy as np
 from patientflow.viz.utils import format_prediction_time
 
 
-# Create date range
 def plot_arrival_comparison(
     df,
     prediction_time,
@@ -18,19 +30,33 @@ def plot_arrival_comparison(
     media_file_path=None,
     return_figure=False,
 ):
-    """
-    Plot comparison between observed arrivals and expected arrival rates.
+    """Plot comparison between observed arrivals and expected arrival rates.
 
-    Args:
-        df (pd.DataFrame): DataFrame containing arrival data
-        prediction_time (tuple): (hour, minute) of prediction time
-        snapshot_date (datetime.date): Date to analyze
-        prediction_window (int): Prediction window in minutes
-        show_delta (bool): If True, plot the difference between actual and expected arrivals
-        show_only_delta (bool): If True, only plot the delta between actual and expected arrivals
-        yta_time_interval (int): Time interval in minutes for calculating arrival rates
-        media_file_path (Path, optional): Path to save the plot
-        return_figure (bool, optional): If True, returns the figure instead of displaying it
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing arrival data
+    prediction_time : tuple
+        (hour, minute) of prediction time
+    snapshot_date : datetime.date
+        Date to analyze
+    prediction_window : int
+        Prediction window in minutes
+    show_delta : bool, default=True
+        If True, plot the difference between actual and expected arrivals
+    show_only_delta : bool, default=False
+        If True, only plot the delta between actual and expected arrivals
+    yta_time_interval : int, default=15
+        Time interval in minutes for calculating arrival rates
+    media_file_path : Path, optional
+        Path to save the plot
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None
     """
     # Convert prediction time to datetime objects
     prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
@@ -243,17 +269,29 @@ def plot_multiple_deltas(
     media_file_path=None,
     return_figure=False,
 ):
-    """
-    Plot delta charts for multiple snapshot dates on the same figure.
+    """Plot delta charts for multiple snapshot dates on the same figure.
 
-    Args:
-        df (pd.DataFrame): DataFrame containing arrival data
-        prediction_time (tuple): (hour, minute) of prediction time
-        snapshot_dates (list): List of datetime.date objects to analyze
-        prediction_window (int): Prediction window in minutes
-        yta_time_interval (int): Time interval in minutes for calculating arrival rates
-        media_file_path (Path, optional): Path to save the plot
-        return_figure (bool, optional): If True, returns the figure instead of displaying it
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing arrival data
+    prediction_time : tuple
+        (hour, minute) of prediction time
+    snapshot_dates : list
+        List of datetime.date objects to analyze
+    prediction_window : int
+        Prediction window in minutes
+    yta_time_interval : int, default=15
+        Time interval in minutes for calculating arrival rates
+    media_file_path : Path, optional
+        Path to save the plot
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None
     """
     # Create figure with subplots
     fig = plt.figure(figsize=(15, 6))

@@ -532,7 +532,7 @@ def get_model_key(model_name, prediction_time):
     ----------
     model_name : str
         The base name of the model.
-    prediction_time_ : tuple of int
+    prediction_time : tuple of int
         A tuple representing the time of day (hour, minute).
 
     Returns

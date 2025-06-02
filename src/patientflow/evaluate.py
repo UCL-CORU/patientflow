@@ -7,18 +7,28 @@ metrics such as Mean Absolute Error (MAE) and Mean Percentage Error (MPE), as we
 functions for predicting admissions based on historical data and combining different
 prediction models.
 
-Key Features:
-- Evaluation of probability distribution-based prediction models
-- Calculation of observed admissions based on ED targets
-- Prediction using historical data from previous weeks
-- Combination and evaluation of multiple prediction models
-
-Main Functions:
-- calc_mae_mpe: Calculate MAE and MPE for probability distribution predictions
-- calculate_weighted_observed: Calculate actual admissions assuming ED targets are met
-- predict_using_previous_weeks: Predict admissions using average from previous weeks
-- evaluate_six_week_average: Evaluate the six-week average prediction model
-- evaluate_combined_model: Evaluate a combined prediction model
+Functions
+---------
+calculate_results : function
+    Calculate evaluation metrics based on expected and observed values
+calc_mae_mpe : function
+    Calculate MAE and MPE for probability distribution predictions
+calculate_admission_probs_relative_to_prediction : function
+    Calculate admission probabilities for arrivals relative to a prediction time window
+get_arrivals_with_admission_probs : function
+    Get arrivals before and after prediction time with their admission probabilities
+calculate_weighted_observed : function
+    Calculate actual admissions assuming ED targets are met
+create_time_mask : function
+    Create a mask for times before/after a specific hour:minute
+predict_using_previous_weeks : function
+    Predict admissions using average from previous weeks
+evaluate_six_week_average : function
+    Evaluate the six-week average prediction model
+combine_distributions : function
+    Combine two probability distributions using convolution
+evaluate_combined_model : function
+    Evaluate a combined prediction model
 
 """
 
@@ -36,15 +46,27 @@ from patientflow.load import get_model_key
 def calculate_results(
     expected_values: List[Union[int, float]], observed_values: List[float]
 ) -> Dict[str, Union[List[Union[int, float]], float]]:
-    """
-    Calculate evaluation metrics based on expected and observed values.
+    """Calculate evaluation metrics based on expected and observed values.
 
-    Args:
-        expected_values (List[Union[int, float]]): List of expected values.
-        observed_values (List[float]): List of observed values.
+    Parameters
+    ----------
+    expected_values : List[Union[int, float]]
+        List of expected values.
+    observed_values : List[float]
+        List of observed values.
 
-    Returns:
-        Dict[str, Union[List[Union[int, float]], float]]: Dictionary containing expected values, observed values, MAE, and MPE.
+    Returns
+    -------
+    Dict[str, Union[List[Union[int, float]], float]]
+        Dictionary containing:
+        - expected : List[Union[int, float]]
+            Original expected values
+        - observed : List[float]
+            Original observed values
+        - mae : float
+            Mean Absolute Error
+        - mpe : float
+            Mean Percentage Error
     """
     expected_array: np.ndarray = np.array(expected_values)
     observed_array: np.ndarray = np.array(observed_values)
@@ -83,16 +105,28 @@ def calc_mae_mpe(
     prob_dist_dict_all: Dict[Any, Dict[Any, Dict[str, Any]]],
     use_most_probable: bool = False,
 ) -> Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]:
-    """
-    Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
-    Results are sorted by prediction time.
+    """Calculate MAE and MPE for all prediction times in the given probability distribution dictionary.
 
-    Args:
-        prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
-        use_most_probable (bool, optional): Whether to use the most probable value or mathematical expectation of the distribution. Defaults to False.
+    Parameters
+    ----------
+    prob_dist_dict_all : Dict[Any, Dict[Any, Dict[str, Any]]]
+        Nested dictionary containing probability distributions.
+    use_most_probable : bool, optional
+        Whether to use the most probable value or mathematical expectation of the distribution.
+        Default is False.
 
-    Returns:
-        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Dictionary of results sorted by prediction time.
+    Returns
+    -------
+    Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]
+        Dictionary of results sorted by prediction time, containing:
+        - expected : List[Union[int, float]]
+            Expected values for each prediction
+        - observed : List[float]
+            Observed values for each prediction
+        - mae : float
+            Mean Absolute Error
+        - mpe : float
+            Mean Percentage Error
     """
     # Create temporary results dictionary
     unsorted_results: Dict[Any, Dict[str, Union[List[Union[int, float]], float]]] = {}
@@ -142,18 +176,40 @@ def calc_mae_mpe(
 def calculate_admission_probs_relative_to_prediction(
     df, prediction_datetime, prediction_window, x1, y1, x2, y2, is_before=True
 ):
-    """
-    Calculate admission probabilities for arrivals relative to a prediction time window
+    """Calculate admission probabilities for arrivals relative to a prediction time window.
 
-    Parameters:
-    df: DataFrame containing arrival_datetime column
-    prediction_datetime: datetime for prediction window start
-    prediction_window: window length in minutes
-    x1, y1, x2, y2: parameters for aspirational curve
-    is_before: boolean indicating if arrivals are before prediction time
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing arrival_datetime column.
+    prediction_datetime : datetime
+        Datetime for prediction window start.
+    prediction_window : int
+        Window length in minutes.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    x2 : float
+        Second x-coordinate for aspirational curve.
+    y2 : float
+        Second y-coordinate for aspirational curve.
+    is_before : bool, optional
+        Boolean indicating if arrivals are before prediction time.
+        Default is True.
 
-    Returns:
-    DataFrame with added probability columns
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with added probability columns:
+        - hours_before_pred_window : float
+            Hours before prediction window (if is_before=True)
+        - hours_after_pred_window : float
+            Hours after prediction window (if is_before=False)
+        - prob_admission_before_pred_window : float
+            Probability of admission before prediction window
+        - prob_admission_in_pred_window : float
+            Probability of admission within prediction window
     """
     result = df.copy()
 
@@ -200,21 +256,41 @@ def get_arrivals_with_admission_probs(
     target_date=None,
     target_weekday=None,
 ):
-    """
-    Get arrivals before and after prediction time with their admission probabilities
+    """Get arrivals before and after prediction time with their admission probabilities.
 
-    Parameters:
-    df: DataFrame with arrival_datetime column
-    prediction_datetime: datetime for prediction window start
-    prediction_window: window length in minutes
-    prediction_time: tuple of (hour, minute)
-    x1, y1, x2, y2: parameters for aspirational curve
-    date_range: optional tuple of (start_date, end_date)
-    target_date: optional specific date to analyze
-    target_weekday: optional specific weekday to filter for
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with arrival_datetime column.
+    prediction_datetime : datetime
+        Datetime for prediction window start.
+    prediction_window : int
+        Window length in minutes.
+    prediction_time : tuple
+        Tuple of (hour, minute) for prediction time.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    x2 : float
+        Second x-coordinate for aspirational curve.
+    y2 : float
+        Second y-coordinate for aspirational curve.
+    date_range : tuple, optional
+        Optional tuple of (start_date, end_date) to filter data.
+    target_date : datetime.date, optional
+        Optional specific date to analyze.
+    target_weekday : int, optional
+        Optional specific weekday to filter for (0-6, where 0 is Monday).
 
-    Returns:
-    tuple of (arrived_before, arrived_after) DataFrames for specified time period
+    Returns
+    -------
+    tuple
+        Tuple of (arrived_before, arrived_after) DataFrames containing:
+        - arrived_before : pandas.DataFrame
+            DataFrame with arrivals before prediction time
+        - arrived_after : pandas.DataFrame
+            DataFrame with arrivals after prediction time
     """
     hour, minute = prediction_time
 
@@ -268,15 +344,31 @@ def get_arrivals_with_admission_probs(
 def calculate_weighted_observed(
     df, dt, prediction_window, x1, y1, x2, y2, prediction_time
 ):
-    """
-    Calculate weighted observed admissions for a specific date and prediction window
+    """Calculate weighted observed admissions for a specific date and prediction window.
 
-    Parameters:
-    df: DataFrame with arrival_datetime column
-    dt: target date
-    prediction_window: window length in minutes
-    x1, y1, x2, y2: parameters for aspirational curve
-    prediction_time: tuple of (hour, minute)
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with arrival_datetime column.
+    dt : datetime.date
+        Target date for calculation.
+    prediction_window : int
+        Window length in minutes.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    x2 : float
+        Second x-coordinate for aspirational curve.
+    y2 : float
+        Second y-coordinate for aspirational curve.
+    prediction_time : tuple
+        Tuple of (hour, minute) for prediction time.
+
+    Returns
+    -------
+    float
+        Weighted sum of observed admissions for the specified time period.
     """
     # Create prediction datetime
     prediction_datetime = pd.to_datetime(dt).replace(
@@ -307,7 +399,22 @@ def calculate_weighted_observed(
 
 
 def create_time_mask(df, hour, minute):
-    """Create a mask for times before/after a specific hour:minute"""
+    """Create a mask for times before/after a specific hour:minute.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing arrival_datetime column.
+    hour : int
+        Target hour (0-23).
+    minute : int
+        Target minute (0-59).
+
+    Returns
+    -------
+    pandas.Series
+        Boolean mask indicating times after the specified hour:minute.
+    """
     return (df["arrival_datetime"].dt.hour > hour) | (
         (df["arrival_datetime"].dt.hour == hour)
         & (df["arrival_datetime"].dt.minute > minute)
@@ -324,18 +431,38 @@ def predict_using_previous_weeks(
     y2: float,
     prediction_time: Tuple[int, int],
     num_weeks: int,
-    weighted=True,
+    weighted: bool = True,
 ) -> float:
-    """
-    Calculate predicted admissions remaining until midnight.
-    Args:
-        df (pd.DataFrame): DataFrame containing patient data.
-        dt (datetime): Date for prediction.
-        prediction_time (Tuple[int, int]): Hour and minute of prediction.
-        num_weeks (int): Number of previous weeks to consider.
-        weighted(bool): Whether to weight the numbers according to aspirational ED targets
-    Returns:
-        float: Predicted number of admissions remaining until midnight.
+    """Calculate predicted admissions remaining until midnight.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing patient data.
+    dt : datetime
+        Date for prediction.
+    prediction_window : int
+        Window length in minutes.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    x2 : float
+        Second x-coordinate for aspirational curve.
+    y2 : float
+        Second y-coordinate for aspirational curve.
+    prediction_time : Tuple[int, int]
+        Hour and minute of prediction.
+    num_weeks : int
+        Number of previous weeks to consider.
+    weighted : bool, optional
+        Whether to weight the numbers according to aspirational ED targets.
+        Default is True.
+
+    Returns
+    -------
+    float
+        Predicted number of admissions remaining until midnight.
     """
     prediction_datetime = pd.to_datetime(dt).replace(
         hour=prediction_time[0], minute=prediction_time[1]
@@ -439,17 +566,33 @@ def evaluate_six_week_average(
     """
     Evaluate the six-week average prediction model.
 
-    Args:
-        prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
-        df (pd.DataFrame): DataFrame containing patient data.
-        prediction_window (int): Prediction window in minutes.
-        x1 (float), y1 (float), x2 (float), y2 (float): Parameters for aspirational curve.
-        prediction_time (Tuple[int, int]): Hour and minute of prediction.
-        num_weeks (int): Number of previous weeks to consider.
-        model_name (str): Name of the model.
+    Parameters
+    ----------
+    prob_dist_dict_all : Dict[Any, Dict[Any, Dict[str, Any]]]
+        Nested dictionary containing probability distributions.
+    df : pandas.DataFrame
+        DataFrame containing patient data.
+    prediction_window : int
+        Prediction window in minutes.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    prediction_time : Tuple[int, int]
+        Hour and minute of prediction.
+    num_weeks : int
+        Number of previous weeks to consider.
+    model_name : str
+        Name of the model.
 
-    Returns:
-        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Evaluation results.
+    Returns
+    -------
+    Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]
+        Dictionary containing evaluation results:
+        - expected : List[Union[int, float]]
+            Expected values for each prediction
+        - observed : List[float]
+            Observed values for each prediction
     """
     expected_values: List[Union[int, float]] = []
     observed_values: List[float] = []
@@ -476,15 +619,21 @@ def evaluate_six_week_average(
 
 
 def combine_distributions(dist1: pd.DataFrame, dist2: pd.DataFrame) -> pd.DataFrame:
-    """
-    Combine two probability distributions using convolution.
+    """Combine two probability distributions using convolution.
 
-    Args:
-        dist1 (pd.DataFrame): First probability distribution.
-        dist2 (pd.DataFrame): Second probability distribution.
+    Parameters
+    ----------
+    dist1 : pandas.DataFrame
+        First probability distribution.
+    dist2 : pandas.DataFrame
+        Second probability distribution.
 
-    Returns:
-        pd.DataFrame: Combined probability distribution.
+    Returns
+    -------
+    pandas.DataFrame
+        Combined probability distribution with columns:
+        - agg_predicted : float
+            Combined probability values
     """
     arr1 = dist1.values
     arr2 = dist2.values
@@ -514,22 +663,48 @@ def evaluate_combined_model(
     model_name: str,
     use_most_probable: bool = True,
 ) -> Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]:
-    """
-    Evaluate the combined prediction model.
+    """Evaluate the combined prediction model.
 
-    Args:
-        prob_dist_dict_all (Dict[Any, Dict[Any, Dict[str, Any]]]): Nested dictionary containing probability distributions.
-        df (pd.DataFrame): DataFrame containing patient data.
-        yta_preds (pd.DataFrame): Yet-to-arrive predictions.
-        prediction_window (int): Prediction window in minutes.
-        x1 (float), y1 (float), x2 (float), y2 (float): Parameters for aspirational curve.
-        prediction_time (Tuple[int, int]): Hour and minute of prediction.
-        num_weeks (int): Number of previous weeks to consider.
-        model_name (str): Name of the model.
-        use_most_probable (bool, optional): Whether to use the most probable value or expected value. Defaults to True.
+    Parameters
+    ----------
+    prob_dist_dict_all : Dict[Any, Dict[Any, Dict[str, Any]]]
+        Nested dictionary containing probability distributions.
+    df : pandas.DataFrame
+        DataFrame containing patient data.
+    yta_preds : pandas.DataFrame
+        Yet-to-arrive predictions.
+    prediction_window : int
+        Window length in minutes.
+    x1 : float
+        First x-coordinate for aspirational curve.
+    y1 : float
+        First y-coordinate for aspirational curve.
+    x2 : float
+        Second x-coordinate for aspirational curve.
+    y2 : float
+        Second y-coordinate for aspirational curve.
+    prediction_time : Tuple[int, int]
+        Hour and minute of prediction.
+    num_weeks : int
+        Number of previous weeks to consider.
+    model_name : str
+        Name of the model.
+    use_most_probable : bool, optional
+        Whether to use the most probable value or expected value.
+        Default is True.
 
-    Returns:
-        Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]: Evaluation results.
+    Returns
+    -------
+    Dict[Any, Dict[str, Union[List[Union[int, float]], float]]]
+        Dictionary containing evaluation results:
+        - expected : List[Union[int, float]]
+            Expected values for each prediction
+        - observed : List[float]
+            Observed values for each prediction
+        - mae : float
+            Mean Absolute Error
+        - mpe : float
+            Mean Percentage Error
     """
     expected_values: List[Union[int, float]] = []
     observed_values: List[float] = []

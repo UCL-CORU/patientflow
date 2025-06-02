@@ -2,7 +2,7 @@
 Model training results containers.
 
 This module defines a set of data classes to organise results from
-model training processes, including hyperparameter tuning, cross-validation fold metrics,
+model training, including hyperparameter tuning, cross-validation fold metrics,
 and final trained classifier artifacts. These classes serve as structured containers for
 various types of model evaluation outputs and metadata.
 

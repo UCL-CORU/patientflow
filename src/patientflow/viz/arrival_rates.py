@@ -1,21 +1,18 @@
 """
-This module contains functions to visualize inpatient arrival rates and their cumulative
-statistics. The visualizations support time-varying analysis, comparison of datasets,
-and statistical distributions for resource planning in healthcare facilities.
+Visualization functions for inpatient arrival rates and cumulative statistics.
 
-Functions:
-    - annotate_hour_line: Annotates hour lines on a matplotlib plot.
-    - plot_arrival_rates: Plots arrival rates for one or two datasets with optional
-                          lagged or spread rates.
-    - plot_cumulative_arrival_rates: Plots cumulative arrival rates with options for
-                                     statistical distribution visualization.
+This module provides functions to visualize time-varying arrival rates and cumulative arrivals,
+over the course of a day.
 
-Dependencies:
-    - matplotlib.pyplot
-    - numpy
-    - scipy.stats
-    - patientflow.calculate.arrival_rates (for rate calculations)
-    - patientflow.viz.utils (for utility functions)
+Functions
+---------
+annotate_hour_line : function
+    Annotate hour lines on a matplotlib plot
+plot_arrival_rates : function
+    Plot arrival rates for one or two datasets
+plot_cumulative_arrival_rates : function
+    Plot cumulative arrival rates with statistical distributions
+
 """
 
 import matplotlib.pyplot as plt
@@ -32,9 +29,6 @@ from patientflow.viz.utils import clean_title_for_filename
 import scipy.stats as stats
 
 
-# def get_arrival_rates_spread(inpatient_arrivals, curve_params, time_interval=60):
-
-
 def annotate_hour_line(
     hour_line,
     y_value,
@@ -43,14 +37,13 @@ def annotate_hour_line(
     line_styles,
     x_margin,
     annotation_prefix,
-    text_y_offset=1,  # New parameter with default of 1
-    text_x_position=None,  # New parameter to control horizontal text position
+    text_y_offset=1,
+    text_x_position=None,
     slope=None,
     x1=None,
     y1=None,
 ):
-    """
-    Annotate hour lines on a matplotlib plot with consistent formatting.
+    """Annotate hour lines on a matplotlib plot with consistent formatting.
 
     Parameters
     ----------
@@ -69,20 +62,15 @@ def annotate_hour_line(
     annotation_prefix : str
         Prefix for the annotation text (e.g., "On average").
     text_y_offset : float, optional
-        Vertical offset for the annotation text from the line (default is 1).
+        Vertical offset for the annotation text from the line, by default 1.
     text_x_position : float, optional
-        Horizontal position for annotation text (default is calculated).
+        Horizontal position for annotation text, by default None.
     slope : float, optional
-        Slope of a line for extended annotations (used with x1 and y1).
+        Slope of a line for extended annotations, by default None.
     x1 : float, optional
-        Reference x-coordinate for slope-based annotation.
+        Reference x-coordinate for slope-based annotation, by default None.
     y1 : float, optional
-        Reference y-coordinate for slope-based annotation.
-
-    Returns
-    -------
-    None
-        Annotates the matplotlib plot in place.
+        Reference y-coordinate for slope-based annotation, by default None.
     """
     a = hour_values[hour_line - start_plot_index]
     if slope is not None and x1 is not None:
@@ -151,8 +139,7 @@ def plot_arrival_rates(
     num_days_2=None,
     return_figure=False,
 ):
-    """
-    Plot arrival rates for one or two datasets with optional lagged and spread rates.
+    """Plot arrival rates for one or two datasets with optional lagged and spread rates.
 
     Parameters
     ----------
@@ -161,30 +148,34 @@ def plot_arrival_rates(
     title : str
         Title of the plot.
     inpatient_arrivals_2 : array-like, optional
-        Optional second dataset for comparison (default is None).
+        Optional second dataset for comparison, by default None.
     labels : tuple of str, optional
-        Labels for the datasets when comparing two datasets (default is None).
+        Labels for the datasets when comparing two datasets, by default None.
     lagged_by : int, optional
-        Time lag in hours to apply to the arrival rates (default is None).
+        Time lag in hours to apply to the arrival rates, by default None.
     curve_params : tuple of float, optional
-        Parameters for spread arrival rates as (x1, y1, x2, y2) (default is None).
+        Parameters for spread arrival rates as (x1, y1, x2, y2), by default None.
     time_interval : int, optional
-        Time interval in minutes for arrival rate calculations (default is 60).
+        Time interval in minutes for arrival rate calculations, by default 60.
     start_plot_index : int, optional
-        Starting hour index for plotting (default is 0).
+        Starting hour index for plotting, by default 0.
     x_margin : float, optional
-        Margin on the x-axis (default is 0.5).
+        Margin on the x-axis, by default 0.5.
     file_prefix : str, optional
-        Prefix for the saved file name (default is "").
+        Prefix for the saved file name, by default "".
     media_file_path : str or Path, optional
-        Directory path to save the plot (default is None).
+        Directory path to save the plot, by default None.
+    num_days : int, optional
+        Number of days in the first dataset, by default None.
+    num_days_2 : int, optional
+        Number of days in the second dataset, by default None.
     return_figure : bool, optional
-        If True, returns the matplotlib figure instead of displaying it (default is False)
+        If True, returns the matplotlib figure instead of displaying it, by default False.
 
     Returns
     -------
     matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot
+        Returns the figure if return_figure is True, otherwise displays the plot.
     """
     is_dual_plot = inpatient_arrivals_2 is not None
     if is_dual_plot and labels is None:
@@ -319,7 +310,8 @@ def plot_arrival_rates(
 
 
 def get_window_parameters(data, start_window, end_window, hour_values):
-    """
+    """Calculate window parameters for visualization.
+
     Parameters
     ----------
     data : array-like
@@ -330,6 +322,16 @@ def get_window_parameters(data, start_window, end_window, hour_values):
         End position in reindexed space
     hour_values : array-like
         Original hour values for display
+
+    Returns
+    -------
+    tuple
+        (slope, x1, y1, x2, y2) where:
+        - slope: float, The calculated slope of the line
+        - x1: float, Start hour value
+        - y1: float, Start y-value
+        - x2: float, End hour value
+        - y2: float, End y-value
     """
     y1 = data[start_window]
     y2 = data[-1]
@@ -407,8 +409,7 @@ def plot_cumulative_arrival_rates(
     num_days=None,
     return_figure=False,
 ):
-    """
-    Plot cumulative arrival rates with optional statistical distributions.
+    """Plot cumulative arrival rates with optional statistical distributions.
 
     Parameters
     ----------
@@ -417,53 +418,54 @@ def plot_cumulative_arrival_rates(
     title : str
         Title of the plot.
     curve_params : tuple of float, optional
-        Parameters for spread rates as (x1, y1, x2, y2) (default is None).
+        Parameters for spread rates as (x1, y1, x2, y2), by default None.
     lagged_by : int, optional
-        Time lag in hours for cumulative rates (default is None).
+        Time lag in hours for cumulative rates, by default None.
     time_interval : int, optional
-        Time interval in minutes for rate calculations (default is 60).
+        Time interval in minutes for rate calculations, by default 60.
     start_plot_index : int, optional
-        Starting hour index for plotting (default is 0).
+        Starting hour index for plotting, by default 0.
     draw_window : tuple of int, optional
-        Time window for detailed annotation (default is None).
+        Time window for detailed annotation, by default None.
     x_margin : float, optional
-        Margin on the x-axis (default is 0.5).
+        Margin on the x-axis, by default 0.5.
     file_prefix : str, optional
-        Prefix for the saved file name (default is "").
+        Prefix for the saved file name, by default "".
     set_y_lim : float, optional
-        Upper limit for the y-axis (default is None).
+        Upper limit for the y-axis, by default None.
     hour_lines : list of int, optional
-        Specific hours to annotate (default is [12, 17]).
+        Specific hours to annotate, by default [12, 17].
     line_styles : dict, optional
-        Line styles for hour annotations keyed by hour (default is {12: "--", 17: ":", 20: "--"}).
+        Line styles for hour annotations keyed by hour, by default {12: "--", 17: ":", 20: "--"}.
     annotation_prefix : str, optional
-        Prefix for annotations (default is "On average").
+        Prefix for annotations, by default "On average".
     line_colour : str, optional
-        Color for the main line plot (default is "red").
+        Color for the main line plot, by default "red".
     media_file_path : str or Path, optional
-        Directory path to save the plot (default is None).
+        Directory path to save the plot, by default None.
     plot_centiles : bool, optional
-        Whether to include percentile visualization (default is False).
+        Whether to include percentile visualization, by default False.
     highlight_centile : float, optional
-        Percentile to emphasize (default is 0.9). If 1.0 is provided, will use 0.9999 instead.
+        Percentile to emphasize, by default 0.9. If 1.0 is provided, will use 0.9999 instead.
     centiles : list of float, optional
-        List of percentiles to calculate (default is [0.3, 0.5, 0.7, 0.9, 0.99]).
+        List of percentiles to calculate, by default [0.3, 0.5, 0.7, 0.9, 0.99].
     markers : list of str, optional
-        Marker styles for percentile lines (default is ["D", "s", "^", "o", "v"]).
+        Marker styles for percentile lines, by default ["D", "s", "^", "o", "v"].
     line_styles_centiles : list of str, optional
-        Line styles for percentile visualization (default is ["-.", "--", ":", "-", "-"]).
+        Line styles for percentile visualization, by default ["-.", "--", ":", "-", "-"].
     bed_type_spec : str, optional
-        Specification for bed type in annotations (default is "").
+        Specification for bed type in annotations, by default "".
     text_y_offset : float, optional
-        Vertical offset for text annotations (default is 1).
-
+        Vertical offset for text annotations, by default 1.
+    num_days : int, optional
+        Number of days in the dataset, by default None.
     return_figure : bool, optional
-        If True, returns the matplotlib figure instead of displaying it (default is False)
+        If True, returns the matplotlib figure instead of displaying it, by default False.
 
     Returns
     -------
     matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot
+        Returns the figure if return_figure is True, otherwise displays the plot.
     """
 
     # Handle edge case for highlight_centile = 1.0

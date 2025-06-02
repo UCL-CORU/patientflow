@@ -1,3 +1,15 @@
+"""Visualization utilities for evaluating patient flow predictions.
+
+This module provides functions for creating visualizations to evaluate the accuracy
+and performance of patient flow predictions, particularly focusing on comparing
+observed versus expected values.
+
+Functions
+---------
+plot_observed_against_expected : function
+    Plot histograms of observed minus expected values
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -14,27 +26,44 @@ def plot_observed_against_expected(
     media_file_path=None,
     return_figure=False,
 ):
-    """
-    Plot histograms of observed minus expected values.
+    """Plot histograms of observed minus expected values.
+
+    Creates a grid of histograms showing the distribution of differences between
+    observed and expected values for different prediction times. Optionally compares
+    two sets of results side by side.
 
     Parameters
     ----------
     results1 : dict
-        First set of results
+        First set of results containing observed and expected values for different
+        prediction times. Keys are prediction times, values are dicts with 'observed'
+        and 'expected' arrays.
     results2 : dict, optional
-        Second set of results for comparison
+        Second set of results for comparison, following the same format as results1.
     title1 : str, optional
-        Title for first set of results
+        Title for the first set of results.
     title2 : str, optional
-        Title for second set of results
-    main_title : str
-        Main title for the plot
-    xlabel : str
-        Label for x-axis
+        Title for the second set of results.
+    main_title : str, default="Histograms of Observed - Expected Values"
+        Main title for the entire plot.
+    xlabel : str, default="Observed minus expected"
+        Label for the x-axis of each histogram.
     media_file_path : Path, optional
-        Path to save the plot
-    return_figure : bool, optional
-        If True, returns the figure instead of displaying it
+        Path where the plot should be saved. If provided, saves the plot as a PNG file.
+    return_figure : bool, default=False
+        If True, returns the matplotlib figure object instead of displaying it.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None.
+
+    Notes
+    -----
+    The function creates a grid of histograms with a maximum of 5 columns.
+    Each histogram shows the distribution of differences between observed and
+    expected values for a specific prediction time. A red dashed line at x=0
+    indicates where observed equals expected.
     """
     # Calculate the number of subplots needed
     num_plots = len(results1)

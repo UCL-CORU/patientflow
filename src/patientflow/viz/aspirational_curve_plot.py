@@ -1,3 +1,26 @@
+"""Visualization module for plotting aspirational curves in patient flow analysis.
+
+This module provides functionality for creating and customizing plots of aspirational
+curves, which represent the probability of admission over time. These curves are
+useful for setting aspirational targets in healthcare settings.
+
+Functions
+---------
+plot_curve : function
+    Plot an aspirational curve with specified points and optional annotations
+
+Examples
+--------
+>>> plot_curve(
+...     title="Admission Probability Curve",
+...     x1=4,
+...     y1=0.2,
+...     x2=24,
+...     y2=0.8,
+...     include_titles=True
+... )
+"""
+
 import os
 
 import matplotlib.pyplot as plt
@@ -22,6 +45,50 @@ def plot_curve(
     return_figure=False,
     annotate_points=False,
 ):
+    """Plot an aspirational curve with specified points and optional annotations.
+
+    This function creates a plot of an aspirational curve between two points,
+    with options for customization of the visualization including titles,
+    annotations, and saving to a file.
+
+    Parameters
+    ----------
+    title : str
+        The title of the plot.
+    x1 : float
+        x-coordinate of the first point.
+    y1 : float
+        y-coordinate of the first point (probability value).
+    x2 : float
+        x-coordinate of the second point.
+    y2 : float
+        y-coordinate of the second point (probability value).
+    figsize : tuple of int, optional
+        Figure size in inches (width, height), by default (10, 5).
+    include_titles : bool, optional
+        Whether to include axis labels and title, by default False.
+    text_size : int, optional
+        Font size for text elements, by default 14.
+    media_file_path : str or Path, optional
+        Path to save the plot image, by default None.
+    file_name : str, optional
+        Custom filename for saving the plot, by default None.
+    return_figure : bool, optional
+        Whether to return the figure object instead of displaying it, by default False.
+    annotate_points : bool, optional
+        Whether to add coordinate annotations to the points, by default False.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None.
+
+    Notes
+    -----
+    The function creates a curve between two points using the create_curve function
+    and adds various visualization elements including grid lines, annotations,
+    and optional titles.
+    """
     gamma, lamda, a, x_values, y_values = create_curve(
         x1, y1, x2, y2, generate_values=True
     )

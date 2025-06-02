@@ -1,3 +1,34 @@
+"""Visualization tools for patient flow analysis using survival curves.
+
+This module provides functions to create and analyze survival curves for
+time-to-event analysis.
+
+Functions
+---------
+plot_admission_time_survival_curve : function
+    Create a survival curve for ward admission times
+
+Notes
+-----
+* The survival curves show the proportion of patients who have not yet
+  experienced an event (e.g., admission to ward) over time
+* Time is measured in hours from the initial event (e.g., arrival)
+* A 4-hour target line is included by default to show performance
+  against common healthcare targets
+* The curves are created without external survival analysis packages
+  for simplicity and transparency
+
+Examples
+--------
+>>> import pandas as pd
+>>> from patientflow.viz.survival_curves import plot_admission_time_survival_curve
+>>> df = pd.DataFrame({
+...     'arrival_datetime': pd.to_datetime(['2023-01-01 10:00', '2023-01-01 11:00']),
+...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-01 12:00', '2023-01-01 14:00'])
+... })
+>>> plot_admission_time_survival_curve(df, title='Admission Times')
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,26 +39,36 @@ def plot_admission_time_survival_curve(
     media_file_path=None,
     return_figure=False,
 ):
-    """
-    Creates a survival curve for the time it takes patients to be admitted to a ward
-    without using the lifelines package.
+    """Create a survival curve for patient ward admission times.
 
-    Parameters:
+    This function creates a survival curve showing the proportion of patients
+    who have not yet been admitted to a ward over time, without using the
+    lifelines package.
+
+    Parameters
     ----------
-    df : pandas DataFrame
+    df : pandas.DataFrame
         DataFrame containing patient visit data with columns:
-        - arrival_datetime: when the patient arrived
-        - admitted_to_ward_datetime: when the patient was admitted to a ward
+        * arrival_datetime: when the patient arrived
+        * admitted_to_ward_datetime: when the patient was admitted to a ward
     title : str
         Title for the plot
-    media_file_path : Path, optional
-        Path to save the plot
-    return_figure : bool, optional
+    media_file_path : pathlib.Path, optional
+        Path to save the plot. If None, the plot is not saved.
+    return_figure : bool, default=False
         If True, returns the figure instead of displaying it
 
-    Returns:
+    Returns
     -------
-    matplotlib figure
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None
+
+    Notes
+    -----
+    The survival curve shows the proportion of patients who have not yet been
+    admitted to a ward at each time point. A vertical line is drawn at 4 hours
+    to indicate the target admission time, with the corresponding proportion
+    of patients admitted within this timeframe.
     """
     # Calculate the wait time in hours
     df["wait_time_hours"] = (

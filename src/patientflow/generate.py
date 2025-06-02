@@ -1,5 +1,5 @@
 """
-Fake Emergency Department Visit Generator.
+Generate fake Emergency Department visit data.
 
 This module provides functions to generate fake datasets for patient visits to an emergency department (ED).
 It generates arrival and departure times, triage scores, lab orders, and patient admissions.

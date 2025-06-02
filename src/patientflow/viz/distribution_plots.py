@@ -1,3 +1,17 @@
+"""Visualization module for plotting prediction and data distributions.
+
+This module provides functions for creating various distribution plots, including
+prediction distributions for trained models and data distributions for different
+variables.
+
+Functions
+---------
+plot_prediction_distributions : function
+    Plot prediction distributions for multiple models
+plot_data_distributions : function
+    Plot distributions of data variables grouped by categories
+"""
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -24,18 +38,32 @@ def plot_prediction_distributions(
     return_figure=False,
     label_col: str = "is_admitted",
 ):
-    """
-    Plot prediction distributions for multiple models.
+    """Plot prediction distributions for multiple models.
 
-    Args:
-        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
-        test_visits: DataFrame containing test visit data
-        exclude_from_training_data: Columns to exclude from the test data
-        bins: Number of bins for the histograms
-        media_file_path: Path where the plot should be saved
-        suptitle: Optional super title for the entire figure
-        return_figure: If True, returns the figure instead of displaying it
-        label_col: Name of the column containing the target labels, defaults to "is_admitted"
+    Parameters
+    ----------
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of TrainedClassifier objects or dict with TrainedClassifier values
+    test_visits : pandas.DataFrame
+        DataFrame containing test visit data
+    exclude_from_training_data : list
+        Columns to exclude from the test data
+    bins : int, default=30
+        Number of bins for the histograms
+    media_file_path : Path, optional
+        Path where the plot should be saved
+    suptitle : str, optional
+        Optional super title for the entire figure
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it
+    label_col : str, default="is_admitted"
+        Name of the column containing the target labels
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        If return_figure is True, returns the figure object. Otherwise, displays
+        the plot and returns None.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -148,6 +176,45 @@ def plot_data_distributions(
     media_file_path=None,
     return_figure=False,
 ):
+    """Plot distributions of data variables grouped by categories.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame containing the data to plot
+    col_name : str
+        Name of the column to plot distributions for
+    grouping_var : str
+        Name of the column to group the data by
+    grouping_var_name : str
+        Display name for the grouping variable
+    plot_type : {'both', 'hist', 'kde'}, default='both'
+        Type of plot to create. 'both' shows histogram with KDE, 'hist' shows
+        only histogram, 'kde' shows only KDE plot
+    title : str, optional
+        Title for the plot
+    rotate_x_labels : bool, default=False
+        Whether to rotate x-axis labels by 90 degrees
+    is_discrete : bool, default=False
+        Whether the data is discrete
+    ordinal_order : list, optional
+        Order of categories for ordinal data
+    media_file_path : Path, optional
+        Path where the plot should be saved
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it
+
+    Returns
+    -------
+    seaborn.FacetGrid or None
+        If return_figure is True, returns the FacetGrid object. Otherwise,
+        displays the plot and returns None.
+
+    Raises
+    ------
+    ValueError
+        If plot_type is not one of 'both', 'hist', or 'kde'
+    """
     sns.set_theme(style="whitegrid")
 
     if ordinal_order is not None:

@@ -451,6 +451,7 @@ def train_classifier(
         if sk_version >= "1.6.0":
             print("Using frozen estimator")
             from sklearn.frozen import FrozenEstimator
+
             calibrated_classifier = CalibratedClassifierCV(
                 estimator=FrozenEstimator(best_classifier),
                 method=calibration_method,
@@ -458,10 +459,8 @@ def train_classifier(
         else:
             print("Using prefit")
             calibrated_classifier = CalibratedClassifierCV(
-                estimator=best_classifier,
-                method=calibration_method,
-                cv="prefit"
-        )
+                estimator=best_classifier, method=calibration_method, cv="prefit"
+            )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 
         calibrated_pipeline = Pipeline(

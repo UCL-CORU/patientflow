@@ -1,9 +1,7 @@
 """
 Custom exception classes for model loading and validation.
 
-This module defines specialized exceptions used during model loading,
-particularly for handling errors related to missing configuration keys
-and general loading failures.
+This module defines specialized exceptions used during model loading
 
 Classes
 -------

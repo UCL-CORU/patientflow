@@ -1,27 +1,9 @@
 """
-Module: probability_distribution_visualization
-==============================================
-
-This module provides functionality to visualize probability distributions using bar plots.
-The main function, `prob_dist_plot`, can handle both custom probability data, predefined
-distributions such as the Poisson distribution, and dictionary input.
+Module for generating probability distribution visualizations.
 
 Functions
 ---------
-prob_dist_plot(prob_dist_data, title, directory_path=None, figsize=(6, 3),
-               include_titles=False, truncate_at_beds=(0, 20), text_size=None,
-               bar_colour="#5B9BD5", media_file_name=None, min_beds_lines=None,
-               plot_min_beds_lines=True, plot_bed_base=None, xlabel="Number of beds")
-    Plots a bar chart of a probability distribution with optional customization for
-    titles, labels, and additional markers.
-
-Dependencies
-------------
-- numpy
-- pandas
-- matplotlib.pyplot
-- scipy.stats
-- itertools
+prob_dist_plot : Plot a probability distribution as a bar chart with enhanced plotting options.
 """
 
 import itertools
@@ -34,8 +16,7 @@ from patientflow.predict.emergency_demand import find_probability_threshold_inde
 def calculate_probability_thresholds(
     probability_sequence, probability_levels=[0.7, 0.9]
 ):
-    """
-    Calculate resource thresholds for given probability levels based on the probability distribution.
+    """Calculate resource thresholds for given probability levels based on the probability distribution.
 
     This function determines resource thresholds where there's a specified probability
     that at least this many resources will be needed.
@@ -44,8 +25,9 @@ def calculate_probability_thresholds(
     ----------
     probability_sequence : array-like
         The probability mass function (PMF) of resource needs
-    probability_levels : list of float, optional, default=[0.7, 0.9]
+    probability_levels : list of float, optional
         The desired probability levels (e.g., [0.7, 0.9] for 70% and 90%)
+        Default is [0.7, 0.9]
 
     Returns
     -------
@@ -83,15 +65,14 @@ def prob_dist_plot(
     text_size=None,
     bar_colour="#5B9BD5",
     media_file_name=None,
-    probability_thresholds=None,  # Renamed from min_beds_lines
-    show_probability_thresholds=True,  # Renamed from plot_min_beds_lines
-    probability_levels=None,  # New parameter for automatic threshold calculation
+    probability_thresholds=None,
+    show_probability_thresholds=True,
+    probability_levels=None,
     plot_bed_base=None,
     xlabel="Number of beds",
     return_figure=False,
 ):
-    """
-    Plot a probability distribution as a bar chart with enhanced plotting options.
+    """Plot a probability distribution as a bar chart with enhanced plotting options.
 
     This function generates a bar plot for a given probability distribution, either
     as a pandas DataFrame, a scipy.stats distribution object (e.g., Poisson), or a
@@ -107,66 +88,49 @@ def prob_dist_plot(
         - scipy.stats distribution (e.g., Poisson). If a `scipy.stats` distribution is provided,
         the function computes probabilities for integer values within the specified range.
         - array-like of probabilities (indices will be 0 to len(array)-1)
-
     title : str
         The title of the plot, used for display and optionally as the file name.
-
     directory_path : str or pathlib.Path, optional
         Directory where the plot image will be saved. If not provided, the plot is
         displayed without saving.
-
-    figsize : tuple of float, optional, default=(6, 3)
+    figsize : tuple of float, optional
         The size of the figure, specified as (width, height).
-
-    include_titles : bool, optional, default=False
+        Default is (6, 3)
+    include_titles : bool, optional
         Whether to include titles and axis labels in the plot.
-
-    truncate_at_beds : int or tuple of (int, int), optional, default=None
+        Default is False
+    truncate_at_beds : int or tuple of (int, int), optional
         Either a single number specifying the upper bound, or a tuple of
         (lower_bound, upper_bound) for the x-axis range. If None, the full
         range of the data will be displayed.
-
     text_size : int, optional
         Font size for plot text, including titles and tick labels.
-
-    bar_colour : str, optional, default="#5B9BD5"
+    bar_colour : str, optional
         The color of the bars in the plot.
-
+        Default is "#5B9BD5"
     media_file_name : str, optional
         Name of the file to save the plot. If not provided, the title is used to generate
         a file name.
-
     probability_thresholds : dict, optional
-        A dictionary where keys are confidence levels (as decimals, e.g., 0.9 for 90%)
+        A dictionary where keys are points on the cumulative distribution function (as decimals, e.g., 0.9 for 90%)
         and values are the corresponding resource thresholds (bed counts).
         For example, {0.9: 15} indicates there is a 90% probability that
         at least 15 beds will be needed (represents the lower tail of the distribution).
-
-        This can be generated automatically using the calculate_probability_thresholds() function.
-
-        Example usage:
-        ```python
-        # Calculate thresholds for 80% and 95% confidence levels
-        pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
-        thresholds = calculate_probability_thresholds(pmf, [0.8, 0.95])
-
-        # Pass to plotting function
-        prob_dist_plot(pmf, "Bed Demand", probability_thresholds=thresholds)
-        ```
-
-    show_probability_thresholds : bool, optional, default=True
+    show_probability_thresholds : bool, optional
         Whether to show vertical lines indicating the resource requirements
-        at different confidence levels.
-
+        at different points on the cumulative distribution function.
+        Default is True
+    probability_levels : list of float, optional
+        List of probability levels for automatic threshold calculation.
     plot_bed_base : dict, optional
         Dictionary of bed balance lines to plot in red.
         Keys are labels and values are x-axis positions.
-
-    xlabel : str, optional, default="Number of beds"
-        A label for the x axis
-
+    xlabel : str, optional
+        A label for the x axis.
+        Default is "Number of beds"
     return_figure : bool, optional
-        If True, returns the matplotlib figure instead of displaying it (default is False)
+        If True, returns the matplotlib figure instead of displaying it.
+        Default is False
 
     Returns
     -------
@@ -180,7 +144,7 @@ def prob_dist_plot(
     >>> probabilities = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
     >>> prob_dist_plot(probabilities, "Bed Demand Distribution")
 
-    With confidence thresholds:
+    With thresholds:
 
     >>> thresholds = calculate_probability_thresholds(probabilities, [0.8, 0.95])
     >>> prob_dist_plot(probabilities, "Bed Demand with Confidence Levels",
@@ -193,7 +157,6 @@ def prob_dist_plot(
     >>> prob_dist_plot(poisson_dist, "Poisson Distribution (μ=5)",
     ...                truncate_at_beds=(0, 15))
     """
-    # Convert input data to standardized pandas DataFrame
 
     # Handle array-like input
     if isinstance(prob_dist_data, (np.ndarray, list)):

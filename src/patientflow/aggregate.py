@@ -4,194 +4,37 @@ Aggregate Prediction From Patient-Level Probabilities
 This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution.
 The module uses symbolic mathematics to generate and manipulate expressions, enabling the computation of aggregate probabilities based on individual patient-level predictions.
 
-Dependencies:
-    - numpy: For array operations and numerical calculations.
-    - pandas: To handle and manipulate tabular data (DataFrames) for analysis.
-    - sympy: A symbolic mathematics library for building and manipulating symbolic expressions, particularly for calculating probabilities.
-
 Functions
 ---------
-create_symbols(n):
-    Generates a list of symbolic variables to represent probability terms.
+create_symbols : function
+    Generate a sequence of symbolic objects intended for use in mathematical expressions.
 
-    Parameters
-    ----------
-    n : int
-        Number of symbolic variables to generate.
+compute_core_expression : function
+    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.
 
-    Returns
-    -------
-    list of sympy.Symbol
-        A list containing n symbolic variables.
+build_expression : function
+    Construct a cumulative product expression by combining individual symbolic expressions.
 
-compute_core_expression(ri, s):
-    Computes a symbolic expression using symbolic variables and constants.
+expression_subs : function
+    Substitute values into a symbolic expression based on a mapping from symbols to predictions.
 
-    Parameters
-    ----------
-    ri : float
-        A constant value (often a probability).
-    s : sympy.Symbol
-        A symbolic variable.
+return_coeff : function
+    Extract the coefficient of a specified power from an expanded symbolic expression.
 
-    Returns
-    -------
-    sympy.Mul
-        A symbolic expression representing the product of `ri` and `s`.
+model_input_to_pred_proba : function
+    Use a predictive model to convert model input data into predicted probabilities.
 
-build_expression(syms, n):
-    Constructs a cumulative product of symbolic expressions using symbolic variables.
+pred_proba_to_agg_predicted : function
+    Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
 
-    Parameters
-    ----------
-    syms : list of sympy.Symbol
-        A list of symbolic variables.
-    n : int
-        The number of terms to include in the cumulative product.
+get_prob_dist_for_prediction_moment : function
+    Calculate both predicted distributions and observed values for a given date using test data.
 
-    Returns
-    -------
-    sympy.Expr
-        A symbolic expression representing the cumulative product of `syms`.
+get_prob_dist : function
+    Calculate probability distributions for each snapshot date based on given model predictions.
 
-expression_subs(expression, n, predictions):
-    Substitutes numeric values into a symbolic expression.
-
-    Parameters
-    ----------
-    expression : sympy.Expr
-        A symbolic expression to perform substitution on.
-    n : int
-        The number of variables to substitute.
-    predictions : array-like
-        Numeric values (e.g., predicted probabilities) to substitute into the expression.
-
-    Returns
-    -------
-    sympy.Expr
-        The symbolic expression after substitution.
-
-return_coeff(expression, i):
-    Extracts the coefficient corresponding to a specific term in an expanded symbolic expression.
-
-    Parameters
-    ----------
-    expression : sympy.Expr
-        A symbolic expression that has been expanded.
-    i : int
-        The index of the term for which the coefficient is to be extracted.
-
-    Returns
-    -------
-    float
-        The coefficient for the i-th term.
-
-model_input_to_pred_proba(model_input, model):
-    Converts input data into predicted probabilities using the provided model.
-
-    Parameters
-    ----------
-    model_input : array-like
-        The input data to feed into the model.
-    model : object
-        A predictive model object that implements a `predict_proba` method.
-
-    Returns
-    -------
-    array-like
-        The predicted probabilities output by the model.
-
-pred_proba_to_agg_predicted(predictions_proba, weights=None, normal_approx_threshold=30):
-    Aggregates individual predicted probabilities into an overall prediction using provided weights.
-    Uses a Normal approximation for large datasets (> normal_approx_threshold) for better performance.
-
-    Parameters
-    ----------
-    predictions_proba : DataFrame
-        A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
-    weights : array-like, optional
-        An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    DataFrame
-        A DataFrame with a single column 'agg_proba' showing the aggregated probability,
-        indexed from 0 to n, where n is the number of predictions.
-
-get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_time=False, y_test=None, category_filter=None, normal_approx_threshold=30):
-    Computes predicted and observed probabilities for a specific prediction date.
-
-    Parameters
-    ----------
-    X_test : DataFrame or array-like
-        Input test data to be passed to the model for prediction.
-    model : object or TrainedClassifier
-        Either a predictive model which provides a `predict_proba` method,
-        or a TrainedClassifier object containing a pipeline.
-    weights : array-like, optional
-        Weights for aggregating the predicted probabilities.
-    inference_time : bool
-        Indicates whether the function is used in inference mode (i.e., whether observed data is available).
-    y_test : array-like
-        Observed target values corresponding to the test data (optional for inference).
-    category_filter : array-like, optional
-        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
-        Should be the same length as y_test.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    dict
-        A dictionary containing the predicted and, if applicable, observed probability distributions.
-
-get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False, category_filter=None, normal_approx_threshold=30):
-    Computes probability distributions for multiple snapshot dates.
-
-    Parameters
-    ----------
-    snapshots_dict : dict
-        A dictionary where keys are snapshot dates and values are associated metadata (e.g., test data).
-    X_test : DataFrame or array-like
-        Input test data to be passed to the model.
-    y_test : array-like
-        Observed target values.
-    model : object or TrainedClassifier
-        Either a predictive model which provides a `predict_proba` method,
-        or a TrainedClassifier object containing a pipeline.
-    weights : pandas.Series, optional
-        A Series containing weights for the test data points, which may influence the prediction,
-        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
-    verbose : bool, optional (default=False)
-        If True, print progress information.
-    category_filter : array-like, optional
-        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
-        Should be the same length as y_test.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    dict
-        A dictionary where each key is a snapshot date and the value is the corresponding probability distribution.
-
-    Raises
-    ------
-    ValueError
-        If snapshots_dict is not properly formatted or empty.
-        If model has no predict_proba method and is not a TrainedClassifier.
-
-    Example Usage
-    -------------
-    # Assuming a predictive model and test data are available
-    snapshot_dates = ['2023-01-01', '2023-01-02']
-    predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
-    print(predicted_distribution)
+get_prob_dist_without_patient_snapshots : function
+    Calculate probability distributions for yet-to-arrive patients for each category at a specific prediction time.
 
 """
 
@@ -536,7 +379,8 @@ def get_prob_dist(
         Either a predictive model which provides a `predict_proba` method,
         or a TrainedClassifier object containing a pipeline.
     weights : pandas.Series, optional
-        A Series containing weights for the test data points.
+        A Series containing weights for the test data points, which may influence the prediction,
+        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
     verbose : bool, optional (default=False)
         If True, print progress information.
     category_filter : array-like, optional

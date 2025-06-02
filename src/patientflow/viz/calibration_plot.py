@@ -1,3 +1,14 @@
+"""Calibration plot visualization module.
+
+This module creates calibration plots for trained models,
+showing how well the predicted probabilities align with actual outcomes.
+
+Functions
+---------
+plot_calibration : function
+    Plot calibration curves for multiple models
+"""
+
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
 from patientflow.predict.emergency_demand import add_missing_columns
@@ -21,18 +32,43 @@ def plot_calibration(
     return_figure=False,
     label_col: str = "is_admitted",
 ):
-    """
-    Plot calibration curves for multiple models.
+    """Plot calibration curves for multiple models.
 
-    Args:
-        trained_models: List of TrainedClassifier objects or dict with TrainedClassifier values
-        media_file_path: Path where the plot should be saved
-        test_visits: DataFrame containing test visit data
-        exclude_from_training_data: Columns to exclude from the test data
-        strategy: Strategy for calibration curve binning ('uniform' or 'quantile')
-        suptitle: Optional super title for the entire figure
-        return_figure: If True, returns the figure instead of displaying it
-        label_col: Name of the column containing the target labels, defaults to "is_admitted"
+    A calibration plot shows how well the predicted probabilities from a model
+    align with the actual outcomes. The plot compares the mean predicted probability
+    with the fraction of positive outcomes for different probability bins.
+
+    Parameters
+    ----------
+    trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
+        List of TrainedClassifier objects or dictionary with TrainedClassifier values.
+    test_visits : pandas.DataFrame
+        DataFrame containing test visit data.
+    exclude_from_training_data : list
+        Columns to exclude from the test data.
+    strategy : {'uniform', 'quantile'}, default='uniform'
+        Strategy for calibration curve binning.
+        - 'uniform': Bins are of equal width
+        - 'quantile': Bins have equal number of samples
+    media_file_path : Path, optional
+        Path where the plot should be saved.
+    suptitle : str, optional
+        Optional super title for the entire figure.
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it.
+    label_col : str, default='is_admitted'
+        Name of the column containing the target labels.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        If return_figure is True, returns the figure object. Otherwise, displays
+        the plot and returns None.
+
+    Notes
+    -----
+    The function creates a subplot for each trained model, sorted by prediction time.
+    Each subplot shows the calibration curve and a reference line for perfect calibration.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):

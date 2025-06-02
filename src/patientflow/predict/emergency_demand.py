@@ -1,3 +1,46 @@
+"""Emergency demand prediction module.
+
+This module provides functionality for predicting emergency department demand,
+including specialty-specific predictions for both current patients and yet-to-arrive patients.
+It handles probability calculations, model predictions, and threshold-based resource estimation.
+
+The module integrates multiple prediction models:
+- Admission prediction classifier
+- Specialty sequence predictor
+- Yet-to-arrive weighted Poisson predictor
+
+Functions
+---------
+add_missing_columns : function
+    Add missing columns required by the prediction pipeline
+find_probability_threshold_index : function
+    Find index where cumulative probability exceeds threshold
+get_specialty_probs : function
+    Calculate specialty probability distributions
+create_predictions : function
+    Create predictions for emergency demand
+
+Notes
+-----
+The module requires trained models for admission prediction, specialty prediction,
+and yet-to-arrive prediction. These models must contain
+the necessary pipeline components for feature transformation and prediction.
+
+Examples
+--------
+>>> from patientflow.predict.emergency_demand import create_predictions
+>>> predictions = create_predictions(
+...     models=(classifier, spec_model, yet_to_arrive_model),
+...     prediction_time=(8, 0),  # 8:00 AM
+...     prediction_snapshots=snapshots_df,
+...     specialties=['surgical', 'medical'],
+...     prediction_window_hrs=4.0,
+...     x1=0.5, y1=0.8,
+...     x2=2.0, y2=0.2,
+...     cdf_cut_points=[0.9, 0.7]
+... )
+"""
+
 from typing import List, Dict, Tuple
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
@@ -23,6 +66,29 @@ warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def add_missing_columns(pipeline, df):
+    """Add missing columns (at inference time) that are required by the prediction pipeline from the training data.
+
+    Parameters
+    ----------
+    pipeline : sklearn.pipeline.Pipeline
+        The trained pipeline containing the feature transformer
+    df : pandas.DataFrame
+        Input dataframe that may be missing required columns
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with missing columns added and filled with appropriate default values
+
+    Notes
+    -----
+    Adds columns with default values based on column name patterns:
+    - lab_orders_, visited_, has_ : False
+    - num_, total_ : 0
+    - latest_ : pd.NA
+    - arrival_method : "None"
+    - others : pd.NA
+    """
     # check input data for missing columns
     column_transformer = pipeline.named_steps["feature_transformer"]
 
@@ -67,8 +133,7 @@ def add_missing_columns(pipeline, df):
 
 
 def find_probability_threshold_index(sequence: List[float], threshold: float) -> int:
-    """
-    Returns the index where the cumulative sum of a sequence of probabilities exceeds the given threshold.
+    """Find index where cumulative probability exceeds threshold.
 
     Parameters
     ----------
@@ -81,7 +146,7 @@ def find_probability_threshold_index(sequence: List[float], threshold: float) ->
     -------
     int
         The index where the cumulative probability exceeds 1 - threshold,
-        indicating the number of resources needed with the specified probability.
+        indicating the number of resources needed with the specified probability
 
     Examples
     --------
@@ -105,43 +170,34 @@ def get_specialty_probs(
     special_category_func=None,
     special_category_dict=None,
 ):
-    """
-    Calculate specialty probability distributions for patient visits based on their data.
-
-    This function applies a predictive model to each row of the input DataFrame to compute
-    specialty probability distributions. Optionally, it can classify certain rows as
-    belonging to a special category (like pediatric cases) based on a user-defined function,
-    applying a fixed probability distribution for these cases.
+    """Calculate specialty probability distributions for patient visits.
 
     Parameters
     ----------
-
     specialties : str
-        List of specialty names for which predictions are required.
+        List of specialty names for which predictions are required
     specialty_model : object
-        Trained model for making specialty predictions.
+        Trained model for making specialty predictions
     snapshots_df : pandas.DataFrame
         DataFrame containing the data on which predictions are to be made. Must include
-        a 'consultation_sequence' column if no special_category_func is applied.
+        a 'consultation_sequence' column if no special_category_func is applied
     special_category_func : callable, optional
         A function that takes a DataFrame row (Series) as input and returns True if the row
-        belongs to a special category that requires a fixed probability distribution.
-        If not provided, no special categorization is applied.
+        belongs to a special category that requires a fixed probability distribution
     special_category_dict : dict, optional
         A dictionary containing the fixed probability distribution for special category cases.
-        This dictionary is applied to rows identified by `special_category_func`. If
-        `special_category_func` is provided, this parameter must also be provided.
+        Required if special_category_func is provided
 
     Returns
     -------
     pandas.Series
         A Series containing dictionaries as values. Each dictionary represents the probability
-        distribution of specialties for each patient visit.
+        distribution of specialties for each patient visit
 
     Raises
     ------
     ValueError
-        If `special_category_func` is provided but `special_category_dict` is None.
+        If special_category_func is provided but special_category_dict is None
 
     Examples
     --------
@@ -212,8 +268,7 @@ def create_predictions(
     y2: float,
     cdf_cut_points: List[float],
 ) -> Dict[str, Dict[str, List[int]]]:
-    """
-    Create predictions for emergency demand for a single prediction moment.
+    """Create predictions for emergency demand for a single prediction moment.
 
     Parameters
     ----------
@@ -224,7 +279,7 @@ def create_predictions(
         - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
-    prediction_snapshots : pd.DataFrame
+    prediction_snapshots : pandas.DataFrame
         DataFrame containing prediction snapshots
     specialties : List[str]
         List of specialty names for predictions (e.g., ['surgical', 'medical'])
@@ -240,8 +295,6 @@ def create_predictions(
         Y-coordinate of second point for probability curve
     cdf_cut_points : List[float]
         List of cumulative distribution function cut points (e.g., [0.9, 0.7])
-    special_params : Optional[Dict[str, Any]], optional
-        Special handling parameters for categories, by default None
 
     Returns
     -------
@@ -253,6 +306,13 @@ def create_predictions(
                 'yet_to_arrive': [pred1, pred2, ...]
             }
         }
+
+    Raises
+    ------
+    TypeError
+        If any of the models are not of the expected type
+    ValueError
+        If models have not been fit or if prediction parameters don't match training parameters
 
     Notes
     -----

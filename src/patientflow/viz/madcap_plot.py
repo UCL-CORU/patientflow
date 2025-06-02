@@ -49,19 +49,14 @@ exclude_from_training_data = [
 
 # Default age categories for classification
 DEFAULT_AGE_CATEGORIES = {
-    "children": {
-        "numeric": {"max": 17},
-        "groups": ["0-17"]
-    },
+    "children": {"numeric": {"max": 17}, "groups": ["0-17"]},
     "adults": {
         "numeric": {"min": 18, "max": 64},
-        "groups": ["18-24", "25-34", "35-44", "45-54", "55-64"]
+        "groups": ["18-24", "25-34", "35-44", "45-54", "55-64"],
     },
-    "65 or over": {
-        "numeric": {"min": 65},
-        "groups": ["65-74", "75-115"]
-    }
+    "65 or over": {"numeric": {"min": 65}, "groups": ["65-74", "75-115"]},
 }
+
 
 def classify_age(age, age_categories=None):
     """Classify age into categories based on numeric values or age group strings.
@@ -100,7 +95,7 @@ def classify_age(age, age_categories=None):
             numeric_rules = rules.get("numeric", {})
             min_age = numeric_rules.get("min", float("-inf"))
             max_age = numeric_rules.get("max", float("inf"))
-            
+
             if min_age <= age <= max_age:
                 return category
         return "unknown"
@@ -129,7 +124,7 @@ def generate_madcap_plots(
     trained_models : list[TrainedClassifier] or dict[str, TrainedClassifier]
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
-        DataFrame containing test visit data
+        DataFrame containing test visit data.
     exclude_from_training_data : List[str]
         List of columns to exclude from training data.
     media_file_path : Path, optional
@@ -144,7 +139,7 @@ def generate_madcap_plots(
     Returns
     -------
     Optional[plt.Figure]
-        The figure if return_figure is True, None otherwise
+        The figure if return_figure is True, None otherwise.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -271,9 +266,10 @@ def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     Notes
     -----
     The plot shows:
-    - X-axis: Cases ordered by predicted probability
-    - Y-axis: Cumulative count of positive outcomes
-    - Two lines: predicted (blue) and observed (orange) cumulative counts
+
+    * X-axis: Cases ordered by predicted probability
+    * Y-axis: Cumulative count of positive outcomes
+    * Two lines: predicted (blue) and observed (orange) cumulative counts
     """
     hour, minutes = _prediction_time
     # Ensure inputs are numpy arrays
@@ -349,8 +345,9 @@ def plot_madcap_by_group(
     Notes
     -----
     For each group, generates:
-    - A MADCAP plot showing predicted vs observed cumulative counts
-    - Optionally, a difference plot showing predicted minus observed counts
+
+    * A MADCAP plot showing predicted vs observed cumulative counts
+    * Optionally, a difference plot showing predicted minus observed counts
     """
     # Remove those with unknown age
     mask_known = group != "unknown"
@@ -387,18 +384,14 @@ def plot_madcap_by_group(
         ax[0, i].plot(x, model, label="predicted")
         ax[0, i].plot(x, observed, label="observed")
         ax[0, i].legend(loc="upper left", fontsize=8)
-        ax[0, i].set_xlabel(
-            "Cases ordered by predicted probability", fontsize=8
-        )
+        ax[0, i].set_xlabel("Cases ordered by predicted probability", fontsize=8)
         ax[0, i].set_ylabel("Cumulative count of positive outcomes", fontsize=8)
         ax[0, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
         ax[0, i].tick_params(axis="both", which="major", labelsize=8)
 
         if plot_difference:
             ax[1, i].plot(x, model - observed)
-            ax[1, i].set_xlabel(
-                "Cases ordered by predicted probability", fontsize=8
-            )
+            ax[1, i].set_xlabel("Cases ordered by predicted probability", fontsize=8)
             ax[1, i].set_ylabel("Predicted - observed count", fontsize=8)
             ax[1, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
             ax[1, i].tick_params(axis="both", which="major", labelsize=8)
@@ -468,7 +461,7 @@ def generate_madcap_plots_by_group(
     Returns
     -------
     Optional[List[plt.Figure]]
-        List of figures if return_figure is True, None otherwise
+        List of figures if return_figure is True, None otherwise.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):

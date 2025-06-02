@@ -1,27 +1,29 @@
 """
-Weighted Poisson Predictor
+Weighted Poisson Predictor for Hospital Admissions Forecasting.
 
-This module implements a custom predictor to estimate the number of hospital admissions within a specified prediction window using historical admission data. It applies Poisson and binomial distributions to forecast future admissions, excluding already arrived patients. The predictor accommodates different data filters for tailored predictions across various hospital settings.
+This module implements a custom predictor to estimate the number of hospital admissions
+within a specified prediction window using historical admission data. It applies Poisson
+and binomial distributions to forecast future admissions, excluding already arrived patients.
+The predictor accommodates different data filters for tailored predictions across various
+hospital settings.
 
-Dependencies:
-    - pandas: For data manipulation and analysis, essential for handling the dataset used in predictions.
-    - datetime: For manipulating date and time objects, crucial for time-based predictions.
-    - sklearn: Utilizes BaseEstimator and TransformerMixin from scikit-learn for creating custom, interoperable predictors.
-    - Custom modules:
-        - calculate.time_varying_arrival_rates: Computes time-varying arrival rates, for each specified interval within the prediction window.
-        - predict.admission_in_prediction_window: Calculates the probability of admission within a specified prediction window.
+Classes
+-------
+WeightedPoissonPredictor : BaseEstimator, TransformerMixin
+    Predicts the number of admissions within a given prediction window based on historical
+    data and Poisson-binomial distribution.
 
-Classes:
-    WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
-        Predicts the number of admissions within a given prediction window based on historical data and Poisson-binomial distribution.
+Notes
+-----
+The predictor uses a combination of Poisson and binomial distributions to model the
+probability of admissions within a prediction window. It takes into account historical
+data patterns and can be filtered for specific hospital settings or specialties.
 
-    Methods within WeightedPoissonPredictor:
-        - __init__(self, filters=None): Initializes the predictor with optional data filters.
-        - filter_dataframe(self, df, filters): Applies filters to the dataset for targeted predictions.
-        - fit(self, train_df, prediction_window, yta_time_interval, prediction_times, json_file_path, reference_year, y=None): Trains the predictor using historical data and various parameters.
-        - predict(self, prediction_context): Predicts the number of admissions using the trained model.
-
-
+Examples
+--------
+>>> predictor = WeightedPoissonPredictor(filters={'specialty': 'cardiology'})
+>>> predictor.fit(train_data, prediction_window=120, yta_time_interval=30, prediction_times=[8, 12, 16])
+>>> predictions = predictor.predict(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
 """
 
 import warnings
@@ -52,17 +54,26 @@ from scipy.stats import binom, poisson
 
 
 def weighted_poisson_binomial(i, lam, theta):
-    """
-    Calculate weighted probabilities using Poisson and Binomial distributions.
+    """Calculate weighted probabilities using Poisson and Binomial distributions.
 
     Parameters
-    i (int): The upper bound of the range for the binomial distribution.
-    lam (float): The lambda parameter for the Poisson distribution.
-    theta (float): The probability of success for the binomial distribution.
+    ----------
+    i : int
+        The upper bound of the range for the binomial distribution.
+    lam : float
+        The lambda parameter for the Poisson distribution.
+    theta : float
+        The probability of success for the binomial distribution.
 
     Returns
-    numpy.ndarray: An array of weighted probabilities.
+    -------
+    numpy.ndarray
+        An array of weighted probabilities.
 
+    Raises
+    ------
+    ValueError
+        If i < 0, lam < 0, or theta is not between 0 and 1.
     """
     if i < 0 or lam < 0 or not 0 <= theta <= 1:
         raise ValueError("Ensure i >= 0, lam >= 0, and 0 <= theta <= 1.")
@@ -73,18 +84,28 @@ def weighted_poisson_binomial(i, lam, theta):
 
 
 def aggregate_probabilities(lam, kmax, theta, time_index):
-    """
-    Aggregate probabilities for a range of values using the weighted Poisson-Binomial distribution.
+    """Aggregate probabilities for a range of values using the weighted Poisson-Binomial distribution.
 
     Parameters
-    lam (numpy.ndarray): An array of lambda values for each time interval.
-    kmax (int): The maximum number of events to consider.
-    theta (numpy.ndarray): An array of theta values for each time interval.
-    time_index (int): The current time index for which to calculate probabilities.
+    ----------
+    lam : numpy.ndarray
+        An array of lambda values for each time interval.
+    kmax : int
+        The maximum number of events to consider.
+    theta : numpy.ndarray
+        An array of theta values for each time interval.
+    time_index : int
+        The current time index for which to calculate probabilities.
 
     Returns
-    numpy.ndarray: Aggregated probabilities for the given time index.
+    -------
+    numpy.ndarray
+        Aggregated probabilities for the given time index.
 
+    Raises
+    ------
+    ValueError
+        If kmax < 0, time_index < 0, or array lengths are invalid.
     """
     if kmax < 0 or time_index < 0 or len(lam) <= time_index or len(theta) <= time_index:
         raise ValueError("Invalid kmax, time_index, or array lengths.")
@@ -98,16 +119,24 @@ def aggregate_probabilities(lam, kmax, theta, time_index):
 
 
 def convolute_distributions(dist_a, dist_b):
-    """
-    Convolutes two probability distributions represented as dataframes.
+    """Convolutes two probability distributions represented as dataframes.
 
     Parameters
-    dist_a (pd.DataFrame): The first distribution with columns ['sum', 'prob'].
-    dist_b (pd.DataFrame): The second distribution with columns ['sum', 'prob'].
+    ----------
+    dist_a : pd.DataFrame
+        The first distribution with columns ['sum', 'prob'].
+    dist_b : pd.DataFrame
+        The second distribution with columns ['sum', 'prob'].
 
     Returns
-    pd.DataFrame: The convoluted distribution.
+    -------
+    pd.DataFrame
+        The convoluted distribution.
 
+    Raises
+    ------
+    ValueError
+        If DataFrames do not contain required 'sum' and 'prob' columns.
     """
     if not {"sum", "prob"}.issubset(dist_a.columns) or not {
         "sum",
@@ -122,18 +151,28 @@ def convolute_distributions(dist_a, dist_b):
 
 
 def poisson_binom_generating_function(NTimes, arrival_rates, theta, epsilon):
-    """
-    Generate a distribution based on the aggregate of Poisson and Binomial distributions over time intervals.
+    """Generate a distribution based on the aggregate of Poisson and Binomial distributions.
 
     Parameters
-    NTimes (int): The number of time intervals.
-    arrival_rates (numpy.ndarray): An array of lambda values for each time interval.
-    theta (numpy.ndarray): An array of theta values for each time interval.
-    epsilon (float): The desired error threshold.
+    ----------
+    NTimes : int
+        The number of time intervals.
+    arrival_rates : numpy.ndarray
+        An array of lambda values for each time interval.
+    theta : numpy.ndarray
+        An array of theta values for each time interval.
+    epsilon : float
+        The desired error threshold.
 
     Returns
-    pd.DataFrame: The generated distribution.
+    -------
+    pd.DataFrame
+        The generated distribution.
 
+    Raises
+    ------
+    ValueError
+        If NTimes <= 0 or epsilon is not between 0 and 1.
     """
 
     if NTimes <= 0 or epsilon <= 0 or epsilon >= 1:
@@ -163,18 +202,24 @@ def poisson_binom_generating_function(NTimes, arrival_rates, theta, epsilon):
 
 
 def find_nearest_previous_prediction_time(requested_time, prediction_times):
-    """
-    Finds the nearest previous time of day in 'prediction_times' relative to the requested time.
-    If the requested time is earlier than all times in 'prediction_times', the function returns
-    the latest time in 'prediction_times'.
+    """Find the nearest previous time of day in prediction_times relative to requested time.
 
-    Args:
-        requested_time (tuple): The requested time as (hour, minute).
-        prediction_times (list): List of available prediction times.
+    Parameters
+    ----------
+    requested_time : tuple
+        The requested time as (hour, minute).
+    prediction_times : list
+        List of available prediction times.
 
-    Returns:
-        closest_prediction_time (tuple): The closest previous time of day from 'prediction_times'.
+    Returns
+    -------
+    tuple
+        The closest previous time of day from prediction_times.
 
+    Notes
+    -----
+    If the requested time is earlier than all times in prediction_times,
+    returns the latest time in prediction_times.
     """
     if requested_time in prediction_times:
         return requested_time
@@ -217,23 +262,34 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
 
 
 class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
-    """
-    A class to predict an aspirational number of admissions within a specified prediction window.
-    This prediction does not include patients who have already arrived and is based on historical data.
-    The prediction uses a combination of Poisson and binomial distributions.
+    """A predictor for estimating hospital admissions within a prediction window.
 
-    Attributes:
-        filters (dict): Optional filters for data categorization
-        verbose (bool): Whether to enable verbose logging
-        metrics (dict): Stores metadata about the model and training data
+    This predictor uses a combination of Poisson and binomial distributions to forecast
+    future admissions, excluding patients who have already arrived. The prediction is
+    based on historical data and can be filtered for specific hospital settings.
 
-    Methods
-        __init__(self, filters=None): Initializes the predictor with optional filters for data categorization.
-        filter_dataframe(self, df, filters): Filters the dataset based on specified criteria for targeted predictions.
-        fit(self, train_df, prediction_window, yta_time_interval, prediction_times, y=None): Trains the model using historical data and prediction parameters.
-        predict(self, prediction_context): Predicts the number of admissions for a given context after the model is trained.
-        get_weights(self): Retrieves the model parameters computed during fitting.
+    Parameters
+    ----------
+    filters : dict, optional
+        Optional filters for data categorization. If None, no filtering is applied.
+    verbose : bool, default=False
+        Whether to enable verbose logging.
 
+    Attributes
+    ----------
+    filters : dict
+        Filters for data categorization.
+    verbose : bool
+        Verbose logging flag.
+    metrics : dict
+        Stores metadata about the model and training data.
+    weights : dict
+        Model parameters computed during fitting.
+
+    Notes
+    -----
+    The predictor implements scikit-learn's BaseEstimator and TransformerMixin
+    interfaces for compatibility with scikit-learn pipelines.
     """
 
     def __init__(self, filters=None, verbose=False):
@@ -279,16 +335,20 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         self.filters = filters if filters else {}
 
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
-        """
-        Apply a set of filters to a dataframe.
+        """Apply a set of filters to a dataframe.
 
-        Args:
-            df (pandas.DataFrame): The DataFrame to filter.
-            filters (dict): A dictionary where keys are column names and values are the criteria or function to filter by.
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            The DataFrame to filter.
+        filters : dict
+            A dictionary where keys are column names and values are the criteria
+            or function to filter by.
 
-        Returns:
-            pandas.DataFrame: A filtered DataFrame.
-
+        Returns
+        -------
+        pandas.DataFrame
+            A filtered DataFrame.
         """
         filtered_df = df
         for column, criteria in filters.items():
@@ -301,19 +361,25 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     def _calculate_parameters(
         self, df, prediction_window, yta_time_interval, prediction_times, num_days
     ):
-        """
-        Calculate parameters required for the model.
+        """Calculate parameters required for the model.
 
-        Args:
-            df (pandas.DataFrame): The data frame to process.
-            prediction_window (int): The total prediction window for prediction.
-            yta_time_interval (int): The interval for splitting the prediction window.
-            prediction_times (list): Times of day at which predictions are made.
-            num_days (int): Number of days over which to calculate time-varying arrival rates
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            The data frame to process.
+        prediction_window : int
+            The total prediction window for prediction.
+        yta_time_interval : int
+            The interval for splitting the prediction window.
+        prediction_times : list
+            Times of day at which predictions are made.
+        num_days : int
+            Number of days over which to calculate time-varying arrival rates.
 
-        Returns:
-            dict: Calculated arrival_rates parameters organized by time of day.
-
+        Returns
+        -------
+        dict
+            Calculated arrival_rates parameters organized by time of day.
         """
         Ntimes = int(prediction_window / yta_time_interval)
         arrival_rates_dict = time_varying_arrival_rates(
@@ -352,28 +418,35 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         epsilon: float = 10**-7,
         y: Optional[None] = None,
     ) -> "WeightedPoissonPredictor":
-        """
-        Fits the model to the training data, computing necessary parameters for future predictions.
+        """Fit the model to the training data.
 
-        Args:
-            train_df (pandas.DataFrame):
-                The training dataset with historical admission data.
-            prediction_window (int):
-                The prediction prediction window in minutes.
-            yta_time_interval (int):
-                The interval in minutes for splitting the prediction window.
-            prediction_times (list):
-                Times of day at which predictions are made, in hours.
-            num_days (int):
-                 The number of days that the train_df spans
-            epsilon (float, optional):
-                A small value representing acceptable error rate to enable calculation of the maximum value of the random variable representing number of beds.
-            y (None, optional):
-                Ignored, present for compatibility with scikit-learn's fit method.
+        Parameters
+        ----------
+        train_df : pandas.DataFrame
+            The training dataset with historical admission data.
+        prediction_window : int
+            The prediction window in minutes.
+        yta_time_interval : int
+            The interval in minutes for splitting the prediction window.
+        prediction_times : list
+            Times of day at which predictions are made, in hours.
+        num_days : int
+            The number of days that the train_df spans.
+        epsilon : float, default=1e-7
+            A small value representing acceptable error rate to enable calculation
+            of the maximum value of the random variable representing number of beds.
+        y : None, optional
+            Ignored, present for compatibility with scikit-learn's fit method.
 
-        Returns:
-            WeightedPoissonPredictor: The instance itself, fitted with the training data.
+        Returns
+        -------
+        WeightedPoissonPredictor
+            The instance itself, fitted with the training data.
 
+        Raises
+        ------
+        ValueError
+            If prediction_window/yta_time_interval is not greater than 1.
         """
         # Add error checking at the start of fit
         if int(prediction_window / yta_time_interval) == 0:
@@ -442,36 +515,49 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         return self
 
     def get_weights(self):
-        """
-        Returns the weights computed by the fit method.
+        """Get the weights computed by the fit method.
 
         Returns
-            dict: The weights.
-
+        -------
+        dict
+            The weights computed during model fitting.
         """
         return self.weights
 
     def predict(
         self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float
     ) -> Dict:
-        """
-        Predicts the number of admissions for the given context based on the fitted model.
+        """Predict the number of admissions for the given context.
 
-        Args:
-            prediction_context (dict): A dictionary defining the context for which predictions are to be made.
-                                       It should specify either a general context or one based on the applied filters.
-            x1 : float
-                The x-coordinate of the first transition point on the aspirational curve, where the growth phase ends and the decay phase begins.
-            y1 : float
-                The y-coordinate of the first transition point (x1), representing the target proportion of patients admitted by time x1.
-            x2 : float
-                The x-coordinate of the second transition point on the curve, beyond which all but a few patients are expected to be admitted.
-            y2 : float
-                The y-coordinate of the second transition point (x2), representing the target proportion of patients admitted by time x2.
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        x1 : float
+            The x-coordinate of the first transition point on the aspirational curve,
+            where the growth phase ends and the decay phase begins.
+        y1 : float
+            The y-coordinate of the first transition point (x1), representing the target
+            proportion of patients admitted by time x1.
+        x2 : float
+            The x-coordinate of the second transition point on the curve, beyond which
+            all but a few patients are expected to be admitted.
+        y2 : float
+            The y-coordinate of the second transition point (x2), representing the target
+            proportion of patients admitted by time x2.
 
-        Returns:
-            dict: A dictionary with predictions for each specified context.
+        Returns
+        -------
+        dict
+            A dictionary with predictions for each specified context.
 
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
         """
         predictions = {}
 
