@@ -35,24 +35,39 @@ import matplotlib.pyplot as plt
 
 def plot_admission_time_survival_curve(
     df,
-    title,
+    start_time_col="arrival_datetime",
+    end_time_col="admitted_to_ward_datetime",
+    title="Time to Event Survival Curve",
+    target_hours=[4],
+    xlabel="Elapsed time from start",
+    ylabel="Proportion not yet experienced event",
+    annotation_string="{:.1%} experienced event\nwithin {:.0f} hours",
     media_file_path=None,
     return_figure=False,
 ):
-    """Create a survival curve for patient ward admission times.
+    """Create a survival curve for time-to-event analysis.
 
     This function creates a survival curve showing the proportion of patients
-    who have not yet been admitted to a ward over time, without using the
-    lifelines package.
+    who have not yet experienced an event over time.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        DataFrame containing patient visit data with columns:
-        * arrival_datetime: when the patient arrived
-        * admitted_to_ward_datetime: when the patient was admitted to a ward
-    title : str
+        DataFrame containing patient visit data
+    start_time_col : str, default="arrival_datetime"
+        Name of the column containing the start time (e.g., arrival time)
+    end_time_col : str, default="admitted_to_ward_datetime"
+        Name of the column containing the end time (e.g., admission time)
+    title : str, default="Time to Event Survival Curve"
         Title for the plot
+    target_hours : list of float, default=[4]
+        List of target times in hours to show on the plot
+    xlabel : str, default="Elapsed time from start"
+        Label for the x-axis
+    ylabel : str, default="Proportion not yet experienced event"
+        Label for the y-axis
+    annotation_string : str, default="{:.1%} experienced event\nwithin {:.0f} hours"
+        String template for the text annotation. Use {:.1%} for the proportion and {:.0f} for the hours.
     media_file_path : pathlib.Path, optional
         Path to save the plot. If None, the plot is not saved.
     return_figure : bool, default=False
@@ -65,14 +80,14 @@ def plot_admission_time_survival_curve(
 
     Notes
     -----
-    The survival curve shows the proportion of patients who have not yet been
-    admitted to a ward at each time point. A vertical line is drawn at 4 hours
-    to indicate the target admission time, with the corresponding proportion
-    of patients admitted within this timeframe.
+    The survival curve shows the proportion of patients who have not yet experienced
+    the event at each time point. Vertical lines are drawn at each target hour
+    to indicate the target times, with the corresponding proportion of patients
+    who experienced the event within these timeframes.
     """
     # Calculate the wait time in hours
     df["wait_time_hours"] = (
-        df["admitted_to_ward_datetime"] - df["arrival_datetime"]
+        df[end_time_col] - df[start_time_col]
     ).dt.total_seconds() / 3600
 
     # Drop any rows with missing wait times
@@ -90,10 +105,10 @@ def plot_admission_time_survival_curve(
     survival_prob = []
 
     for t in unique_times:
-        # Number of patients admitted after this time point
-        n_admitted_after = sum(df_clean["wait_time_hours"] > t)
+        # Number of patients who experienced the event after this time point
+        n_event_after = sum(df_clean["wait_time_hours"] > t)
         # Proportion of patients still waiting
-        survival_prob.append(n_admitted_after / n_patients)
+        survival_prob.append(n_event_after / n_patients)
 
     # Add zero hours wait time (everyone is waiting at time 0)
     unique_times = np.insert(unique_times, 0, 0)
@@ -102,18 +117,14 @@ def plot_admission_time_survival_curve(
     # Create the plot
     fig = plt.figure(figsize=(10, 6))
     plt.step(
-        unique_times, survival_prob, where="post", label="Admission Survival Curve"
+        unique_times, survival_prob, where="post"
     )
 
     # Configure the plot
-    if title:
-        plt.title(title)
-    else:
-        plt.title("Time to Ward Admission Survival Curve")
-    plt.xlabel("Elapsed time from arrival")
-    plt.ylabel("Proportion not yet admitted")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.grid(True, alpha=0.3)
-    plt.legend()
 
     # Make axes meet at the origin
     plt.xlim(left=0)
@@ -128,44 +139,39 @@ def plot_admission_time_survival_curve(
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    # Add lines at 4 hours target
-    target_hours = 4
+    # Plot target lines for each target hour
+    for target_hour in target_hours:
+        # Find the survival probability at target hours
+        closest_time_idx = np.abs(unique_times - target_hour).argmin()
+        if closest_time_idx < len(survival_prob):
+            survival_at_target = survival_prob[closest_time_idx]
+            event_at_target = 1 - survival_at_target
 
-    # Find the survival probability at 4 hours
-    closest_time_idx = np.abs(unique_times - target_hours).argmin()
-    if closest_time_idx < len(survival_prob):
-        survival_at_target = survival_prob[closest_time_idx]
-        admitted_at_target = 1 - survival_at_target
+            # Draw a vertical line from x-axis to the curve at target hours
+            plt.plot(
+                [target_hour, target_hour],
+                [0, survival_at_target],
+                color='grey',
+                linestyle="--",
+                linewidth=2,
+            )
 
-        # Draw a vertical line from x-axis to the curve at 4 hours
-        plt.plot(
-            [target_hours, target_hours],
-            [0, survival_at_target],
-            color="red",
-            linestyle="--",
-            linewidth=2,
-        )
+            # Draw a horizontal line from the curve to the y-axis at the survival probability level
+            plt.plot(
+                [0, target_hour],
+                [survival_at_target, survival_at_target],
+                color='grey',
+                linestyle="--",
+                linewidth=2,
+            )
 
-        # Draw a horizontal line from the curve to the y-axis at the survival probability level
-        plt.plot(
-            [0, target_hours],
-            [survival_at_target, survival_at_target],
-            color="red",
-            linestyle="--",
-            linewidth=2,
-        )
-
-        # Add text annotation to the plot
-        plt.text(
-            target_hours + 0.5,
-            survival_at_target,
-            f"{admitted_at_target:.1%} admitted\nwithin 4 hours",
-            bbox=dict(facecolor="white", alpha=0.8),
-        )
-
-        print(
-            f"Proportion of patients admitted within {target_hours} hours: {admitted_at_target:.2%}"
-        )
+            # Add text annotation to the plot
+            plt.text(
+                target_hour + 0.5,
+                survival_at_target,
+                annotation_string.format(event_at_target, target_hour),
+                bbox=dict(facecolor="white", alpha=0.8),
+            )
 
     plt.tight_layout()
 
