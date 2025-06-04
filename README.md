@@ -4,9 +4,16 @@
 [![Tests status][tests-badge]][tests-link]
 [![Linting status][linting-badge]][linting-link]
 [![Documentation status][documentation-badge]][documentation-link]
+[![Documentation][docs-badge]][docs-link]
 [![License][license-badge]](./LICENSE.md)
 [![PyPI version][pypi-version]][pypi-link]
 [![PyPI platforms][pypi-platforms]][pypi-link]
+
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
+[![ORCID](https://img.shields.io/badge/ORCID-0009--0007--4110--7284-green.svg)](https://orcid.org/0009-0007-4110-7284)
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--9928--1516-green.svg)](https://orcid.org/0000-0001-9928-1516)
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--9104--7960-green.svg)](https://orcid.org/0000-0001-9104-7960)
+[![ORCID](https://img.shields.io/badge/ORCID-0000--0003--1882--5476-green.svg)](https://orcid.org/0000-0003-1882-5476)
 
 <!-- prettier-ignore-start -->
 [tests-badge]:              https://github.com/zmek/patientflow/actions/workflows/tests.yml/badge.svg
@@ -15,11 +22,12 @@
 [linting-link]:             https://github.com/zmek/patientflow/actions/workflows/linting.yml
 [documentation-badge]:      https://github.com/zmek/patientflow/actions/workflows/docs.yml/badge.svg
 [documentation-link]:       https://github.com/zmek/patientflow/actions/workflows/docs.yml
+[docs-badge]:               https://img.shields.io/badge/docs-ucl--coru.github.io-blue
+[docs-link]:                https://ucl-coru.github.io/patientflow/
 [license-badge]:            https://img.shields.io/badge/License-MIT-yellow.svg
 [pypi-link]:                https://pypi.org/project/patientflow/
 [pypi-platforms]:           https://img.shields.io/pypi/pyversions/patientflow
 [pypi-version]:             https://img.shields.io/pypi/v/patientflow
-[![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
 <!-- prettier-ignore-end -->
 
 ## Summary
@@ -38,6 +46,10 @@ We have created the `patientflow` python package to make it convenient for other
 The modelling functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the next 8 hours. The output is a probability distribution over the number of beds needed. The package includes functions to generate predictions at both patient and group level, to visualise predicted probability distributions, and to evaluate them.
 
 This snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many patients from a clinical specialty will be discharged. A series of notebooks demonstrates the use of the package. We show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset, and an anonymised patient dataset, based on real data from UCLH is available on [Zenodo](https://zenodo.org/records/14866057). Both the synthetic and the real dataset have been prepared in a snapshot structure.
+
+## Documentation
+
+Documentation is available at [ucl-coru.github.io/patientflow](https://ucl-coru.github.io/patientflow/). The full API reference is [here](https://ucl-coru.github.io/patientflow/api/).
 
 ## What `patientflow` is for:
 
@@ -73,7 +85,7 @@ This snapshot-based approach to predicting demand generalises to other aspects o
 
 ## Getting started
 
-- Exploration: Start with the [notebooks README](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/README.md) to get an outline of what is included in the notebooks, and read the [patientflow README](https://github.com/UCL-CORU/patientflow/tree/main/src/patientflow#readme) for an overview of the Python package.
+- Exploration: Start with the [notebooks README](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/README.md) to get an outline of what is included in the notebooks, and read the [package README](https://github.com/UCL-CORU/patientflow/tree/main/src/patientflow#readme) or the [documentation](https://ucl-coru.github.io/patientflow) for an overview of the Python package.
 - Installation: Follow the instructions below to set up the environment and install necessary dependencies in your own environment.
 - Configuration: Repurpose config.yaml to configure the package to your own data and user requirements.
 
