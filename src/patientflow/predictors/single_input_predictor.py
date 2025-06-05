@@ -100,6 +100,9 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         """
         # Make a copy to avoid modifying the original
         df = X.copy()
+        print(f'inside preprocess, len(df): {len(df)}')
+        print(f'inside preprocess, null grouping var: {len(df[df[self.grouping_var].isnull()])}')
+
 
         # Step 1: Select only admitted patients with a non-null specialty
         if self.admit_col in df.columns:
@@ -128,12 +131,15 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
                 & (df[self.outcome_var] != special_category_key)
             ]
 
-        # Step 3: Convert input values to strings
-        if self.input_var in df.columns:
-            df[self.input_var] = df[self.input_var].astype(str)
+        # # Step 3: Convert input values to strings
+        # if self.input_var in df.columns:
+        #     df[self.input_var] = df[self.input_var].astype(str)
 
-        if self.grouping_var in df.columns:
-            df[self.grouping_var] = df[self.grouping_var].astype(str)
+        # if self.grouping_var in df.columns:
+        #     df[self.grouping_var] = df[self.grouping_var].astype(str)
+
+        print(f'after preprocess, len(df): {len(df)}')
+        print(f'after preprocess, null grouping var: {len(df[df[self.grouping_var].isnull()])}')
 
         return df
 
@@ -162,8 +168,15 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             self.metrics["start_date"] = X["snapshot_date"].min()
             self.metrics["end_date"] = X["snapshot_date"].max()
 
+        print('before preprocess', len(X))
+        print('before preprocess, null grouping var', len(X[X[self.grouping_var].isnull()]))
+
+
         # Preprocess the data
         X = self._preprocess_data(X)
+
+        print(f'after preprocess, len(X): {len(X)}')
+        print(f'after preprocess, null grouping var: {len(X[X[self.grouping_var].isnull()])}')
 
         # derive the names of the observed outcome variables from the data
         prop_keys = X[self.outcome_var].unique()
@@ -183,7 +196,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             .T
         )
         null_counts.index = [None]  # Use None as key instead of "null"
-
+        print(f'null_counts: {null_counts}')
         # Concatenate null value handling
         X_grouped = pd.concat([X_grouped, null_counts])
 
@@ -192,6 +205,8 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
 
         # Calculate for each grouping value, the proportion of ending with each observed specialty
         proportions = X_grouped.div(row_totals, axis=0).fillna(0)
+
+        print(proportions)
 
         # Calculate probabilities for each input value
         input_probs = {}
@@ -211,7 +226,8 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             input_probs[input_val] = input_to_outcome_probs.sum().to_dict()
 
         # Handle null input values
-        null_input_probs = proportions.loc[None, prop_keys].to_dict()
+        null_input_probs = proportions.loc[None]
+        print(f'null_input_probs: {null_input_probs}')
         input_probs[None] = null_input_probs
 
         # Clean the keys to remove excess string quotes
