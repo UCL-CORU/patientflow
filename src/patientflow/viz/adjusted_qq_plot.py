@@ -15,6 +15,11 @@ The plot shows three possible positions for each observation within its predicte
 For a well-calibrated model, the observed values should fall within their predicted
 intervals, with the distribution of positions showing appropriate uncertainty.
 
+The visualization helps assess model calibration by comparing:
+1. The predicted cumulative distribution function (CDF) values
+2. The actual positions of observations within their predicted intervals
+3. The spread and distribution of these positions
+
 Functions
 ------------
 adjusted_qq_plot : function
@@ -31,6 +36,114 @@ from matplotlib.figure import Figure
 from patientflow.load import get_model_key
 
 
+def _calculate_cdf_values(agg_predicted: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Calculate CDF values for discrete distribution."""
+    upper_cdf: np.ndarray = agg_predicted.cumsum()
+    lower_cdf: np.ndarray = np.hstack((0, upper_cdf[:-1]))
+    mid_cdf: np.ndarray = (upper_cdf + lower_cdf) / 2
+    return lower_cdf, mid_cdf, upper_cdf
+
+
+def _create_distribution_records(prob_dist_dict: Dict, cdf_types: List[str]) -> List[Dict]:
+    """Create distribution records with CDF values for all time points."""
+    all_distributions: List[Dict] = []
+    
+    for dt, data in prob_dist_dict.items():
+        agg_predicted: np.ndarray = np.array(data["agg_predicted"]["agg_proba"])
+        lower_cdf, mid_cdf, upper_cdf = _calculate_cdf_values(agg_predicted)
+        
+        cdf_values = {
+            "lower": lower_cdf,
+            "mid": mid_cdf, 
+            "upper": upper_cdf
+        }
+        
+        for j, prob in enumerate(agg_predicted):
+            record = {
+                "num_adm_pred": j,
+                "prob": prob,
+                "dt": dt,
+            }
+            
+            for cdf_type in cdf_types:
+                record[f"{cdf_type}_predicted_cdf"] = cdf_values[cdf_type][j]
+                
+            all_distributions.append(record)
+    
+    return all_distributions
+
+
+def _create_observation_records(prob_dist_dict: Dict) -> List[Dict]:
+    """Create observation records for all time points."""
+    return [
+        {"date": dt, "num_adm": data["agg_observed"], "dt": dt}
+        for dt, data in prob_dist_dict.items()
+    ]
+
+
+def _plot_predictions(ax, distr_coll: pd.DataFrame, num_time_points: int, 
+                     pred_types: List[str]) -> None:
+    """Plot model predictions for specified types."""
+    type_labels = {
+        "lower": "Lower Bound",
+        "mid": "Midpoint",
+        "upper": "Upper Bound"
+    }
+    
+    for pred_type in pred_types:
+        col_name: str = f"{pred_type}_predicted_cdf"
+        df_temp: pd.DataFrame = distr_coll[[col_name, "prob"]].copy()
+        df_temp = df_temp.sort_values(by=col_name)
+        df_temp["cum_weight_normed"] = df_temp["prob"].cumsum() / num_time_points
+        
+        ax.scatter(
+            df_temp[col_name],
+            df_temp["cum_weight_normed"],
+            color="grey",
+            label=f"Predicted {type_labels[pred_type]}",
+            marker="o",
+            s=5,
+        )
+
+
+def _plot_observations(ax, merged_df: pd.DataFrame, obs_types: List[str], 
+                      colors: Dict[str, str], is_first_subplot: bool) -> None:
+    """Plot actual observations for specified types."""
+    type_labels = {
+        "lower": "Lower Bound",
+        "mid": "Midpoint",
+        "upper": "Upper Bound"
+    }
+    
+    for obs_type in obs_types:
+        col_name_obs: str = f"{obs_type}_observed_cdf"
+        values: np.ndarray = merged_df[col_name_obs].values
+        unique_values, counts = np.unique(np.sort(values), return_counts=True)
+        cum_weights: np.ndarray = np.cumsum(counts) / len(values)
+        
+        ax.scatter(
+            unique_values,
+            cum_weights,
+            color=colors[obs_type],
+            label=f"Observed {type_labels[obs_type]}" if is_first_subplot else None,
+            marker="o",
+            s=20,
+        )
+
+
+def _setup_subplot(ax, prediction_time: Tuple[int, int], is_first_subplot: bool) -> None:
+    """Configure subplot appearance and labels."""
+    hour, minutes = prediction_time
+    ax.set_xlabel("CDF value (probability threshold)")
+    ax.set_ylabel("Proportion of observations ≤ threshold")
+    ax.set_title(f"Adjusted QQ plot for {hour}:{minutes:02}")
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1])
+    
+    if is_first_subplot:
+        ax.legend()
+
+
 def adjusted_qq_plot(
     prediction_times: List[Tuple[int, int]],
     prob_dist_dict_all: Dict[str, Dict],
@@ -40,6 +153,7 @@ def adjusted_qq_plot(
     figsize: Optional[Tuple[float, float]] = None,
     suptitle: Optional[str] = None,
     media_file_path: Optional[Path] = None,
+    plot_all_bounds: bool = False,
 ) -> Union[
     Figure, Dict[str, pd.DataFrame], Tuple[Figure, Dict[str, pd.DataFrame]], None
 ]:
@@ -65,13 +179,17 @@ def adjusted_qq_plot(
         If True, returns the figure object instead of displaying it, by default False.
     return_dataframe : bool, optional
         If True, returns a dictionary of observation dataframes by model_key, by default False.
+        The dataframes contain the merged observation and prediction data for analysis.
     figsize : tuple of (float, float), optional
         Size of the figure in inches as (width, height). If None, calculated automatically
         based on number of plots, by default None.
     suptitle : str, optional
         Super title for the entire figure, displayed above all subplots, by default None.
     media_file_path : Path, optional
-        Path to save the plot, by default None.
+        Path to save the plot, by default None. If provided, saves the plot as a PNG file.
+    plot_all_bounds : bool, optional
+        If True, plots all bounds (lower, mid, upper). If False, only plots mid bounds.
+        By default False.
 
     Returns
     -------
@@ -108,194 +226,80 @@ def adjusted_qq_plot(
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted: List[Tuple[int, int]] = sorted(
         prediction_times,
-        key=lambda x: x[0] * 60
-        + x[1],  # Convert (hour, minute) to minutes since midnight
+        key=lambda x: x[0] * 60 + x[1],
     )
 
+    # Calculate figure parameters
     num_plots: int = len(prediction_times_sorted)
-    if figsize is None:
-        figsize = (num_plots * 5, 4)
-
+    figsize = figsize or (num_plots * 5, 4)
+    
     # Create subplot layout
     fig: Figure
     axs: np.ndarray
     fig, axs = plt.subplots(1, num_plots, figsize=figsize)
+    axs = [axs] if num_plots == 1 else axs
 
-    # Handle case of single prediction time
-    if num_plots == 1:
-        axs = [axs]
+    # Define plotting types and colors
+    all_types = ["lower", "mid", "upper"]
+    plot_types = all_types if plot_all_bounds else ["mid"]
+    colors: Dict[str, str] = {
+        "lower": "#FF1493",  # deeppink
+        "mid": "#228B22",    # chartreuse4/forest green
+        "upper": "#ADD8E6",  # lightblue
+    }
 
-    # Dictionary to store observation dataframes by model_key
     all_obs_dfs: Dict[str, pd.DataFrame] = {}
 
-    # Loop through each subplot
+    # Process each subplot
     for i, prediction_time in enumerate(prediction_times_sorted):
-        # Get model key and corresponding prob_dist_dict
         model_key: str = get_model_key(model_name, prediction_time)
         prob_dist_dict: Dict = prob_dist_dict_all[model_key]
 
         if not prob_dist_dict:
             continue
 
-        # Collect model predictions
-        all_distributions: List[Dict] = []
-        for dt in prob_dist_dict:
-            agg_predicted: np.ndarray = np.array(
-                prob_dist_dict[dt]["agg_predicted"]["agg_proba"]
-            )
-
-            # Calculate CDF values
-            upper_cdf: np.ndarray = agg_predicted.cumsum()
-            lower_cdf: np.ndarray = np.hstack((0, upper_cdf[:-1]))
-            mid_cdf: np.ndarray = (upper_cdf + lower_cdf) / 2
-
-            # Store all predicted distributions for each time point
-            for j, prob in enumerate(agg_predicted):
-                all_distributions.append(
-                    {
-                        "num_adm_pred": j,
-                        "prob": prob,
-                        "sample_time": dt,  # Using the same name as in R code
-                        "upper_M_discrete_value": upper_cdf[j],
-                        "lower_M_discrete_value": lower_cdf[j],
-                        "mid_M_discrete_value": mid_cdf[j],
-                    }
-                )
-
-        # Create DataFrame with all distributions
+        # Create distribution and observation dataframes
+        all_distributions = _create_distribution_records(prob_dist_dict, all_types)
         distr_coll: pd.DataFrame = pd.DataFrame(all_distributions)
-
-        # Collect observations
-        all_observations: List[Dict] = []
-        time_pts: List = []
-        num_time_points: int = len(prob_dist_dict.keys())
-        for dt in prob_dist_dict:
-            agg_observed = prob_dist_dict[dt]["agg_observed"]
-            time_pts.append(dt)
-
-            # Store observation data
-            all_observations.append(
-                {"date": dt, "num_adm": agg_observed, "sample_time": dt}
-            )
-
-        # Create DataFrame with all observations
+        
+        all_observations = _create_observation_records(prob_dist_dict)
         adm_coll: pd.DataFrame = pd.DataFrame(all_observations)
 
-        # Merge observations with predictions (equivalent to R merge)
+        # For each actual observation, find its position in the predicted CDF
+        # by matching datetime and admission count to get lower/mid/upper bounds
         merged_df: pd.DataFrame = pd.merge(
             adm_coll,
-            distr_coll.rename(
-                columns={
-                    "num_adm_pred": "num_adm",
-                    "lower_M_discrete_value": "lower_E",
-                    "mid_M_discrete_value": "mid_E",
-                    "upper_M_discrete_value": "upper_E",
-                }
-            ),
-            on=["sample_time", "num_adm"],
+            distr_coll.rename(columns={
+                "num_adm_pred": "num_adm",
+                **{f"{t}_predicted_cdf": f"{t}_observed_cdf" for t in all_types}
+            }),
+            on=["dt", "num_adm"],
             how="inner",
         )
 
         if merged_df.empty:
             continue
 
-        # Store the observation dataframe
         all_obs_dfs[model_key] = merged_df
-
-        # Set up the plot
         ax = axs[i]
+        num_time_points: int = len(prob_dist_dict)
 
-        # For lower, mid, and upper model predictions
-        for pred_type in ["lower", "mid", "upper"]:
-            # Get the column name from distr_coll
-            col_name: str = f"{pred_type}_M_discrete_value"
+        # Plot predictions and observations
+        _plot_predictions(ax, distr_coll, num_time_points, plot_types)
+        _plot_observations(ax, merged_df, plot_types, colors, i == 0)
+        _setup_subplot(ax, prediction_time, i == 0)
 
-            # Extract values and probabilities as a temporary dataframe
-            df_temp: pd.DataFrame = distr_coll[[col_name, "prob"]].copy()
-
-            # Sort by values - this is the key correction
-            df_temp = df_temp.sort_values(by=col_name)
-
-            # Calculate cumulative weights after sorting
-            df_temp["cum_weight"] = df_temp["prob"].cumsum()
-            df_temp["cum_weight_normed"] = df_temp["prob"].cumsum() / num_time_points
-
-            # Plot model predictions
-            ax.scatter(
-                df_temp[col_name],  # Use the sorted values
-                df_temp[
-                    "cum_weight_normed"
-                ],  # Use the correctly calculated normed weights
-                color="grey",
-                label=f"Model {pred_type}",
-                marker="o",
-                s=5,
-            )
-
-        # Define colors for the observations
-        colors: Dict[str, str] = {
-            "lower": "#FF1493",  # deeppink
-            "mid": "#228B22",  # chartreuse4/forest green
-            "upper": "#ADD8E6",  # lightblue
-        }
-
-        # For lower, mid, and upper actual observations
-        for obs_type in ["lower", "mid", "upper"]:
-            # Get the column name from merged_df
-            col_name_obs: str = f"{obs_type}_E"
-
-            # Extract values
-            values: np.ndarray = merged_df[col_name_obs].values
-
-            # Calculate distribution similar to R approach
-            sorted_values: np.ndarray = np.sort(values)
-            n: int = len(sorted_values)
-
-            # Calculate empirical CDF
-            unique_values: np.ndarray
-            counts: np.ndarray
-            unique_values, counts = np.unique(sorted_values, return_counts=True)
-            cum_weights: np.ndarray = np.cumsum(counts) / n
-
-            # Plot actual observations as colored points
-            ax.scatter(
-                unique_values,
-                cum_weights,
-                color=colors[obs_type],
-                label=f"Actual {obs_type}"
-                if i == 0
-                else None,  # Only add label in first subplot
-                marker="o",
-                s=20,
-            )
-
-        # Set labels and title
-        hour: int
-        minutes: int
-        hour, minutes = prediction_time
-        ax.set_xlabel("CDF value (probability threshold)")
-        ax.set_ylabel("Proportion of observations ≤ threshold")
-        ax.set_title(f"Adjusted QQ plot for {hour}:{minutes:02}")
-        ax.set_xlim([0, 1])
-        ax.set_ylim([0, 1])
-
-        # Add legend to first plot only
-        if i == 0:
-            ax.legend()
-
+    # Final plot configuration
     plt.tight_layout()
-
-    # Add suptitle if provided
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
-
     if media_file_path:
         plt.savefig(media_file_path / "adjusted_qq_plot.png", dpi=300)
 
-    # Determine what to return
-    if return_figure:
-        if return_dataframe:
-            return fig, all_obs_dfs
+    # Return based on flags
+    if return_figure and return_dataframe:
+        return fig, all_obs_dfs
+    elif return_figure:
         return fig
     elif return_dataframe:
         plt.show()
