@@ -212,18 +212,6 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
             .unstack(fill_value=0)
         )
 
-        # Handle null sequences by assigning them to a specific key
-        null_counts = (
-            X[X[self.grouping_var].isnull()][self.outcome_var]
-            .value_counts()
-            .to_frame()
-            .T
-        )
-        null_counts.index = [tuple()]
-
-        # Concatenate null sequence handling
-        X_grouped = pd.concat([X_grouped, null_counts])
-
         # Calculate the total number of times each grouping sequence occurred
         row_totals = X_grouped.sum(axis=1)
 
@@ -241,11 +229,8 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
             proportions[col] *= proportions["probability_of_grouping_sequence"]
 
         # Convert final sequence to a string in order to conduct string searches on it
-        proportions["grouping_sequence_to_string"] = (
-            proportions.reset_index()["index"]
-            .apply(lambda x: "-".join(map(str, x)))
-            .values
-        )
+        proportions["grouping_sequence_to_string"] = proportions.index.map(lambda x: "-".join(map(str, x)))
+        
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category

@@ -8,7 +8,7 @@ Classes
 -------
 SingleInputPredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on a single input value.
-    Note: All inputs are expected to be strings. None values will be handled appropriately.
+    Note: All inputs are expected to be strings. None values will be converted to empty strings during preprocessing.
 """
 
 from typing import Dict
@@ -86,7 +86,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         Steps include:
         1. Selecting only admitted patients with a non-null specialty
         2. Optionally filtering out special categories
-        3. Ensuring input values are strings
+        3. Converting input values to strings and handling nulls
 
         Parameters
         ----------
@@ -128,12 +128,12 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
                 & (df[self.outcome_var] != special_category_key)
             ]
 
-        # # Step 3: Convert input values to strings
-        # if self.input_var in df.columns:
-        #     df[self.input_var] = df[self.input_var].astype(str)
+        # Step 3: Convert input values to strings and handle nulls
+        if self.input_var in df.columns:
+            df[self.input_var] = df[self.input_var].fillna("").astype(str)
 
-        # if self.grouping_var in df.columns:
-        #     df[self.grouping_var] = df[self.grouping_var].astype(str)
+        if self.grouping_var in df.columns:
+            df[self.grouping_var] = df[self.grouping_var].fillna("").astype(str)
 
         return df
 
@@ -142,7 +142,9 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         Fits the predictor based on training data by computing the proportion of each input value
         ending in specific outcome variable categories.
 
-        Automatically preprocesses the data before fitting.
+        Automatically preprocesses the data before fitting. During preprocessing, any null values in the
+        input and grouping variables are converted to empty strings. These empty strings are then used
+        as keys in the model's weights dictionary.
 
         Parameters
         ----------
@@ -153,6 +155,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         -------
         self : SingleInputPredictor
             The fitted SingleInputPredictor model with calculated probabilities for each input value.
+            The weights dictionary will contain an empty string key ('') for any null values from the input data.
         """
 
         # Store metrics about the training data
@@ -175,18 +178,6 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             .unstack(fill_value=0)
         )
 
-        # Handle null values by assigning them to a specific key
-        null_counts = (
-            X[X[self.grouping_var].isnull()][self.outcome_var]
-            .value_counts()
-            .to_frame()
-            .T
-        )
-        null_counts.index = [None]  # Use None as key instead of "null"
-
-        # Concatenate null value handling
-        X_grouped = pd.concat([X_grouped, null_counts])
-
         # Calculate the total number of times each grouping value occurred
         row_totals = X_grouped.sum(axis=1)
 
@@ -196,23 +187,31 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         # Calculate probabilities for each input value
         input_probs = {}
         for input_val in X[self.input_var].unique():
-            # Get all grouping values associated with this input
-            # grouping_vals = X[X[self.input_var] == input_val][self.grouping_var].unique()
+            # Get all grouping values associated with this input value
+            grouping_vals = X[X[self.input_var] == input_val][self.grouping_var].unique()
+            
+            # Calculate probability distribution of grouping values for this input value
             input_to_group_probs = X[X[self.input_var] == input_val][self.grouping_var].value_counts(normalize=True)
-            group_to_outcome_probs = proportions.loc[input_val]
+            
+            # Get the probability distribution of outcomes for all relevant grouping values
+            # This includes all rows in proportions where the grouping value appears for this input
+            group_to_outcome_probs = proportions.loc[grouping_vals]
 
-            # Create outer product matrix of probabilities
+            # Ensure the rows are aligned by reindexing group_to_outcome_probs
+            aligned_group_to_outcome = group_to_outcome_probs.reindex(input_to_group_probs.index)
+
+            # Create outer product matrix of probabilities:
+            # - Rows represent grouping values
+            # - Columns represent outcome categories
+            # Each cell contains the joint probability of the grouping value and outcome
             input_to_outcome_probs = pd.DataFrame(
-                input_to_group_probs.values.reshape(-1, 1) * group_to_outcome_probs.values,
+                input_to_group_probs.values.reshape(-1, 1) * aligned_group_to_outcome.values,
                 index=input_to_group_probs.index,
-                columns=group_to_outcome_probs.index
+                columns=group_to_outcome_probs.columns
             )
 
+            # Sum across grouping values to get final probability distribution for this input value
             input_probs[input_val] = input_to_outcome_probs.sum().to_dict()
-
-        # Handle null input values
-        null_input_probs = proportions.loc[None]
-        input_probs[None] = null_input_probs
 
         # Clean the keys to remove excess string quotes
         def clean_key(key):
@@ -222,6 +221,8 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
                     return key[1:-1]
             return key
 
+        # Note: cleaned_dict will contain an empty string key ('') for any null values from the input data
+        # This is because null values are converted to empty strings during preprocessing
         cleaned_dict = {clean_key(k): v for k, v in input_probs.items()}
 
         # save probabilities as weights within the model
@@ -279,7 +280,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             A dictionary of categories and the probabilities that the input value will end in them.
         """
         if input_value is None or pd.isna(input_value):
-            return self.weights.get(None, {})
+            return self.weights.get('', {})
 
         # Convert input to string if it isn't already
         input_value = str(input_value)

@@ -449,7 +449,6 @@ def train_classifier(
         X_valid_transformed = best_feature_transformer.transform(X_valid)
 
         if sk_version >= "1.6.0":
-            print("Using frozen estimator")
             from sklearn.frozen import FrozenEstimator
 
             calibrated_classifier = CalibratedClassifierCV(
@@ -457,7 +456,6 @@ def train_classifier(
                 method=calibration_method,
             )
         else:
-            print("Using prefit")
             calibrated_classifier = CalibratedClassifierCV(
                 estimator=best_classifier, method=calibration_method, cv="prefit"
             )
