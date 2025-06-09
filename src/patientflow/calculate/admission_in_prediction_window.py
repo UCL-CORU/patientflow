@@ -21,10 +21,13 @@ get_y_from_aspirational_curve : function
     Read from the curve a value for y, the probability of being admitted, for a given moment x hours after arrival
 calculate_probability : function
     Compute the probability of a patient being admitted by the end of a prediction window, given how much time has elapsed since their arrival.
+get_survival_probability : function
+    Calculate the probability of a patient still being in the ED after a certain time using survival curve data.
 
 """
 
 import numpy as np
+import pandas as pd
 
 
 def growth_curve(x, a, gamma):
@@ -209,3 +212,65 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
     return (prob_admission_by_end_of_window - prob_admission_prior_to_now) / (
         1 - prob_admission_prior_to_now
     )
+
+
+def get_survival_probability(survival_df, time_hours):
+    """
+    Calculate the probability of a patient still being in the ED after a specified time
+    using survival curve data.
+
+    Parameters
+    ----------
+    survival_df : pandas.DataFrame
+        DataFrame containing survival curve data with columns:
+        - time_hours: Time points in hours
+        - survival_probability: Probability of still being in ED at each time point
+    time_hours : float
+        The time point (in hours) at which to calculate the survival probability
+
+    Returns
+    -------
+    float
+        The probability of still being in the ED at the specified time
+
+    Notes
+    -----
+    - If the exact time_hours is not in the survival curve data, the function will
+      interpolate between the nearest time points
+    - If time_hours is less than the minimum time in the data, returns 1.0
+    - If time_hours is greater than the maximum time in the data, returns the last
+      known survival probability
+
+    Examples
+    --------
+    >>> survival_df = pd.DataFrame({
+    ...     'time_hours': [0, 2, 4, 6],
+    ...     'survival_probability': [1.0, 0.8, 0.5, 0.2]
+    ... })
+    >>> get_survival_probability(survival_df, 3.5)
+    0.65  # interpolated between 0.8 and 0.5
+    """
+    if time_hours < survival_df['time_hours'].min():
+        return 1.0
+    
+    if time_hours > survival_df['time_hours'].max():
+        return survival_df['survival_probability'].iloc[-1]
+    
+    # Find the closest time points for interpolation
+    lower_idx = survival_df['time_hours'].searchsorted(time_hours, side='right') - 1
+    upper_idx = lower_idx + 1
+    
+    if lower_idx < 0:
+        return 1.0
+    
+    if upper_idx >= len(survival_df):
+        return survival_df['survival_probability'].iloc[-1]
+    
+    # Get the surrounding points
+    t1 = survival_df['time_hours'].iloc[lower_idx]
+    t2 = survival_df['time_hours'].iloc[upper_idx]
+    p1 = survival_df['survival_probability'].iloc[lower_idx]
+    p2 = survival_df['survival_probability'].iloc[upper_idx]
+    
+    # Linear interpolation
+    return p1 + (p2 - p1) * (time_hours - t1) / (t2 - t1)

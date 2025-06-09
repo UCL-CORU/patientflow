@@ -31,6 +31,7 @@ Examples
 
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def plot_admission_time_survival_curve(
@@ -44,6 +45,7 @@ def plot_admission_time_survival_curve(
     annotation_string="{:.1%} experienced event\nwithin {:.0f} hours",
     media_file_path=None,
     return_figure=False,
+    return_df=False,
 ):
     """Create a survival curve for time-to-event analysis.
 
@@ -72,11 +74,16 @@ def plot_admission_time_survival_curve(
         Path to save the plot. If None, the plot is not saved.
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it
+    return_df : bool, default=False
+        If True, returns a DataFrame containing the survival curve data
 
     Returns
     -------
-    matplotlib.figure.Figure or None
-        The figure object if return_figure is True, otherwise None
+    matplotlib.figure.Figure or pandas.DataFrame or tuple or None
+        - If return_figure is True and return_df is False: returns the figure object
+        - If return_figure is False and return_df is True: returns the DataFrame with survival curve data
+        - If both return_figure and return_df are True: returns a tuple of (figure, DataFrame)
+        - If both are False: returns None
 
     Notes
     -----
@@ -113,6 +120,14 @@ def plot_admission_time_survival_curve(
     # Add zero hours wait time (everyone is waiting at time 0)
     unique_times = np.insert(unique_times, 0, 0)
     survival_prob = np.insert(survival_prob, 0, 1.0)
+
+    # Create DataFrame with survival curve data if requested
+    if return_df:
+        survival_df = pd.DataFrame({
+            'time_hours': unique_times,
+            'survival_probability': survival_prob,
+            'event_probability': 1 - survival_prob
+        })
 
     # Create the plot
     fig = plt.figure(figsize=(10, 6))
@@ -178,8 +193,12 @@ def plot_admission_time_survival_curve(
     if media_file_path:
         plt.savefig(media_file_path / "survival_curve.png", dpi=300)
 
-    if return_figure:
+    if return_figure and return_df:
+        return fig, survival_df
+    elif return_figure:
         return fig
+    elif return_df:
+        return survival_df
     else:
         plt.show()
         plt.close()
