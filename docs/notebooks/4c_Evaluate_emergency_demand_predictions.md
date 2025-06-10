@@ -483,7 +483,7 @@ for prediction_time in prediction_times_sorted:
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_30_4.png)
 
-## Conclusion
+## Summary
 
 In this notebook I have shown how to evaluate predicted bed counts for the patients in ED, by specialty, and for the patients yet-to-arrive. Both approaches required adjustments for the fact that the predicted distributions are aspirational.
 

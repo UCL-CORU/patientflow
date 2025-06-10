@@ -836,7 +836,7 @@ new_snapshots_df[new_snapshots_df.visit_number==example_visit_number]
 </table>
 </div>
 
-## Conclusion
+## Summary
 
 Here I have shown how to create snapshots from finished patient visits. Note that there is summarisation involved. The lab orders have been summarised into counts, and the latest triage score has been taken. In the same vein, you might just take the last recorded heart rate or oxygen saturation level, or the latest value of a lab result. A snapshot loses some of the richness of the full data in an EHR, but with the benefit that you get data that replicate unfinished visits.
 

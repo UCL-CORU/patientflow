@@ -432,7 +432,7 @@ create_predictions(
      'haem/onc': {'in_ed': [1, 1], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
-## Conclusion
+## Summary
 
 Here I have shown how `patientflow` is used at UCLH to generate predictions of emergency demand for beds in the next 8 hours. There are two elements to the predictions.
 

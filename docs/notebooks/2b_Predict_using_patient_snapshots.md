@@ -393,7 +393,7 @@ model.training_results.test_results
 
 Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.
 
-## Conclusion
+## Summary
 
 Here I have shown how `patientflow` can help you
 

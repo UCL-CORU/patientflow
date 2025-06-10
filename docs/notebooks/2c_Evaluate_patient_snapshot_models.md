@@ -571,7 +571,7 @@ plot_shap(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_14.png)
 
-## Conclusion
+## Summary
 
 Here I have shown how visualations within `patientflow` can help you
 

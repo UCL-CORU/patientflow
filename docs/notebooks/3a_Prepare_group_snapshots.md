@@ -902,7 +902,7 @@ ax.legend();
 
 The returned object is now ready for evaluation, which I cover in the next notebook.
 
-## Conclusion
+## Summary
 
 In this notebook I have demonstrated the functions in `patientflow` that handle the preparation of group snapshots. These include:
 

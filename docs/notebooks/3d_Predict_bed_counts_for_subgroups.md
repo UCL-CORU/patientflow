@@ -1064,7 +1064,7 @@ for sex in ['M', 'F']:
 
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_28_1.png)
 
-## Conclusion
+## Summary
 
 In this notebook I have presented examples of how to disaggregate predicted bed counts according to sub-categories of interest.
 

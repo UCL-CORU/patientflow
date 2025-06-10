@@ -893,7 +893,7 @@ prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
 
 ![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_31_0.png)
 
-## Conclusion
+## Summary
 
 Here I have demonstrated the use of `patientflow` to generate bed counts for groups of patients, without using patient snapshots.
 

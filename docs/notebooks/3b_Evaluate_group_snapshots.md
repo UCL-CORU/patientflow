@@ -326,7 +326,7 @@ There appears to be some bias introduded at the aggregation step, that has not b
 
 The Adjusted QQ Plot demonstrates that further work is needed to isolate the reason for this bias.
 
-## Conclusions
+## Summarys
 
 Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, QQ Plots and Adjusted QQ Plots.
 
