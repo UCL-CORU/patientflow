@@ -16,6 +16,8 @@ weighted_arrival_rates : function
     Aggregate weighted arrival rates for specific time intervals.
 unfettered_demand_by_hour : function
     Estimate inpatient demand by hour using historical data and aspirational curves.
+count_yet_to_arrive : function
+    Count patients who arrived after prediction times and were admitted within prediction windows.
 
 Notes
 -----
@@ -510,3 +512,101 @@ def unfettered_demand_by_hour(
         )
 
     return demand_by_hour
+
+
+def count_yet_to_arrive(
+    df: DataFrame,
+    snapshot_dates: List,
+    prediction_times: List,
+    prediction_window_hours: float,
+) -> DataFrame:
+    """Count patients who arrived after prediction times and were admitted within prediction windows.
+
+    This function counts patients who arrived after specified prediction times and were 
+    admitted to a ward within the specified prediction window for each combination of 
+    snapshot date and prediction time.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A DataFrame containing patient data with 'arrival_datetime', 
+        'admitted_to_ward_datetime', and 'patient_id' columns.
+    snapshot_dates : list
+        List of dates (datetime.date objects) to analyze.
+    prediction_times : list
+        List of (hour, minute) tuples representing prediction times.
+    prediction_window_hours : float
+        Length of prediction window in hours after the prediction time.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame with columns:
+        - 'snapshot_date': The date of the snapshot
+        - 'prediction_time': Tuple of (hour, minute) for the prediction time
+        - 'count': Number of unique patients who arrived after prediction time
+                  and were admitted within the prediction window
+
+    Raises
+    ------
+    TypeError
+        If df is not a DataFrame or if required columns are missing.
+    ValueError
+        If prediction_window_hours is not positive.
+
+    Notes
+    -----
+    This function is useful for analyzing historical patterns of patient arrivals
+    and admissions to inform predictive models for emergency department demand.
+    Only patients with non-null admitted_to_ward_datetime are counted.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from datetime import date, time
+    >>> prediction_times = [(12, 0), (15, 30)]
+    >>> snapshot_dates = [date(2023, 1, 1), date(2023, 1, 2)]
+    >>> results = count_yet_to_arrive(df, snapshot_dates, prediction_times, 8.0)
+    """
+    # Input validation
+    if not isinstance(df, DataFrame):
+        raise TypeError("The input 'df' must be a pandas DataFrame.")
+
+    required_columns = ['arrival_datetime', 'admitted_to_ward_datetime', 'patient_id']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise TypeError(f"DataFrame missing required columns: {missing_columns}")
+
+    if not isinstance(prediction_window_hours, (int, float)) or prediction_window_hours <= 0:
+        raise ValueError("prediction_window_hours must be a positive number.")
+
+    # Create an empty list to store results
+    results = []
+    
+    # For each combination of date and time
+    for date_val in snapshot_dates:
+        for hour, minute in prediction_times:
+            # Create the prediction datetime
+            prediction_datetime = pd.Timestamp(datetime.combine(date_val, time(hour=hour, minute=minute)))
+
+            # Calculate the end of the prediction window
+            prediction_window_end = prediction_datetime + pd.Timedelta(hours=prediction_window_hours)
+            
+            # Count patients who arrived after prediction time and were admitted within the window
+            admitted_within_window = df[
+                (df['arrival_datetime'] > prediction_datetime) & 
+                (df['admitted_to_ward_datetime'] <= prediction_window_end) &
+                (df['admitted_to_ward_datetime'].notna())
+            ]['patient_id'].nunique()
+            
+            # Store the result
+            results.append({
+                'snapshot_date': date_val,
+                'prediction_time': (hour, minute),
+                'count': admitted_within_window
+            })
+    
+    # Convert results to a DataFrame
+    results_df = pd.DataFrame(results)
+    
+    return results_df

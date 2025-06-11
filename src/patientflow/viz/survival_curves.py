@@ -6,7 +6,7 @@ time-to-event analysis.
 Functions
 ---------
 plot_admission_time_survival_curve : function
-    Create a survival curve for ward admission times
+    Create single or multiple survival curves for ward admission times
 
 Notes
 -----
@@ -17,9 +17,11 @@ Notes
   against common healthcare targets
 * The curves are created without external survival analysis packages
   for simplicity and transparency
+* Multiple curves can be plotted on the same figure for comparison
 
 Examples
 --------
+Single survival curve:
 >>> import pandas as pd
 >>> from patientflow.viz.survival_curves import plot_admission_time_survival_curve
 >>> df = pd.DataFrame({
@@ -27,6 +29,18 @@ Examples
 ...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-01 12:00', '2023-01-01 14:00'])
 ... })
 >>> plot_admission_time_survival_curve(df, title='Admission Times')
+
+Multiple survival curves:
+>>> df1 = pd.DataFrame({
+...     'arrival_datetime': pd.to_datetime(['2023-01-01 10:00', '2023-01-01 11:00']),
+...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-01 12:00', '2023-01-01 14:00'])
+... })
+>>> df2 = pd.DataFrame({
+...     'arrival_datetime': pd.to_datetime(['2023-01-02 10:00', '2023-01-02 11:00']),
+...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-02 11:30', '2023-01-02 13:00'])
+... })
+>>> plot_admission_time_survival_curve([df1, df2], labels=['Week 1', 'Week 2'], 
+...                                   title='Admission Times Comparison')
 """
 
 import numpy as np
@@ -43,6 +57,7 @@ def plot_admission_time_survival_curve(
     xlabel="Elapsed time from start",
     ylabel="Proportion not yet experienced event",
     annotation_string="{:.1%} experienced event\nwithin {:.0f} hours",
+    labels=None,
     media_file_path=None,
     return_figure=False,
     return_df=False,
@@ -50,12 +65,14 @@ def plot_admission_time_survival_curve(
     """Create a survival curve for time-to-event analysis.
 
     This function creates a survival curve showing the proportion of patients
-    who have not yet experienced an event over time.
+    who have not yet experienced an event over time. Can plot single or multiple
+    survival curves on the same plot.
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        DataFrame containing patient visit data
+    df : pandas.DataFrame or list of pandas.DataFrame
+        DataFrame(s) containing patient visit data. If a list is provided,
+        multiple survival curves will be plotted on the same figure.
     start_time_col : str, default="arrival_datetime"
         Name of the column containing the start time (e.g., arrival time)
     end_time_col : str, default="admitted_to_ward_datetime"
@@ -70,19 +87,25 @@ def plot_admission_time_survival_curve(
         Label for the y-axis
     annotation_string : str, default="{:.1%} experienced event\nwithin {:.0f} hours"
         String template for the text annotation. Use {:.1%} for the proportion and {:.0f} for the hours.
+        Annotations are only shown for the first curve when plotting multiple curves.
+    labels : list of str, optional
+        Labels for each survival curve when plotting multiple curves. 
+        If None and multiple dataframes are provided, default labels will be used.
+        Ignored when plotting a single curve.
     media_file_path : pathlib.Path, optional
         Path to save the plot. If None, the plot is not saved.
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it
     return_df : bool, default=False
-        If True, returns a DataFrame containing the survival curve data
+        If True, returns a DataFrame containing the survival curve data.
+        For multiple curves, returns a list of DataFrames.
 
     Returns
     -------
-    matplotlib.figure.Figure or pandas.DataFrame or tuple or None
+    matplotlib.figure.Figure or pandas.DataFrame or list or tuple or None
         - If return_figure is True and return_df is False: returns the figure object
-        - If return_figure is False and return_df is True: returns the DataFrame with survival curve data
-        - If both return_figure and return_df are True: returns a tuple of (figure, DataFrame)
+        - If return_figure is False and return_df is True: returns the DataFrame(s) with survival curve data
+        - If both return_figure and return_df are True: returns a tuple of (figure, DataFrame(s))
         - If both are False: returns None
 
     Notes
@@ -91,49 +114,124 @@ def plot_admission_time_survival_curve(
     the event at each time point. Vertical lines are drawn at each target hour
     to indicate the target times, with the corresponding proportion of patients
     who experienced the event within these timeframes.
+    
+    When plotting multiple curves, different colors are automatically assigned
+    and a legend is displayed. Target line annotations are only shown for the
+    first curve to avoid visual clutter.
     """
-    # Calculate the wait time in hours
-    df["wait_time_hours"] = (
-        df[end_time_col] - df[start_time_col]
-    ).dt.total_seconds() / 3600
-
-    # Drop any rows with missing wait times
-    df_clean = df.dropna(subset=["wait_time_hours"]).copy()
-
-    # Sort the data by wait time
-    df_clean = df_clean.sort_values("wait_time_hours")
-
-    # Calculate the number of patients
-    n_patients = len(df_clean)
-
-    # Calculate the survival function manually
-    # For each time point, calculate proportion of patients who are still waiting
-    unique_times = np.sort(df_clean["wait_time_hours"].unique())
-    survival_prob = []
-
-    for t in unique_times:
-        # Number of patients who experienced the event after this time point
-        n_event_after = sum(df_clean["wait_time_hours"] > t)
-        # Proportion of patients still waiting
-        survival_prob.append(n_event_after / n_patients)
-
-    # Add zero hours wait time (everyone is waiting at time 0)
-    unique_times = np.insert(unique_times, 0, 0)
-    survival_prob = np.insert(survival_prob, 0, 1.0)
-
-    # Create DataFrame with survival curve data if requested
-    if return_df:
-        survival_df = pd.DataFrame({
-            'time_hours': unique_times,
-            'survival_probability': survival_prob,
-            'event_probability': 1 - survival_prob
-        })
-
+    # Handle single dataframe vs list of dataframes
+    if isinstance(df, pd.DataFrame):
+        dataframes = [df]
+        is_single_curve = True
+    else:
+        dataframes = df
+        is_single_curve = False
+    
+    # Handle labels
+    if labels is None:
+        if is_single_curve:
+            curve_labels = [None]
+        else:
+            curve_labels = [f"Curve {i+1}" for i in range(len(dataframes))]
+    else:
+        curve_labels = labels
+    
+    # Validate inputs
+    if len(dataframes) != len(curve_labels):
+        raise ValueError("Number of dataframes must match number of labels")
+    
     # Create the plot
     fig = plt.figure(figsize=(10, 6))
-    plt.step(
-        unique_times, survival_prob, where="post"
-    )
+    
+    # Define colors for multiple curves
+    colors = plt.cm.Set1(np.linspace(0, 1, len(dataframes)))
+    
+    survival_dfs = []
+    
+    # Process each dataframe
+    for idx, (current_df, label) in enumerate(zip(dataframes, curve_labels)):
+        # Calculate the wait time in hours
+        current_df = current_df.copy()
+        current_df["wait_time_hours"] = (
+            current_df[end_time_col] - current_df[start_time_col]
+        ).dt.total_seconds() / 3600
+
+        # Drop any rows with missing wait times
+        df_clean = current_df.dropna(subset=["wait_time_hours"]).copy()
+
+        # Sort the data by wait time
+        df_clean = df_clean.sort_values("wait_time_hours")
+
+        # Calculate the number of patients
+        n_patients = len(df_clean)
+
+        # Calculate the survival function manually
+        # For each time point, calculate proportion of patients who are still waiting
+        unique_times = np.sort(df_clean["wait_time_hours"].unique())
+        survival_prob = []
+
+        for t in unique_times:
+            # Number of patients who experienced the event after this time point
+            n_event_after = sum(df_clean["wait_time_hours"] > t)
+            # Proportion of patients still waiting
+            survival_prob.append(n_event_after / n_patients)
+
+        # Add zero hours wait time (everyone is waiting at time 0)
+        unique_times = np.insert(unique_times, 0, 0)
+        survival_prob = np.insert(survival_prob, 0, 1.0)
+
+        # Create DataFrame with survival curve data if requested
+        if return_df:
+            survival_df = pd.DataFrame({
+                'time_hours': unique_times,
+                'survival_probability': survival_prob,
+                'event_probability': 1 - survival_prob
+            })
+            survival_dfs.append(survival_df)
+
+        # Plot the survival curve
+        color = colors[idx] if not is_single_curve else None
+        plt.step(
+            unique_times, survival_prob, where="post", 
+            color=color, label=label if not is_single_curve else None
+        )
+
+        # Plot target lines and annotations only for the first curve (or single curve)
+        if idx == 0:
+            # Plot target lines for each target hour
+            for target_hour in target_hours:
+                # Find the survival probability at target hours
+                closest_time_idx = np.abs(unique_times - target_hour).argmin()
+                if closest_time_idx < len(survival_prob):
+                    survival_at_target = survival_prob[closest_time_idx]
+                    event_at_target = 1 - survival_at_target
+
+                    # Draw a vertical line from x-axis to the curve at target hours
+                    plt.plot(
+                        [target_hour, target_hour],
+                        [0, survival_at_target],
+                        color='grey',
+                        linestyle="--",
+                        linewidth=2,
+                    )
+
+                    # Draw a horizontal line from the curve to the y-axis at the survival probability level
+                    plt.plot(
+                        [0, target_hour],
+                        [survival_at_target, survival_at_target],
+                        color='grey',
+                        linestyle="--",
+                        linewidth=2,
+                    )
+
+                    # Add text annotation to the plot (only for single curve or first curve)
+                    if is_single_curve or len(dataframes) == 1:
+                        plt.text(
+                            target_hour + 0.5,
+                            survival_at_target,
+                            annotation_string.format(event_at_target, target_hour),
+                            bbox=dict(facecolor="white", alpha=0.8),
+                        )
 
     # Configure the plot
     plt.title(title)
@@ -153,52 +251,25 @@ def plot_admission_time_survival_curve(
     # Hide the top and right spines
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-
-    # Plot target lines for each target hour
-    for target_hour in target_hours:
-        # Find the survival probability at target hours
-        closest_time_idx = np.abs(unique_times - target_hour).argmin()
-        if closest_time_idx < len(survival_prob):
-            survival_at_target = survival_prob[closest_time_idx]
-            event_at_target = 1 - survival_at_target
-
-            # Draw a vertical line from x-axis to the curve at target hours
-            plt.plot(
-                [target_hour, target_hour],
-                [0, survival_at_target],
-                color='grey',
-                linestyle="--",
-                linewidth=2,
-            )
-
-            # Draw a horizontal line from the curve to the y-axis at the survival probability level
-            plt.plot(
-                [0, target_hour],
-                [survival_at_target, survival_at_target],
-                color='grey',
-                linestyle="--",
-                linewidth=2,
-            )
-
-            # Add text annotation to the plot
-            plt.text(
-                target_hour + 0.5,
-                survival_at_target,
-                annotation_string.format(event_at_target, target_hour),
-                bbox=dict(facecolor="white", alpha=0.8),
-            )
+    
+    # Add legend for multiple curves
+    if not is_single_curve:
+        plt.legend()
 
     plt.tight_layout()
 
     if media_file_path:
         plt.savefig(media_file_path / "survival_curve.png", dpi=300)
 
+    # Handle return values
+    return_data = survival_dfs[0] if (return_df and is_single_curve) else survival_dfs if return_df else None
+    
     if return_figure and return_df:
-        return fig, survival_df
+        return fig, return_data
     elif return_figure:
         return fig
     elif return_df:
-        return survival_df
+        return return_data
     else:
         plt.show()
         plt.close()

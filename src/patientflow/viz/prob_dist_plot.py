@@ -58,7 +58,7 @@ def calculate_probability_thresholds(
 def prob_dist_plot(
     prob_dist_data,
     title,
-    directory_path=None,
+    media_file_path=None,
     figsize=(6, 3),
     include_titles=False,
     truncate_at_beds=None,
@@ -291,8 +291,8 @@ def prob_dist_plot(
     plt.tight_layout()
 
     # Save or display the figure
-    if directory_path:
-        plt.savefig(directory_path / media_file_name.replace(" ", "_"), dpi=300)
+    if media_file_path:
+        plt.savefig(media_file_path / media_file_name.replace(" ", "_"), dpi=300)
 
     if return_figure:
         return fig
