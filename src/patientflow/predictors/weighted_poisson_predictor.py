@@ -416,8 +416,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window: int,
-        yta_time_interval: int,
+        prediction_window,
+        yta_time_interval,
         prediction_times: List[float],
         num_days: int,
         epsilon: float = 10**-7,
@@ -429,10 +429,12 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ----------
         train_df : pandas.DataFrame
             The training dataset with historical admission data.
-        prediction_window : int
-            The prediction window in minutes.
-        yta_time_interval : int
-            The interval in minutes for splitting the prediction window.
+        prediction_window : int or timedelta
+            The prediction window in minutes. If timedelta, will be converted to minutes.
+            If int, assumed to be in minutes.
+        yta_time_interval : int or timedelta
+            The interval in minutes for splitting the prediction window. If timedelta, will be converted to minutes.
+            If int, assumed to be in minutes.
         prediction_times : list
             Times of day at which predictions are made, in hours.
         num_days : int
@@ -453,15 +455,49 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ValueError
             If prediction_window/yta_time_interval is not greater than 1.
         """
-        # Add error checking at the start of fit
-        if int(prediction_window / yta_time_interval) == 0:
+        # Handle both timedelta and numeric inputs for prediction_window
+        if isinstance(prediction_window, timedelta):
+            prediction_window_minutes = prediction_window.total_seconds() / 60
+        elif isinstance(prediction_window, (int, float)):
+            prediction_window_minutes = float(prediction_window)
+        else:
+            raise TypeError("prediction_window must be a timedelta object or numeric value (int or float)")
+        
+        # Handle both timedelta and numeric inputs for yta_time_interval
+        if isinstance(yta_time_interval, timedelta):
+            yta_time_interval_minutes = yta_time_interval.total_seconds() / 60
+        elif isinstance(yta_time_interval, (int, float)):
+            yta_time_interval_minutes = float(yta_time_interval)
+        else:
+            raise TypeError("yta_time_interval must be a timedelta object or numeric value (int or float)")
+        
+        # Validate prediction_window to ensure it represents a reasonable time value in minutes
+        if prediction_window_minutes <= 0:
+            raise ValueError("prediction_window must be positive (cannot have zero or negative prediction window)")
+        
+        if not np.isfinite(prediction_window_minutes):
+            raise ValueError("prediction_window must be a finite time duration")
+
+        # Validate yta_time_interval to ensure it represents a reasonable time value in minutes
+        if yta_time_interval_minutes <= 0:
+            raise ValueError("yta_time_interval must be positive (cannot have zero or negative time interval)")
+        
+        if yta_time_interval_minutes > 4 * 60:  # 4 hours in minutes
+            warnings.warn("yta_time_interval appears to be longer than 4 hours. "
+                         "Check that the units of yta_time_interval are correct")
+        
+        if not np.isfinite(yta_time_interval_minutes):
+            raise ValueError("yta_time_interval must be a finite time duration")
+
+        # Add error checking for the ratio
+        if int(prediction_window_minutes / yta_time_interval_minutes) == 0:
             raise ValueError(
-                f"prediction_window ({prediction_window}) divided by yta_time_interval ({yta_time_interval}) must be greater than 1 to generate meaningful predictions"
+                f"prediction_window ({prediction_window_minutes}) divided by yta_time_interval ({yta_time_interval_minutes}) must be greater than 1 to generate meaningful predictions"
             )
 
         # Store prediction_window, yta_time_interval, and any other parameters as instance variables
-        self.prediction_window = prediction_window
-        self.yta_time_interval = yta_time_interval
+        self.prediction_window = prediction_window_minutes
+        self.yta_time_interval = yta_time_interval_minutes
         self.epsilon = epsilon
         self.prediction_times = [
             tuple(x)
@@ -480,8 +516,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),
-                    prediction_window,
-                    yta_time_interval,
+                    prediction_window_minutes,
+                    yta_time_interval_minutes,
                     prediction_times,
                     num_days,
                 )
@@ -489,8 +525,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             # If there are no filters, store the parameters with a generic key of 'unfiltered'
             self.weights["unfiltered"] = self._calculate_parameters(
                 train_df,
-                prediction_window,
-                yta_time_interval,
+                prediction_window_minutes,
+                yta_time_interval_minutes,
                 prediction_times,
                 num_days,
             )
@@ -500,10 +536,10 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 f"Weighted Poisson Predictor trained for these times: {prediction_times}"
             )
             self.logger.info(
-                f"using prediction window of {prediction_window} minutes after the time of prediction"
+                f"using prediction window of {prediction_window_minutes} minutes after the time of prediction"
             )
             self.logger.info(
-                f"and time interval of {yta_time_interval} minutes within the prediction window."
+                f"and time interval of {yta_time_interval_minutes} minutes within the prediction window."
             )
             self.logger.info(f"The error value for prediction will be {epsilon}")
             self.logger.info(

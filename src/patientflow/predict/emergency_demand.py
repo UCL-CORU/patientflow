@@ -41,7 +41,7 @@ Examples
 ... )
 """
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
@@ -59,6 +59,7 @@ from patientflow.aggregate import (
 import warnings
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.single_input_predictor import SingleInputPredictor
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
 from patientflow.model_artifacts import TrainedClassifier
 
@@ -257,7 +258,7 @@ def get_specialty_probs(
 
 
 def create_predictions(
-    models: Tuple[TrainedClassifier, SequencePredictor, WeightedPoissonPredictor],
+    models: Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], WeightedPoissonPredictor],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
@@ -272,10 +273,10 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, SequencePredictor, WeightedPoissonPredictor]
+    models : Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], WeightedPoissonPredictor]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
-        - spec_model: SequencePredictor for specialty predictions
+        - spec_model: SequencePredictor or SingleInputPredictor for specialty predictions
         - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
@@ -326,8 +327,8 @@ def create_predictions(
 
     if not isinstance(classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier")
-    if not isinstance(spec_model, SequencePredictor):
-        raise TypeError("Second model must be of type SequencePredictor")
+    if not isinstance(spec_model, (SequencePredictor, SingleInputPredictor)):
+        raise TypeError("Second model must be of type SequencePredictor or SingleInputPredictor")
     if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
         raise TypeError("Third model must be of type WeightedPoissonPredictor")
 

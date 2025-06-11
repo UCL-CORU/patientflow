@@ -28,7 +28,8 @@ get_survival_probability : function
 
 import numpy as np
 import pandas as pd
-
+from datetime import timedelta
+import warnings
 
 def growth_curve(x, a, gamma):
     """
@@ -165,10 +166,12 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
 
     Parameters
     ----------
-    elapsed_los_td_hrs : float
-        The elapsed time since the patient arrived at the ED.
-    prediction_window_hrs : float
+    elapsed_los_td_hrs : timedelta or float
+        The elapsed time since the patient arrived at the ED. If timedelta, will be converted to hours.
+        If float, assumed to be in hours.
+    prediction_window_hrs : timedelta or float
         The duration of the prediction window after the point of prediction, for which the probability is calculated.
+        If timedelta, will be converted to hours. If float, assumed to be in hours.
     x1 : float
         The time target for the first key point on the curve.
     y1 : float
@@ -191,17 +194,60 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
     -------
     Calculate the probability that a patient, who has already been in the ED for 3 hours, will be admitted in the next 2 hours. The ED targets that 76% of patients are admitted or discharged within 4 hours, and 99% within 12 hours.
 
-    >>> calculate_probability(3, 2, 4, 0.76, 12, 0.99)
+    >>> from datetime import timedelta
+    >>> calculate_probability(timedelta(hours=3), timedelta(hours=2), 4, 0.76, 12, 0.99)
+    >>> # or still accept float for backward compatibility
+    >>> calculate_probability(3.0, 2.0, 4, 0.76, 12, 0.99)
+    >>> # or mix timedelta and float
+    >>> calculate_probability(timedelta(hours=3), 2.0, 4, 0.76, 12, 0.99)
 
     """
+    # Handle both timedelta and float inputs for elapsed_los_td_hrs
+    if isinstance(elapsed_los_td_hrs, timedelta):
+        elapsed_hours = elapsed_los_td_hrs.total_seconds() / 3600
+    elif isinstance(elapsed_los_td_hrs, (int, float)):
+        elapsed_hours = float(elapsed_los_td_hrs)
+    else:
+        raise TypeError("elapsed_los_td_hrs must be a timedelta object or numeric value (int or float)")
+    
+    # Handle both timedelta and float inputs for prediction_window_hrs
+    if isinstance(prediction_window_hrs, timedelta):
+        prediction_window_hours = prediction_window_hrs.total_seconds() / 3600
+    elif isinstance(prediction_window_hrs, (int, float)):
+        prediction_window_hours = float(prediction_window_hrs)
+    else:
+        raise TypeError("prediction_window_hrs must be a timedelta object or numeric value (int or float)")
+    
+    # Validate elapsed time to ensure it represents a reasonable time value in hours
+    if elapsed_hours < 0:
+        raise ValueError("elapsed_los_td_hrs must be non-negative (cannot have negative elapsed time)")
+    
+    if elapsed_hours > 168:  # 168 hours = 1 week
+        warnings.warn("elapsed_los_td_hrs appears to be longer than 168 hours (1 week). "
+                     "Check that the units of elapsed_los_td_hrs are correct")
+    
+    if not np.isfinite(elapsed_hours):
+        raise ValueError("elapsed_los_td_hrs must be a finite time duration")
+
+    # Validate prediction window to ensure it represents a reasonable time value in hours
+    if prediction_window_hours < 0:
+        raise ValueError("prediction_window_hrs must be non-negative (cannot have negative prediction window)")
+    
+    if prediction_window_hours > 72:  # 72 hours = 3 days
+        warnings.warn("prediction_window_hrs appears to be longer than 72 hours (3 days). "
+                     "Check that the units of prediction_window_hrs are correct")
+    
+    if not np.isfinite(prediction_window_hours):
+        raise ValueError("prediction_window_hrs must be a finite time duration")
+
     # probability of still being in the ED now (a function of elapsed time since arrival)
     prob_admission_prior_to_now = get_y_from_aspirational_curve(
-        elapsed_los_td_hrs, x1, y1, x2, y2
+        elapsed_hours, x1, y1, x2, y2
     )
 
     # prob admission when adding the prediction window added to elapsed time since arrival
     prob_admission_by_end_of_window = get_y_from_aspirational_curve(
-        elapsed_los_td_hrs + prediction_window_hrs, x1, y1, x2, y2
+        elapsed_hours + prediction_window_hours, x1, y1, x2, y2
     )
 
     # Direct return for edge cases where `prob_admission_prior_to_now` reaches 1.0
