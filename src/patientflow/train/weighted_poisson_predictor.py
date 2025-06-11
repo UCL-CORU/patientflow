@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Union
 import pandas as pd
 from pandas import DataFrame
+from datetime import timedelta
 
 from patientflow.prepare import create_special_category_objects
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
@@ -60,8 +61,8 @@ def create_yta_filters(df):
 def train_weighted_poisson_predictor(
     train_visits: DataFrame,
     train_yta: DataFrame,
-    prediction_window: int,
-    yta_time_interval: int,
+    prediction_window: Union[int, timedelta],
+    yta_time_interval: Union[int, timedelta],
     prediction_times: List[float],
     num_days: int,
     epsilon: float = 10e-7,
@@ -71,8 +72,8 @@ def train_weighted_poisson_predictor(
     Args:
         train_visits: Visits dataset (used for identifying special categories)
         train_yta: Training data for yet-to-arrive predictions
-        prediction_window: Time window for predictions
-        yta_time_interval: Time interval for predictions
+        prediction_window: Time window for predictions (int in minutes or timedelta)
+        yta_time_interval: Time interval for predictions (int in minutes or timedelta)
         prediction_times: List of prediction times
         epsilon: Epsilon parameter for model
         num_days: Number of days to consider

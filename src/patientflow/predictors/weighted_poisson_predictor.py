@@ -372,10 +372,10 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ----------
         df : pandas.DataFrame
             The data frame to process.
-        prediction_window : int
-            The total prediction window for prediction.
-        yta_time_interval : int
-            The interval for splitting the prediction window.
+        prediction_window : int, float, or timedelta
+            The total prediction window for prediction. If timedelta, operations will convert to minutes as needed.
+        yta_time_interval : int, float, or timedelta
+            The interval for splitting the prediction window. If timedelta, operations will convert to minutes as needed.
         prediction_times : list
             Times of day at which predictions are made.
         num_days : int
@@ -386,7 +386,18 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         dict
             Calculated arrival_rates parameters organized by time of day.
         """
-        Ntimes = int(prediction_window / yta_time_interval)
+        
+        # Calculate Ntimes - Python handles the division naturally
+        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
+            Ntimes = int(prediction_window / yta_time_interval)
+        elif isinstance(prediction_window, timedelta):
+            Ntimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
+        elif isinstance(yta_time_interval, timedelta):
+            Ntimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
+        else:
+            Ntimes = int(prediction_window / yta_time_interval)
+        
+        # Pass original type to time_varying_arrival_rates (it handles both int and timedelta)
         arrival_rates_dict = time_varying_arrival_rates(
             df, yta_time_interval, num_days, verbose=self.verbose
         )
@@ -402,7 +413,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 arrival_rates_dict[
                     (
                         datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
-                        + i * timedelta(minutes=yta_time_interval)
+                        + i * (yta_time_interval if isinstance(yta_time_interval, timedelta) 
+                               else timedelta(minutes=yta_time_interval))
                     ).time()
                 ]
                 for i in range(Ntimes)
@@ -455,49 +467,50 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ValueError
             If prediction_window/yta_time_interval is not greater than 1.
         """
-        # Handle both timedelta and numeric inputs for prediction_window
+
+        # Validate inputs - no conversions needed
         if isinstance(prediction_window, timedelta):
-            prediction_window_minutes = prediction_window.total_seconds() / 60
+            if prediction_window.total_seconds() <= 0:
+                raise ValueError("prediction_window must be positive")
         elif isinstance(prediction_window, (int, float)):
-            prediction_window_minutes = float(prediction_window)
+            if prediction_window <= 0:
+                raise ValueError("prediction_window must be positive")
+            if not np.isfinite(prediction_window):
+                raise ValueError("prediction_window must be finite")
         else:
-            raise TypeError("prediction_window must be a timedelta object or numeric value (int or float)")
+            raise TypeError("prediction_window must be a timedelta object or numeric value")
         
-        # Handle both timedelta and numeric inputs for yta_time_interval
         if isinstance(yta_time_interval, timedelta):
-            yta_time_interval_minutes = yta_time_interval.total_seconds() / 60
+            if yta_time_interval.total_seconds() <= 0:
+                raise ValueError("yta_time_interval must be positive")
+            if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
+                warnings.warn("yta_time_interval appears to be longer than 4 hours")
         elif isinstance(yta_time_interval, (int, float)):
-            yta_time_interval_minutes = float(yta_time_interval)
+            if yta_time_interval <= 0:
+                raise ValueError("yta_time_interval must be positive")
+            if yta_time_interval > 4 * 60:  # 4 hours in minutes
+                warnings.warn("yta_time_interval appears to be longer than 4 hours")
+            if not np.isfinite(yta_time_interval):
+                raise ValueError("yta_time_interval must be finite")
         else:
-            raise TypeError("yta_time_interval must be a timedelta object or numeric value (int or float)")
-        
-        # Validate prediction_window to ensure it represents a reasonable time value in minutes
-        if prediction_window_minutes <= 0:
-            raise ValueError("prediction_window must be positive (cannot have zero or negative prediction window)")
-        
-        if not np.isfinite(prediction_window_minutes):
-            raise ValueError("prediction_window must be a finite time duration")
+            raise TypeError("yta_time_interval must be a timedelta object or numeric value")
 
-        # Validate yta_time_interval to ensure it represents a reasonable time value in minutes
-        if yta_time_interval_minutes <= 0:
-            raise ValueError("yta_time_interval must be positive (cannot have zero or negative time interval)")
-        
-        if yta_time_interval_minutes > 4 * 60:  # 4 hours in minutes
-            warnings.warn("yta_time_interval appears to be longer than 4 hours. "
-                         "Check that the units of yta_time_interval are correct")
-        
-        if not np.isfinite(yta_time_interval_minutes):
-            raise ValueError("yta_time_interval must be a finite time duration")
+        # Validate the ratio makes sense (convert only for this check)
+        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
+            ratio = prediction_window / yta_time_interval
+        elif isinstance(prediction_window, timedelta):
+            ratio = prediction_window.total_seconds() / 60 / yta_time_interval
+        elif isinstance(yta_time_interval, timedelta):
+            ratio = prediction_window / (yta_time_interval.total_seconds() / 60)
+        else:
+            ratio = prediction_window / yta_time_interval
+            
+        if int(ratio) == 0:
+            raise ValueError("prediction_window must be significantly larger than yta_time_interval")
 
-        # Add error checking for the ratio
-        if int(prediction_window_minutes / yta_time_interval_minutes) == 0:
-            raise ValueError(
-                f"prediction_window ({prediction_window_minutes}) divided by yta_time_interval ({yta_time_interval_minutes}) must be greater than 1 to generate meaningful predictions"
-            )
-
-        # Store prediction_window, yta_time_interval, and any other parameters as instance variables
-        self.prediction_window = prediction_window_minutes
-        self.yta_time_interval = yta_time_interval_minutes
+        # Store original types - no conversion!
+        self.prediction_window = prediction_window
+        self.yta_time_interval = yta_time_interval
         self.epsilon = epsilon
         self.prediction_times = [
             tuple(x)
@@ -516,8 +529,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),
-                    prediction_window_minutes,
-                    yta_time_interval_minutes,
+                    prediction_window,
+                    yta_time_interval,
                     prediction_times,
                     num_days,
                 )
@@ -525,8 +538,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             # If there are no filters, store the parameters with a generic key of 'unfiltered'
             self.weights["unfiltered"] = self._calculate_parameters(
                 train_df,
-                prediction_window_minutes,
-                yta_time_interval_minutes,
+                prediction_window,
+                yta_time_interval,
                 prediction_times,
                 num_days,
             )
@@ -536,10 +549,10 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 f"Weighted Poisson Predictor trained for these times: {prediction_times}"
             )
             self.logger.info(
-                f"using prediction window of {prediction_window_minutes} minutes after the time of prediction"
+                f"using prediction window of {prediction_window} after the time of prediction"
             )
             self.logger.info(
-                f"and time interval of {yta_time_interval_minutes} minutes within the prediction window."
+                f"and time interval of {yta_time_interval} within the prediction window."
             )
             self.logger.info(f"The error value for prediction will be {epsilon}")
             self.logger.info(
@@ -602,15 +615,34 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         """
         predictions = {}
 
-        NTimes = int(self.prediction_window / self.yta_time_interval)
-        # Calculate theta, probability of admission in prediction window
+        # Calculate Ntimes 
+        if isinstance(self.prediction_window, timedelta) and isinstance(self.yta_time_interval, timedelta):
+            NTimes = int(self.prediction_window / self.yta_time_interval)
+        elif isinstance(self.prediction_window, timedelta):
+            NTimes = int(self.prediction_window.total_seconds() / 60 / self.yta_time_interval)
+        elif isinstance(self.yta_time_interval, timedelta):
+            NTimes = int(self.prediction_window / (self.yta_time_interval.total_seconds() / 60))
+        else:
+            NTimes = int(self.prediction_window / self.yta_time_interval)
 
-        # for each time interval, calculate time remaining before end of window
-        time_remaining_before_end_of_window = self.prediction_window / 60 - np.arange(
-            0, self.prediction_window / 60, self.yta_time_interval / 60
+        # Convert to hours only for numpy operations (which require numeric types)
+        prediction_window_hours = (
+            self.prediction_window.total_seconds() / 3600
+            if isinstance(self.prediction_window, timedelta)
+            else self.prediction_window / 60
+        )
+        yta_time_interval_hours = (
+            self.yta_time_interval.total_seconds() / 3600
+            if isinstance(self.yta_time_interval, timedelta)
+            else self.yta_time_interval / 60
         )
 
-        # probability of admission in that time
+        # Calculate theta, probability of admission in prediction window
+        # for each time interval, calculate time remaining before end of window
+        time_remaining_before_end_of_window = prediction_window_hours - np.arange(
+            0, prediction_window_hours, yta_time_interval_hours
+        )
+
         theta = get_y_from_aspirational_curve(
             time_remaining_before_end_of_window, x1, y1, x2, y2
         )

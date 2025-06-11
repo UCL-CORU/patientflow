@@ -52,7 +52,7 @@ import pandas as pd
 from datetime import datetime, time, timedelta
 from pandas import DataFrame
 from collections import OrderedDict
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 from patientflow.calculate.admission_in_prediction_window import (
     get_y_from_aspirational_curve,
 )
@@ -60,7 +60,7 @@ from patientflow.calculate.admission_in_prediction_window import (
 
 def time_varying_arrival_rates(
     df: DataFrame,
-    yta_time_interval: int,
+    yta_time_interval: Union[int, timedelta],
     num_days: Optional[int] = None,
     verbose: bool = False,
 ) -> OrderedDict[time, float]:
@@ -76,8 +76,9 @@ def time_varying_arrival_rates(
     df : pandas.DataFrame
         A DataFrame indexed by datetime, representing the data for which arrival rates
         are to be calculated. The index of the DataFrame should be of datetime type.
-    yta_time_interval : int
-        The time interval, in minutes, for which the arrival rates are to be calculated.
+    yta_time_interval : int or timedelta
+        The time interval for which the arrival rates are to be calculated.
+        If int, assumed to be in minutes. If timedelta, will be converted to minutes.
         For example, if `yta_time_interval=60`, the function will calculate hourly
         arrival rates.
     num_days : int, optional
@@ -95,7 +96,7 @@ def time_varying_arrival_rates(
     Raises
     ------
     TypeError
-        If 'df' is not a pandas DataFrame, 'yta_time_interval' is not an integer,
+        If 'df' is not a pandas DataFrame, 'yta_time_interval' is not an integer or timedelta,
         or the DataFrame index is not a DatetimeIndex.
     ValueError
         If 'yta_time_interval' is less than or equal to 0 or does not divide evenly
@@ -134,18 +135,26 @@ def time_varying_arrival_rates(
     # Input validation
     if not isinstance(df, DataFrame):
         raise TypeError("The input 'df' must be a pandas DataFrame.")
-    if not isinstance(yta_time_interval, int):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer.")
+    if not isinstance(yta_time_interval, (int, timedelta)):
+        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("The DataFrame index must be a pandas DatetimeIndex.")
 
+    # Handle both timedelta and numeric inputs for yta_time_interval
+    if isinstance(yta_time_interval, timedelta):
+        yta_time_interval_minutes = int(yta_time_interval.total_seconds() / 60)
+    elif isinstance(yta_time_interval, int):
+        yta_time_interval_minutes = yta_time_interval
+    else:
+        raise TypeError("yta_time_interval must be a timedelta object or integer")
+
     # Validate time interval
     minutes_in_day = 24 * 60
-    if yta_time_interval <= 0:
+    if yta_time_interval_minutes <= 0:
         raise ValueError("The parameter 'yta_time_interval' must be positive.")
-    if minutes_in_day % yta_time_interval != 0:
+    if minutes_in_day % yta_time_interval_minutes != 0:
         raise ValueError(
-            f"Time interval ({yta_time_interval} minutes) must divide evenly into 24 hours."
+            f"Time interval ({yta_time_interval_minutes} minutes) must divide evenly into 24 hours."
         )
 
     if num_days is None:
@@ -173,7 +182,7 @@ def time_varying_arrival_rates(
     # Iterate over each interval in a single day to calculate the arrival rate
     while _start_datetime != _stop_datetime:
         _start_time = _start_datetime.time()
-        _end_time = (_start_datetime + timedelta(minutes=yta_time_interval)).time()
+        _end_time = (_start_datetime + timedelta(minutes=yta_time_interval_minutes)).time()
 
         # Filter the dataframe for entries within the current time interval
         _df = df.between_time(_start_time, _end_time, inclusive="left")
@@ -182,7 +191,7 @@ def time_varying_arrival_rates(
         arrival_rates_dict[_start_time] = _df.shape[0] / num_days
 
         # Move to the next interval
-        _start_datetime = _start_datetime + timedelta(minutes=yta_time_interval)
+        _start_datetime = _start_datetime + timedelta(minutes=yta_time_interval_minutes)
 
     return arrival_rates_dict
 
@@ -191,7 +200,7 @@ def time_varying_arrival_rates_lagged(
     df: DataFrame,
     lagged_by: int,
     num_days: Optional[int] = None,
-    yta_time_interval: int = 60,
+    yta_time_interval: Union[int, timedelta] = 60,
 ) -> OrderedDict[time, float]:
     """Calculate lagged time-varying arrival rates for a dataset indexed by datetime.
 
@@ -208,8 +217,9 @@ def time_varying_arrival_rates_lagged(
     num_days : int, optional
         The number of days that the DataFrame spans. If not provided, the number of
         days is calculated from the date of the min and max arrival datetimes.
-    yta_time_interval : int, optional
-        The time interval in minutes for which the arrival rates are to be calculated.
+    yta_time_interval : int or timedelta, optional
+        The time interval for which the arrival rates are to be calculated.
+        If int, assumed to be in minutes. If timedelta, will be converted to minutes.
         Defaults to 60.
 
     Returns
@@ -221,7 +231,7 @@ def time_varying_arrival_rates_lagged(
     Raises
     ------
     TypeError
-        If df is not a DataFrame, lagged_by or yta_time_interval are not integers,
+        If df is not a DataFrame, lagged_by is not an integer, yta_time_interval is not an integer or timedelta,
         or DataFrame index is not DatetimeIndex.
     ValueError
         If lagged_by is negative or yta_time_interval is not positive.
@@ -238,8 +248,8 @@ def time_varying_arrival_rates_lagged(
     if not isinstance(lagged_by, int):
         raise TypeError("The parameter 'lagged_by' must be an integer.")
 
-    if not isinstance(yta_time_interval, int):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer.")
+    if not isinstance(yta_time_interval, (int, timedelta)):
+        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
 
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("The DataFrame index must be a pandas DatetimeIndex.")
@@ -247,7 +257,15 @@ def time_varying_arrival_rates_lagged(
     if lagged_by < 0:
         raise ValueError("The parameter 'lagged_by' must be non-negative.")
 
-    if yta_time_interval <= 0:
+    # Handle both timedelta and numeric inputs for yta_time_interval
+    if isinstance(yta_time_interval, timedelta):
+        yta_time_interval_minutes = int(yta_time_interval.total_seconds() / 60)
+    elif isinstance(yta_time_interval, int):
+        yta_time_interval_minutes = yta_time_interval
+    else:
+        raise TypeError("yta_time_interval must be a timedelta object or integer")
+
+    if yta_time_interval_minutes <= 0:
         raise ValueError("The parameter 'yta_time_interval' must be positive.")
 
     # Calculate base arrival rates
@@ -388,7 +406,7 @@ def unfettered_demand_by_hour(
     y1: float,
     x2: float,
     y2: float,
-    yta_time_interval: int = 60,
+    yta_time_interval: Union[int, timedelta] = 60,
     max_hours_since_arrival: int = 10,
     num_days: Optional[int] = None,
 ) -> OrderedDict[time, float]:
@@ -411,8 +429,10 @@ def unfettered_demand_by_hour(
         Second x-coordinate of the aspirational curve.
     y2 : float
         Second y-coordinate of the aspirational curve (0-1).
-    yta_time_interval : int, optional
-        Time interval in minutes. Defaults to 60.
+    yta_time_interval : int or timedelta, optional
+        Time interval for which the arrival rates are to be calculated.
+        If int, assumed to be in minutes. If timedelta, will be converted to minutes.
+        Defaults to 60.
     max_hours_since_arrival : int, optional
         Maximum hours since arrival to consider. Defaults to 10.
     num_days : int, optional
@@ -450,19 +470,27 @@ def unfettered_demand_by_hour(
     if not all(isinstance(x, (int, float)) for x in [x1, y1, x2, y2]):
         raise TypeError("Curve coordinates must be numeric values.")
 
-    if not isinstance(yta_time_interval, int):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer.")
+    if not isinstance(yta_time_interval, (int, timedelta)):
+        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
 
     if not isinstance(max_hours_since_arrival, int):
         raise TypeError("The parameter 'max_hours_since_arrival' must be an integer.")
 
+    # Handle both timedelta and numeric inputs for yta_time_interval
+    if isinstance(yta_time_interval, timedelta):
+        yta_time_interval_minutes = int(yta_time_interval.total_seconds() / 60)
+    elif isinstance(yta_time_interval, int):
+        yta_time_interval_minutes = yta_time_interval
+    else:
+        raise TypeError("yta_time_interval must be a timedelta object or integer")
+
     # Validate time interval
     minutes_in_day = 24 * 60
-    if yta_time_interval <= 0:
+    if yta_time_interval_minutes <= 0:
         raise ValueError("The parameter 'yta_time_interval' must be positive.")
-    if minutes_in_day % yta_time_interval != 0:
+    if minutes_in_day % yta_time_interval_minutes != 0:
         raise ValueError(
-            f"Time interval ({yta_time_interval} minutes) must divide evenly into 24 hours."
+            f"Time interval ({yta_time_interval_minutes} minutes) must divide evenly into 24 hours."
         )
 
     if max_hours_since_arrival <= 0:
@@ -475,7 +503,7 @@ def unfettered_demand_by_hour(
         raise ValueError("x1 must be less than x2.")
 
     # Calculate number of intervals in a day
-    num_intervals = minutes_in_day // yta_time_interval
+    num_intervals = minutes_in_day // yta_time_interval_minutes
 
     # Calculate admission probabilities
     hours_since_arrival = np.arange(max_hours_since_arrival + 1)
@@ -485,7 +513,7 @@ def unfettered_demand_by_hour(
 
     # Calculate base arrival rates from historical data
     arrival_rates_dict = time_varying_arrival_rates(
-        df, yta_time_interval, num_days=num_days
+        df, yta_time_interval_minutes, num_days=num_days
     )
 
     # Convert dict to arrays while preserving order
