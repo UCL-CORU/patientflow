@@ -352,7 +352,7 @@ class SpecialCategoryParams:
     """A picklable implementation of special category parameters for patient classification.
 
     This class identifies pediatric patients based on available age-related columns
-    in the dataset and provides functions to categorize patients accordingly.
+    in the dataset and provides functions to categorise patients accordingly.
     It's designed to be serializable with pickle by implementing the __reduce__ method.
 
     Parameters
@@ -440,7 +440,7 @@ class SpecialCategoryParams:
     def get_params_dict(
         self,
     ) -> Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]:
-        """Get the special parameter dictionary in the format expected by the application.
+        """Get the special parameter dictionary in the format expected by the SequencePredictor.
 
         Returns
         -------
@@ -473,7 +473,7 @@ class SpecialCategoryParams:
 
 
 def create_special_category_objects(columns):
-    """Create a configuration for categorizing patients with special handling for pediatric cases.
+    """Create a configuration for categorising patients with special handling for pediatric cases.
 
     Parameters
     ----------

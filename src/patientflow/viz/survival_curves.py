@@ -47,11 +47,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from patientflow.calculate.survival_curve import calculate_survival_curve
+
 
 def plot_admission_time_survival_curve(
     df,
     start_time_col="arrival_datetime",
-    end_time_col="admitted_to_ward_datetime",
+    end_time_col="departure_datetime",
     title="Time to Event Survival Curve",
     target_hours=[4],
     xlabel="Elapsed time from start",
@@ -150,43 +152,17 @@ def plot_admission_time_survival_curve(
     
     # Process each dataframe
     for idx, (current_df, label) in enumerate(zip(dataframes, curve_labels)):
-        # Calculate the wait time in hours
-        current_df = current_df.copy()
-        current_df["wait_time_hours"] = (
-            current_df[end_time_col] - current_df[start_time_col]
-        ).dt.total_seconds() / 3600
+        # Calculate survival curve using the extracted function
+        survival_df = calculate_survival_curve(
+            current_df, start_time_col, end_time_col
+        )
 
-        # Drop any rows with missing wait times
-        df_clean = current_df.dropna(subset=["wait_time_hours"]).copy()
+        # Extract arrays for plotting
+        unique_times = survival_df['time_hours'].values
+        survival_prob = survival_df['survival_probability'].values
 
-        # Sort the data by wait time
-        df_clean = df_clean.sort_values("wait_time_hours")
-
-        # Calculate the number of patients
-        n_patients = len(df_clean)
-
-        # Calculate the survival function manually
-        # For each time point, calculate proportion of patients who are still waiting
-        unique_times = np.sort(df_clean["wait_time_hours"].unique())
-        survival_prob = []
-
-        for t in unique_times:
-            # Number of patients who experienced the event after this time point
-            n_event_after = sum(df_clean["wait_time_hours"] > t)
-            # Proportion of patients still waiting
-            survival_prob.append(n_event_after / n_patients)
-
-        # Add zero hours wait time (everyone is waiting at time 0)
-        unique_times = np.insert(unique_times, 0, 0)
-        survival_prob = np.insert(survival_prob, 0, 1.0)
-
-        # Create DataFrame with survival curve data if requested
+        # Store DataFrame if requested
         if return_df:
-            survival_df = pd.DataFrame({
-                'time_hours': unique_times,
-                'survival_probability': survival_prob,
-                'event_probability': 1 - survival_prob
-            })
             survival_dfs.append(survival_df)
 
         # Plot the survival curve

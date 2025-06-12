@@ -1,26 +1,39 @@
 """
-Weighted Poisson Predictor for Hospital Admissions Forecasting.
+Hospital Admissions Forecasting Predictors.
 
-This module implements a custom predictor to estimate the number of hospital admissions
-within a specified prediction window using historical admission data. It applies Poisson
-and binomial distributions to forecast future admissions, excluding already arrived patients.
-The predictor accommodates different data filters for tailored predictions across various
-hospital settings.
+This module implements custom predictors to estimate the number of hospital admissions
+within a specified prediction window using historical admission data. It provides two
+approaches: parametric curves with Poisson-binomial distributions and empirical survival
+curves with convolution of Poisson distributions. Both predictors accommodate different
+data filters for tailored predictions across various hospital settings.
 
 Classes
 -------
 WeightedPoissonPredictor : BaseEstimator, TransformerMixin
     Predicts the number of admissions within a given prediction window based on historical
-    data and Poisson-binomial distribution.
+    data and Poisson-binomial distribution using parametric aspirational curves.
+    
+EmpiricalSurvivalPredictor : WeightedPoissonPredictor
+    Predicts the number of admissions using empirical survival curves and convolution
+    of Poisson distributions instead of parametric curves.
 
 Notes
 -----
-The predictor uses a combination of Poisson and binomial distributions to model the
-probability of admissions within a prediction window. It takes into account historical
-data patterns and can be filtered for specific hospital settings or specialties.
+The WeightedPoissonPredictor uses a combination of Poisson and binomial distributions to
+model the probability of admissions within a prediction window using parametric curves
+defined by transition points (x1, y1, x2, y2).
+
+The EmpiricalSurvivalPredictor inherits the arrival rate calculation and filtering logic
+but replaces the parametric approach with empirical survival probabilities and convolution
+of individual Poisson distributions for each time interval.
+
+Both predictors take into account historical data patterns and can be filtered for
+specific hospital settings or specialties.
 
 Examples
 --------
+Using the parametric WeightedPoissonPredictor:
+
 >>> predictor = WeightedPoissonPredictor(filters={
 ...     'medical': {'specialty': 'medical'},
 ...     'surgical': {'specialty': 'surgical'},
@@ -29,6 +42,16 @@ Examples
 ... })
 >>> predictor.fit(train_data, prediction_window=120, yta_time_interval=30, prediction_times=[8, 12, 16])
 >>> predictions = predictor.predict(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
+
+Using the empirical EmpiricalSurvivalPredictor:
+
+>>> predictor = EmpiricalSurvivalPredictor(filters={
+...     'medical': {'specialty': 'medical'},
+...     'surgical': {'specialty': 'surgical'}
+... })
+>>> predictor.fit(train_data, prediction_window=480, yta_time_interval=60, 
+...               prediction_times=[8, 12, 16, 20], num_days=90)
+>>> predictions = predictor.predict(prediction_context, max_value=25)
 """
 
 import warnings
@@ -47,6 +70,10 @@ from patientflow.calculate.admission_in_prediction_window import (
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from patientflow.calculate.arrival_rates import (
     time_varying_arrival_rates,
+)
+
+from patientflow.calculate.survival_curve import (
+    calculate_survival_curve,
 )
 
 
@@ -508,7 +535,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         if int(ratio) == 0:
             raise ValueError("prediction_window must be significantly larger than yta_time_interval")
 
-        # Store original types - no conversion!
+        # Store original types 
         self.prediction_window = prediction_window
         self.yta_time_interval = yta_time_interval
         self.epsilon = epsilon
@@ -676,6 +703,334 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 predictions[filter_key] = poisson_binom_generating_function(
                     NTimes, arrival_rates, theta, self.epsilon
                 )
+
+            except KeyError as e:
+                raise KeyError(f"Key error occurred: {e!s}")
+
+        return predictions
+
+
+class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
+    """A predictor that uses empirical survival curves instead of parameterised curves.
+    
+    This predictor inherits all the arrival rate calculation and filtering logic from
+    WeightedPoissonPredictor but uses empirical survival probabilities and convolution
+    of Poisson distributions for prediction instead of the Poisson-binomial approach.
+    
+    The survival curve is automatically calculated from the training data during the
+    fit process by analysing time-to-admission patterns.
+    
+    Parameters
+    ----------
+    filters : dict, optional
+        Optional filters for data categorization. If None, no filtering is applied.
+    verbose : bool, default=False
+        Whether to enable verbose logging.
+        
+    Attributes
+    ----------
+    survival_df : pandas.DataFrame
+        The survival data calculated from training data, containing time-to-event
+        information for empirical probability calculations.
+    """
+    
+    def __init__(self, filters=None, verbose=False):
+        """Initialize the EmpiricalSurvivalPredictor."""
+        super().__init__(filters, verbose)
+        self.survival_df = None
+    
+
+
+    def fit(
+        self,
+        train_df: pd.DataFrame,
+        prediction_window,
+        yta_time_interval,
+        prediction_times: List[float],
+        num_days: int,
+        start_time_col: str = 'arrival_datetime',
+        end_time_col: str = 'departure_datetime',
+        y: Optional[None] = None,
+    ) -> "EmpiricalSurvivalPredictor":
+        """Fit the model to the training data and calculate empirical survival curve.
+
+        Parameters
+        ----------
+        train_df : pandas.DataFrame
+            The training dataset with historical admission data.
+            Expected to have start_time_col as the index and end_time_col as a column.
+            Alternatively, both can be regular columns.
+        prediction_window : int or timedelta
+            The prediction window in minutes. If timedelta, will be converted to minutes.
+            If int, assumed to be in minutes.
+        yta_time_interval : int or timedelta
+            The interval in minutes for splitting the prediction window. If timedelta, will be converted to minutes.
+            If int, assumed to be in minutes.
+        prediction_times : list
+            Times of day at which predictions are made, in hours.
+        num_days : int
+            The number of days that the train_df spans.
+        start_time_col : str, default='arrival_datetime'
+            Name of the column containing the start time (e.g., arrival time).
+            Expected to be the DataFrame index, but can also be a regular column.
+        end_time_col : str, default='departure_datetime'
+            Name of the column containing the end time (e.g., departure time).
+        y : None, optional
+            Ignored, present for compatibility with scikit-learn's fit method.
+
+        Returns
+        -------
+        EmpiricalSurvivalPredictor
+            The instance itself, fitted with the training data.
+        """
+        # Calculate survival curve from training data using existing function
+        # Handle case where start_time_col is in the index
+        if start_time_col in train_df.columns:
+            # start_time_col is a regular column
+            df_for_survival = train_df
+        else:
+            # start_time_col is likely the index, reset it to make it a column
+            df_for_survival = train_df.reset_index()
+            # Verify that start_time_col is now available
+            if start_time_col not in df_for_survival.columns:
+                raise ValueError(f"Column '{start_time_col}' not found in DataFrame columns or index")
+        
+        self.survival_df = calculate_survival_curve(
+            df_for_survival, 
+            start_time_col=start_time_col, 
+            end_time_col=end_time_col
+        )
+        
+        # Verify survival curve was calculated and saved successfully
+        if self.survival_df is None or len(self.survival_df) == 0:
+            raise RuntimeError("Failed to calculate survival curve from training data")
+        
+        # Call parent fit method to handle arrival rate calculation and validation
+        super().fit(train_df, prediction_window, yta_time_interval, prediction_times, num_days, y=y)
+        
+        if self.verbose:
+            self.logger.info(f"EmpiricalSurvivalPredictor has been fitted with survival curve containing {len(self.survival_df)} time points")
+        
+        return self
+    
+    def get_survival_curve(self):
+        """Get the survival curve calculated during fitting.
+        
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing the survival curve with columns:
+            - time_hours: Time points in hours
+            - survival_probability: Survival probabilities at each time point
+            - event_probability: Event probabilities (1 - survival_probability)
+        
+        Raises
+        ------
+        RuntimeError
+            If the model has not been fitted yet.
+        """
+        if self.survival_df is None:
+            raise RuntimeError("Model has not been fitted yet. Call fit() first.")
+        return self.survival_df.copy()
+    
+    def _calculate_survival_probabilities(self, prediction_window, yta_time_interval):
+        """Calculate survival probabilities for each time interval.
+        
+        Parameters
+        ----------
+        prediction_window : int or timedelta
+            The prediction window.
+        yta_time_interval : int or timedelta
+            The time interval for splitting the prediction window.
+            
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+        """
+        # Calculate number of time intervals
+        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
+            NTimes = int(prediction_window / yta_time_interval)
+        elif isinstance(prediction_window, timedelta):
+            NTimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
+        elif isinstance(yta_time_interval, timedelta):
+            NTimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
+        else:
+            NTimes = int(prediction_window / yta_time_interval)
+        
+        # Convert to hours for survival probability calculation
+        if isinstance(prediction_window, timedelta):
+            prediction_window_hours = prediction_window.total_seconds() / 3600
+        else:
+            prediction_window_hours = prediction_window / 60
+            
+        if isinstance(yta_time_interval, timedelta):
+            yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
+        else:
+            yta_time_interval_hours = yta_time_interval / 60
+        
+        # Calculate admission probabilities for each time interval
+        probabilities = []
+        for i in range(NTimes):
+            # Time remaining until end of prediction window
+            time_remaining = prediction_window_hours - (i * yta_time_interval_hours)
+            
+            # Interpolate survival probability from survival curve
+            if time_remaining <= 0:
+                prob_admission = 1.0  # If time remaining is 0 or negative, probability is 1
+            else:
+                # Find the survival probability at this time point
+                # Linear interpolation between points in survival curve
+                survival_curve = self.survival_df
+                if time_remaining >= survival_curve['time_hours'].max():
+                    # If time is beyond our data, use the last survival probability
+                    survival_prob = survival_curve['survival_probability'].iloc[-1]
+                elif time_remaining <= survival_curve['time_hours'].min():
+                    # If time is before our data, use the first survival probability
+                    survival_prob = survival_curve['survival_probability'].iloc[0]
+                else:
+                    # Interpolate between points
+                    survival_prob = np.interp(
+                        time_remaining, 
+                        survival_curve['time_hours'], 
+                        survival_curve['survival_probability']
+                    )
+                
+                # Probability of admission = 1 - survival probability
+                prob_admission = 1 - survival_prob
+            
+            probabilities.append(prob_admission)
+        
+        return np.array(probabilities)
+    
+    def _convolve_poisson_distributions(self, arrival_rates, probabilities, max_value=20):
+        """Convolve Poisson distributions for each time interval.
+        
+        Parameters
+        ----------
+        arrival_rates : numpy.ndarray
+            Array of arrival rates for each time interval.
+        probabilities : numpy.ndarray
+            Array of admission probabilities for each time interval.
+        max_value : int, default=20
+            Maximum value for the discrete distribution support.
+            
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with 'sum' and 'agg_proba' columns representing the final distribution.
+        """
+        from scipy import stats
+        
+        # Create weighted Poisson distributions for each time interval
+        weighted_rates = arrival_rates * probabilities
+        poisson_dists = [stats.poisson(rate) for rate in weighted_rates]
+        
+        # Get PMF for each distribution
+        x = np.arange(max_value)
+        pmfs = [dist.pmf(x) for dist in poisson_dists]
+        
+        # Convolve all distributions together
+        if len(pmfs) == 0:
+            # Handle edge case of no distributions
+            combined_pmf = np.zeros(max_value)
+            combined_pmf[0] = 1.0  # All probability at 0
+        else:
+            combined_pmf = pmfs[0]
+            for pmf in pmfs[1:]:
+                combined_pmf = np.convolve(combined_pmf, pmf)
+        
+        # Create result DataFrame
+        result_df = pd.DataFrame({
+            'sum': range(len(combined_pmf)),
+            'agg_proba': combined_pmf
+        })
+        
+        # Filter out near-zero probabilities and normalize
+        result_df = result_df[result_df['agg_proba'] > 1e-10]
+        result_df['agg_proba'] = result_df['agg_proba'] / result_df['agg_proba'].sum()
+        
+        return result_df.set_index('sum')
+    
+    def predict(
+        self, 
+        prediction_context: Dict, 
+        max_value: int = 20
+    ) -> Dict:
+        """Predict the number of admissions using empirical survival curves.
+
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        max_value : int, default=20
+            Maximum value for the discrete distribution support.
+
+        Returns
+        -------
+        dict
+            A dictionary with predictions for each specified context.
+
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
+        RuntimeError
+            If survival_df was not provided during fitting.
+        """
+        if self.survival_df is None:
+            raise RuntimeError("No survival data available. Please call fit() method first to calculate survival curve from training data.")
+        
+        predictions = {}
+        
+        # Calculate survival probabilities once (they're the same for all contexts)
+        survival_probabilities = self._calculate_survival_probabilities(
+            self.prediction_window, self.yta_time_interval
+        )
+        
+        for filter_key, filter_values in prediction_context.items():
+            try:
+                if filter_key not in self.weights:
+                    raise ValueError(
+                        f"Filter key '{filter_key}' is not recognized in the model weights."
+                    )
+
+                prediction_time = filter_values.get("prediction_time")
+                if prediction_time is None:
+                    raise ValueError(
+                        f"No 'prediction_time' provided for filter '{filter_key}'."
+                    )
+
+                if prediction_time not in self.prediction_times:
+                    prediction_time = find_nearest_previous_prediction_time(
+                        prediction_time, self.prediction_times
+                    )
+
+                arrival_rates = self.weights[filter_key][prediction_time].get(
+                    "arrival_rates"
+                )
+                if arrival_rates is None:
+                    raise ValueError(
+                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                    )
+
+                # Convert arrival rates to numpy array
+                arrival_rates = np.array(arrival_rates)
+                
+                # Generate prediction using convolution approach
+                predictions[filter_key] = self._convolve_poisson_distributions(
+                    arrival_rates, survival_probabilities, max_value
+                )
+
+                # if self.verbose:
+                #     total_expected = (arrival_rates * survival_probabilities).sum()
+                #     self.logger.info(
+                #         f"Prediction for {filter_key} at {prediction_time}: "
+                #         f"Expected value ≈ {total_expected:.2f}"
+                #     )
 
             except KeyError as e:
                 raise KeyError(f"Key error occurred: {e!s}")

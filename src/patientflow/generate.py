@@ -47,6 +47,7 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, adm
         - 'arrival_datetime'
         - 'departure_datetime'
         - 'is_admitted'
+        - 'specialty'
         - 'age'
     observations_df : pandas.DataFrame
         DataFrame containing triage score observations with columns:
@@ -220,6 +221,15 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, adm
                 [0, 1], p=[1 - admission_prob, admission_prob]
             )
 
+            # Generate specialty for admitted patients
+            if is_admitted:
+                specialty = np.random.choice(
+                    ["medical", "surgical", "haem/onc", "paediatric"],
+                    p=[0.65, 0.25, 0.05, 0.05]
+                )
+            else:
+                specialty = None
+
             # Skip this visit if admitted_only is True and patient is not admitted
             if admitted_only and not is_admitted:
                 continue
@@ -258,8 +268,9 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, adm
                     "visit_number": visit_number,
                     "arrival_datetime": arrival_datetime,
                     "departure_datetime": departure_datetime,
-                    "is_admitted": is_admitted,
                     "age": age,
+                    "is_admitted": is_admitted,
+                    "specialty": specialty,
                 }
             )
 
