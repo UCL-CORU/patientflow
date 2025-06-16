@@ -181,7 +181,7 @@ def get_specialty_probs(
         Trained model for making specialty predictions
     snapshots_df : pandas.DataFrame
         DataFrame containing the data on which predictions are to be made. Must include
-        a 'consultation_sequence' column if no special_category_func is applied
+        the input_var column if no special_category_func is applied
     special_category_func : callable, optional
         A function that takes a DataFrame row (Series) as input and returns True if the row
         belongs to a special category that requires a fixed probability distribution
@@ -216,12 +216,12 @@ def get_specialty_probs(
     dtype: object
     """
 
-    # Convert consultation_sequence to tuple if not already a tuple
-    if len(snapshots_df["consultation_sequence"]) > 0 and not isinstance(
-        snapshots_df["consultation_sequence"].iloc[0], tuple
+    # Convert input_var to tuple if not already a tuple
+    if len(snapshots_df[specialty_model.input_var]) > 0 and not isinstance(
+        snapshots_df[specialty_model.input_var].iloc[0], tuple
     ):
-        snapshots_df.loc[:, "consultation_sequence"] = snapshots_df[
-            "consultation_sequence"
+        snapshots_df.loc[:, specialty_model.input_var] = snapshots_df[
+            specialty_model.input_var
         ].apply(lambda x: tuple(x) if x else ())
 
     if special_category_func and not special_category_dict:
@@ -234,7 +234,7 @@ def get_specialty_probs(
         if special_category_func and special_category_func(row):
             return special_category_dict
         else:
-            return specialty_model.predict(row["consultation_sequence"])
+            return specialty_model.predict(row[specialty_model.input_var])
 
     # Apply the determine_specialty function to each row
     specialty_prob_series = snapshots_df.apply(determine_specialty, axis=1)
@@ -346,15 +346,18 @@ def create_predictions(
     # Validate that the correct models have been passed for the requested prediction time and prediction window
     if not classifier.training_results.prediction_time == prediction_time:
         raise ValueError(
-            "Requested prediction time does not match the prediction time of the trained classifier"
+            f"Requested prediction time {prediction_time} does not match the prediction time of the trained classifier {classifier.training_results.prediction_time}"
         )
-    if not yet_to_arrive_model.prediction_window / 60 == prediction_window_hrs:
+    
+    # Convert prediction window to hours for comparison
+    model_window_hours = yet_to_arrive_model.prediction_window.total_seconds() / 3600
+    if not abs(model_window_hours - prediction_window_hrs) < 1e-6:  # Use small epsilon for float comparison
         raise ValueError(
-            "Requested prediction window does not match the prediction window of the trained yet-to-arrive model"
+            f"Requested prediction window {prediction_window_hrs} hours does not match the prediction window of the trained yet-to-arrive model {model_window_hours} hours"
         )
     if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
         raise ValueError(
-            "Requested specialties do not match the specialties of the trained yet-to-arrive model"
+            f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
         )
 
     special_params = spec_model.special_params
