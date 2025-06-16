@@ -168,9 +168,6 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         # Preprocess the data
         X = self._preprocess_data(X)
 
-        # derive the names of the observed outcome variables from the data
-        prop_keys = X[self.outcome_var].unique()
-
         # For each grouping value count the number of observed categories
         X_grouped = (
             X.groupby(self.grouping_var)[self.outcome_var]
@@ -188,26 +185,33 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
         input_probs = {}
         for input_val in X[self.input_var].unique():
             # Get all grouping values associated with this input value
-            grouping_vals = X[X[self.input_var] == input_val][self.grouping_var].unique()
-            
+            grouping_vals = X[X[self.input_var] == input_val][
+                self.grouping_var
+            ].unique()
+
             # Calculate probability distribution of grouping values for this input value
-            input_to_group_probs = X[X[self.input_var] == input_val][self.grouping_var].value_counts(normalize=True)
-            
+            input_to_group_probs = X[X[self.input_var] == input_val][
+                self.grouping_var
+            ].value_counts(normalize=True)
+
             # Get the probability distribution of outcomes for all relevant grouping values
             # This includes all rows in proportions where the grouping value appears for this input
             group_to_outcome_probs = proportions.loc[grouping_vals]
 
             # Ensure the rows are aligned by reindexing group_to_outcome_probs
-            aligned_group_to_outcome = group_to_outcome_probs.reindex(input_to_group_probs.index)
+            aligned_group_to_outcome = group_to_outcome_probs.reindex(
+                input_to_group_probs.index
+            )
 
             # Create outer product matrix of probabilities:
             # - Rows represent grouping values
             # - Columns represent outcome categories
             # Each cell contains the joint probability of the grouping value and outcome
             input_to_outcome_probs = pd.DataFrame(
-                input_to_group_probs.values.reshape(-1, 1) * aligned_group_to_outcome.values,
+                input_to_group_probs.values.reshape(-1, 1)
+                * aligned_group_to_outcome.values,
                 index=input_to_group_probs.index,
-                columns=group_to_outcome_probs.columns
+                columns=group_to_outcome_probs.columns,
             )
 
             # Sum across grouping values to get final probability distribution for this input value
@@ -280,7 +284,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             A dictionary of categories and the probabilities that the input value will end in them.
         """
         if input_value is None or pd.isna(input_value):
-            return self.weights.get('', {})
+            return self.weights.get("", {})
 
         # Convert input to string if it isn't already
         input_value = str(input_value)
@@ -290,4 +294,4 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
             return self.weights[input_value]
 
         # If no relevant data is found, return null probabilities
-        return self.weights.get(None, {}) 
+        return self.weights.get(None, {})

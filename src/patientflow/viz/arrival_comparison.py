@@ -19,14 +19,135 @@ import numpy as np
 from patientflow.viz.utils import format_prediction_time
 
 
+def _prepare_arrival_data(
+    df, prediction_time, snapshot_date, prediction_window, yta_time_interval
+):
+    """Helper function to prepare arrival data for plotting."""
+    prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
+    snapshot_datetime = pd.Timestamp(
+        datetime.combine(snapshot_date, prediction_time_obj), tz="UTC"
+    )
+
+    default_date = datetime(2024, 1, 1)
+    default_datetime = pd.Timestamp(
+        datetime.combine(default_date, prediction_time_obj), tz="UTC"
+    )
+
+    df_copy = df.copy()
+    if "arrival_datetime" in df_copy.columns:
+        df_copy.set_index("arrival_datetime", inplace=True)
+
+    return df_copy, snapshot_datetime, default_datetime, prediction_time_obj
+
+
+def _calculate_arrival_rates(
+    df_copy, prediction_time_obj, prediction_window, yta_time_interval
+):
+    """Helper function to calculate arrival rates and prepare time points."""
+    arrival_rates = time_varying_arrival_rates(
+        df_copy, yta_time_interval=yta_time_interval
+    )
+    end_time = (
+        datetime.combine(datetime.min, prediction_time_obj) + prediction_window
+    ).time()
+
+    mean_arrival_rates = {
+        k: v
+        for k, v in arrival_rates.items()
+        if (k >= prediction_time_obj and k < end_time)
+        or (
+            end_time < prediction_time_obj
+            and (k >= prediction_time_obj or k < end_time)
+        )
+    }
+
+    return mean_arrival_rates
+
+
+def _prepare_arrival_times(mean_arrival_rates, prediction_time_obj, default_date):
+    """Helper function to prepare arrival times for plotting."""
+    arrival_times_piecewise = []
+    for t in mean_arrival_rates.keys():
+        if t < prediction_time_obj:
+            dt = datetime.combine(default_date + timedelta(days=1), t)
+        else:
+            dt = datetime.combine(default_date, t)
+        if dt.tzinfo is None:
+            dt = pd.Timestamp(dt, tz="UTC")
+        arrival_times_piecewise.append(dt)
+
+    arrival_times_piecewise.sort()
+    return arrival_times_piecewise
+
+
+def _calculate_cumulative_rates(arrival_times_piecewise, mean_arrival_rates):
+    """Helper function to calculate cumulative arrival rates."""
+    cumulative_rates = []
+    current_sum = 0
+    for t in arrival_times_piecewise:
+        rate = mean_arrival_rates[t.time()]
+        current_sum += rate
+        cumulative_rates.append(current_sum)
+    return cumulative_rates
+
+
+def _create_combined_timeline(
+    default_datetime, arrival_times_plot, prediction_window, arrival_times_piecewise
+):
+    """Helper function to create combined timeline for plotting."""
+    all_times = sorted(
+        set(
+            [default_datetime]
+            + arrival_times_plot
+            + [default_datetime + prediction_window]
+            + arrival_times_piecewise
+        )
+    )
+    if all_times[0] != default_datetime:
+        all_times = [default_datetime] + all_times
+    return all_times
+
+
+def _plot_delta(
+    ax,
+    all_times,
+    delta,
+    prediction_time,
+    prediction_window,
+    snapshot_date,
+    show_only_delta=False,
+):
+    """Helper function to plot delta chart."""
+    ax.step(all_times, delta, where="post", label="Actual - Expected", color="red")
+    ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Difference (Actual - Expected)")
+    ax.set_title(
+        f"Difference Between Actual and Expected Arrivals in the "
+        f"{int(prediction_window.total_seconds()/3600)} hours after "
+        f"{format_prediction_time(prediction_time)} on {snapshot_date}"
+    )
+    ax.legend()
+
+
+def _format_time_axis(ax, all_times):
+    """Helper function to format time axis."""
+    ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
+    min_time = min(all_times)
+    max_time = max(all_times)
+    hourly_ticks = pd.date_range(start=min_time, end=max_time, freq="h")
+    ax.set_xticks(hourly_ticks)
+    ax.set_xlim(left=min_time)
+
+
 def plot_arrival_comparison(
     df,
     prediction_time,
     snapshot_date,
-    prediction_window,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta = timedelta(minutes=15),
     show_delta=True,
     show_only_delta=False,
-    yta_time_interval=15,
     media_file_path=None,
     return_figure=False,
 ):
@@ -58,75 +179,37 @@ def plot_arrival_comparison(
     matplotlib.figure.Figure or None
         The figure object if return_figure is True, otherwise None
     """
-    # Convert prediction time to datetime objects
-    prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
-    snapshot_datetime = pd.Timestamp(
-        datetime.combine(snapshot_date, prediction_time_obj), tz="UTC"
+    # Prepare data
+    df_copy, snapshot_datetime, default_datetime, prediction_time_obj = (
+        _prepare_arrival_data(
+            df, prediction_time, snapshot_date, prediction_window, yta_time_interval
+        )
     )
-
-    # Use a consistent default date for plotting (January 1, 2024)
-    default_date = datetime(2024, 1, 1)
-    default_datetime = pd.Timestamp(
-        datetime.combine(default_date, prediction_time_obj), tz="UTC"
-    )
-
-    df_copy = df.copy()
-
-    if "arrival_datetime" in df_copy.columns:
-        df_copy.set_index("arrival_datetime", inplace=True)
 
     # Get arrivals within the prediction window
     arrivals = df_copy[
         (df_copy.index > snapshot_datetime)
-        & (df_copy.index <= snapshot_datetime + pd.Timedelta(minutes=prediction_window))
+        & (df_copy.index <= snapshot_datetime + prediction_window)
     ]
 
-    # Sort arrivals by time
+    # Sort arrivals by time and create cumulative count
     arrivals = arrivals.sort_values("arrival_datetime")
-
-    # Create cumulative count
     arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
-    # Calculate and plot expected arrivals based on arrival rates
-    arrival_rates = time_varying_arrival_rates(
-        df_copy, yta_time_interval=yta_time_interval
+    # Calculate arrival rates and prepare time points
+    mean_arrival_rates = _calculate_arrival_rates(
+        df_copy, prediction_time_obj, prediction_window, yta_time_interval
     )
-    end_time = (
-        datetime.combine(datetime.min, prediction_time_obj)
-        + timedelta(minutes=prediction_window)
-    ).time()
 
-    mean_arrival_rates = {
-        k: v
-        for k, v in arrival_rates.items()
-        if (k >= prediction_time_obj and k < end_time)
-        or (
-            end_time < prediction_time_obj
-            and (k >= prediction_time_obj or k < end_time)
-        )
-    }
+    # Prepare arrival times
+    arrival_times_piecewise = _prepare_arrival_times(
+        mean_arrival_rates, prediction_time_obj, default_date=datetime(2024, 1, 1)
+    )
 
-    # Convert arrival rate times to datetime objects using default date
-    arrival_times_piecewise = []
-    for t in mean_arrival_rates.keys():
-        if t < prediction_time_obj:
-            dt = datetime.combine(default_date + timedelta(days=1), t)
-        else:
-            dt = datetime.combine(default_date, t)
-        # Ensure timezone awareness
-        if dt.tzinfo is None:
-            dt = pd.Timestamp(dt, tz="UTC")
-        arrival_times_piecewise.append(dt)
-
-    arrival_times_piecewise.sort()
-
-    # Calculate expected cumulative arrivals
-    cumulative_rates = []
-    current_sum = 0
-    for t in arrival_times_piecewise:
-        rate = mean_arrival_rates[t.time()]
-        current_sum += rate
-        cumulative_rates.append(current_sum)
+    # Calculate cumulative rates
+    cumulative_rates = _calculate_cumulative_rates(
+        arrival_times_piecewise, mean_arrival_rates
+    )
 
     # Create figure with subplots if showing delta
     if show_delta and not show_only_delta:
@@ -145,20 +228,10 @@ def plot_arrival_comparison(
         default_datetime + (t - snapshot_datetime) for t in arrivals.index
     ]
 
-    # Calculate the delta
-    # Create a combined timeline of all points using default date
-    all_times = sorted(
-        set(
-            [default_datetime]
-            + arrival_times_plot
-            + [default_datetime + pd.Timedelta(minutes=prediction_window)]
-            + arrival_times_piecewise
-        )
+    # Create combined timeline
+    all_times = _create_combined_timeline(
+        default_datetime, arrival_times_plot, prediction_window, arrival_times_piecewise
     )
-
-    # Ensure we have a starting point at default_datetime with y=0
-    if all_times[0] != default_datetime:
-        all_times = [default_datetime] + all_times
 
     # Interpolate both actual and expected to the combined timeline
     actual_counts = np.interp(
@@ -167,7 +240,7 @@ def plot_arrival_comparison(
             t.timestamp()
             for t in [default_datetime]
             + arrival_times_plot
-            + [default_datetime + pd.Timedelta(minutes=prediction_window)]
+            + [default_datetime + prediction_window]
         ],
         [0]
         + list(arrivals["cumulative_count"])
@@ -182,16 +255,14 @@ def plot_arrival_comparison(
 
     # Calculate delta
     delta = actual_counts - expected_counts
-
-    # Ensure delta starts at 0
-    delta[0] = 0
+    delta[0] = 0  # Ensure delta starts at 0
 
     if not show_only_delta:
         # Plot actual and expected arrivals
         ax.step(
             [default_datetime]
             + arrival_times_plot
-            + [default_datetime + pd.Timedelta(minutes=prediction_window)],
+            + [default_datetime + prediction_window],
             [0]
             + list(arrivals["cumulative_count"])
             + [arrivals["cumulative_count"].iloc[-1] if len(arrivals) > 0 else 0],
@@ -207,48 +278,24 @@ def plot_arrival_comparison(
 
         ax.set_xlabel("Time")
         ax.set_title(
-            f"Cumulative Arrivals in the {int(prediction_window/60)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
+            f"Cumulative Arrivals in the {int(prediction_window.total_seconds()/3600)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
         )
         ax.legend()
 
     if show_delta or show_only_delta:
         if show_only_delta:
-            ax.step(
-                all_times, delta, where="post", label="Actual - Expected", color="red"
+            _plot_delta(
+                ax, all_times, delta, prediction_time, prediction_window, snapshot_date
             )
-            ax.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-            ax.set_xlabel("Time")
-            ax.set_ylabel("Difference (Actual - Expected)")
-            ax.set_title(
-                f"Difference Between Actual and Expected Arrivals in the {int(prediction_window/60)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
-            )
-            ax.legend()
         else:
-            ax2.step(
-                all_times, delta, where="post", label="Actual - Expected", color="red"
+            _plot_delta(
+                ax2, all_times, delta, prediction_time, prediction_window, snapshot_date
             )
-            ax2.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-            ax2.set_xlabel("Time")
-            ax2.set_ylabel("Difference (Actual - Expected)")
-            ax2.set_title(
-                f"Difference Between Actual and Expected Arrivals in the {int(prediction_window/60)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
-            )
-            ax2.legend()
-
         plt.tight_layout()
 
-    # Format x-axis to show only hours and minutes
+    # Format time axis for all subplots
     for ax in plt.gcf().get_axes():
-        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
-
-    # Set x-axis ticks to hourly intervals starting from the minimum time
-    min_time = min(all_times)
-    max_time = max(all_times)
-    hourly_ticks = pd.date_range(start=min_time, end=max_time, freq="h")
-    ax.set_xticks(hourly_ticks)
-
-    # Remove padding by setting x-axis limits
-    ax.set_xlim(left=min_time)
+        _format_time_axis(ax, all_times)
 
     if media_file_path:
         plt.savefig(media_file_path / "arrival_comparison.png", dpi=300)
@@ -260,12 +307,22 @@ def plot_arrival_comparison(
         plt.close()
 
 
+def _prepare_common_values(prediction_time):
+    """Helper function to prepare common values used across all dates."""
+    prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
+    default_date = datetime(2024, 1, 1)
+    default_datetime = pd.Timestamp(
+        datetime.combine(default_date, prediction_time_obj), tz="UTC"
+    )
+    return prediction_time_obj, default_datetime
+
+
 def plot_multiple_deltas(
     df,
     prediction_time,
     snapshot_dates,
-    prediction_window,
-    yta_time_interval=15,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta = timedelta(minutes=15),
     media_file_path=None,
     return_figure=False,
 ):
@@ -279,7 +336,7 @@ def plot_multiple_deltas(
         (hour, minute) of prediction time
     snapshot_dates : list
         List of datetime.date objects to analyze
-    prediction_window : int
+    prediction_window : timedelta
         Prediction window in minutes
     yta_time_interval : int, default=15
         Time interval in minutes for calculating arrival rates
@@ -299,105 +356,60 @@ def plot_multiple_deltas(
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
 
-    # Convert prediction time to datetime object
-    prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
-
-    # Use a consistent default date for plotting (January 1, 2024)
-    default_date = datetime(2024, 1, 1)
-    default_datetime = pd.Timestamp(
-        datetime.combine(default_date, prediction_time_obj), tz="UTC"
-    )
-
-    df_copy = df.copy()
-    if "arrival_datetime" in df_copy.columns:
-        df_copy.set_index("arrival_datetime", inplace=True)
-
-    # Calculate arrival rates once for all dates
-    arrival_rates = time_varying_arrival_rates(
-        df_copy, yta_time_interval=yta_time_interval
-    )
-
     # Store all deltas for averaging
     all_deltas = []
     all_times_list = []
     final_deltas = []  # Store final delta values for histogram
 
+    # Calculate common values once
+    prediction_time_obj, default_datetime = _prepare_common_values(prediction_time)
+
     for snapshot_date in snapshot_dates:
-        snapshot_datetime = pd.Timestamp(
-            datetime.combine(snapshot_date, prediction_time_obj), tz="UTC"
+        # Prepare data for this date
+        df_copy, snapshot_datetime, _, _ = _prepare_arrival_data(
+            df, prediction_time, snapshot_date, prediction_window, yta_time_interval
         )
 
         # Get arrivals within the prediction window
         arrivals = df_copy[
             (df_copy.index > snapshot_datetime)
-            & (
-                df_copy.index
-                <= snapshot_datetime + pd.Timedelta(minutes=prediction_window)
-            )
+            & (df_copy.index <= snapshot_datetime + pd.Timedelta(prediction_window))
         ]
 
         if len(arrivals) == 0:
             continue
 
-        # Sort arrivals by time
+        # Sort arrivals by time and create cumulative count
         arrivals = arrivals.sort_values("arrival_datetime")
         arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
-        # Calculate expected arrivals
-        end_time = (
-            datetime.combine(datetime.min, prediction_time_obj)
-            + timedelta(minutes=prediction_window)
-        ).time()
+        # Calculate arrival rates and prepare time points
+        mean_arrival_rates = _calculate_arrival_rates(
+            df_copy, prediction_time_obj, prediction_window, yta_time_interval
+        )
 
-        mean_arrival_rates = {
-            k: v
-            for k, v in arrival_rates.items()
-            if (k >= prediction_time_obj and k < end_time)
-            or (
-                end_time < prediction_time_obj
-                and (k >= prediction_time_obj or k < end_time)
-            )
-        }
+        # Prepare arrival times
+        arrival_times_piecewise = _prepare_arrival_times(
+            mean_arrival_rates, prediction_time_obj, default_date=datetime(2024, 1, 1)
+        )
 
-        # Convert arrival rate times to datetime objects using default date
-        arrival_times_piecewise = []
-        for t in mean_arrival_rates.keys():
-            if t < prediction_time_obj:
-                dt = datetime.combine(default_date + timedelta(days=1), t)
-            else:
-                dt = datetime.combine(default_date, t)
-            if dt.tzinfo is None:
-                dt = pd.Timestamp(dt, tz="UTC")
-            arrival_times_piecewise.append(dt)
-
-        arrival_times_piecewise.sort()
-
-        # Calculate expected cumulative arrivals
-        cumulative_rates = []
-        current_sum = 0
-        for t in arrival_times_piecewise:
-            rate = mean_arrival_rates[t.time()]
-            current_sum += rate
-            cumulative_rates.append(current_sum)
+        # Calculate cumulative rates
+        cumulative_rates = _calculate_cumulative_rates(
+            arrival_times_piecewise, mean_arrival_rates
+        )
 
         # Convert arrival times to use default date for plotting
         arrival_times_plot = [
             default_datetime + (t - snapshot_datetime) for t in arrivals.index
         ]
 
-        # Create a combined timeline of all points using default date
-        all_times = sorted(
-            set(
-                [default_datetime]
-                + arrival_times_plot
-                + [default_datetime + pd.Timedelta(minutes=prediction_window)]
-                + arrival_times_piecewise
-            )
+        # Create combined timeline
+        all_times = _create_combined_timeline(
+            default_datetime,
+            arrival_times_plot,
+            prediction_window,
+            arrival_times_piecewise,
         )
-
-        # Ensure we have a starting point at default_datetime with y=0
-        if all_times[0] != default_datetime:
-            all_times = [default_datetime] + all_times
 
         # Interpolate both actual and expected to the combined timeline
         actual_counts = np.interp(
@@ -406,7 +418,7 @@ def plot_multiple_deltas(
                 t.timestamp()
                 for t in [default_datetime]
                 + arrival_times_plot
-                + [default_datetime + pd.Timedelta(minutes=prediction_window)]
+                + [default_datetime + pd.Timedelta(prediction_window)]
             ],
             [0]
             + list(arrivals["cumulative_count"])
@@ -421,9 +433,7 @@ def plot_multiple_deltas(
 
         # Calculate delta
         delta = actual_counts - expected_counts
-
-        # Ensure delta starts at 0
-        delta[0] = 0
+        delta[0] = 0  # Ensure delta starts at 0
 
         # Store for averaging
         all_deltas.append(delta)
@@ -484,20 +494,11 @@ def plot_multiple_deltas(
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Difference (Actual - Expected)")
     ax1.set_title(
-        f"Difference Between Actual and Expected Arrivals in the {int(prediction_window/60)} hours after {format_prediction_time(prediction_time)} on all dates"
+        f"Difference Between Actual and Expected Arrivals in the {(int(prediction_window.total_seconds()/3600))} hours after {format_prediction_time(prediction_time)} on all dates"
     )
 
-    # Format x-axis to show only hours and minutes
-    ax1.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter("%H:%M"))
-
-    # Set x-axis ticks to hourly intervals starting from the minimum time
-    min_time = min(common_times)
-    max_time = max(common_times)
-    hourly_ticks = pd.date_range(start=min_time, end=max_time, freq="h")
-    ax1.set_xticks(hourly_ticks)
-
-    # Remove padding by setting x-axis limits
-    ax1.set_xlim(left=min_time)
+    # Format time axis
+    _format_time_axis(ax1, common_times)
 
     # Create histogram of final delta values
     if final_deltas:

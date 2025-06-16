@@ -1,11 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 
 
 def calculate_survival_curve(df, start_time_col, end_time_col):
     """Calculate survival curve data from patient visit data.
-    
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -14,7 +13,7 @@ def calculate_survival_curve(df, start_time_col, end_time_col):
         Name of the column containing the start time (e.g., arrival_datetime)
     end_time_col : str
         Name of the column containing the end time (e.g., departure_datetime)
-        
+
     Returns
     -------
     pandas.DataFrame
@@ -52,11 +51,12 @@ def calculate_survival_curve(df, start_time_col, end_time_col):
     # Add zero hours wait time (everyone is waiting at time 0)
     unique_times = np.insert(unique_times, 0, 0)
     survival_prob = np.insert(survival_prob, 0, 1.0)
-    
-    # Return structured DataFrame
-    return pd.DataFrame({
-        'time_hours': unique_times,
-        'survival_probability': survival_prob,
-        'event_probability': 1 - survival_prob
-    })
 
+    # Return structured DataFrame
+    return pd.DataFrame(
+        {
+            "time_hours": unique_times,
+            "survival_probability": survival_prob,
+            "event_probability": 1 - survival_prob,
+        }
+    )

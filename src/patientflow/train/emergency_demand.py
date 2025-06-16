@@ -2,7 +2,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from datetime import date
+from datetime import date, timedelta
 import sys
 
 from patientflow.prepare import (
@@ -193,7 +193,7 @@ def test_real_time_predictions(
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=specialties,
-            prediction_window_hrs=prediction_window / 60,
+            prediction_window=prediction_window,
             cdf_cut_points=cdf_cut_points,
             x1=x1,
             y1=y1,
@@ -216,8 +216,8 @@ def train_all_models(
     end_test_set,
     yta,
     prediction_times,
-    prediction_window,
-    yta_time_interval,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta,
     epsilon,
     grid_params,
     exclude_columns,
@@ -286,7 +286,7 @@ def train_all_models(
     The function generates model names internally:
     - "admissions": "admissions"
     - "specialty": "ed_specialty"
-    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours"
+    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours"
     """
     # Validate parameters
     if save_models and model_file_path is None:
@@ -309,7 +309,7 @@ def train_all_models(
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
-        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
+        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours",
     }
 
     if "arrival_datetime" in visits.columns:
@@ -393,6 +393,9 @@ def train_all_models(
 
     # Test real-time predictions if requested
     if test_realtime:
+        visits["elapsed_los"] = visits["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
         test_real_time_predictions(
             visits=visits,
             models=(admission_models, specialty_model, yta_model),
@@ -441,9 +444,9 @@ def main(data_folder_name=None):
     start_validation_set = config["start_validation_set"]
     start_test_set = config["start_test_set"]
     end_test_set = config["end_test_set"]
-    prediction_window = config["prediction_window"]
+    prediction_window = timedelta(minutes=config["prediction_window"])
     epsilon = float(config["epsilon"])
-    yta_time_interval = config["yta_time_interval"]
+    yta_time_interval = timedelta(minutes=config["yta_time_interval"])
     x1, y1, x2, y2 = config["x1"], config["y1"], config["x2"], config["y2"]
 
     # Load data
@@ -459,7 +462,9 @@ def main(data_folder_name=None):
     )
 
     # Create snapshot date
-    ed_visits["snapshot_date"] = pd.to_datetime(ed_visits["snapshot_date"]).dt.date
+    ed_visits["snapshot_date"] = pd.to_datetime(
+        ed_visits["snapshot_date"], dayfirst=True
+    ).dt.date
 
     # Set up model parameters
     grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}

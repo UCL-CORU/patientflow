@@ -2,6 +2,7 @@ import unittest
 import pandas as pd
 import numpy as np
 import os
+from datetime import timedelta
 
 from pathlib import Path
 
@@ -187,15 +188,17 @@ def create_spec_model(df, apply_special_category_filtering):
     return model
 
 
-def create_yta_model(prediction_window_hrs, df, arrivals_df, yta_time_interval=60):
+def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
     """Create a test yet-to-arrive model using WeightedPoissonPredictor.
 
     Parameters
     ----------
-    prediction_window_hrs : float
-        The prediction window in hours
+    prediction_window : timedelta
+        The prediction window as a timedelta
     arrivals_df : pd.DataFrame
         DataFrame containing historical arrival data with arrival_datetime and specialty columns
+    yta_time_interval : int or timedelta, optional
+        The time interval for predictions in minutes or as timedelta. Default is 60 minutes.
 
     Returns
     -------
@@ -205,8 +208,10 @@ def create_yta_model(prediction_window_hrs, df, arrivals_df, yta_time_interval=6
 
     filters = create_yta_filters(df)
 
-    # Convert hours to minutes for the model
-    prediction_window_mins = int(prediction_window_hrs * 60)
+    # Convert yta_time_interval to timedelta if it's an int
+    if isinstance(yta_time_interval, int):
+        yta_time_interval = timedelta(minutes=yta_time_interval)
+
     prediction_times = [(7, 0)]  # 7am predictions
     num_days = 7  # One week of data
 
@@ -214,13 +219,15 @@ def create_yta_model(prediction_window_hrs, df, arrivals_df, yta_time_interval=6
     model = WeightedPoissonPredictor(filters=filters)
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
-        prediction_window=prediction_window_mins,
+        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
         prediction_times=prediction_times,
         num_days=num_days,
     )
 
-    model_name = f"ed_yet_to_arrive_by_spec_{str(int(prediction_window_hrs))}_hours"
+    # Convert timedelta to hours for model name
+    hours = prediction_window.total_seconds() / 3600
+    model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
     return (model, model_name)
 
 
@@ -229,7 +236,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.model_file_path = Path("tmp")
         os.makedirs(self.model_file_path, exist_ok=True)
         self.prediction_time = (7, 0)
-        self.prediction_window_hrs = 8.0
+        self.prediction_window = timedelta(hours=8)
         self.x1, self.y1, self.x2, self.y2 = 4.0, 0.76, 12.0, 0.99
         self.cdf_cut_points = [0.7, 0.9]
         self.specialties = ["paediatric", "surgical", "haem/onc", "medical"]
@@ -244,19 +251,22 @@ class TestCreatePredictions(unittest.TestCase):
         spec_model = create_spec_model(self.df, apply_special_category_filtering=False)
 
         yta_model, yta_name = create_yta_model(
-            self.prediction_window_hrs, self.df, self.arrivals_df
+            self.prediction_window, self.df, self.arrivals_df
         )
         self.models = (admissions_model, spec_model, yta_model)
 
     def test_basic_functionality(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
 
         predictions = create_predictions(
             models=self.models,
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=self.prediction_window_hrs,
+            prediction_window=self.prediction_window,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
@@ -270,11 +280,14 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("in_ed", predictions["paediatric"])
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
-        self.assertEqual(predictions["paediatric"]["in_ed"], [4, 3])
+        self.assertEqual(predictions["paediatric"]["in_ed"], [1, 0])
         self.assertEqual(predictions["medical"]["yet_to_arrive"], [2, 1])
 
     def test_basic_functionality_with_special_category(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
 
         # print("\nWithout special category")
         # print(self.df[self.df.is_admitted == 1])
@@ -284,15 +297,13 @@ class TestCreatePredictions(unittest.TestCase):
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=self.prediction_window_hrs,
+            prediction_window=self.prediction_window,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
             x2=self.x2,
             y2=self.y2,
         )
-
-        # print(predictions_without_special_category)
 
         # print("\nWith special category")
         admission_model, _, yta_model = self.models
@@ -304,7 +315,7 @@ class TestCreatePredictions(unittest.TestCase):
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=self.prediction_window_hrs,
+            prediction_window=self.prediction_window,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
@@ -312,12 +323,11 @@ class TestCreatePredictions(unittest.TestCase):
             y2=self.y2,
         )
 
-        # print(predictions_with_special_category)
         self.assertIn("paediatric", predictions_without_special_category)
         self.assertIn("paediatric", predictions_with_special_category)
 
         self.assertEqual(
-            predictions_without_special_category["paediatric"]["in_ed"], [4, 3]
+            predictions_without_special_category["paediatric"]["in_ed"], [1, 0]
         )
         self.assertEqual(
             predictions_with_special_category["paediatric"]["in_ed"], [2, 1]
@@ -325,13 +335,15 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_single_row_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=1, include_consults=True)
-
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
         predictions = create_predictions(
             models=self.models,
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=self.prediction_window_hrs,
+            prediction_window=self.prediction_window,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
@@ -345,7 +357,10 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_model_not_found(self):
         prediction_snapshots = create_random_df(n=5, include_consults=True)
-        non_existing_window_hrs = 10.0
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+        non_existing_window_hrs = timedelta(hours=10)
 
         # Replace YTA model with None while keeping admission and specialty models
         admission_model, spec_model, yta_model = self.models
@@ -357,7 +372,7 @@ class TestCreatePredictions(unittest.TestCase):
                 prediction_time=self.prediction_time,
                 prediction_snapshots=prediction_snapshots,
                 specialties=self.specialties,
-                prediction_window_hrs=non_existing_window_hrs,
+                prediction_window=non_existing_window_hrs,
                 cdf_cut_points=self.cdf_cut_points,
                 x1=self.x1,
                 y1=self.y1,
@@ -367,7 +382,9 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_model_not_fit(self):
         prediction_snapshots = create_random_df(n=5, include_consults=True)
-
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
         pipeline = Pipeline([("classifier", XGBClassifier())])
         _, spec_model, yta_model = self.models
         models = (pipeline, spec_model, yta_model)
@@ -378,7 +395,7 @@ class TestCreatePredictions(unittest.TestCase):
                 prediction_time=self.prediction_time,
                 prediction_snapshots=prediction_snapshots,
                 specialties=self.specialties,
-                prediction_window_hrs=self.prediction_window_hrs,
+                prediction_window=self.prediction_window,
                 cdf_cut_points=self.cdf_cut_points,
                 x1=self.x1,
                 y1=self.y1,
@@ -400,7 +417,7 @@ class TestCreatePredictions(unittest.TestCase):
                 prediction_time=self.prediction_time,
                 prediction_snapshots=prediction_snapshots,
                 specialties=self.specialties,
-                prediction_window_hrs=self.prediction_window_hrs,
+                prediction_window=self.prediction_window,
                 cdf_cut_points=self.cdf_cut_points,
                 x1=self.x1,
                 y1=self.y1,
@@ -416,7 +433,7 @@ class TestCreatePredictions(unittest.TestCase):
                 prediction_time=self.prediction_time,
                 prediction_snapshots=prediction_snapshots,
                 specialties=self.specialties,
-                prediction_window_hrs=self.prediction_window_hrs,
+                prediction_window=self.prediction_window,
                 cdf_cut_points=self.cdf_cut_points,
                 x1=self.x1,
                 y1=self.y1,
@@ -426,9 +443,11 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_prediction_window_extremes(self):
         prediction_snapshots = create_random_df(n=5, include_consults=True)
-
-        short_window_hrs = 0.1
-        long_window_hrs = 100.0
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+        short_window_hrs = timedelta(minutes=6)  # 0.1 hours
+        long_window_hrs = timedelta(hours=100)
 
         # Test that an error is raised for where prediction_window is less than yta_time_interval
         with self.assertRaises(ValueError):
@@ -436,8 +455,8 @@ class TestCreatePredictions(unittest.TestCase):
                 short_window_hrs, self.df, self.arrivals_df
             )
 
-        short_window_hrs = 0.25
-        yta_time_interval = 15
+        short_window_hrs = timedelta(minutes=15)  # 0.25 hours
+        yta_time_interval = timedelta(minutes=15)
 
         short_yta_model, _ = create_yta_model(
             short_window_hrs, self.df, self.arrivals_df, yta_time_interval
@@ -451,7 +470,7 @@ class TestCreatePredictions(unittest.TestCase):
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=short_window_hrs,
+            prediction_window=short_window_hrs,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
@@ -462,17 +481,23 @@ class TestCreatePredictions(unittest.TestCase):
         long_yta_model, _ = create_yta_model(long_window_hrs, self.df, self.arrivals_df)
         models = (admission_model, spec_model, long_yta_model)
 
-        long_window_predictions = create_predictions(
-            models=models,
-            prediction_time=self.prediction_time,
-            prediction_snapshots=prediction_snapshots,
-            specialties=self.specialties,
-            prediction_window_hrs=long_window_hrs,
-            cdf_cut_points=self.cdf_cut_points,
-            x1=self.x1,
-            y1=self.y1,
-            x2=self.x2,
-            y2=self.y2,
+        # Test that a warning is raised for long prediction windows
+        with self.assertWarns(UserWarning) as warning:
+            long_window_predictions = create_predictions(
+                models=models,
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window=long_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+
+        self.assertIn(
+            "prediction_window appears to be longer than 72 hours", str(warning.warning)
         )
 
         self.assertIsInstance(short_window_predictions, dict)
@@ -480,6 +505,9 @@ class TestCreatePredictions(unittest.TestCase):
 
     def test_missing_key_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=5, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
         admission_model, _, yta_model = self.models
         spec_model = create_spec_model(
             self.df[~self.df.final_sequence.apply(lambda x: "paediatric" in x)],
@@ -492,7 +520,7 @@ class TestCreatePredictions(unittest.TestCase):
             prediction_time=self.prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=self.specialties,
-            prediction_window_hrs=self.prediction_window_hrs,
+            prediction_window=self.prediction_window,
             cdf_cut_points=self.cdf_cut_points,
             x1=self.x1,
             y1=self.y1,
@@ -502,25 +530,6 @@ class TestCreatePredictions(unittest.TestCase):
 
         self.assertIn("paediatric", predictions)
         self.assertNotIn("paediatric", spec_model.weights.keys())
-
-
-#     # def test_large_dataset_performance(self):
-#     #     prediction_snapshots = create_random_df(n = 10000, include_consults = True)
-
-#     #     predictions = create_predictions(
-#     #         models=self.models,
-#     #         prediction_time=self.prediction_time,
-#     #         prediction_snapshots=prediction_snapshots,
-#     #         specialties=self.specialties,
-#     #         prediction_window_hrs=self.prediction_window_hrs,
-#     #         cdf_cut_points=self.cdf_cut_points,
-#     #         x1=self.x1,
-#     #         y1=self.y1,
-#     #         x2=self.x2,
-#     #         y2=self.y2,
-#     #     )
-
-#     #     self.assertIsInstance(predictions, dict)
 
 
 if __name__ == "__main__":

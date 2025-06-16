@@ -39,7 +39,7 @@ Multiple survival curves:
 ...     'arrival_datetime': pd.to_datetime(['2023-01-02 10:00', '2023-01-02 11:00']),
 ...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-02 11:30', '2023-01-02 13:00'])
 ... })
->>> plot_admission_time_survival_curve([df1, df2], labels=['Week 1', 'Week 2'], 
+>>> plot_admission_time_survival_curve([df1, df2], labels=['Week 1', 'Week 2'],
 ...                                   title='Admission Times Comparison')
 """
 
@@ -91,7 +91,7 @@ def plot_admission_time_survival_curve(
         String template for the text annotation. Use {:.1%} for the proportion and {:.0f} for the hours.
         Annotations are only shown for the first curve when plotting multiple curves.
     labels : list of str, optional
-        Labels for each survival curve when plotting multiple curves. 
+        Labels for each survival curve when plotting multiple curves.
         If None and multiple dataframes are provided, default labels will be used.
         Ignored when plotting a single curve.
     media_file_path : pathlib.Path, optional
@@ -116,7 +116,7 @@ def plot_admission_time_survival_curve(
     the event at each time point. Vertical lines are drawn at each target hour
     to indicate the target times, with the corresponding proportion of patients
     who experienced the event within these timeframes.
-    
+
     When plotting multiple curves, different colors are automatically assigned
     and a legend is displayed. Target line annotations are only shown for the
     first curve to avoid visual clutter.
@@ -128,7 +128,7 @@ def plot_admission_time_survival_curve(
     else:
         dataframes = df
         is_single_curve = False
-    
+
     # Handle labels
     if labels is None:
         if is_single_curve:
@@ -137,29 +137,27 @@ def plot_admission_time_survival_curve(
             curve_labels = [f"Curve {i+1}" for i in range(len(dataframes))]
     else:
         curve_labels = labels
-    
+
     # Validate inputs
     if len(dataframes) != len(curve_labels):
         raise ValueError("Number of dataframes must match number of labels")
-    
+
     # Create the plot
     fig = plt.figure(figsize=(10, 6))
-    
+
     # Define colors for multiple curves
     colors = plt.cm.Set1(np.linspace(0, 1, len(dataframes)))
-    
+
     survival_dfs = []
-    
+
     # Process each dataframe
     for idx, (current_df, label) in enumerate(zip(dataframes, curve_labels)):
         # Calculate survival curve using the extracted function
-        survival_df = calculate_survival_curve(
-            current_df, start_time_col, end_time_col
-        )
+        survival_df = calculate_survival_curve(current_df, start_time_col, end_time_col)
 
         # Extract arrays for plotting
-        unique_times = survival_df['time_hours'].values
-        survival_prob = survival_df['survival_probability'].values
+        unique_times = survival_df["time_hours"].values
+        survival_prob = survival_df["survival_probability"].values
 
         # Store DataFrame if requested
         if return_df:
@@ -168,8 +166,11 @@ def plot_admission_time_survival_curve(
         # Plot the survival curve
         color = colors[idx] if not is_single_curve else None
         plt.step(
-            unique_times, survival_prob, where="post", 
-            color=color, label=label if not is_single_curve else None
+            unique_times,
+            survival_prob,
+            where="post",
+            color=color,
+            label=label if not is_single_curve else None,
         )
 
         # Plot target lines and annotations only for the first curve (or single curve)
@@ -195,7 +196,7 @@ def plot_admission_time_survival_curve(
                         plt.plot(
                             [target_hour, target_hour],
                             [0, survival_at_target],
-                            color='grey',
+                            color="grey",
                             linestyle="--",
                             linewidth=2,
                         )
@@ -204,7 +205,7 @@ def plot_admission_time_survival_curve(
                         plt.plot(
                             [0, target_hour],
                             [survival_at_target, survival_at_target],
-                            color='grey',
+                            color="grey",
                             linestyle="--",
                             linewidth=2,
                         )
@@ -227,7 +228,7 @@ def plot_admission_time_survival_curve(
     # Hide the top and right spines
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    
+
     # Add legend for multiple curves
     if not is_single_curve:
         plt.legend()
@@ -238,8 +239,14 @@ def plot_admission_time_survival_curve(
         plt.savefig(media_file_path / "survival_curve.png", dpi=300)
 
     # Handle return values
-    return_data = survival_dfs[0] if (return_df and is_single_curve) else survival_dfs if return_df else None
-    
+    return_data = (
+        survival_dfs[0]
+        if (return_df and is_single_curve)
+        else survival_dfs
+        if return_df
+        else None
+    )
+
     if return_figure and return_df:
         return fig, return_data
     elif return_figure:

@@ -34,9 +34,6 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
 ## Loading real patient data
 
 I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
@@ -533,43 +530,23 @@ plot_shap(
 
     Predicted classification (not admitted, admitted):  [1666  952]
 
-
-    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-      show=False,
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_2.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
 
     Predicted classification (not admitted, admitted):  [2823 1326]
 
-
-    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-      show=False,
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
 
     Predicted classification (not admitted, admitted):  [4687 2547]
 
-
-    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-      show=False,
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_8.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
 
     Predicted classification (not admitted, admitted):  [5609 2914]
 
-
-    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-      show=False,
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_11.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
 
     Predicted classification (not admitted, admitted):  [4256 2354]
 
-
-    /Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-      show=False,
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_14.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
 
 ## Summary
 

@@ -136,7 +136,9 @@ def time_varying_arrival_rates(
     if not isinstance(df, DataFrame):
         raise TypeError("The input 'df' must be a pandas DataFrame.")
     if not isinstance(yta_time_interval, (int, timedelta)):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
+        raise TypeError(
+            "The parameter 'yta_time_interval' must be an integer or timedelta."
+        )
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("The DataFrame index must be a pandas DatetimeIndex.")
 
@@ -182,7 +184,9 @@ def time_varying_arrival_rates(
     # Iterate over each interval in a single day to calculate the arrival rate
     while _start_datetime != _stop_datetime:
         _start_time = _start_datetime.time()
-        _end_time = (_start_datetime + timedelta(minutes=yta_time_interval_minutes)).time()
+        _end_time = (
+            _start_datetime + timedelta(minutes=yta_time_interval_minutes)
+        ).time()
 
         # Filter the dataframe for entries within the current time interval
         _df = df.between_time(_start_time, _end_time, inclusive="left")
@@ -249,7 +253,9 @@ def time_varying_arrival_rates_lagged(
         raise TypeError("The parameter 'lagged_by' must be an integer.")
 
     if not isinstance(yta_time_interval, (int, timedelta)):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
+        raise TypeError(
+            "The parameter 'yta_time_interval' must be an integer or timedelta."
+        )
 
     if not isinstance(df.index, pd.DatetimeIndex):
         raise TypeError("The DataFrame index must be a pandas DatetimeIndex.")
@@ -471,7 +477,9 @@ def unfettered_demand_by_hour(
         raise TypeError("Curve coordinates must be numeric values.")
 
     if not isinstance(yta_time_interval, (int, timedelta)):
-        raise TypeError("The parameter 'yta_time_interval' must be an integer or timedelta.")
+        raise TypeError(
+            "The parameter 'yta_time_interval' must be an integer or timedelta."
+        )
 
     if not isinstance(max_hours_since_arrival, int):
         raise TypeError("The parameter 'max_hours_since_arrival' must be an integer.")
@@ -550,14 +558,14 @@ def count_yet_to_arrive(
 ) -> DataFrame:
     """Count patients who arrived after prediction times and were admitted within prediction windows.
 
-    This function counts patients who arrived after specified prediction times and were 
-    admitted to a ward within the specified prediction window for each combination of 
+    This function counts patients who arrived after specified prediction times and were
+    admitted to a ward within the specified prediction window for each combination of
     snapshot date and prediction time.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        A DataFrame containing patient data with 'arrival_datetime', 
+        A DataFrame containing patient data with 'arrival_datetime',
         'admitted_to_ward_datetime', and 'patient_id' columns.
     snapshot_dates : list
         List of dates (datetime.date objects) to analyze.
@@ -600,39 +608,51 @@ def count_yet_to_arrive(
     if not isinstance(df, DataFrame):
         raise TypeError("The input 'df' must be a pandas DataFrame.")
 
-    required_columns = ['arrival_datetime', 'admitted_to_ward_datetime', 'patient_id']
+    required_columns = ["arrival_datetime", "admitted_to_ward_datetime", "patient_id"]
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         raise TypeError(f"DataFrame missing required columns: {missing_columns}")
 
-    if not isinstance(prediction_window_hours, (int, float)) or prediction_window_hours <= 0:
+    if (
+        not isinstance(prediction_window_hours, (int, float))
+        or prediction_window_hours <= 0
+    ):
         raise ValueError("prediction_window_hours must be a positive number.")
 
     # Create an empty list to store results
     results = []
-    
+
     # For each combination of date and time
     for date_val in snapshot_dates:
         for hour, minute in prediction_times:
             # Create the prediction datetime
-            prediction_datetime = pd.Timestamp(datetime.combine(date_val, time(hour=hour, minute=minute)))
+            prediction_datetime = pd.Timestamp(
+                datetime.combine(date_val, time(hour=hour, minute=minute))
+            )
 
             # Calculate the end of the prediction window
-            prediction_window_end = prediction_datetime + pd.Timedelta(hours=prediction_window_hours)
-            
+            prediction_window_end = prediction_datetime + pd.Timedelta(
+                hours=prediction_window_hours
+            )
+
             # Count patients who arrived after prediction time and were admitted within the window
-            admitted_within_window = len(df[
-                (df['arrival_datetime'] > prediction_datetime) & 
-                (df['admitted_to_ward_datetime'] <= prediction_window_end)])
-                        
+            admitted_within_window = len(
+                df[
+                    (df["arrival_datetime"] > prediction_datetime)
+                    & (df["admitted_to_ward_datetime"] <= prediction_window_end)
+                ]
+            )
+
             # Store the result
-            results.append({
-                'snapshot_date': date_val,
-                'prediction_time': (hour, minute),
-                'count': admitted_within_window
-            })
-    
+            results.append(
+                {
+                    "snapshot_date": date_val,
+                    "prediction_time": (hour, minute),
+                    "count": admitted_within_window,
+                }
+            )
+
     # Convert results to a DataFrame
     results_df = pd.DataFrame(results)
-    
+
     return results_df

@@ -229,8 +229,10 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
             proportions[col] *= proportions["probability_of_grouping_sequence"]
 
         # Convert final sequence to a string in order to conduct string searches on it
-        proportions["grouping_sequence_to_string"] = proportions.index.map(lambda x: "-".join(map(str, x)))
-        
+        proportions["grouping_sequence_to_string"] = proportions.index.map(
+            lambda x: "-".join(map(str, x))
+        )
+
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category

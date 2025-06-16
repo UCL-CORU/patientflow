@@ -12,7 +12,7 @@ import unittest
 import pandas as pd
 import numpy as np
 import sympy as sym
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from scipy.stats import poisson
 
 from patientflow.aggregate import (
@@ -24,8 +24,9 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
     get_prob_dist_for_prediction_moment,
     get_prob_dist,
-    get_prob_dist_without_patient_snapshots,
+    get_prob_dist_using_survival_predictor,
 )
+from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
 
 
 # Mock model for testing
@@ -264,8 +265,8 @@ class TestAggregate(unittest.TestCase):
             # Check that agg_observed is a number
             self.assertIsInstance(result[dt]["agg_observed"], (int, float))
 
-    def test_get_prob_dist_without_patient_snapshots(self):
-        """Test probability distribution generation without patient snapshots"""
+    def test_get_prob_dist_using_survival_predictor(self):
+        """Test probability distribution generation using survival predictor"""
         # Create test data for patients
         test_df = pd.DataFrame(
             {
@@ -275,46 +276,105 @@ class TestAggregate(unittest.TestCase):
                     datetime(2023, 1, 2, 10, 30, tzinfo=timezone.utc),
                     datetime(2023, 1, 3, 11, 0, tzinfo=timezone.utc),
                 ],
-                "specialty": ["Category1", "Category1", "Category2", "Category1"],
+                "departure_datetime": [
+                    datetime(2023, 1, 1, 12, 15, tzinfo=timezone.utc),
+                    datetime(2023, 1, 1, 13, 45, tzinfo=timezone.utc),
+                    datetime(2023, 1, 2, 14, 30, tzinfo=timezone.utc),
+                    datetime(2023, 1, 3, 15, 0, tzinfo=timezone.utc),
+                ],
+                "specialty": ["medical", "medical", "surgical", "medical"],
             }
         )
 
-        # Test with WeightedPoissonPredictor
-        model_weighted = WeightedPoissonPredictor(prediction_window=120)
-
-        result_weighted = get_prob_dist_without_patient_snapshots(
-            prediction_time=(10, 0),
-            categories=["Category1", "Category2"],
-            model=model_weighted,
-            test_df=test_df,
-            prediction_window=120,
+        # Create and fit the EmpiricalSurvivalPredictor
+        model = EmpiricalSurvivalPredictor()
+        model.fit(
+            train_df=test_df,
+            prediction_window=timedelta(hours=8),
+            yta_time_interval=timedelta(minutes=15),
+            prediction_times=[(10, 0)],
+            num_days=3,
+            start_time_col="arrival_datetime",
+            end_time_col="departure_datetime",
+        )
+        # Test the function
+        result = get_prob_dist_using_survival_predictor(
             snapshot_dates=[date(2023, 1, 1), date(2023, 1, 2), date(2023, 1, 3)],
-            x1=4.0,
-            y1=0.8,
-            x2=12.0,
-            y2=0.99,
-            datetime_col="arrival_datetime",
-        )
-
-        # Check results for weighted model
-        self.assertIn("Category1", result_weighted)
-
-        # Test with scipy.stats distribution
-        model_dist = poisson(mu=3.0)  # Create a scipy.stats distribution
-
-        result_dist = get_prob_dist_without_patient_snapshots(
+            test_visits=test_df.reset_index(),
+            category="unfiltered",
             prediction_time=(10, 0),
-            categories=["Category1", "Category2"],
-            model=model_dist,
-            test_df=test_df,
-            prediction_window=120,
-            snapshot_dates=[date(2023, 1, 1), date(2023, 1, 2)],
-            datetime_col="arrival_datetime",
+            prediction_window=timedelta(hours=8),
+            start_time_col="arrival_datetime",
+            end_time_col="departure_datetime",
+            model=model,
         )
 
-        # Check results for distribution model
-        self.assertIn("Category1", result_dist)
+        # Check results
+        self.assertIn(date(2023, 1, 1), result)
+        self.assertIn(date(2023, 1, 2), result)
+        self.assertIn(date(2023, 1, 3), result)
 
+        # Check structure of results
+        for dt in result:
+            self.assertIn("agg_predicted", result[dt])
+            self.assertIn("agg_observed", result[dt])
 
-if __name__ == "__main__":
-    unittest.main()
+            # Check agg_predicted is a DataFrame with agg_proba column
+            self.assertIsInstance(result[dt]["agg_predicted"], pd.DataFrame)
+            self.assertIn("agg_proba", result[dt]["agg_predicted"].columns)
+
+            # Check agg_observed is an integer
+            self.assertIsInstance(result[dt]["agg_observed"], int)
+
+        # Test with start_time_col as index
+        test_df_indexed = test_df.set_index("arrival_datetime")
+        result_indexed = get_prob_dist_using_survival_predictor(
+            snapshot_dates=[date(2023, 1, 1), date(2023, 1, 2), date(2023, 1, 3)],
+            test_visits=test_df_indexed,
+            category="unfiltered",
+            prediction_time=(10, 0),
+            prediction_window=timedelta(hours=8),
+            start_time_col="arrival_datetime",
+            end_time_col="departure_datetime",
+            model=model,
+        )
+
+        # Check results are the same as before
+        for date_key in result:
+            self.assertTrue(
+                result[date_key]["agg_predicted"].equals(
+                    result_indexed[date_key]["agg_predicted"]
+                )
+            )
+            self.assertEqual(
+                result[date_key]["agg_observed"],
+                result_indexed[date_key]["agg_observed"],
+            )
+
+        # Test error cases
+        with self.assertRaises(ValueError):
+            # Test with missing end_time_col
+            get_prob_dist_using_survival_predictor(
+                snapshot_dates=[date(2023, 1, 1)],
+                test_visits=test_df.drop(columns=["departure_datetime"]),
+                category="medical",
+                prediction_time=(10, 0),
+                prediction_window=timedelta(hours=8),
+                start_time_col="arrival_datetime",
+                end_time_col="departure_datetime",
+                model=model,
+            )
+
+        with self.assertRaises(ValueError):
+            # Test with unfitted model
+            unfitted_model = EmpiricalSurvivalPredictor()
+            get_prob_dist_using_survival_predictor(
+                snapshot_dates=[date(2023, 1, 1)],
+                test_visits=test_df,
+                category="medical",
+                prediction_time=(10, 0),
+                prediction_window=timedelta(hours=8),
+                start_time_col="arrival_datetime",
+                end_time_col="departure_datetime",
+                model=unfitted_model,
+            )

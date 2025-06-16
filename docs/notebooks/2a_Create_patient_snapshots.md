@@ -36,9 +36,6 @@ The `is_admitted` column is our label, indicating the outcome in this imaginary 
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
 ```python
 from patientflow.generate import create_fake_finished_visits
 visits_df, _, _ = create_fake_finished_visits('2023-01-01', '2023-04-01', 25)
@@ -72,55 +69,61 @@ visits_df.head()
       <th>visit_number</th>
       <th>arrival_datetime</th>
       <th>departure_datetime</th>
-      <th>is_admitted</th>
       <th>age</th>
+      <th>is_admitted</th>
+      <th>specialty</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>1658</td>
-      <td>14</td>
-      <td>2023-01-01 03:31:47</td>
-      <td>2023-01-01 08:00:47</td>
-      <td>0</td>
-      <td>30</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>238</td>
-      <td>20</td>
-      <td>2023-01-01 04:25:57</td>
-      <td>2023-01-01 07:43:57</td>
-      <td>1</td>
-      <td>61</td>
-    </tr>
-    <tr>
-      <th>2</th>
       <td>354</td>
       <td>1</td>
       <td>2023-01-01 05:21:43</td>
-      <td>2023-01-01 08:52:43</td>
+      <td>2023-01-01 12:35:43</td>
+      <td>31</td>
       <td>1</td>
-      <td>86</td>
+      <td>medical</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1281</td>
+      <td>7</td>
+      <td>2023-01-01 07:22:18</td>
+      <td>2023-01-01 22:46:18</td>
+      <td>31</td>
+      <td>0</td>
+      <td>None</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>113</td>
+      <td>15</td>
+      <td>2023-01-01 07:31:29</td>
+      <td>2023-01-01 16:12:29</td>
+      <td>41</td>
+      <td>0</td>
+      <td>None</td>
     </tr>
     <tr>
       <th>3</th>
       <td>114</td>
       <td>3</td>
       <td>2023-01-01 08:01:26</td>
-      <td>2023-01-01 09:38:26</td>
-      <td>0</td>
+      <td>2023-01-01 10:34:26</td>
       <td>33</td>
+      <td>0</td>
+      <td>None</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>497</td>
-      <td>10</td>
-      <td>2023-01-01 08:20:52</td>
-      <td>2023-01-01 11:20:52</td>
+      <td>1937</td>
+      <td>18</td>
+      <td>2023-01-01 08:45:38</td>
+      <td>2023-01-01 16:30:38</td>
+      <td>14</td>
       <td>0</td>
-      <td>59</td>
+      <td>None</td>
     </tr>
   </tbody>
 </table>
@@ -237,8 +240,9 @@ snapshots_df.head()
       <th>visit_number</th>
       <th>arrival_datetime</th>
       <th>departure_datetime</th>
-      <th>is_admitted</th>
       <th>age</th>
+      <th>is_admitted</th>
+      <th>specialty</th>
       <th>snapshot_date</th>
       <th>prediction_time</th>
     </tr>
@@ -252,61 +256,67 @@ snapshots_df.head()
       <th></th>
       <th></th>
       <th></th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>1658</td>
-      <td>14</td>
-      <td>2023-01-01 03:31:47</td>
-      <td>2023-01-01 08:00:47</td>
-      <td>0</td>
-      <td>30</td>
+      <td>354</td>
+      <td>1</td>
+      <td>2023-01-01 05:21:43</td>
+      <td>2023-01-01 12:35:43</td>
+      <td>31</td>
+      <td>1</td>
+      <td>medical</td>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>238</td>
-      <td>20</td>
-      <td>2023-01-01 04:25:57</td>
-      <td>2023-01-01 07:43:57</td>
-      <td>1</td>
-      <td>61</td>
-      <td>2023-01-01</td>
-      <td>(6, 0)</td>
-    </tr>
-    <tr>
-      <th>2</th>
       <td>354</td>
       <td>1</td>
       <td>2023-01-01 05:21:43</td>
-      <td>2023-01-01 08:52:43</td>
+      <td>2023-01-01 12:35:43</td>
+      <td>31</td>
       <td>1</td>
-      <td>86</td>
+      <td>medical</td>
       <td>2023-01-01</td>
-      <td>(6, 0)</td>
+      <td>(9, 30)</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1281</td>
+      <td>7</td>
+      <td>2023-01-01 07:22:18</td>
+      <td>2023-01-01 22:46:18</td>
+      <td>31</td>
+      <td>0</td>
+      <td>None</td>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>114</td>
-      <td>3</td>
-      <td>2023-01-01 08:01:26</td>
-      <td>2023-01-01 09:38:26</td>
+      <td>113</td>
+      <td>15</td>
+      <td>2023-01-01 07:31:29</td>
+      <td>2023-01-01 16:12:29</td>
+      <td>41</td>
       <td>0</td>
-      <td>33</td>
+      <td>None</td>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>497</td>
-      <td>10</td>
-      <td>2023-01-01 08:20:52</td>
-      <td>2023-01-01 11:20:52</td>
+      <td>114</td>
+      <td>3</td>
+      <td>2023-01-01 08:01:26</td>
+      <td>2023-01-01 10:34:26</td>
+      <td>33</td>
       <td>0</td>
-      <td>59</td>
+      <td>None</td>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
     </tr>
@@ -322,11 +332,11 @@ snapshots_df.visit_number.value_counts().head()
 ```
 
     visit_number
-    1784    4
-    1342    3
-    1432    3
-    1292    3
-    1604    3
+    1940    7
+    375     7
+    1812    7
+    1733    7
+    1736    7
     Name: count, dtype: int64
 
 Below I show one example of a patient who was in the ED long enough to have multiple snapshots, captured at the various prediction times during their visit.
@@ -361,8 +371,9 @@ snapshots_df[snapshots_df.visit_number == example_visit_number]
       <th>visit_number</th>
       <th>arrival_datetime</th>
       <th>departure_datetime</th>
-      <th>is_admitted</th>
       <th>age</th>
+      <th>is_admitted</th>
+      <th>specialty</th>
       <th>snapshot_date</th>
       <th>prediction_time</th>
     </tr>
@@ -376,52 +387,93 @@ snapshots_df[snapshots_df.visit_number == example_visit_number]
       <th></th>
       <th></th>
       <th></th>
+      <th></th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>1512</th>
-      <td>459</td>
-      <td>1784</td>
-      <td>2023-03-13 05:47:42</td>
-      <td>2023-03-13 18:59:42</td>
+      <th>2959</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
       <td>0</td>
-      <td>48</td>
-      <td>2023-03-13</td>
+      <td>None</td>
+      <td>2023-03-19</td>
+      <td>(15, 30)</td>
+    </tr>
+    <tr>
+      <th>2965</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
+      <td>0</td>
+      <td>None</td>
+      <td>2023-03-19</td>
+      <td>(22, 0)</td>
+    </tr>
+    <tr>
+      <th>2977</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
+      <td>0</td>
+      <td>None</td>
+      <td>2023-03-20</td>
       <td>(6, 0)</td>
     </tr>
     <tr>
-      <th>1513</th>
-      <td>459</td>
-      <td>1784</td>
-      <td>2023-03-13 05:47:42</td>
-      <td>2023-03-13 18:59:42</td>
+      <th>2983</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
       <td>0</td>
-      <td>48</td>
-      <td>2023-03-13</td>
+      <td>None</td>
+      <td>2023-03-20</td>
       <td>(9, 30)</td>
     </tr>
     <tr>
-      <th>1518</th>
-      <td>459</td>
-      <td>1784</td>
-      <td>2023-03-13 05:47:42</td>
-      <td>2023-03-13 18:59:42</td>
+      <th>2989</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
       <td>0</td>
-      <td>48</td>
-      <td>2023-03-13</td>
+      <td>None</td>
+      <td>2023-03-20</td>
       <td>(12, 0)</td>
     </tr>
     <tr>
-      <th>1525</th>
-      <td>459</td>
-      <td>1784</td>
-      <td>2023-03-13 05:47:42</td>
-      <td>2023-03-13 18:59:42</td>
+      <th>2998</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
       <td>0</td>
-      <td>48</td>
-      <td>2023-03-13</td>
+      <td>None</td>
+      <td>2023-03-20</td>
       <td>(15, 30)</td>
+    </tr>
+    <tr>
+      <th>3014</th>
+      <td>358</td>
+      <td>1940</td>
+      <td>2023-03-19 14:29:26</td>
+      <td>2023-03-21 03:27:26</td>
+      <td>79</td>
+      <td>0</td>
+      <td>None</td>
+      <td>2023-03-20</td>
+      <td>(22, 0)</td>
     </tr>
   </tbody>
 </table>
@@ -475,21 +527,21 @@ observations_df.head()
   <tbody>
     <tr>
       <th>0</th>
-      <td>14</td>
-      <td>2023-01-01 03:35:36.163784</td>
-      <td>5</td>
+      <td>1</td>
+      <td>2023-01-01 05:25:48.686712</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>20</td>
-      <td>2023-01-01 04:29:37.764451</td>
-      <td>1</td>
+      <td>7</td>
+      <td>2023-01-01 07:24:04.659833</td>
+      <td>2</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>1</td>
-      <td>2023-01-01 05:23:25.286763</td>
-      <td>2</td>
+      <td>15</td>
+      <td>2023-01-01 07:39:02.025157</td>
+      <td>4</td>
     </tr>
     <tr>
       <th>3</th>
@@ -499,8 +551,8 @@ observations_df.head()
     </tr>
     <tr>
       <th>4</th>
-      <td>10</td>
-      <td>2023-01-01 08:26:20.775693</td>
+      <td>18</td>
+      <td>2023-01-01 08:50:52.495502</td>
       <td>4</td>
     </tr>
   </tbody>
@@ -514,7 +566,7 @@ print(f'There are {len(lab_orders_df)} lab orders in the dataset, for {len(lab_o
 lab_orders_df.head()
 ```
 
-    There are 5177 lab orders in the dataset, for 1874 visits
+    There are 5754 lab orders in the dataset, for 2091 visits
 
 <div>
 <style scoped>
@@ -543,33 +595,33 @@ lab_orders_df.head()
   <tbody>
     <tr>
       <th>0</th>
-      <td>14</td>
-      <td>2023-01-01 03:46:03.833071</td>
-      <td>CBC</td>
+      <td>1</td>
+      <td>2023-01-01 05:51:39.377886</td>
+      <td>BMP</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>20</td>
-      <td>2023-01-01 04:42:28.890734</td>
-      <td>CBC</td>
+      <td>1</td>
+      <td>2023-01-01 05:58:40.347001</td>
+      <td>D-dimer</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>20</td>
-      <td>2023-01-01 05:08:21.224579</td>
-      <td>D-dimer</td>
+      <td>1</td>
+      <td>2023-01-01 06:36:24.534586</td>
+      <td>CBC</td>
     </tr>
     <tr>
       <th>3</th>
       <td>1</td>
-      <td>2023-01-01 05:23:31.838338</td>
-      <td>BMP</td>
+      <td>2023-01-01 06:49:29.836402</td>
+      <td>Urinalysis</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>20</td>
-      <td>2023-01-01 05:45:18.145241</td>
-      <td>BMP</td>
+      <td>7</td>
+      <td>2023-01-01 07:43:33.443262</td>
+      <td>Troponin</td>
     </tr>
   </tbody>
 </table>
@@ -615,9 +667,9 @@ new_snapshots_df.head()
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_d-dimer_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_d-dimer_orders</th>
+      <th>num_cbc_orders</th>
       <th>num_urinalysis_orders</th>
       <th>num_troponin_orders</th>
     </tr>
@@ -642,13 +694,13 @@ new_snapshots_df.head()
       <th>0</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>1658</td>
-      <td>14</td>
-      <td>0</td>
-      <td>30</td>
-      <td>5.0</td>
+      <td>354</td>
       <td>1</td>
-      <td>0</td>
+      <td>1</td>
+      <td>31</td>
+      <td>2.0</td>
+      <td>1</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -656,35 +708,50 @@ new_snapshots_df.head()
     <tr>
       <th>1</th>
       <td>2023-01-01</td>
-      <td>(6, 0)</td>
-      <td>238</td>
-      <td>20</td>
-      <td>1</td>
-      <td>61</td>
-      <td>1.0</td>
+      <td>(9, 30)</td>
+      <td>354</td>
       <td>1</td>
       <td>1</td>
+      <td>31</td>
+      <td>2.0</td>
       <td>1</td>
-      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>1</td>
       <td>0</td>
     </tr>
     <tr>
       <th>2</th>
       <td>2023-01-01</td>
-      <td>(6, 0)</td>
-      <td>354</td>
-      <td>1</td>
-      <td>1</td>
-      <td>86</td>
+      <td>(9, 30)</td>
+      <td>1281</td>
+      <td>7</td>
+      <td>0</td>
+      <td>31</td>
       <td>2.0</td>
-      <td>0</td>
       <td>1</td>
       <td>1</td>
+      <td>1</td>
       <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>3</th>
+      <td>2023-01-01</td>
+      <td>(9, 30)</td>
+      <td>113</td>
+      <td>15</td>
+      <td>0</td>
+      <td>41</td>
+      <td>4.0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
       <td>114</td>
@@ -692,25 +759,10 @@ new_snapshots_df.head()
       <td>0</td>
       <td>33</td>
       <td>3.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>2023-01-01</td>
-      <td>(9, 30)</td>
-      <td>497</td>
-      <td>10</td>
-      <td>0</td>
-      <td>59</td>
-      <td>4.0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
+      <td>1</td>
       <td>1</td>
     </tr>
   </tbody>
@@ -749,9 +801,9 @@ new_snapshots_df[new_snapshots_df.visit_number==example_visit_number]
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_d-dimer_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_d-dimer_orders</th>
+      <th>num_cbc_orders</th>
       <th>num_urinalysis_orders</th>
       <th>num_troponin_orders</th>
     </tr>
@@ -773,64 +825,109 @@ new_snapshots_df[new_snapshots_df.visit_number==example_visit_number]
   </thead>
   <tbody>
     <tr>
-      <th>1512</th>
-      <td>2023-03-13</td>
-      <td>(6, 0)</td>
-      <td>459</td>
-      <td>1784</td>
-      <td>0</td>
-      <td>48</td>
-      <td>5.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1513</th>
-      <td>2023-03-13</td>
-      <td>(9, 30)</td>
-      <td>459</td>
-      <td>1784</td>
-      <td>0</td>
-      <td>48</td>
-      <td>5.0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1518</th>
-      <td>2023-03-13</td>
-      <td>(12, 0)</td>
-      <td>459</td>
-      <td>1784</td>
-      <td>0</td>
-      <td>48</td>
-      <td>5.0</td>
-      <td>1</td>
-      <td>0</td>
-      <td>1</td>
-      <td>1</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>1525</th>
-      <td>2023-03-13</td>
+      <th>2959</th>
+      <td>2023-03-19</td>
       <td>(15, 30)</td>
-      <td>459</td>
-      <td>1784</td>
+      <td>358</td>
+      <td>1940</td>
       <td>0</td>
-      <td>48</td>
-      <td>5.0</td>
+      <td>79</td>
+      <td>3.0</td>
       <td>1</td>
       <td>0</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2965</th>
+      <td>2023-03-19</td>
+      <td>(22, 0)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2977</th>
+      <td>2023-03-20</td>
+      <td>(6, 0)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2983</th>
+      <td>2023-03-20</td>
+      <td>(9, 30)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2989</th>
+      <td>2023-03-20</td>
+      <td>(12, 0)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>2998</th>
+      <td>2023-03-20</td>
+      <td>(15, 30)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <th>3014</th>
+      <td>2023-03-20</td>
+      <td>(22, 0)</td>
+      <td>358</td>
+      <td>1940</td>
+      <td>0</td>
+      <td>79</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>1</td>
     </tr>
   </tbody>
 </table>

@@ -27,9 +27,9 @@ get_survival_probability : function
 """
 
 import numpy as np
-import pandas as pd
 from datetime import timedelta
 import warnings
+
 
 def growth_curve(x, a, gamma):
     """
@@ -160,18 +160,23 @@ def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
     return y
 
 
-def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2, y2):
+def calculate_probability(
+    elapsed_los_td: timedelta,
+    prediction_window: timedelta,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+):
     """
     Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction, based on the patient's elapsed time in the ED prior to the moment of prediction and the length of the window
 
     Parameters
     ----------
-    elapsed_los_td_hrs : timedelta or float
-        The elapsed time since the patient arrived at the ED. If timedelta, will be converted to hours.
-        If float, assumed to be in hours.
-    prediction_window_hrs : timedelta or float
+    elapsed_los_td : timedelta
+        The elapsed time since the patient arrived at the ED.
+    prediction_window : timedelta
         The duration of the prediction window after the point of prediction, for which the probability is calculated.
-        If timedelta, will be converted to hours. If float, assumed to be in hours.
     x1 : float
         The time target for the first key point on the curve.
     y1 : float
@@ -188,7 +193,7 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
 
     Edge Case Handling
     ------------------
-    When elapsed_los_td_hrs is extremely high, such as values significantly greater than x2, the admission probability prior to the current time (`prob_admission_prior_to_now`) can reach 1.0 despite the curve being asymptotic. This scenario can cause computational errors when calculating the conditional probability, as it involves a division by zero. In such cases, this function directly returns a probability of 1.0, reflecting certainty of admission.
+    When elapsed_los_td is extremely high, such as values significantly greater than x2, the admission probability prior to the current time (`prob_admission_prior_to_now`) can reach 1.0 despite the curve being asymptotic. This scenario can cause computational errors when calculating the conditional probability, as it involves a division by zero. In such cases, this function directly returns a probability of 1.0, reflecting certainty of admission.
 
     Example
     -------
@@ -196,49 +201,47 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
 
     >>> from datetime import timedelta
     >>> calculate_probability(timedelta(hours=3), timedelta(hours=2), 4, 0.76, 12, 0.99)
-    >>> # or still accept float for backward compatibility
-    >>> calculate_probability(3.0, 2.0, 4, 0.76, 12, 0.99)
-    >>> # or mix timedelta and float
-    >>> calculate_probability(timedelta(hours=3), 2.0, 4, 0.76, 12, 0.99)
 
     """
-    # Handle both timedelta and float inputs for elapsed_los_td_hrs
-    if isinstance(elapsed_los_td_hrs, timedelta):
-        elapsed_hours = elapsed_los_td_hrs.total_seconds() / 3600
-    elif isinstance(elapsed_los_td_hrs, (int, float)):
-        elapsed_hours = float(elapsed_los_td_hrs)
-    else:
-        raise TypeError("elapsed_los_td_hrs must be a timedelta object or numeric value (int or float)")
-    
-    # Handle both timedelta and float inputs for prediction_window_hrs
-    if isinstance(prediction_window_hrs, timedelta):
-        prediction_window_hours = prediction_window_hrs.total_seconds() / 3600
-    elif isinstance(prediction_window_hrs, (int, float)):
-        prediction_window_hours = float(prediction_window_hrs)
-    else:
-        raise TypeError("prediction_window_hrs must be a timedelta object or numeric value (int or float)")
-    
+    # Validate inputs
+    if not isinstance(elapsed_los_td, timedelta):
+        raise TypeError("elapsed_los_td must be a timedelta object")
+    if not isinstance(prediction_window, timedelta):
+        raise TypeError("prediction_window must be a timedelta object")
+
+    # Convert timedelta to hours
+    elapsed_hours = elapsed_los_td.total_seconds() / 3600
+    prediction_window_hours = prediction_window.total_seconds() / 3600
+
     # Validate elapsed time to ensure it represents a reasonable time value in hours
     if elapsed_hours < 0:
-        raise ValueError("elapsed_los_td_hrs must be non-negative (cannot have negative elapsed time)")
-    
+        raise ValueError(
+            "elapsed_los_td must be non-negative (cannot have negative elapsed time)"
+        )
+
     if elapsed_hours > 168:  # 168 hours = 1 week
-        warnings.warn("elapsed_los_td_hrs appears to be longer than 168 hours (1 week). "
-                     "Check that the units of elapsed_los_td_hrs are correct")
-    
+        warnings.warn(
+            "elapsed_los_td appears to be longer than 168 hours (1 week). "
+            "Check that the units of elapsed_los_td are correct"
+        )
+
     if not np.isfinite(elapsed_hours):
-        raise ValueError("elapsed_los_td_hrs must be a finite time duration")
+        raise ValueError("elapsed_los_td must be a finite time duration")
 
     # Validate prediction window to ensure it represents a reasonable time value in hours
     if prediction_window_hours < 0:
-        raise ValueError("prediction_window_hrs must be non-negative (cannot have negative prediction window)")
-    
+        raise ValueError(
+            "prediction_window must be non-negative (cannot have negative prediction window)"
+        )
+
     if prediction_window_hours > 72:  # 72 hours = 3 days
-        warnings.warn("prediction_window_hrs appears to be longer than 72 hours (3 days). "
-                     "Check that the units of prediction_window_hrs are correct")
-    
+        warnings.warn(
+            "prediction_window appears to be longer than 72 hours (3 days). "
+            "Check that the units of prediction_window are correct"
+        )
+
     if not np.isfinite(prediction_window_hours):
-        raise ValueError("prediction_window_hrs must be a finite time duration")
+        raise ValueError("prediction_window must be a finite time duration")
 
     # probability of still being in the ED now (a function of elapsed time since arrival)
     prob_admission_prior_to_now = get_y_from_aspirational_curve(
@@ -254,10 +257,13 @@ def calculate_probability(elapsed_los_td_hrs, prediction_window_hrs, x1, y1, x2,
     if prob_admission_prior_to_now == 1:
         return 1.0
 
-    # Calculate conditional probability within the prediction window
-    return (prob_admission_by_end_of_window - prob_admission_prior_to_now) / (
-        1 - prob_admission_prior_to_now
-    )
+    # Calculate the conditional probability of admission within the prediction window
+    # given that the patient hasn't been admitted yet
+    conditional_prob = (
+        prob_admission_by_end_of_window - prob_admission_prior_to_now
+    ) / (1 - prob_admission_prior_to_now)
+
+    return conditional_prob
 
 
 def get_survival_probability(survival_df, time_hours):
@@ -296,27 +302,27 @@ def get_survival_probability(survival_df, time_hours):
     >>> get_survival_probability(survival_df, 3.5)
     0.65  # interpolated between 0.8 and 0.5
     """
-    if time_hours < survival_df['time_hours'].min():
+    if time_hours < survival_df["time_hours"].min():
         return 1.0
-    
-    if time_hours > survival_df['time_hours'].max():
-        return survival_df['survival_probability'].iloc[-1]
-    
+
+    if time_hours > survival_df["time_hours"].max():
+        return survival_df["survival_probability"].iloc[-1]
+
     # Find the closest time points for interpolation
-    lower_idx = survival_df['time_hours'].searchsorted(time_hours, side='right') - 1
+    lower_idx = survival_df["time_hours"].searchsorted(time_hours, side="right") - 1
     upper_idx = lower_idx + 1
-    
+
     if lower_idx < 0:
         return 1.0
-    
+
     if upper_idx >= len(survival_df):
-        return survival_df['survival_probability'].iloc[-1]
-    
+        return survival_df["survival_probability"].iloc[-1]
+
     # Get the surrounding points
-    t1 = survival_df['time_hours'].iloc[lower_idx]
-    t2 = survival_df['time_hours'].iloc[upper_idx]
-    p1 = survival_df['survival_probability'].iloc[lower_idx]
-    p2 = survival_df['survival_probability'].iloc[upper_idx]
-    
+    t1 = survival_df["time_hours"].iloc[lower_idx]
+    t2 = survival_df["time_hours"].iloc[upper_idx]
+    p1 = survival_df["survival_probability"].iloc[lower_idx]
+    p2 = survival_df["survival_probability"].iloc[upper_idx]
+
     # Linear interpolation
     return p1 + (p2 - p1) * (time_hours - t1) / (t2 - t1)

@@ -11,7 +11,7 @@ plot_trial_results : function
 """
 
 import matplotlib.pyplot as plt
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 from patientflow.model_artifacts import HyperParameterTrial
 
@@ -75,18 +75,18 @@ def plot_trial_results(
     fig, axes = plt.subplots(1, n_metrics, figsize=(7 * n_metrics, 6))
     if n_metrics == 1:
         axes = [axes]
-    
+
     # Plot each metric
     for idx, (metric, values) in enumerate(metric_values.items()):
         ax = axes[idx]
-        
+
         # Plot metric as dots
         ax.scatter(trial_indices, values, s=50, alpha=0.7)
         ax.set_xlabel("Trial Number")
         ax.set_ylabel(metric.replace("valid_", "").upper())
         ax.set_title(metric.replace("valid_", "").replace("_", " ").title())
         ax.grid(True, linestyle="--", alpha=0.7)
-        
+
         # Set y-axis limits
         if "loss" in metric.lower():
             best_idx = values.index(min(values))

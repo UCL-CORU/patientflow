@@ -29,12 +29,13 @@ the necessary pipeline components for feature transformation and prediction.
 Examples
 --------
 >>> from patientflow.predict.emergency_demand import create_predictions
+>>> from datetime import timedelta
 >>> predictions = create_predictions(
 ...     models=(classifier, spec_model, yet_to_arrive_model),
 ...     prediction_time=(8, 0),  # 8:00 AM
 ...     prediction_snapshots=snapshots_df,
 ...     specialties=['surgical', 'medical'],
-...     prediction_window_hrs=4.0,
+...     prediction_window=timedelta(hours=4),
 ...     x1=0.5, y1=0.8,
 ...     x2=2.0, y2=0.2,
 ...     cdf_cut_points=[0.9, 0.7]
@@ -42,6 +43,7 @@ Examples
 """
 
 from typing import List, Dict, Tuple, Union
+from datetime import timedelta
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
@@ -258,16 +260,21 @@ def get_specialty_probs(
 
 
 def create_predictions(
-    models: Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], WeightedPoissonPredictor],
+    models: Tuple[
+        TrainedClassifier,
+        Union[SequencePredictor, SingleInputPredictor],
+        WeightedPoissonPredictor,
+    ],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
     specialties: List[str],
-    prediction_window_hrs: float,
+    prediction_window: timedelta,
     x1: float,
     y1: float,
     x2: float,
     y2: float,
     cdf_cut_points: List[float],
+    elapsed_los_column: str = "elapsed_los",
 ) -> Dict[str, Dict[str, List[int]]]:
     """Create predictions for emergency demand for a single prediction moment.
 
@@ -284,8 +291,8 @@ def create_predictions(
         DataFrame containing prediction snapshots
     specialties : List[str]
         List of specialty names for predictions (e.g., ['surgical', 'medical'])
-    prediction_window_hrs : float
-        Prediction window in hours
+    prediction_window : timedelta
+        Prediction window as a timedelta object
     x1 : float
         X-coordinate of first point for probability curve
     y1 : float
@@ -311,7 +318,7 @@ def create_predictions(
     Raises
     ------
     TypeError
-        If any of the models are not of the expected type
+        If any of the models are not of the expected type or if prediction_window is not a timedelta
     ValueError
         If models have not been fit or if prediction parameters don't match training parameters
 
@@ -328,9 +335,17 @@ def create_predictions(
     if not isinstance(classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier")
     if not isinstance(spec_model, (SequencePredictor, SingleInputPredictor)):
-        raise TypeError("Second model must be of type SequencePredictor or SingleInputPredictor")
+        raise TypeError(
+            "Second model must be of type SequencePredictor or SingleInputPredictor"
+        )
     if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
         raise TypeError("Third model must be of type WeightedPoissonPredictor")
+    if elapsed_los_column not in prediction_snapshots.columns:
+        raise ValueError(
+            f"Column '{elapsed_los_column}' not found in prediction_snapshots"
+        )
+    if not pd.api.types.is_timedelta64_dtype(prediction_snapshots[elapsed_los_column]):
+        raise ValueError(f"Column '{elapsed_los_column}' must be a timedelta column")
 
     # Check that all models have been fit
     if not hasattr(classifier, "pipeline") or classifier.pipeline is None:
@@ -348,13 +363,13 @@ def create_predictions(
         raise ValueError(
             f"Requested prediction time {prediction_time} does not match the prediction time of the trained classifier {classifier.training_results.prediction_time}"
         )
-    
-    # Convert prediction window to hours for comparison
-    model_window_hours = yet_to_arrive_model.prediction_window.total_seconds() / 3600
-    if not abs(model_window_hours - prediction_window_hrs) < 1e-6:  # Use small epsilon for float comparison
+
+    # Compare prediction windows directly
+    if prediction_window != yet_to_arrive_model.prediction_window:
         raise ValueError(
-            f"Requested prediction window {prediction_window_hrs} hours does not match the prediction window of the trained yet-to-arrive model {model_window_hours} hours"
+            f"Requested prediction window {prediction_window} does not match the prediction window of the trained yet-to-arrive model {yet_to_arrive_model.prediction_window}"
         )
+
     if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
         raise ValueError(
             f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
@@ -392,8 +407,16 @@ def create_predictions(
     # Add missing columns expected by the model
     prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 
+    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds
+    prediction_snapshots_temp = prediction_snapshots.copy()
+    prediction_snapshots_temp["elapsed_los"] = prediction_snapshots_temp[
+        "elapsed_los"
+    ].dt.total_seconds()
+
     # Get predictions of admissions for ED patients
-    prob_admission_after_ed = model_input_to_pred_proba(prediction_snapshots, pipeline)
+    prob_admission_after_ed = model_input_to_pred_proba(
+        prediction_snapshots_temp, pipeline
+    )
 
     # Get predictions of admission to specialty
     prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
@@ -411,7 +434,7 @@ def create_predictions(
     # Get probability of admission within prediction window
     prob_admission_in_window = prediction_snapshots.apply(
         lambda row: calculate_probability(
-            row["elapsed_los_hrs"], prediction_window_hrs, x1, y1, x2, y2
+            row["elapsed_los_hrs"], prediction_window, x1, y1, x2, y2
         ),
         axis=1,
     )

@@ -19,7 +19,9 @@ import numpy as np
 from datetime import datetime, timedelta, time
 
 
-def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, admitted_only=False):
+def create_fake_finished_visits(
+    start_date, end_date, mean_patients_per_day, admitted_only=False
+):
     """
     Generate synthetic patient visit data for an emergency department.
 
@@ -100,7 +102,9 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, adm
         # Calculate expected admission rate based on triage probabilities and admission probabilities
         expected_admission_rate = sum(
             triage_prob * admission_prob
-            for triage_prob, admission_prob in zip(triage_probabilities, admission_probabilities.values())
+            for triage_prob, admission_prob in zip(
+                triage_probabilities, admission_probabilities.values()
+            )
         )
         # Adjust mean_patients_per_day to maintain the same number of admitted patients
         mean_patients_per_day = mean_patients_per_day / expected_admission_rate
@@ -225,7 +229,7 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day, adm
             if is_admitted:
                 specialty = np.random.choice(
                     ["medical", "surgical", "haem/onc", "paediatric"],
-                    p=[0.65, 0.25, 0.05, 0.05]
+                    p=[0.65, 0.25, 0.05, 0.05],
                 )
             else:
                 specialty = None

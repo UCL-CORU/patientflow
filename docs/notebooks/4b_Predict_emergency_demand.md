@@ -10,6 +10,9 @@ This notebook demonstrates the full implementation in code. I show how we used t
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -34,13 +37,8 @@ data_file_path = project_root / data_folder_name
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
     project_root,
     data_folder_name=data_folder_name,
-    config_file = 'config.yaml')
+    config_file = 'config.yaml', verbose=False)
 ```
-
-    Configuration will be loaded from: /Users/zellaking/Repos/patientflow/config.yaml
-    Data files will be loaded from: /Users/zellaking/Repos/patientflow/data-public
-    Trained models will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public
-    Images will be saved to: /Users/zellaking/Repos/patientflow/trained-models/public/media
 
 ```python
 import pandas as pd
@@ -260,7 +258,7 @@ admission_model = admissions_models[get_model_key(model_name, random_prediction_
 
 # prepare group snapshots dict to indicate which patients comprise the group we want to predict for
 group_snapshots_dict = prepare_group_snapshot_dict(
-    prediction_snapshots[prediction_snapshots.age_group != "0-17"]
+    prediction_snapshots
     )
 ```
 
@@ -289,15 +287,22 @@ Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the 
 These two probabilities for each patient snapshot are multiplied and the result passed to `get_prob_dist` function as weights.
 
 ```python
+import datetime
+len(group_snapshots_dict[datetime.date(2031, 10, 9)])
+```
+
+    79
+
+```python
 from patientflow.viz.prob_dist_plot import prob_dist_plot
 from patientflow.aggregate import get_prob_dist
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
-
+from datetime import timedelta
 # Calculate probability of admission within prediction window
 prob_admission_in_window = prediction_snapshots.apply(
     lambda row: calculate_probability(
-        elapsed_los_td_hrs = row["elapsed_los"]/3600,
-        prediction_window_hrs = prediction_window/60,
+        elapsed_los_td = timedelta(seconds=row["elapsed_los"]),
+        prediction_window = timedelta(minutes=prediction_window),
         x1 = x1,
         y1 = y1,
         x2 = x2,
@@ -329,28 +334,37 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         show_probability_thresholds=True, bar_colour='orange')
 ```
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_0.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_0.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_1.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_1.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_2.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_2.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_3.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_3.png)
 
-## Train model to predict bed count distributions for patients yet to arrive.
+## Train model to predict bed count distributions for patients yet to arrive
 
-As we are predicting by clinical area (medical, surgical, haem/onc) we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. The `WeightedPoissonPredictor` will generate separate models, if the `specialty_filters` parameter is used.
-
-A function called `create_yta_filters` prepares the specialty filters, based on special category processing that has been set up for UCLH to treat children and adolescents (anyone under 18 on the day of arrival at the ED) differently. It is assumed that these patients will always be admitted to a paediatric specialty, and that no adults will be.
+As we are predicting by clinical area we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. A dictionary, here called `specialty_filters`, is used to tell the `WeightedPoissonPredictor` which column contains the outcome we want to split by.
 
 ```python
 from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
-from patientflow.prepare import create_yta_filters
+from datetime import timedelta
 
-specialty_filters = create_yta_filters(ed_visits)
+# set the ED targets
+x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
+prediction_window = timedelta(minutes=params["prediction_window"])
+yta_time_interval = timedelta(minutes=params["yta_time_interval"])
+
+specialty_filters = filters={
+    'medical': {'specialty': 'medical'},
+    'surgical': {'specialty': 'surgical'},
+    'haem/onc': {'specialty': 'haem/onc'},
+    'paediatric': {'specialty': 'paediatric'}
+    }
 yta_model_by_spec =  WeightedPoissonPredictor(filters = specialty_filters, verbose=False)
 
-# calculate the number of days between the start of the training and validation sets; used for working out daily arrival rates
+# calculate the number of days between the start of the training and validation sets;
+# this is used to calculate daily arrival rates
 num_days = (start_validation_set - start_training_set).days
 
 if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
@@ -392,13 +406,13 @@ for specialty in [ 'medical', 'surgical', 'haem/onc', 'paediatric']:
         figsize=(6, 4) , bar_colour='green')
 ```
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_0.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_0.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_1.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_1.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_2.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_2.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_3.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_3.png)
 
 ##  Combining the predictions into one function for use in real-time inference
 
@@ -407,19 +421,26 @@ The function shown below is the one used for real-time prediction at UCLH. It re
 The function returns a dictionary, which is inserted into cells in a spreadsheet (via a process not shown here, as this is not done by the `patientflow` repo) to create the output requested by the users.
 
 ```python
+prediction_snapshots[['elapsed_los']].dtypes
+```
+
+    elapsed_los    timedelta64[ns]
+    dtype: object
+
+```python
 from patientflow.predict.emergency_demand import create_predictions
 
-
-# find the relevant admission models for the prediction time
-
 models = (admission_model, spec_model, yta_model_by_spec)
+
+# convert elapsed_los to timedelta to ensure correct calculation of probability of admission within prediction window
+prediction_snapshots['elapsed_los'] = pd.to_timedelta(prediction_snapshots['elapsed_los'], unit='s')
 
 create_predictions(
     models = models,
     prediction_time = random_prediction_time,
     prediction_snapshots = prediction_snapshots,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
-    prediction_window_hrs = 8,
+    prediction_window = timedelta(hours=8),
     cdf_cut_points =  [0.7, 0.9],
     x1 = x1,
     y1 = y1,
@@ -427,9 +448,9 @@ create_predictions(
     y2 = y2)
 ```
 
-    {'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
+    {'medical': {'in_ed': [4, 3], 'yet_to_arrive': [1, 0]},
      'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
-     'haem/onc': {'in_ed': [1, 1], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
 ## Summary

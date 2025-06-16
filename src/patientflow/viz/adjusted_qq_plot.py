@@ -36,7 +36,9 @@ from matplotlib.figure import Figure
 from patientflow.load import get_model_key
 
 
-def _calculate_cdf_values(agg_predicted: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _calculate_cdf_values(
+    agg_predicted: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculate CDF values for discrete distribution."""
     upper_cdf: np.ndarray = agg_predicted.cumsum()
     lower_cdf: np.ndarray = np.hstack((0, upper_cdf[:-1]))
@@ -44,32 +46,30 @@ def _calculate_cdf_values(agg_predicted: np.ndarray) -> Tuple[np.ndarray, np.nda
     return lower_cdf, mid_cdf, upper_cdf
 
 
-def _create_distribution_records(prob_dist_dict: Dict, cdf_types: List[str]) -> List[Dict]:
+def _create_distribution_records(
+    prob_dist_dict: Dict, cdf_types: List[str]
+) -> List[Dict]:
     """Create distribution records with CDF values for all time points."""
     all_distributions: List[Dict] = []
-    
+
     for dt, data in prob_dist_dict.items():
         agg_predicted: np.ndarray = np.array(data["agg_predicted"]["agg_proba"])
         lower_cdf, mid_cdf, upper_cdf = _calculate_cdf_values(agg_predicted)
-        
-        cdf_values = {
-            "lower": lower_cdf,
-            "mid": mid_cdf, 
-            "upper": upper_cdf
-        }
-        
+
+        cdf_values = {"lower": lower_cdf, "mid": mid_cdf, "upper": upper_cdf}
+
         for j, prob in enumerate(agg_predicted):
             record = {
                 "num_adm_pred": j,
                 "prob": prob,
                 "dt": dt,
             }
-            
+
             for cdf_type in cdf_types:
                 record[f"{cdf_type}_predicted_cdf"] = cdf_values[cdf_type][j]
-                
+
             all_distributions.append(record)
-    
+
     return all_distributions
 
 
@@ -81,21 +81,18 @@ def _create_observation_records(prob_dist_dict: Dict) -> List[Dict]:
     ]
 
 
-def _plot_predictions(ax, distr_coll: pd.DataFrame, num_time_points: int, 
-                     pred_types: List[str]) -> None:
+def _plot_predictions(
+    ax, distr_coll: pd.DataFrame, num_time_points: int, pred_types: List[str]
+) -> None:
     """Plot model predictions for specified types."""
-    type_labels = {
-        "lower": "Lower Bound",
-        "mid": "Midpoint",
-        "upper": "Upper Bound"
-    }
-    
+    type_labels = {"lower": "Lower Bound", "mid": "Midpoint", "upper": "Upper Bound"}
+
     for pred_type in pred_types:
         col_name: str = f"{pred_type}_predicted_cdf"
         df_temp: pd.DataFrame = distr_coll[[col_name, "prob"]].copy()
         df_temp = df_temp.sort_values(by=col_name)
         df_temp["cum_weight_normed"] = df_temp["prob"].cumsum() / num_time_points
-        
+
         ax.scatter(
             df_temp[col_name],
             df_temp["cum_weight_normed"],
@@ -106,21 +103,22 @@ def _plot_predictions(ax, distr_coll: pd.DataFrame, num_time_points: int,
         )
 
 
-def _plot_observations(ax, merged_df: pd.DataFrame, obs_types: List[str], 
-                      colors: Dict[str, str], is_first_subplot: bool) -> None:
+def _plot_observations(
+    ax,
+    merged_df: pd.DataFrame,
+    obs_types: List[str],
+    colors: Dict[str, str],
+    is_first_subplot: bool,
+) -> None:
     """Plot actual observations for specified types."""
-    type_labels = {
-        "lower": "Lower Bound",
-        "mid": "Midpoint",
-        "upper": "Upper Bound"
-    }
-    
+    type_labels = {"lower": "Lower Bound", "mid": "Midpoint", "upper": "Upper Bound"}
+
     for obs_type in obs_types:
         col_name_obs: str = f"{obs_type}_observed_cdf"
         values: np.ndarray = merged_df[col_name_obs].values
         unique_values, counts = np.unique(np.sort(values), return_counts=True)
         cum_weights: np.ndarray = np.cumsum(counts) / len(values)
-        
+
         ax.scatter(
             unique_values,
             cum_weights,
@@ -131,7 +129,9 @@ def _plot_observations(ax, merged_df: pd.DataFrame, obs_types: List[str],
         )
 
 
-def _setup_subplot(ax, prediction_time: Tuple[int, int], is_first_subplot: bool) -> None:
+def _setup_subplot(
+    ax, prediction_time: Tuple[int, int], is_first_subplot: bool
+) -> None:
     """Configure subplot appearance and labels."""
     hour, minutes = prediction_time
     ax.set_xlabel("CDF value (probability threshold)")
@@ -139,7 +139,7 @@ def _setup_subplot(ax, prediction_time: Tuple[int, int], is_first_subplot: bool)
     ax.set_title(f"Adjusted QQ plot for {hour}:{minutes:02}")
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 1])
-    
+
     if is_first_subplot:
         ax.legend()
 
@@ -232,7 +232,7 @@ def adjusted_qq_plot(
     # Calculate figure parameters
     num_plots: int = len(prediction_times_sorted)
     figsize = figsize or (num_plots * 5, 4)
-    
+
     # Create subplot layout
     fig: Figure
     axs: np.ndarray
@@ -244,7 +244,7 @@ def adjusted_qq_plot(
     plot_types = all_types if plot_all_bounds else ["mid"]
     colors: Dict[str, str] = {
         "lower": "#FF1493",  # deeppink
-        "mid": "#228B22",    # chartreuse4/forest green
+        "mid": "#228B22",  # chartreuse4/forest green
         "upper": "#ADD8E6",  # lightblue
     }
 
@@ -261,7 +261,7 @@ def adjusted_qq_plot(
         # Create distribution and observation dataframes
         all_distributions = _create_distribution_records(prob_dist_dict, all_types)
         distr_coll: pd.DataFrame = pd.DataFrame(all_distributions)
-        
+
         all_observations = _create_observation_records(prob_dist_dict)
         adm_coll: pd.DataFrame = pd.DataFrame(all_observations)
 
@@ -269,10 +269,12 @@ def adjusted_qq_plot(
         # by matching datetime and admission count to get lower/mid/upper bounds
         merged_df: pd.DataFrame = pd.merge(
             adm_coll,
-            distr_coll.rename(columns={
-                "num_adm_pred": "num_adm",
-                **{f"{t}_predicted_cdf": f"{t}_observed_cdf" for t in all_types}
-            }),
+            distr_coll.rename(
+                columns={
+                    "num_adm_pred": "num_adm",
+                    **{f"{t}_predicted_cdf": f"{t}_observed_cdf" for t in all_types},
+                }
+            ),
             on=["dt", "num_adm"],
             how="inner",
         )

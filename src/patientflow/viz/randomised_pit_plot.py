@@ -4,10 +4,11 @@ from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
 from patientflow.load import get_model_key
 
+
 def prob_to_cdf(prob_dist):
     """Convert probability distribution to CDF function"""
     import pandas as pd
-    
+
     if isinstance(prob_dist, pd.DataFrame):
         # Handle DataFrame: assume columns are values, data contains probabilities
         # Take the first row if it's a DataFrame with multiple rows
@@ -30,15 +31,15 @@ def prob_to_cdf(prob_dist):
         # Array format: index = value, array[index] = probability
         values = list(range(len(prob_dist)))
         probs = prob_dist
-    
+
     # Ensure values are sorted
     sorted_pairs = sorted(zip(values, probs))
     values = [pair[0] for pair in sorted_pairs]
     probs = [pair[1] for pair in sorted_pairs]
-    
+
     # Calculate cumulative probabilities
     cum_probs = np.cumsum(probs)
-    
+
     def cdf_function(x):
         # Return P(X <= x)
         if x < values[0]:
@@ -47,8 +48,9 @@ def prob_to_cdf(prob_dist):
             if x <= val:
                 return cum_probs[i]
         return 1.0  # x is larger than all values
-    
+
     return cdf_function
+
 
 def randomised_pit_plot(
     prediction_times: List[Tuple[int, int]],
@@ -61,7 +63,9 @@ def randomised_pit_plot(
     media_file_path: Optional[Path] = None,
     n_bins: int = 10,
     seed: Optional[int] = 42,
-) -> Union[plt.Figure, Dict[str, List[float]], Tuple[plt.Figure, Dict[str, List[float]]], None]:
+) -> Union[
+    plt.Figure, Dict[str, List[float]], Tuple[plt.Figure, Dict[str, List[float]]], None
+]:
     """
     Generate randomised PIT histograms for multiple prediction times side by side.
 
@@ -114,7 +118,7 @@ def randomised_pit_plot(
     # Calculate figure parameters
     num_plots = len(prediction_times_sorted)
     figsize = figsize or (num_plots * 5, 4)
-    
+
     # Create subplot layout
     fig, axs = plt.subplots(1, num_plots, figsize=figsize)
     axs = [axs] if num_plots == 1 else axs
@@ -132,19 +136,19 @@ def randomised_pit_plot(
 
         observations = []
         cdf_functions = []
-        
+
         # Extract data for each date
         for dt in prob_dist_dict:
             try:
-                observation = prob_dist_dict[dt]['agg_observed']
-                predicted_dist = prob_dist_dict[dt]['agg_predicted']['agg_proba']
-                
+                observation = prob_dist_dict[dt]["agg_observed"]
+                predicted_dist = prob_dist_dict[dt]["agg_predicted"]["agg_proba"]
+
                 # Convert probability distribution to CDF function
                 cdf_func = prob_to_cdf(predicted_dist)
-                
+
                 observations.append(observation)
                 cdf_functions.append(cdf_func)
-                
+
             except Exception as e:
                 print(f"Skipping date {dt} due to error: {e}")
                 continue
@@ -154,17 +158,17 @@ def randomised_pit_plot(
 
         # Generate PIT values
         pit_values = []
-        
+
         for obs, cdf_func in zip(observations, cdf_functions):
             try:
                 # Calculate PIT range bounds
                 lower = cdf_func(obs - 1) if obs > 0 else 0.0
                 upper = cdf_func(obs)
-                
+
                 # Sample randomly within the range
                 pit_value = np.random.uniform(lower, upper)
                 pit_values.append(pit_value)
-                
+
             except Exception as e:
                 print(f"Error processing observation {obs}: {e}")
                 continue
@@ -179,28 +183,35 @@ def randomised_pit_plot(
     for i, prediction_time in enumerate(prediction_times_sorted):
         model_key = get_model_key(model_name, prediction_time)
         pit_values = all_pit_values.get(model_key, [])
-        
+
         if not pit_values:
             continue
 
         # Plot histogram
         ax = axs[i]
-        ax.hist(pit_values, bins=n_bins, density=True, alpha=0.7, 
-                edgecolor='black', label='Randomised PIT')
-        
+        ax.hist(
+            pit_values,
+            bins=n_bins,
+            density=True,
+            alpha=0.7,
+            edgecolor="black",
+            label="Randomised PIT",
+        )
+
         # Add uniform reference line
-        ax.axhline(y=1.0, color='red', linestyle='--', linewidth=2, 
-                   label='Perfect Uniform')
-        
+        ax.axhline(
+            y=1.0, color="red", linestyle="--", linewidth=2, label="Perfect Uniform"
+        )
+
         # Set labels and title
         hour, minutes = prediction_time
-        ax.set_xlabel('PIT Value')
-        ax.set_ylabel('Density')
-        ax.set_title(f'PIT Histogram for {hour}:{minutes:02}')
+        ax.set_xlabel("PIT Value")
+        ax.set_ylabel("Density")
+        ax.set_title(f"PIT Histogram for {hour}:{minutes:02}")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, max_density * 1.1)  # Add 10% padding
         ax.grid(True, alpha=0.3)
-        
+
         if i == 0:  # Only show legend on first subplot
             ax.legend()
 
@@ -224,5 +235,3 @@ def randomised_pit_plot(
         plt.show()
         plt.close()
         return None
-
-

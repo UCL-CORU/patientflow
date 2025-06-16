@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 import pandas as pd
 from pandas import DataFrame
 from datetime import timedelta
@@ -61,8 +61,8 @@ def create_yta_filters(df):
 def train_weighted_poisson_predictor(
     train_visits: DataFrame,
     train_yta: DataFrame,
-    prediction_window: Union[int, timedelta],
-    yta_time_interval: Union[int, timedelta],
+    prediction_window: timedelta,
+    yta_time_interval: timedelta,
     prediction_times: List[float],
     num_days: int,
     epsilon: float = 10e-7,
@@ -72,15 +72,23 @@ def train_weighted_poisson_predictor(
     Args:
         train_visits: Visits dataset (used for identifying special categories)
         train_yta: Training data for yet-to-arrive predictions
-        prediction_window: Time window for predictions (int in minutes or timedelta)
-        yta_time_interval: Time interval for predictions (int in minutes or timedelta)
+        prediction_window: Time window for predictions as a timedelta
+        yta_time_interval: Time interval for predictions as a timedelta
         prediction_times: List of prediction times
         epsilon: Epsilon parameter for model
         num_days: Number of days to consider
 
     Returns:
         Trained WeightedPoissonPredictor model
+
+    Raises:
+        TypeError: If prediction_window or yta_time_interval are not timedelta objects
     """
+    if not isinstance(prediction_window, timedelta):
+        raise TypeError("prediction_window must be a timedelta object")
+    if not isinstance(yta_time_interval, timedelta):
+        raise TypeError("yta_time_interval must be a timedelta object")
+
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
             train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(

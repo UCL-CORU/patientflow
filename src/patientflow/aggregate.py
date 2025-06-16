@@ -42,9 +42,7 @@ import pandas as pd
 import sympy as sym
 from sympy import expand, symbols
 from datetime import date, datetime, time, timedelta, timezone
-from patientflow.calculate.admission_in_prediction_window import calculate_probability
-from typing import Dict, List, Tuple, Union
-from scipy.stats import rv_discrete
+from typing import List, Tuple
 from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
 
 
@@ -534,6 +532,7 @@ def get_prob_dist_using_survival_predictor(
     ValueError
         If test_visits does not have the required columns or if model is not fitted.
     """
+
     # Validate test_visits has required columns
     if start_time_col in test_visits.columns:
         # start_time_col is a regular column
@@ -542,53 +541,57 @@ def get_prob_dist_using_survival_predictor(
     else:
         # Check if start_time_col is the index
         if test_visits.index.name != start_time_col:
-            raise ValueError(f"'{start_time_col}' not found in DataFrame columns or index")
-        elif start_time_col not in test_visits.columns:
-            raise ValueError(f"Column '{start_time_col}' not found in DataFrame")
+            raise ValueError(
+                f"'{start_time_col}' not found in DataFrame columns or index (index.name is '{test_visits.index.name}')"
+            )
+        if end_time_col not in test_visits.columns:
+            raise ValueError(f"Column '{end_time_col}' not found in DataFrame")
 
     # Validate model is fitted
-    if not hasattr(model, 'survival_df') or model.survival_df is None:
+    if not hasattr(model, "survival_df") or model.survival_df is None:
         raise ValueError("Model must be fitted before calling get_prob_dist_empirical")
 
     prob_dist_dict = {}
     if verbose:
-        print(f"Calculating probability distributions for {len(snapshot_dates)} snapshot dates")
+        print(
+            f"Calculating probability distributions for {len(snapshot_dates)} snapshot dates"
+        )
 
     # Create prediction context that will be the same for all dates
-    prediction_context = {
-        category: {
-            'prediction_time': prediction_time
-        }
-    }
+    prediction_context = {category: {"prediction_time": prediction_time}}
 
     for dt in snapshot_dates:
         # Create prediction moment by combining snapshot date and prediction time
-        prediction_moment = datetime.combine(dt, time(prediction_time[0], prediction_time[1]))
-        
+        prediction_moment = datetime.combine(
+            dt, time(prediction_time[0], prediction_time[1])
+        )
+        # Convert to UTC if the test_visits timestamps are timezone-aware
+        if start_time_col in test_visits.columns:
+            if test_visits[start_time_col].dt.tz is not None:
+                prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
+        else:
+            if test_visits.index.tz is not None:
+                prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
+
         # Get predictions from model
         predictions = model.predict(prediction_context)
-        prob_dist_dict[dt] = {
-            'agg_predicted': predictions[category]
-        }
+        prob_dist_dict[dt] = {"agg_predicted": predictions[category]}
 
         # Calculate observed values
         if start_time_col in test_visits.columns:
             # start_time_col is a regular column
-            mask = (
-                (test_visits[start_time_col] > prediction_moment) &
-                (test_visits[end_time_col] <= prediction_moment + prediction_window)
+            mask = (test_visits[start_time_col] > prediction_moment) & (
+                test_visits[end_time_col] <= prediction_moment + prediction_window
             )
         else:
             # start_time_col is the index
-            mask = (
-                (test_visits.index > prediction_moment) &
-                (test_visits[end_time_col] <= prediction_moment + prediction_window)
+            mask = (test_visits.index > prediction_moment) & (
+                test_visits[end_time_col] <= prediction_moment + prediction_window
             )
         nrow = mask.sum()
-        prob_dist_dict[dt]['agg_observed'] = int(nrow) if nrow > 0 else 0
+        prob_dist_dict[dt]["agg_observed"] = int(nrow) if nrow > 0 else 0
 
     if verbose:
         print(f"Processed {len(snapshot_dates)} snapshot dates")
 
     return prob_dist_dict
-

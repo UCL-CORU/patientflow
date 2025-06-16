@@ -90,7 +90,7 @@ def prob_dist_plot(
         - array-like of probabilities (indices will be 0 to len(array)-1)
     title : str
         The title of the plot, used for display and optionally as the file name.
-    directory_path : str or pathlib.Path, optional
+    media_file_path : str or pathlib.Path, optional
         Directory where the plot image will be saved. If not provided, the plot is
         displayed without saving.
     figsize : tuple of float, optional

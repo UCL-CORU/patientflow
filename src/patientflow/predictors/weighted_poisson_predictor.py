@@ -12,7 +12,7 @@ Classes
 WeightedPoissonPredictor : BaseEstimator, TransformerMixin
     Predicts the number of admissions within a given prediction window based on historical
     data and Poisson-binomial distribution using parametric aspirational curves.
-    
+
 EmpiricalSurvivalPredictor : WeightedPoissonPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions instead of parametric curves.
@@ -49,7 +49,7 @@ Using the empirical EmpiricalSurvivalPredictor:
 ...     'medical': {'specialty': 'medical'},
 ...     'surgical': {'specialty': 'surgical'}
 ... })
->>> predictor.fit(train_data, prediction_window=480, yta_time_interval=60, 
+>>> predictor.fit(train_data, prediction_window=480, yta_time_interval=60,
 ...               prediction_times=[8, 12, 16, 20], num_days=90)
 >>> predictions = predictor.predict(prediction_context, max_value=25)
 """
@@ -391,7 +391,12 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         return filtered_df
 
     def _calculate_parameters(
-        self, df, prediction_window, yta_time_interval, prediction_times, num_days
+        self,
+        df,
+        prediction_window: timedelta,
+        yta_time_interval: timedelta,
+        prediction_times,
+        num_days,
     ):
         """Calculate parameters required for the model.
 
@@ -399,10 +404,10 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ----------
         df : pandas.DataFrame
             The data frame to process.
-        prediction_window : int, float, or timedelta
-            The total prediction window for prediction. If timedelta, operations will convert to minutes as needed.
-        yta_time_interval : int, float, or timedelta
-            The interval for splitting the prediction window. If timedelta, operations will convert to minutes as needed.
+        prediction_window : timedelta
+            The total prediction window for prediction.
+        yta_time_interval : timedelta
+            The interval for splitting the prediction window.
         prediction_times : list
             Times of day at which predictions are made.
         num_days : int
@@ -413,18 +418,11 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         dict
             Calculated arrival_rates parameters organized by time of day.
         """
-        
+
         # Calculate Ntimes - Python handles the division naturally
-        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
-            Ntimes = int(prediction_window / yta_time_interval)
-        elif isinstance(prediction_window, timedelta):
-            Ntimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
-        elif isinstance(yta_time_interval, timedelta):
-            Ntimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
-        else:
-            Ntimes = int(prediction_window / yta_time_interval)
-        
-        # Pass original type to time_varying_arrival_rates (it handles both int and timedelta)
+        Ntimes = int(prediction_window / yta_time_interval)
+
+        # Pass original type to time_varying_arrival_rates
         arrival_rates_dict = time_varying_arrival_rates(
             df, yta_time_interval, num_days, verbose=self.verbose
         )
@@ -440,8 +438,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
                 arrival_rates_dict[
                     (
                         datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
-                        + i * (yta_time_interval if isinstance(yta_time_interval, timedelta) 
-                               else timedelta(minutes=yta_time_interval))
+                        + i * yta_time_interval
                     ).time()
                 ]
                 for i in range(Ntimes)
@@ -455,8 +452,8 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window,
-        yta_time_interval,
+        prediction_window: timedelta,
+        yta_time_interval: timedelta,
         prediction_times: List[float],
         num_days: int,
         epsilon: float = 10**-7,
@@ -468,12 +465,10 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         ----------
         train_df : pandas.DataFrame
             The training dataset with historical admission data.
-        prediction_window : int or timedelta
-            The prediction window in minutes. If timedelta, will be converted to minutes.
-            If int, assumed to be in minutes.
-        yta_time_interval : int or timedelta
-            The interval in minutes for splitting the prediction window. If timedelta, will be converted to minutes.
-            If int, assumed to be in minutes.
+        prediction_window : timedelta
+            The prediction window as a timedelta object.
+        yta_time_interval : timedelta
+            The interval for splitting the prediction window as a timedelta object.
         prediction_times : list
             Times of day at which predictions are made, in hours.
         num_days : int
@@ -491,51 +486,33 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         Raises
         ------
+        TypeError
+            If prediction_window or yta_time_interval are not timedelta objects.
         ValueError
             If prediction_window/yta_time_interval is not greater than 1.
         """
 
-        # Validate inputs - no conversions needed
-        if isinstance(prediction_window, timedelta):
-            if prediction_window.total_seconds() <= 0:
-                raise ValueError("prediction_window must be positive")
-        elif isinstance(prediction_window, (int, float)):
-            if prediction_window <= 0:
-                raise ValueError("prediction_window must be positive")
-            if not np.isfinite(prediction_window):
-                raise ValueError("prediction_window must be finite")
-        else:
-            raise TypeError("prediction_window must be a timedelta object or numeric value")
-        
-        if isinstance(yta_time_interval, timedelta):
-            if yta_time_interval.total_seconds() <= 0:
-                raise ValueError("yta_time_interval must be positive")
-            if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
-                warnings.warn("yta_time_interval appears to be longer than 4 hours")
-        elif isinstance(yta_time_interval, (int, float)):
-            if yta_time_interval <= 0:
-                raise ValueError("yta_time_interval must be positive")
-            if yta_time_interval > 4 * 60:  # 4 hours in minutes
-                warnings.warn("yta_time_interval appears to be longer than 4 hours")
-            if not np.isfinite(yta_time_interval):
-                raise ValueError("yta_time_interval must be finite")
-        else:
-            raise TypeError("yta_time_interval must be a timedelta object or numeric value")
+        # Validate inputs
+        if not isinstance(prediction_window, timedelta):
+            raise TypeError("prediction_window must be a timedelta object")
+        if not isinstance(yta_time_interval, timedelta):
+            raise TypeError("yta_time_interval must be a timedelta object")
 
-        # Validate the ratio makes sense (convert only for this check)
-        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
-            ratio = prediction_window / yta_time_interval
-        elif isinstance(prediction_window, timedelta):
-            ratio = prediction_window.total_seconds() / 60 / yta_time_interval
-        elif isinstance(yta_time_interval, timedelta):
-            ratio = prediction_window / (yta_time_interval.total_seconds() / 60)
-        else:
-            ratio = prediction_window / yta_time_interval
-            
+        if prediction_window.total_seconds() <= 0:
+            raise ValueError("prediction_window must be positive")
+        if yta_time_interval.total_seconds() <= 0:
+            raise ValueError("yta_time_interval must be positive")
+        if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
+            warnings.warn("yta_time_interval appears to be longer than 4 hours")
+
+        # Validate the ratio makes sense
+        ratio = prediction_window / yta_time_interval
         if int(ratio) == 0:
-            raise ValueError("prediction_window must be significantly larger than yta_time_interval")
+            raise ValueError(
+                "prediction_window must be significantly larger than yta_time_interval"
+            )
 
-        # Store original types 
+        # Store original types
         self.prediction_window = prediction_window
         self.yta_time_interval = yta_time_interval
         self.epsilon = epsilon
@@ -642,13 +619,19 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         """
         predictions = {}
 
-        # Calculate Ntimes 
-        if isinstance(self.prediction_window, timedelta) and isinstance(self.yta_time_interval, timedelta):
+        # Calculate Ntimes
+        if isinstance(self.prediction_window, timedelta) and isinstance(
+            self.yta_time_interval, timedelta
+        ):
             NTimes = int(self.prediction_window / self.yta_time_interval)
         elif isinstance(self.prediction_window, timedelta):
-            NTimes = int(self.prediction_window.total_seconds() / 60 / self.yta_time_interval)
+            NTimes = int(
+                self.prediction_window.total_seconds() / 60 / self.yta_time_interval
+            )
         elif isinstance(self.yta_time_interval, timedelta):
-            NTimes = int(self.prediction_window / (self.yta_time_interval.total_seconds() / 60))
+            NTimes = int(
+                self.prediction_window / (self.yta_time_interval.total_seconds() / 60)
+            )
         else:
             NTimes = int(self.prediction_window / self.yta_time_interval)
 
@@ -712,34 +695,32 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
 class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
     """A predictor that uses empirical survival curves instead of parameterised curves.
-    
+
     This predictor inherits all the arrival rate calculation and filtering logic from
     WeightedPoissonPredictor but uses empirical survival probabilities and convolution
     of Poisson distributions for prediction instead of the Poisson-binomial approach.
-    
+
     The survival curve is automatically calculated from the training data during the
     fit process by analysing time-to-admission patterns.
-    
+
     Parameters
     ----------
     filters : dict, optional
         Optional filters for data categorization. If None, no filtering is applied.
     verbose : bool, default=False
         Whether to enable verbose logging.
-        
+
     Attributes
     ----------
     survival_df : pandas.DataFrame
         The survival data calculated from training data, containing time-to-event
         information for empirical probability calculations.
     """
-    
+
     def __init__(self, filters=None, verbose=False):
         """Initialize the EmpiricalSurvivalPredictor."""
         super().__init__(filters, verbose)
         self.survival_df = None
-    
-
 
     def fit(
         self,
@@ -748,9 +729,10 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
         yta_time_interval,
         prediction_times: List[float],
         num_days: int,
-        start_time_col: str = 'arrival_datetime',
-        end_time_col: str = 'departure_datetime',
-        y: Optional[None] = None,
+        epsilon=10**-7,
+        y=None,
+        start_time_col="arrival_datetime",
+        end_time_col="departure_datetime",
     ) -> "EmpiricalSurvivalPredictor":
         """Fit the model to the training data and calculate empirical survival curve.
 
@@ -770,13 +752,16 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             Times of day at which predictions are made, in hours.
         num_days : int
             The number of days that the train_df spans.
+        epsilon : float, default=1e-7
+            A small value representing acceptable error rate to enable calculation
+            of the maximum value of the random variable representing number of beds.
+        y : None, optional
+            Ignored, present for compatibility with scikit-learn's fit method.
         start_time_col : str, default='arrival_datetime'
             Name of the column containing the start time (e.g., arrival time).
             Expected to be the DataFrame index, but can also be a regular column.
         end_time_col : str, default='departure_datetime'
             Name of the column containing the end time (e.g., departure time).
-        y : None, optional
-            Ignored, present for compatibility with scikit-learn's fit method.
 
         Returns
         -------
@@ -793,29 +778,43 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             df_for_survival = train_df.reset_index()
             # Verify that start_time_col is now available
             if start_time_col not in df_for_survival.columns:
-                raise ValueError(f"Column '{start_time_col}' not found in DataFrame columns or index")
-        
+                raise ValueError(
+                    f"Column '{start_time_col}' not found in DataFrame columns or index"
+                )
+
         self.survival_df = calculate_survival_curve(
-            df_for_survival, 
-            start_time_col=start_time_col, 
-            end_time_col=end_time_col
+            df_for_survival, start_time_col=start_time_col, end_time_col=end_time_col
         )
-        
+
         # Verify survival curve was calculated and saved successfully
         if self.survival_df is None or len(self.survival_df) == 0:
             raise RuntimeError("Failed to calculate survival curve from training data")
-        
+
+        # Ensure train_df has start_time_col as index for parent fit method
+        if start_time_col in train_df.columns:
+            train_df = train_df.set_index(start_time_col)
+
         # Call parent fit method to handle arrival rate calculation and validation
-        super().fit(train_df, prediction_window, yta_time_interval, prediction_times, num_days, y=y)
-        
+        super().fit(
+            train_df,
+            prediction_window,
+            yta_time_interval,
+            prediction_times,
+            num_days,
+            epsilon=epsilon,
+            y=y,
+        )
+
         if self.verbose:
-            self.logger.info(f"EmpiricalSurvivalPredictor has been fitted with survival curve containing {len(self.survival_df)} time points")
-        
+            self.logger.info(
+                f"EmpiricalSurvivalPredictor has been fitted with survival curve containing {len(self.survival_df)} time points"
+            )
+
         return self
-    
+
     def get_survival_curve(self):
         """Get the survival curve calculated during fitting.
-        
+
         Returns
         -------
         pandas.DataFrame
@@ -823,7 +822,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             - time_hours: Time points in hours
             - survival_probability: Survival probabilities at each time point
             - event_probability: Event probabilities (1 - survival_probability)
-        
+
         Raises
         ------
         RuntimeError
@@ -832,24 +831,26 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
         if self.survival_df is None:
             raise RuntimeError("Model has not been fitted yet. Call fit() first.")
         return self.survival_df.copy()
-    
+
     def _calculate_survival_probabilities(self, prediction_window, yta_time_interval):
         """Calculate survival probabilities for each time interval.
-        
+
         Parameters
         ----------
         prediction_window : int or timedelta
             The prediction window.
         yta_time_interval : int or timedelta
             The time interval for splitting the prediction window.
-            
+
         Returns
         -------
         numpy.ndarray
             Array of admission probabilities for each time interval.
         """
         # Calculate number of time intervals
-        if isinstance(prediction_window, timedelta) and isinstance(yta_time_interval, timedelta):
+        if isinstance(prediction_window, timedelta) and isinstance(
+            yta_time_interval, timedelta
+        ):
             NTimes = int(prediction_window / yta_time_interval)
         elif isinstance(prediction_window, timedelta):
             NTimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
@@ -857,55 +858,59 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             NTimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
         else:
             NTimes = int(prediction_window / yta_time_interval)
-        
+
         # Convert to hours for survival probability calculation
         if isinstance(prediction_window, timedelta):
             prediction_window_hours = prediction_window.total_seconds() / 3600
         else:
             prediction_window_hours = prediction_window / 60
-            
+
         if isinstance(yta_time_interval, timedelta):
             yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
         else:
             yta_time_interval_hours = yta_time_interval / 60
-        
+
         # Calculate admission probabilities for each time interval
         probabilities = []
         for i in range(NTimes):
             # Time remaining until end of prediction window
             time_remaining = prediction_window_hours - (i * yta_time_interval_hours)
-            
+
             # Interpolate survival probability from survival curve
             if time_remaining <= 0:
-                prob_admission = 1.0  # If time remaining is 0 or negative, probability is 1
+                prob_admission = (
+                    1.0  # If time remaining is 0 or negative, probability is 1
+                )
             else:
                 # Find the survival probability at this time point
                 # Linear interpolation between points in survival curve
                 survival_curve = self.survival_df
-                if time_remaining >= survival_curve['time_hours'].max():
+                if time_remaining >= survival_curve["time_hours"].max():
                     # If time is beyond our data, use the last survival probability
-                    survival_prob = survival_curve['survival_probability'].iloc[-1]
-                elif time_remaining <= survival_curve['time_hours'].min():
+                    survival_prob = survival_curve["survival_probability"].iloc[-1]
+                elif time_remaining <= survival_curve["time_hours"].min():
                     # If time is before our data, use the first survival probability
-                    survival_prob = survival_curve['survival_probability'].iloc[0]
+                    survival_prob = survival_curve["survival_probability"].iloc[0]
                 else:
                     # Interpolate between points
                     survival_prob = np.interp(
-                        time_remaining, 
-                        survival_curve['time_hours'], 
-                        survival_curve['survival_probability']
+                        time_remaining,
+                        survival_curve["time_hours"],
+                        survival_curve["survival_probability"],
                     )
-                
+
                 # Probability of admission = 1 - survival probability
                 prob_admission = 1 - survival_prob
-            
+
             probabilities.append(prob_admission)
-        
+
         return np.array(probabilities)
-    
-    def _convolve_poisson_distributions(self, arrival_rates, probabilities, max_value=20):
+
+    def _convolve_poisson_distributions(
+        self, arrival_rates, probabilities, max_value=20
+    ):
         """Convolve Poisson distributions for each time interval.
-        
+
         Parameters
         ----------
         arrival_rates : numpy.ndarray
@@ -914,22 +919,22 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             Array of admission probabilities for each time interval.
         max_value : int, default=20
             Maximum value for the discrete distribution support.
-            
+
         Returns
         -------
         pandas.DataFrame
             DataFrame with 'sum' and 'agg_proba' columns representing the final distribution.
         """
         from scipy import stats
-        
+
         # Create weighted Poisson distributions for each time interval
         weighted_rates = arrival_rates * probabilities
         poisson_dists = [stats.poisson(rate) for rate in weighted_rates]
-        
+
         # Get PMF for each distribution
         x = np.arange(max_value)
         pmfs = [dist.pmf(x) for dist in poisson_dists]
-        
+
         # Convolve all distributions together
         if len(pmfs) == 0:
             # Handle edge case of no distributions
@@ -939,23 +944,20 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             combined_pmf = pmfs[0]
             for pmf in pmfs[1:]:
                 combined_pmf = np.convolve(combined_pmf, pmf)
-        
+
         # Create result DataFrame
-        result_df = pd.DataFrame({
-            'sum': range(len(combined_pmf)),
-            'agg_proba': combined_pmf
-        })
-        
+        result_df = pd.DataFrame(
+            {"sum": range(len(combined_pmf)), "agg_proba": combined_pmf}
+        )
+
         # Filter out near-zero probabilities and normalize
-        result_df = result_df[result_df['agg_proba'] > 1e-10]
-        result_df['agg_proba'] = result_df['agg_proba'] / result_df['agg_proba'].sum()
-        
-        return result_df.set_index('sum')
-    
+        result_df = result_df[result_df["agg_proba"] > 1e-10]
+        result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
+
+        return result_df.set_index("sum")
+
     def predict(
-        self, 
-        prediction_context: Dict, 
-        max_value: int = 20
+        self, prediction_context: Dict, x1=None, y1=None, x2=None, y2=None, max_value=20
     ) -> Dict:
         """Predict the number of admissions using empirical survival curves.
 
@@ -964,6 +966,18 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
+        x1 : float, optional
+            The x-coordinate of the first transition point on the aspirational curve,
+            where the growth phase ends and the decay phase begins.
+        y1 : float, optional
+            The y-coordinate of the first transition point (x1), representing the target
+            proportion of patients admitted by time x1.
+        x2 : float, optional
+            The x-coordinate of the second transition point on the curve, beyond which
+            all but a few patients are expected to be admitted.
+        y2 : float, optional
+            The y-coordinate of the second transition point (x2), representing the target
+            proportion of patients admitted by time x2.
         max_value : int, default=20
             Maximum value for the discrete distribution support.
 
@@ -982,15 +996,17 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
             If survival_df was not provided during fitting.
         """
         if self.survival_df is None:
-            raise RuntimeError("No survival data available. Please call fit() method first to calculate survival curve from training data.")
-        
+            raise RuntimeError(
+                "No survival data available. Please call fit() method first to calculate survival curve from training data."
+            )
+
         predictions = {}
-        
+
         # Calculate survival probabilities once (they're the same for all contexts)
         survival_probabilities = self._calculate_survival_probabilities(
             self.prediction_window, self.yta_time_interval
         )
-        
+
         for filter_key, filter_values in prediction_context.items():
             try:
                 if filter_key not in self.weights:
@@ -1019,7 +1035,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
 
                 # Convert arrival rates to numpy array
                 arrival_rates = np.array(arrival_rates)
-                
+
                 # Generate prediction using convolution approach
                 predictions[filter_key] = self._convolve_poisson_distributions(
                     arrival_rates, survival_probabilities, max_value
