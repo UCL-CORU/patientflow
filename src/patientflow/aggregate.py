@@ -34,7 +34,7 @@ get_prob_dist : function
     Calculate probability distributions for each snapshot date based on given model predictions.
 
 get_prob_dist_without_patient_snapshots : function
-    Calculate probability distributions for yet-to-arrive patients for each category at a specific prediction time.
+    Calculate probability distributions for each snapshot date using an EmpiricalSurvivalPredictor.
 
 """
 
@@ -45,7 +45,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
 from typing import Dict, List, Tuple, Union
 from scipy.stats import rv_discrete
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
 
 
 def create_symbols(n):
@@ -487,157 +487,108 @@ def get_prob_dist(
     return prob_dist_dict
 
 
-def get_prob_dist_without_patient_snapshots(
-    prediction_time: Tuple[int, int],
-    categories: List[str],
-    model: Union[WeightedPoissonPredictor, rv_discrete],
-    test_df: pd.DataFrame,
-    prediction_window: int,
+def get_prob_dist_using_survival_predictor(
     snapshot_dates: List[date],
-    x1: float = 0.0,  # Default float value instead of None
-    y1: float = 0.0,  # Default float value instead of None
-    x2: float = 0.0,  # Default float value instead of None
-    y2: float = 0.0,  # Default float value instead of None
-    datetime_col: str = "arrival_datetime",
-    max_range: int = 20,
-) -> Dict[str, Dict[date, Dict[str, Union[pd.DataFrame, float]]]]:
+    test_visits: pd.DataFrame,
+    category: str,
+    prediction_time: Tuple[int, int],
+    prediction_window: timedelta,
+    start_time_col: str,
+    end_time_col: str,
+    model: EmpiricalSurvivalPredictor,
+    verbose=False,
+):
     """
-    Calculate probability distributions for yet-to-arrive patients for each category at a specific prediction time.
+    Calculate probability distributions for each snapshot date using an EmpiricalSurvivalPredictor.
 
-    Args:
-        prediction_time: Tuple of (hour, minute) representing the prediction time
-        categories: List of categories to analyze
-        model: Prediction model (can be WeightedPoissonPredictor or a statistical distribution)
-        test_df: DataFrame containing test set inpatient arrivals
-        prediction_window: Time window for predictions in minutes
-        snapshot_dates: List[date]
-            List of dates to analyze
-        x1: float
-            First x-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        y1: float
-            First y-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        x2: float
-            Second x-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        y2: float
-            Second y-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        datetime_col: Name of the column containing arrival datetimes (default: 'arrival_datetime')
-        max_range: Maximum number of arrivals to consider in probability distribution (default: 20)
+    Parameters
+    ----------
+    snapshot_dates : array-like
+        Array of dates for which to calculate probability distributions.
+    test_visits : pandas.DataFrame
+        DataFrame containing test visit data. Must have either:
+        - start_time_col as a column and end_time_col as a column, or
+        - start_time_col as the index and end_time_col as a column
+    category : str
+        Category to use for predictions (e.g., 'medical', 'surgical')
+    prediction_time : tuple
+        Tuple of (hour, minute) representing the time of day for predictions
+    prediction_window : timedelta
+        The prediction window duration
+    start_time_col : str
+        Name of the column containing start times (or index name if using index)
+    end_time_col : str
+        Name of the column containing end times
+    model : EmpiricalSurvivalPredictor
+        A fitted instance of EmpiricalSurvivalPredictor
+    verbose : bool, optional (default=False)
+        If True, print progress information
 
-    Returns:
-        Dictionary containing probability distributions for each category
+    Returns
+    -------
+    dict
+        A dictionary mapping snapshot dates to probability distributions.
+
+    Raises
+    ------
+    ValueError
+        If test_visits does not have the required columns or if model is not fitted.
     """
-    # Validate prediction_time format
-    if (
-        not isinstance(prediction_time, (list, tuple))
-        or len(prediction_time) != 2
-        or not isinstance(prediction_time[0], int)
-        or not isinstance(prediction_time[1], int)
-    ):
-        raise ValueError("prediction_time must be a (hour, minute) tuple")
+    # Validate test_visits has required columns
+    if start_time_col in test_visits.columns:
+        # start_time_col is a regular column
+        if end_time_col not in test_visits.columns:
+            raise ValueError(f"Column '{end_time_col}' not found in DataFrame")
+    else:
+        # Check if start_time_col is the index
+        if test_visits.index.name != start_time_col:
+            raise ValueError(f"'{start_time_col}' not found in DataFrame columns or index")
+        elif start_time_col not in test_visits.columns:
+            raise ValueError(f"Column '{start_time_col}' not found in DataFrame")
 
-    # Check if model is WeightedPoissonPredictor
-    is_weighted_poisson = (
-        hasattr(model, "__class__")
-        and model.__class__.__name__ == "WeightedPoissonPredictor"
-    )
+    # Validate model is fitted
+    if not hasattr(model, 'survival_df') or model.survival_df is None:
+        raise ValueError("Model must be fitted before calling get_prob_dist_empirical")
 
-    # Additional validation for WeightedPoissonPredictor
-    if is_weighted_poisson:
-        # Validate curve parameters are provided
-        if x1 == 0.0 and y1 == 0.0 and x2 == 0.0 and y2 == 0.0:
-            raise ValueError(
-                "Meaningful curve parameters (x1, y1, x2, y2) are required for WeightedPoissonPredictor"
+    prob_dist_dict = {}
+    if verbose:
+        print(f"Calculating probability distributions for {len(snapshot_dates)} snapshot dates")
+
+    # Create prediction context that will be the same for all dates
+    prediction_context = {
+        category: {
+            'prediction_time': prediction_time
+        }
+    }
+
+    for dt in snapshot_dates:
+        # Create prediction moment by combining snapshot date and prediction time
+        prediction_moment = datetime.combine(dt, time(prediction_time[0], prediction_time[1]))
+        
+        # Get predictions from model
+        predictions = model.predict(prediction_context)
+        prob_dist_dict[dt] = {
+            'agg_predicted': predictions[category]
+        }
+
+        # Calculate observed values
+        if start_time_col in test_visits.columns:
+            # start_time_col is a regular column
+            mask = (
+                (test_visits[start_time_col] > prediction_moment) &
+                (test_visits[end_time_col] <= prediction_moment + prediction_window)
             )
-
-        # Validate prediction window
-        if (
-            not hasattr(model, "prediction_window")
-            or model.prediction_window != prediction_window
-        ):
-            raise ValueError(
-                f"model.prediction_window ({model.prediction_window}) does not match provided prediction_window ({prediction_window})"
-            )
-
-        # Validate categories are subset of model weights keys
-        if not hasattr(model, "weights"):
-            raise ValueError("WeightedPoissonPredictor must have 'weights' attribute")
-        valid_categories = set(model.weights.keys())
-        invalid_categories = set(categories) - valid_categories
-        if invalid_categories:
-            raise ValueError(
-                f"Categories {invalid_categories} not found in model weights. Valid categories are {valid_categories}"
-            )
-
-    # Validate datetime_col exists in test_df
-    if datetime_col not in test_df.columns:
-        raise KeyError(f"Column '{datetime_col}' not found in test_df")
-
-    # Initialize dictionary to store probability distributions
-    prob_dist_dict: Dict[str, Dict[date, Dict[str, Union[pd.DataFrame, float]]]] = {}
-    hour, minute = prediction_time
-
-    # Loop through each category
-    for category in categories:
-        prob_dist_dict[category] = {}
-
-        # Get predicted distribution
-        if is_weighted_poisson:
-            prediction_context = {category: {"prediction_time": prediction_time}}
-            agg_predicted_for_prediction_time = model.predict(
-                prediction_context, x1, y1, x2, y2
-            )[category]
         else:
-            # Assume model is a statistical distribution (e.g., from scipy.stats)
-            agg_predicted_for_prediction_time = pd.DataFrame(
-                {"agg_proba": [model.pmf(k) for k in range(max_range)]},
-                index=range(max_range),
+            # start_time_col is the index
+            mask = (
+                (test_visits.index > prediction_moment) &
+                (test_visits[end_time_col] <= prediction_moment + prediction_window)
             )
+        nrow = mask.sum()
+        prob_dist_dict[dt]['agg_observed'] = int(nrow) if nrow > 0 else 0
 
-        # Calculate distributions for each date
-        for date_val in snapshot_dates:
-            snapshot_datetime = datetime.combine(
-                date_val, time(hour=hour, minute=minute), tzinfo=timezone.utc
-            )
-            prob_dist_dict[category][date_val] = {}
-
-            # Store predicted distribution
-            prob_dist_dict[category][date_val]["agg_predicted"] = (
-                agg_predicted_for_prediction_time
-            )
-
-            # Calculate observed count of patients who arrived during the prediction window
-            observed_patients = test_df[
-                (test_df[datetime_col] > snapshot_datetime)
-                & (
-                    test_df[datetime_col]
-                    <= snapshot_datetime + timedelta(minutes=prediction_window)
-                )
-                & (test_df.specialty == category)
-            ]
-
-            if is_weighted_poisson:
-                # Apply weighting for WeightedPoissonPredictor
-                hours_til_arrival = (
-                    observed_patients[datetime_col] - snapshot_datetime
-                ).dt.total_seconds() / 3600
-                remaining_hours_in_window = prediction_window / 60 - hours_til_arrival
-
-                prob_dist_dict[category][date_val]["agg_observed"] = (
-                    remaining_hours_in_window.apply(
-                        lambda x: calculate_probability(
-                            elapsed_los_td_hrs=0,
-                            prediction_window_hrs=x,
-                            x1=x1,
-                            y1=y1,
-                            x2=x2,
-                            y2=y2,
-                        )
-                    ).sum()
-                )
-            else:
-                # Simple count for other model types
-                prob_dist_dict[category][date_val]["agg_observed"] = len(
-                    observed_patients
-                )
+    if verbose:
+        print(f"Processed {len(snapshot_dates)} snapshot dates")
 
     return prob_dist_dict
+

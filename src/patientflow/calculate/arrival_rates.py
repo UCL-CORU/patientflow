@@ -621,12 +621,10 @@ def count_yet_to_arrive(
             prediction_window_end = prediction_datetime + pd.Timedelta(hours=prediction_window_hours)
             
             # Count patients who arrived after prediction time and were admitted within the window
-            admitted_within_window = df[
+            admitted_within_window = len(df[
                 (df['arrival_datetime'] > prediction_datetime) & 
-                (df['admitted_to_ward_datetime'] <= prediction_window_end) &
-                (df['admitted_to_ward_datetime'].notna())
-            ]['patient_id'].nunique()
-            
+                (df['admitted_to_ward_datetime'] <= prediction_window_end)])
+                        
             # Store the result
             results.append({
                 'snapshot_date': date_val,

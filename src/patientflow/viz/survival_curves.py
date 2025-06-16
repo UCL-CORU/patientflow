@@ -182,24 +182,6 @@ def plot_admission_time_survival_curve(
                     survival_at_target = survival_prob[closest_time_idx]
                     event_at_target = 1 - survival_at_target
 
-                    # Draw a vertical line from x-axis to the curve at target hours
-                    plt.plot(
-                        [target_hour, target_hour],
-                        [0, survival_at_target],
-                        color='grey',
-                        linestyle="--",
-                        linewidth=2,
-                    )
-
-                    # Draw a horizontal line from the curve to the y-axis at the survival probability level
-                    plt.plot(
-                        [0, target_hour],
-                        [survival_at_target, survival_at_target],
-                        color='grey',
-                        linestyle="--",
-                        linewidth=2,
-                    )
-
                     # Add text annotation to the plot (only for single curve or first curve)
                     if is_single_curve or len(dataframes) == 1:
                         plt.text(
@@ -207,6 +189,24 @@ def plot_admission_time_survival_curve(
                             survival_at_target,
                             annotation_string.format(event_at_target, target_hour),
                             bbox=dict(facecolor="white", alpha=0.8),
+                        )
+
+                        # Draw a vertical line from x-axis to the curve at target hours
+                        plt.plot(
+                            [target_hour, target_hour],
+                            [0, survival_at_target],
+                            color='grey',
+                            linestyle="--",
+                            linewidth=2,
+                        )
+
+                        # Draw a horizontal line from the curve to the y-axis at the survival probability level
+                        plt.plot(
+                            [0, target_hour],
+                            [survival_at_target, survival_at_target],
+                            color='grey',
+                            linestyle="--",
+                            linewidth=2,
                         )
 
     # Configure the plot
