@@ -69,7 +69,7 @@ warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def add_missing_columns(pipeline, df):
-    """Add missing columns (at inference time) that are required by the prediction pipeline from the training data.
+    """Add missing columns required by the prediction pipeline from the training data.
 
     Parameters
     ----------
@@ -275,6 +275,7 @@ def create_predictions(
     y2: float,
     cdf_cut_points: List[float],
     elapsed_los_column: str = "elapsed_los",
+    use_admission_in_window_prob: bool = True,
 ) -> Dict[str, Dict[str, List[int]]]:
     """Create predictions for emergency demand for a single prediction moment.
 
@@ -303,6 +304,12 @@ def create_predictions(
         Y-coordinate of second point for probability curve
     cdf_cut_points : List[float]
         List of cumulative distribution function cut points (e.g., [0.9, 0.7])
+    elapsed_los_column : str, optional
+        Name of the column containing elapsed length of stay, by default "elapsed_los"
+    use_admission_in_window_prob : bool, optional
+        Whether to use probability calculation for admission within prediction window for patients
+        already in the ED. If False, probability is set to 1.0 for all current ED patients.
+        This parameter does not affect the yet-to-arrive predictions. By default True
 
     Returns
     -------
@@ -431,13 +438,16 @@ def create_predictions(
         "elapsed_los"
     ].apply(lambda x: x / 3600)
 
-    # Get probability of admission within prediction window
-    prob_admission_in_window = prediction_snapshots.apply(
-        lambda row: calculate_probability(
-            row["elapsed_los_hrs"], prediction_window, x1, y1, x2, y2
-        ),
-        axis=1,
-    )
+    # Get probability of admission within prediction window for current ED patients
+    if use_admission_in_window_prob:
+        prob_admission_in_window = prediction_snapshots.apply(
+            lambda row: calculate_probability(
+                row["elapsed_los_hrs"], prediction_window, x1, y1, x2, y2
+            ),
+            axis=1,
+        )
+    else:
+        prob_admission_in_window = pd.Series(1.0, index=prediction_snapshots.index)
 
     if special_func_map is None:
         special_func_map = {"default": lambda row: True}
