@@ -161,7 +161,7 @@ def get_y_from_aspirational_curve(x, x1, y1, x2, y2):
 
 
 def calculate_probability(
-    elapsed_los_td: timedelta,
+    elapsed_los: timedelta,
     prediction_window: timedelta,
     x1: float,
     y1: float,
@@ -173,7 +173,7 @@ def calculate_probability(
 
     Parameters
     ----------
-    elapsed_los_td : timedelta
+    elapsed_los : timedelta
         The elapsed time since the patient arrived at the ED.
     prediction_window : timedelta
         The duration of the prediction window after the point of prediction, for which the probability is calculated.
@@ -193,7 +193,7 @@ def calculate_probability(
 
     Edge Case Handling
     ------------------
-    When elapsed_los_td is extremely high, such as values significantly greater than x2, the admission probability prior to the current time (`prob_admission_prior_to_now`) can reach 1.0 despite the curve being asymptotic. This scenario can cause computational errors when calculating the conditional probability, as it involves a division by zero. In such cases, this function directly returns a probability of 1.0, reflecting certainty of admission.
+    When elapsed_los is extremely high, such as values significantly greater than x2, the admission probability prior to the current time (`prob_admission_prior_to_now`) can reach 1.0 despite the curve being asymptotic. This scenario can cause computational errors when calculating the conditional probability, as it involves a division by zero. In such cases, this function directly returns a probability of 1.0, reflecting certainty of admission.
 
     Example
     -------
@@ -204,29 +204,29 @@ def calculate_probability(
 
     """
     # Validate inputs
-    if not isinstance(elapsed_los_td, timedelta):
-        raise TypeError("elapsed_los_td must be a timedelta object")
+    if not isinstance(elapsed_los, timedelta):
+        raise TypeError("elapsed_los must be a timedelta object")
     if not isinstance(prediction_window, timedelta):
         raise TypeError("prediction_window must be a timedelta object")
 
     # Convert timedelta to hours
-    elapsed_hours = elapsed_los_td.total_seconds() / 3600
+    elapsed_hours = elapsed_los.total_seconds() / 3600
     prediction_window_hours = prediction_window.total_seconds() / 3600
 
     # Validate elapsed time to ensure it represents a reasonable time value in hours
     if elapsed_hours < 0:
         raise ValueError(
-            "elapsed_los_td must be non-negative (cannot have negative elapsed time)"
+            "elapsed_los must be non-negative (cannot have negative elapsed time)"
         )
 
     if elapsed_hours > 168:  # 168 hours = 1 week
         warnings.warn(
-            "elapsed_los_td appears to be longer than 168 hours (1 week). "
-            "Check that the units of elapsed_los_td are correct"
+            "elapsed_los appears to be longer than 168 hours (1 week). "
+            "Check that the units of elapsed_los are correct"
         )
 
     if not np.isfinite(elapsed_hours):
-        raise ValueError("elapsed_los_td must be a finite time duration")
+        raise ValueError("elapsed_los must be a finite time duration")
 
     # Validate prediction window to ensure it represents a reasonable time value in hours
     if prediction_window_hours < 0:

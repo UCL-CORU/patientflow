@@ -202,20 +202,6 @@ def get_specialty_probs(
     ValueError
         If special_category_func is provided but special_category_dict is None
 
-    Examples
-    --------
-    >>> snapshots_df = pd.DataFrame({
-    ...     'consultation_sequence': [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]],
-    ...     'age': [5, 40, 70]
-    ... })
-    >>> def pediatric_case(row):
-    ...     return row['age'] < 18
-    >>> special_dist = {'pediatrics': 0.9, 'general': 0.1}
-    >>> get_specialty_probs('model.pkl', snapshots_df, pediatric_case, special_dist)
-    0    {'pediatrics': 0.9, 'general': 0.1}
-    1    {'cardiology': 0.7, 'general': 0.3}
-    2    {'neurology': 0.8, 'general': 0.2}
-    dtype: object
     """
 
     # Convert input_var to tuple if not already a tuple
@@ -274,7 +260,6 @@ def create_predictions(
     x2: float,
     y2: float,
     cdf_cut_points: List[float],
-    elapsed_los_column: str = "elapsed_los",
     use_admission_in_window_prob: bool = True,
 ) -> Dict[str, Dict[str, List[int]]]:
     """Create predictions for emergency demand for a single prediction moment.
@@ -289,7 +274,7 @@ def create_predictions(
     prediction_time : Tuple
         Hour and minute of time for model inference
     prediction_snapshots : pandas.DataFrame
-        DataFrame containing prediction snapshots
+        DataFrame containing prediction snapshots. Must have an 'elapsed_los' column of type timedelta.
     specialties : List[str]
         List of specialty names for predictions (e.g., ['surgical', 'medical'])
     prediction_window : timedelta
@@ -304,8 +289,6 @@ def create_predictions(
         Y-coordinate of second point for probability curve
     cdf_cut_points : List[float]
         List of cumulative distribution function cut points (e.g., [0.9, 0.7])
-    elapsed_los_column : str, optional
-        Name of the column containing elapsed length of stay, by default "elapsed_los"
     use_admission_in_window_prob : bool, optional
         Whether to use probability calculation for admission within prediction window for patients
         already in the ED. If False, probability is set to 1.0 for all current ED patients.
@@ -328,6 +311,7 @@ def create_predictions(
         If any of the models are not of the expected type or if prediction_window is not a timedelta
     ValueError
         If models have not been fit or if prediction parameters don't match training parameters
+        If 'elapsed_los' column is missing or not of type timedelta
 
     Notes
     -----
@@ -347,12 +331,11 @@ def create_predictions(
         )
     if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
         raise TypeError("Third model must be of type WeightedPoissonPredictor")
-    if elapsed_los_column not in prediction_snapshots.columns:
-        raise ValueError(
-            f"Column '{elapsed_los_column}' not found in prediction_snapshots"
-        )
-    if not pd.api.types.is_timedelta64_dtype(prediction_snapshots[elapsed_los_column]):
-        raise ValueError(f"Column '{elapsed_los_column}' must be a timedelta column")
+    if "elapsed_los" not in prediction_snapshots.columns:
+        raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")
+    if not pd.api.types.is_timedelta64_dtype(prediction_snapshots["elapsed_los"]):
+        actual_type = prediction_snapshots["elapsed_los"].dtype
+        raise ValueError(f"Column 'elapsed_los' must be a timedelta column, but found type: {actual_type}")
 
     # Check that all models have been fit
     if not hasattr(classifier, "pipeline") or classifier.pipeline is None:
@@ -434,15 +417,11 @@ def create_predictions(
         special_category_dict=special_category_dict,
     )
 
-    prediction_snapshots.loc[:, "elapsed_los_hrs"] = prediction_snapshots[
-        "elapsed_los"
-    ].apply(lambda x: x / 3600)
-
     # Get probability of admission within prediction window for current ED patients
     if use_admission_in_window_prob:
         prob_admission_in_window = prediction_snapshots.apply(
             lambda row: calculate_probability(
-                row["elapsed_los_hrs"], prediction_window, x1, y1, x2, y2
+                row["elapsed_los"], prediction_window, x1, y1, x2, y2
             ),
             axis=1,
         )
