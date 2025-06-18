@@ -1,4 +1,4 @@
-# patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients
+# patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Tests status][tests-badge]][tests-link]
@@ -40,8 +40,8 @@ We have created the `patientflow` python package to make it convenient for other
 
 - Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
 - Patient snapshot: A summary of data from the EHR capturing what is known about a current patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
-- Group snapshot: A set of snapshots for a defined group of current patients. Each group snapshot has a date and a prediction time associated with it. 
-- Prediction window: A period of hours that begins at the prediction time.
+- Group snapshot: The set of snapshots for a defined group of current patients. Each group snapshot has a date and a prediction time associated with it. 
+- Prediction window: A time period that begins at the prediction time.
 
 For **current patients**, the package includes functions to create patient and group snapshots, to generate patient-level predictions, and to aggregate patient-level predictions into predicted bed counts for a group snapshots. The aggregation functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the prediction window. The snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many current patients will be discharged from a clinical specialty. 
 

@@ -52,12 +52,13 @@ class TestClassifiers(unittest.TestCase):
         model = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
-            test_visits=self.test_visits,
             prediction_time=self.prediction_time,
             exclude_from_training_data=self.exclude_from_training_data,
             grid=self.grid,
             ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
             visit_col="visit_number",
+            evaluate_on_test=True,  # Explicitly enable test evaluation for this test
         )
 
         # Check that we got a TrainedClassifier object
@@ -76,19 +77,70 @@ class TestClassifiers(unittest.TestCase):
         self.assertIn("test_logloss", model.training_results.test_results)
         self.assertIn("test_auprc", model.training_results.test_results)
 
-    def test_balanced_training(self):
-        """Test training with balanced data."""
-        model = train_classifier(
+    def test_optional_test_evaluation(self):
+        """Test that test evaluation is optional and defaults to False."""
+        # Test with evaluate_on_test=False (default) and no test_visits
+        model_no_test = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
-            test_visits=self.test_visits,
             prediction_time=self.prediction_time,
             exclude_from_training_data=self.exclude_from_training_data,
             grid=self.grid,
             ordinal_mappings=self.ordinal_mappings,
             visit_col="visit_number",
+            evaluate_on_test=False,
+        )
+
+        # Check that test results are None when not evaluated
+        self.assertIsNone(model_no_test.training_results.test_results)
+
+        # Test with evaluate_on_test=True and test_visits provided
+        model_with_test = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
+            visit_col="visit_number",
+            evaluate_on_test=True,
+        )
+
+        # Check that test results are available when evaluated
+        self.assertIsNotNone(model_with_test.training_results.test_results)
+        self.assertIn("test_auc", model_with_test.training_results.test_results)
+        self.assertIn("test_logloss", model_with_test.training_results.test_results)
+        self.assertIn("test_auprc", model_with_test.training_results.test_results)
+
+    def test_test_visits_required_when_evaluate_on_test_true(self):
+        """Test that test_visits is required when evaluate_on_test=True."""
+        with self.assertRaises(ValueError):
+            train_classifier(
+                train_visits=self.train_visits,
+                valid_visits=self.valid_visits,
+                prediction_time=self.prediction_time,
+                exclude_from_training_data=self.exclude_from_training_data,
+                grid=self.grid,
+                ordinal_mappings=self.ordinal_mappings,
+                visit_col="visit_number",
+                evaluate_on_test=True,  # This should raise an error without test_visits
+            )
+
+    def test_balanced_training(self):
+        """Test training with balanced data."""
+        model = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
+            visit_col="visit_number",
             use_balanced_training=True,
             majority_to_minority_ratio=1.0,
+            evaluate_on_test=True,  # Enable test evaluation for this test
         )
 
         # Check balance info
@@ -106,14 +158,15 @@ class TestClassifiers(unittest.TestCase):
         model = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
-            test_visits=self.test_visits,
             prediction_time=self.prediction_time,
             exclude_from_training_data=self.exclude_from_training_data,
             grid=self.grid,
             ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
             visit_col="visit_number",
             calibrate_probabilities=True,
             calibration_method="sigmoid",
+            evaluate_on_test=True,  # Enable test evaluation for this test
         )
 
         # Check that we have a calibrated pipeline
@@ -131,13 +184,14 @@ class TestClassifiers(unittest.TestCase):
         model = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
-            test_visits=self.test_visits,
             prediction_time=self.prediction_time,
             exclude_from_training_data=self.exclude_from_training_data,
             grid={"n_estimators": [100], "max_depth": [3]},
             ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
             visit_col="visit_number",
             model_class=RandomForestClassifier,
+            evaluate_on_test=True,  # Enable test evaluation for this test
         )
 
         # Check that we got a TrainedClassifier object
@@ -151,7 +205,6 @@ class TestClassifiers(unittest.TestCase):
             train_classifier(
                 train_visits=self.train_visits,
                 valid_visits=self.valid_visits,
-                test_visits=self.test_visits,
                 prediction_time=self.prediction_time,
                 exclude_from_training_data=self.exclude_from_training_data,
                 grid=self.grid,
@@ -164,12 +217,13 @@ class TestClassifiers(unittest.TestCase):
         model = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
-            test_visits=self.test_visits,
             prediction_time=self.prediction_time,
             exclude_from_training_data=self.exclude_from_training_data,
             grid=self.grid,
             ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
             visit_col="visit_number",
+            evaluate_on_test=True,  # Enable test evaluation for this test
         )
 
         # Check that feature information is captured

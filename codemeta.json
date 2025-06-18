@@ -24,6 +24,13 @@
       "affiliation": "UCL"
     },
     {
+      "@id": "",
+      "@type": "Person",
+      "email": "sara.lundell@vgregion.se",
+      "name": "Sara Lundell",
+      "affiliation": "Sahlgrenska University Hospital"
+    },
+    {
       "@id": "0000-0001-9104-7960",
       "@type": "Person",
       "email": "m.graham@ucl.ac.uk",
@@ -43,9 +50,9 @@
   "datePublished": "2025-06-02",
   "dateModified": "2025-06-02",
   "dateCreated": "2025-06-02",
-  "description": "Predicting demand for hospital beds using real-time data",
+  "description": "A Python package for real-time prediction of hospital bed demand from current and incoming patients",
   "keywords": "patient, hospital, bed, demand, real-time, electronic health records",
   "license": "MIT",
-  "title": "patientflow: Predicting demand for hospital beds using real-time data",
+  "title": "patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients",
   "version": "v0.4.3"
 }

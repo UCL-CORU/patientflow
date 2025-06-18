@@ -34,8 +34,10 @@ def plot_trial_results(
     Parameters
     ----------
     trials_list : List[HyperParameterTrial]
-        A list of `HyperParameterTrial` instances containing cross-validation results
-        and hyperparameter settings.
+        A list of `HyperParameterTrial` instances containing validation set results
+        (not cross-validation fold results) and hyperparameter settings. Each trial's
+        `cv_results` dictionary contains metrics such as 'valid_auc' and 'valid_logloss',
+        which are computed on a held-out validation set for each hyperparameter configuration.
     metrics : List[str], optional
         List of metric names to plot. If None, defaults to ["valid_auc", "valid_logloss"].
         Each metric should be a key in the trial's cv_results dictionary.
@@ -54,7 +56,7 @@ def plot_trial_results(
     Notes
     -----
     - Assumes that each `HyperParameterTrial` in `trials_list` has a `cv_results` dictionary
-      containing the requested metrics.
+      containing the requested metrics, which are computed on the validation set.
     - Parameters from the best-performing trials are shown in the plots.
     """
     # Set default metrics if none provided
@@ -86,6 +88,10 @@ def plot_trial_results(
         ax.set_ylabel(metric.replace("valid_", "").upper())
         ax.set_title(metric.replace("valid_", "").replace("_", " ").title())
         ax.grid(True, linestyle="--", alpha=0.7)
+
+        # Set x-axis to display integers
+        ax.set_xticks(trial_indices)
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: str(int(x))))
 
         # Set y-axis limits
         if "loss" in metric.lower():

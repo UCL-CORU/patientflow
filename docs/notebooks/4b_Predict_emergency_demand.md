@@ -301,7 +301,7 @@ from datetime import timedelta
 # Calculate probability of admission within prediction window
 prob_admission_in_window = prediction_snapshots.apply(
     lambda row: calculate_probability(
-        elapsed_los_td = timedelta(seconds=row["elapsed_los"]),
+        elapsed_los = timedelta(seconds=row["elapsed_los"]),
         prediction_window = timedelta(minutes=prediction_window),
         x1 = x1,
         y1 = y1,
