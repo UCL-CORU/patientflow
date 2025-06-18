@@ -10,25 +10,25 @@ The first notebook explains how to set up your environment to run the notebooks 
 
 - **[0_Set_up_your_environment](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/0_Set_up_your_environment.ipynb):** Shows how to set things up if you want to run these notebooks in a Jupyter environment
 
-I then explain who are the users of predictive models of patient flow.
+I then explain who are the intended users of predictive models of patient flow.
 
 - **[1_Meet_the_users_of_our_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
 
-A series of notebooks on preparing patient snapshots, training models on them, and evaluating the performance of those models. I also introduce the real data provided by UCLH in a summary notebook.
+There is then a series of notebooks on preparing patient snapshots, training models on them, and evaluating the performance of those models. I also introduce the real data provided by UCLH in a summary notebook.
 
 - **[2a_Create_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2a_Create_patient_snapshots.ipynb):** Shows how to convert finished hospital visits into patient snapshots.
 - **[2b_Predict_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2b_Predict_using_patient_snapshots.ipynb):** Shows how to make predictions using patient snapshots, handling multiple visits for a single patient, and multiple snapshots in a single visit.
 - **[2c_Evaluate_patient_snapshot_models](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2c_Evaluate_patient_snapshot_models.ipynb):** Demonstrates the use of convenient function to help you evaluate predictive models trained on patient snapshots.
 - **[2d_Explore_the_datasets_provided](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2d_Explore_the_datasets_provided.ipynb):** Provides exploratory plots of the two datasets that accompany this repository.
 
-A series of notebooks on preparing group snapshots, generating predictions for group snapshots, and evaluating the predictions.
+Next is a series of notebooks on preparing group snapshots, generating predictions for group snapshots, and evaluating the predictions.
 
 - **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
 - **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.ipynb):** Show how to evaluate predicted bed count distribution generated form group snapshots.
 - **[3c_Predict_bed_counts_without_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_counts_without_using_patient_snapshots.ipynb):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
 - **[3d_Predict_bed_counts_for_subgroups](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Predict_bed_counts_for_subgroups.ipynb):** Show how to disaggregate bed count distributions by subgroups such as age or specialty of admission
 
-A set of notebooks follow, to show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
+A set of notebooks follow, that show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
 
 - **[4a_Specify_emergency_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Specify_emergency_demand_model.ipynb):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
 - **[4b_Predict_emergency_demand](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_emergency_demand.ipynb):** Shows a full implementation of the functions covered up to this point, to predict emergency demand at UCLH.
