@@ -8,17 +8,28 @@ using time series cross-validation.
 
 Functions
 ---------
-evaluate_predictions : Calculate multiple metrics (AUC, log loss, AUPRC) for given predictions
-chronological_cross_validation : Perform time series cross-validation with multiple metrics
-initialise_model : Initialize a model with given hyperparameters
-create_column_transformer : Create a column transformer for a dataframe with dynamic column handling
-calculate_class_balance : Calculate class balance ratios for target labels
-get_feature_metadata : Extract feature names and importances from pipeline
-get_dataset_metadata : Get dataset sizes and class balances
-create_balance_info : Create a dictionary with balance information
-evaluate_model : Evaluate model on test set
-train_classifier : Train a single model including data preparation and balancing
-train_multiple_classifiers : Train admission prediction models for multiple prediction times
+evaluate_predictions
+    Calculate multiple metrics (AUC, log loss, AUPRC) for given predictions
+chronological_cross_validation
+    Perform time series cross-validation with multiple metrics
+initialise_model
+    Initialize a model with given hyperparameters
+create_column_transformer
+    Create a column transformer for a dataframe with dynamic column handling
+calculate_class_balance
+    Calculate class balance ratios for target labels
+get_feature_metadata
+    Extract feature names and importances from pipeline
+get_dataset_metadata
+    Get dataset sizes and class balances
+create_balance_info
+    Create a dictionary with balance information
+evaluate_model
+    Evaluate model on test set
+train_classifier
+    Train a single model including data preparation and balancing
+train_multiple_classifiers
+    Train admission prediction models for multiple prediction times
 """
 
 from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict, Type

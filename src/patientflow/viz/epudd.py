@@ -156,6 +156,7 @@ def plot_epudd(
     figsize: Optional[Tuple[float, float]] = None,
     suptitle: Optional[str] = None,
     media_file_path: Optional[Path] = None,
+    file_name=None,
     plot_all_bounds: bool = False,
 ) -> Union[
     Figure, Dict[str, pd.DataFrame], Tuple[Figure, Dict[str, pd.DataFrame]], None
@@ -190,6 +191,8 @@ def plot_epudd(
         Super title for the entire figure, displayed above all subplots, by default None.
     media_file_path : Path, optional
         Path to save the plot, by default None. If provided, saves the plot as a PNG file.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "plot_epudd.png".
     plot_all_bounds : bool, optional
         If True, plots all bounds (lower, mid, upper). If False, only plots mid bounds.
         By default False.
@@ -299,7 +302,11 @@ def plot_epudd(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
     if media_file_path:
-        plt.savefig(media_file_path / "plot_epudd.png", dpi=300)
+        if file_name:
+            filename = file_name
+        else:
+            filename = "plot_epudd.png"
+        plt.savefig(media_file_path / filename, dpi=300)
 
     # Return based on flags
     if return_figure and return_dataframe:

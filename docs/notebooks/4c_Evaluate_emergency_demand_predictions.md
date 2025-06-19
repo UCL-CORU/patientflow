@@ -24,6 +24,9 @@ We can, however, evaluate the predictions in a slightly different way.
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -205,7 +208,7 @@ The code has been shown here to demonstrate how in the UCLH implementation, we c
 spec_model
 ```
 
-<style>#sk-container-id-1 {
+<style>#sk-container-id-2 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -236,15 +239,15 @@ spec_model
   }
 }
 
-#sk-container-id-1 {
+#sk-container-id-2 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-1 pre {
+#sk-container-id-2 pre {
   padding: 0;
 }
 
-#sk-container-id-1 input.sk-hidden--visually {
+#sk-container-id-2 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -256,7 +259,7 @@ spec_model
   width: 1px;
 }
 
-#sk-container-id-1 div.sk-dashed-wrapped {
+#sk-container-id-2 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -264,7 +267,7 @@ spec_model
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-1 div.sk-container {
+#sk-container-id-2 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -274,7 +277,7 @@ spec_model
   position: relative;
 }
 
-#sk-container-id-1 div.sk-text-repr-fallback {
+#sk-container-id-2 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -290,14 +293,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-1 div.sk-parallel-item::after {
+#sk-container-id-2 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-1 div.sk-parallel {
+#sk-container-id-2 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -305,28 +308,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-1 div.sk-parallel-item {
+#sk-container-id-2 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-1 div.sk-parallel-item:first-child::after {
+#sk-container-id-2 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-1 div.sk-parallel-item:last-child::after {
+#sk-container-id-2 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-1 div.sk-parallel-item:only-child::after {
+#sk-container-id-2 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-1 div.sk-serial {
+#sk-container-id-2 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -344,14 +347,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-1 div.sk-toggleable {
+#sk-container-id-2 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-1 label.sk-toggleable__label {
+#sk-container-id-2 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -364,13 +367,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-1 label.sk-toggleable__label .caption {
+#sk-container-id-2 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -378,13 +381,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-1 div.sk-toggleable__content {
+#sk-container-id-2 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -393,12 +396,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content.fitted {
+#sk-container-id-2 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content pre {
+#sk-container-id-2 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -406,79 +409,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+#sk-container-id-2 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-2 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-1 div.sk-label label.sk-toggleable__label,
-#sk-container-id-1 div.sk-label label {
+#sk-container-id-2 div.sk-label label.sk-toggleable__label,
+#sk-container-id-2 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-2 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-1 div.sk-label label {
+#sk-container-id-2 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-1 div.sk-label-container {
+#sk-container-id-2 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-1 div.sk-estimator {
+#sk-container-id-2 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -488,18 +491,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted {
+#sk-container-id-2 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-1 div.sk-estimator:hover {
+#sk-container-id-2 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted:hover {
+#sk-container-id-2 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -587,7 +590,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-1 a.estimator_doc_link {
+#sk-container-id-2 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -602,25 +605,25 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-1 a.estimator_doc_link.fitted {
+#sk-container-id-2 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-1 a.estimator_doc_link:hover {
+#sk-container-id-2 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+#sk-container-id-2 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
+</style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequencePredictor(
 
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
@@ -628,7 +631,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
 
-)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>SequencePredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>SequencePredictor(
+)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>SequencePredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>SequencePredictor(
 input_var=&#x27;consultation_sequence&#x27;,
 grouping_var=&#x27;final_sequence&#x27;,
 outcome_var=&#x27;specialty&#x27;,
@@ -782,14 +785,14 @@ See [a previous notebook](3b_Evaluate_group_snapshots.md) for more on these appr
 
 ```python
 from patientflow.evaluate import calc_mae_mpe
-from patientflow.viz.evaluation_plots import plot_observed_against_expected
+from patientflow.viz.observed_against_expected import plot_deltas
 specialties=['medical', 'surgical', 'haem/onc', 'paediatric']
 
 for specialty in specialties:
 
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
     results = calc_mae_mpe(specialty_prob_dist)
-    plot_observed_against_expected(results,
+    plot_deltas(results,
                                    main_title=f"Histograms of Observed - Expected Values for {specialty} specialty",)
 
 ```
@@ -803,7 +806,7 @@ for specialty in specialties:
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_3.png)
 
 ```python
-from patientflow.viz.plot_epudd import plot_epudd
+from patientflow.viz.epudd import plot_epudd
 specialties=['medical', 'surgical', 'haem/onc', 'paediatric']
 
 for specialty in specialties:
@@ -813,7 +816,7 @@ for specialty in specialties:
     plot_epudd(ed_visits.prediction_time.unique(),
             specialty_prob_dist,
             model_name="admissions",
-            suptitle=f"Adjusted QQ plot for {specialty} specialty")
+            suptitle=f"EPUDD plots for {specialty} specialty")
 ```
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_21_0.png)
@@ -880,45 +883,45 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
 The output below shows two plots per specialty - the baseline model using average proportions admitted to each specialty (upper), and a model where specialty of admission is predicted using consult sequences (below). Particularly for specialties with small admission numbers (haem/onc and paediatric) there is an improvement; the extent of over-prediction is reduced.
 
 ```python
-from patientflow.viz.plot_epudd import plot_epudd
+from patientflow.viz.epudd import plot_epudd
 
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
-
-    print(f'\nAdjusted QQ plots for {specialty} specialty: baseline vs sequence predictor')
 
     specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
+    print(f'\nEPUDD plots for {specialty} specialty: baseline vs sequence predictor')
+
     plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist_baseline,
         model_name="admissions",
-        suptitle=f"Adjusted QQ plot for {specialty} specialty using baseline probability")
+        suptitle=f"Evaluating Predictions for Unique Discrete Distributions (EPUDD) plots for {specialty} specialty using baseline probability")
 
     plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist,
         model_name="admissions",
-        suptitle=f"Adjusted QQ plot for {specialty} specialty using sequence predictor")
+        suptitle=f"Evaluating Predictions for Unique Discrete Distributions (EPUDD) plots for {specialty} specialty using sequence predictor")
 ```
 
-    Adjusted QQ plots for medical specialty: baseline vs sequence predictor
+    EPUDD plots for medical specialty: baseline vs sequence predictor
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_1.png)
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_2.png)
 
-    Adjusted QQ plots for surgical specialty: baseline vs sequence predictor
+    EPUDD plots for surgical specialty: baseline vs sequence predictor
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_4.png)
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_5.png)
 
-    Adjusted QQ plots for haem/onc specialty: baseline vs sequence predictor
+    EPUDD plots for haem/onc specialty: baseline vs sequence predictor
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_7.png)
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_8.png)
 
-    Adjusted QQ plots for paediatric specialty: baseline vs sequence predictor
+    EPUDD plots for paediatric specialty: baseline vs sequence predictor
 
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_25_10.png)
 
@@ -942,15 +945,16 @@ To illustrate, I start by plotting the cumulative arrivals of patients later adm
 The lower chart shows the delta between the two lines
 
 ```python
-from patientflow.viz.arrival_comparison import plot_arrival_comparison
+from patientflow.viz.observed_against_expected import plot_arrival_delta_single_instance
 from datetime import timedelta
 
-plot_arrival_comparison(test_inpatient_arrivals_df,
+plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
                         prediction_time=(22,0),
                         snapshot_date=start_test_set,
                         show_delta=True,
                         prediction_window=timedelta(minutes=params["prediction_window"]),
-                        yta_time_interval = timedelta(minutes=params["yta_time_interval"])
+                        yta_time_interval = timedelta(minutes=params["yta_time_interval"]),
+                        fig_size=(9, 3)
                         )
 
 
@@ -962,7 +966,7 @@ plot_arrival_comparison(test_inpatient_arrivals_df,
 The chart below shows multiple version of the delta for each date in the test set, for each prediction time, with the average delta shown in red.
 
 ```python
-from patientflow.viz.arrival_comparison import plot_multiple_deltas
+from patientflow.viz.observed_against_expected import plot_arrival_deltas
 from datetime import timedelta
 
 
@@ -982,7 +986,7 @@ prediction_times_sorted = sorted(
 )
 
 for prediction_time in prediction_times_sorted:
-    plot_multiple_deltas(test_inpatient_arrivals_df,
+    plot_arrival_deltas(test_inpatient_arrivals_df,
                          prediction_time,
                          snapshot_dates,
                         prediction_window=timedelta(minutes=params["prediction_window"]),

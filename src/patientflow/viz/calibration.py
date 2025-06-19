@@ -28,6 +28,7 @@ def plot_calibration(
     exclude_from_training_data,
     strategy="uniform",
     media_file_path: Optional[Path] = None,
+    file_name=None,
     suptitle=None,
     return_figure=False,
     label_col: str = "is_admitted",
@@ -52,6 +53,8 @@ def plot_calibration(
         - 'quantile': Bins have equal number of samples
     media_file_path : Path, optional
         Path where the plot should be saved.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "calibration_plot.png".
     suptitle : str, optional
         Optional super title for the entire figure.
     return_figure : bool, default=False
@@ -144,8 +147,10 @@ def plot_calibration(
         plt.suptitle(suptitle, fontsize=16, y=1.05)
 
     if media_file_path:
-        calib_plot_path = media_file_path / "calibration_plot"
-        calib_plot_path = calib_plot_path.with_suffix(".png")
+        if file_name:
+            calib_plot_path = media_file_path / file_name
+        else:
+            calib_plot_path = media_file_path / "calibration_plot.png"
         plt.savefig(calib_plot_path)
 
     if return_figure:

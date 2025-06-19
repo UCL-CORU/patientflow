@@ -971,11 +971,11 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions_with_speci
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
 
 ```python
-from patientflow.viz.plot_epudd import plot_epudd
+from patientflow.viz.epudd import plot_epudd
 
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
-    print(f'\nAdjusted QQ plots for {specialty} specialty: baseline vs sequence predictor')
+    print(f'\nEPUDD plots for {specialty} specialty: baseline vs sequence predictor')
 
     specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
@@ -983,33 +983,33 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist_baseline,
         model_name="admissions",
-        suptitle=f"Adjusted QQ plot for {specialty} specialty using baseline probability")
+        suptitle=f"EPUDD plots for {specialty} specialty using baseline probability")
 
     plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist,
         model_name="admissions",
-        suptitle=f"Adjusted QQ plot for {specialty} specialty using sequence predictor")
+        suptitle=f"EPUDD plots for {specialty} specialty using sequence predictor")
 ```
 
-    Adjusted QQ plots for medical specialty: baseline vs sequence predictor
+    EPUDD plots for medical specialty: baseline vs sequence predictor
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_1.png)
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_2.png)
 
-    Adjusted QQ plots for surgical specialty: baseline vs sequence predictor
+    EPUDD plots for surgical specialty: baseline vs sequence predictor
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_4.png)
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_5.png)
 
-    Adjusted QQ plots for haem/onc specialty: baseline vs sequence predictor
+    EPUDD plots for haem/onc specialty: baseline vs sequence predictor
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_7.png)
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_8.png)
 
-    Adjusted QQ plots for paediatric specialty: baseline vs sequence predictor
+    EPUDD plots for paediatric specialty: baseline vs sequence predictor
 
 ![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_10.png)
 

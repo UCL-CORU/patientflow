@@ -5,7 +5,7 @@ from pathlib import Path
 from patientflow.load import get_model_key
 
 
-def prob_to_cdf(prob_dist):
+def _prob_to_cdf(prob_dist):
     """Convert probability distribution to CDF function"""
     import pandas as pd
 
@@ -52,7 +52,7 @@ def prob_to_cdf(prob_dist):
     return cdf_function
 
 
-def randomised_pit_plot(
+def plot_randomised_pit(
     prediction_times: List[Tuple[int, int]],
     prob_dist_dict_all: Dict[str, Dict],
     model_name: str = "admissions",
@@ -61,6 +61,7 @@ def randomised_pit_plot(
     figsize: Optional[Tuple[float, float]] = None,
     suptitle: Optional[str] = None,
     media_file_path: Optional[Path] = None,
+    file_name: Optional[str] = None,
     n_bins: int = 10,
     seed: Optional[int] = 42,
 ) -> Union[
@@ -90,6 +91,8 @@ def randomised_pit_plot(
         Super title for the entire figure, displayed above all subplots, by default None.
     media_file_path : Path, optional
         Path to save the plot, by default None. If provided, saves the plot as a PNG file.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "plot_randomised_pit.png".
     n_bins : int, optional
         Number of histogram bins, by default 10.
     seed : int, optional
@@ -144,7 +147,7 @@ def randomised_pit_plot(
                 predicted_dist = prob_dist_dict[dt]["agg_predicted"]["agg_proba"]
 
                 # Convert probability distribution to CDF function
-                cdf_func = prob_to_cdf(predicted_dist)
+                cdf_func = _prob_to_cdf(predicted_dist)
 
                 observations.append(observation)
                 cdf_functions.append(cdf_func)
@@ -220,7 +223,7 @@ def randomised_pit_plot(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
     if media_file_path:
-        plt.savefig(media_file_path / "randomised_pit_plot.png", dpi=300)
+        plt.savefig(media_file_path / (file_name or "plot_randomised_pit.png"), dpi=300)
 
     # Return based on flags
     if return_figure and return_dataframe:

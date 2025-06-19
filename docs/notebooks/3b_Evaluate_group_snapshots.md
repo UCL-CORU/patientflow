@@ -258,19 +258,19 @@ for prediction_time, values in results.items():
 
     Time    MAE    MPE
     ----------------------
-    06:00  1.47    31.01%
-    09:30  1.51    36.08%
-    12:00  2.21    32.29%
-    15:30  2.67    22.75%
-    22:00  3.21    24.90%
+    06:00  1.54    33.61%
+    09:30  1.62    38.87%
+    12:00  2.18    31.43%
+    15:30  2.70    23.35%
+    22:00  3.14    23.94%
 
 The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
 
 We can plot the observed values against the expected, as shown below.
 
 ```python
-from patientflow.viz.evaluation_plots import plot_observed_against_expected
-plot_observed_against_expected(results)
+from patientflow.viz.observed_against_expected import plot_deltas
+plot_deltas(results)
 ```
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png)
@@ -296,18 +296,20 @@ li = Fi(oi-1), ui = Fi(oi) and mi = 𝑙𝑖+𝑢𝑖2.
 The randomized PIT histogram is obtained by allotting to each observation oi a PIT value sampled at random from the range [li,ui] and then forming a histogram of these (with one convention being to have 10 bins of width 0.1). A well performing model will give a uniform histogram (subject to randomisation and binning).
 
 ```python
-from patientflow.viz.randomised_pit_plot import randomised_pit_plot
+from patientflow.viz.randomised_pit import plot_randomised_pit
 
-randomised_pit_plot(prediction_times, prob_dist_dict_all)
+plot_randomised_pit(prediction_times,
+                    prob_dist_dict_all,
+                    suptitle="Randomised Probability Integral Transform (PIT) plots for each prediction time")
 ```
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_19_0.png)
 
-### Adjusted QQ plot
+### Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
 
-In prior work, we developed an alternative to the QQ plot suited to discrete random variables. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418).
+In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418). We call this a Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
 
-In the Adjusted QQ Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that fall at or below each CDF threshold.
+In the EPUDD Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that fall at or below each CDF threshold.
 
 Both sets of points are plotted with the predicted CDF values on the x axis. The difference is:
 
@@ -319,11 +321,12 @@ If the observed cdf points track the model cdfs, the model is well calibrated.
 Note that the model points (grey) represent discrete probability mass, averaged over all prediction times in the test set. Because discrete probability mass may be stepped, the model points may not follow the y=x line.
 
 ```python
-from patientflow.viz.plot_epudd import plot_epudd
+from patientflow.viz.epudd import plot_epudd
 
 plot_epudd(prediction_times,
         prob_dist_dict_all,
         model_name="admissions",
+        suptitle="Evaluating Predictions for Unique Discrete Distributions (EPUDD) plots for each prediction time",
         plot_all_bounds=False)
 ```
 

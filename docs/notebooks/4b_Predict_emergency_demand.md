@@ -10,9 +10,6 @@ This notebook demonstrates the full implementation in code. I show how we used t
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -294,7 +291,7 @@ len(group_snapshots_dict[datetime.date(2031, 10, 9)])
     79
 
 ```python
-from patientflow.viz.plot_prob_dist import plot_prob_dist
+from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.aggregate import get_prob_dist
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
 from datetime import timedelta
@@ -421,13 +418,6 @@ The function shown below is the one used for real-time prediction at UCLH. It re
 The function returns a dictionary, which is inserted into cells in a spreadsheet (via a process not shown here, as this is not done by the `patientflow` repo) to create the output requested by the users.
 
 ```python
-prediction_snapshots[['elapsed_los']].dtypes
-```
-
-    elapsed_los    timedelta64[ns]
-    dtype: object
-
-```python
 from patientflow.predict.emergency_demand import create_predictions
 
 models = (admission_model, spec_model, yta_model_by_spec)
@@ -448,9 +438,9 @@ create_predictions(
     y2 = y2)
 ```
 
-    {'medical': {'in_ed': [4, 3], 'yet_to_arrive': [1, 0]},
+    {'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
      'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
-     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
 ## Summary

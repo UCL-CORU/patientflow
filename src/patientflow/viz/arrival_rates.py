@@ -135,6 +135,7 @@ def plot_arrival_rates(
     x_margin=0.5,
     file_prefix="",
     media_file_path=None,
+    file_name=None,
     num_days=None,
     num_days_2=None,
     return_figure=False,
@@ -165,6 +166,8 @@ def plot_arrival_rates(
         Prefix for the saved file name, by default "".
     media_file_path : str or Path, optional
         Directory path to save the plot, by default None.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, uses file_prefix + cleaned title.
     num_days : int, optional
         Number of days in the first dataset, by default None.
     num_days_2 : int, optional
@@ -300,7 +303,10 @@ def plot_arrival_rates(
 
     # Save if path provided
     if media_file_path:
-        filename = f"{file_prefix}{clean_title_for_filename(title)}"
+        if file_name:
+            filename = file_name
+        else:
+            filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
 
     if return_figure:
@@ -399,6 +405,7 @@ def plot_cumulative_arrival_rates(
     annotation_prefix="On average",
     line_colour="red",
     media_file_path=None,
+    file_name=None,
     plot_centiles=False,
     highlight_centile=0.9,
     centiles=[0.3, 0.5, 0.7, 0.9, 0.99],
@@ -443,6 +450,8 @@ def plot_cumulative_arrival_rates(
         Color for the main line plot, by default "red".
     media_file_path : str or Path, optional
         Directory path to save the plot, by default None.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, uses file_prefix + cleaned title.
     plot_centiles : bool, optional
         Whether to include percentile visualization, by default False.
     highlight_centile : float, optional
@@ -735,7 +744,10 @@ def plot_cumulative_arrival_rates(
     plt.tight_layout()
 
     if media_file_path:
-        filename = f"{file_prefix}{clean_title_for_filename(title)}"
+        if file_name:
+            filename = file_name
+        else:
+            filename = f"{file_prefix}{clean_title_for_filename(title)}"
         plt.savefig(media_file_path / filename, dpi=300)
 
     if return_figure:

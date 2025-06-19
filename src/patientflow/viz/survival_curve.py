@@ -19,28 +19,6 @@ Notes
   for simplicity and transparency
 * Multiple curves can be plotted on the same figure for comparison
 
-Examples
---------
-Single survival curve:
->>> import pandas as pd
->>> from patientflow.viz.survival_curves import plot_admission_time_survival_curve
->>> df = pd.DataFrame({
-...     'arrival_datetime': pd.to_datetime(['2023-01-01 10:00', '2023-01-01 11:00']),
-...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-01 12:00', '2023-01-01 14:00'])
-... })
->>> plot_admission_time_survival_curve(df, title='Admission Times')
-
-Multiple survival curves:
->>> df1 = pd.DataFrame({
-...     'arrival_datetime': pd.to_datetime(['2023-01-01 10:00', '2023-01-01 11:00']),
-...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-01 12:00', '2023-01-01 14:00'])
-... })
->>> df2 = pd.DataFrame({
-...     'arrival_datetime': pd.to_datetime(['2023-01-02 10:00', '2023-01-02 11:00']),
-...     'admitted_to_ward_datetime': pd.to_datetime(['2023-01-02 11:30', '2023-01-02 13:00'])
-... })
->>> plot_admission_time_survival_curve([df1, df2], labels=['Week 1', 'Week 2'],
-...                                   title='Admission Times Comparison')
 """
 
 import numpy as np
@@ -61,6 +39,7 @@ def plot_admission_time_survival_curve(
     annotation_string="{:.1%} experienced event\nwithin {:.0f} hours",
     labels=None,
     media_file_path=None,
+    file_name=None,
     return_figure=False,
     return_df=False,
 ):
@@ -96,6 +75,8 @@ def plot_admission_time_survival_curve(
         Ignored when plotting a single curve.
     media_file_path : pathlib.Path, optional
         Path to save the plot. If None, the plot is not saved.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "survival_curve.png".
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it
     return_df : bool, default=False
@@ -236,7 +217,10 @@ def plot_admission_time_survival_curve(
     plt.tight_layout()
 
     if media_file_path:
-        plt.savefig(media_file_path / "survival_curve.png", dpi=300)
+        if file_name:
+            plt.savefig(media_file_path / file_name, dpi=300)
+        else:
+            plt.savefig(media_file_path / "survival_curve.png", dpi=300)
 
     # Handle return values
     return_data = (

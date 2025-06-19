@@ -1973,7 +1973,7 @@ group_snapshots_dict = prepare_group_snapshot_dict(
 Below I demonstrate predictions for each specialty in turn.
 
 ```python
-from patientflow.viz.plot_prob_dist import plot_prob_dist
+from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.aggregate import get_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
@@ -1997,13 +1997,35 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
 ```
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_0.png)
+    [autoreload of patientflow.model_artifacts failed: Traceback (most recent call last):
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 283, in check
+        superreload(m, reload, self.old_objects)
+        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 508, in superreload
+        update_generic(old_obj, new_obj)
+        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 405, in update_generic
+        update(a, b)
+        ~~~~~~^^^^^^
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 357, in update_class
+        if update_generic(old_obj, new_obj):
+           ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 405, in update_generic
+        update(a, b)
+        ~~~~~~^^^^^^
+      File "/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/IPython/extensions/autoreload.py", line 317, in update_function
+        setattr(old, name, getattr(new, name))
+        ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ValueError: __init__() requires a code object with 5 free vars, not 4
+    ]
 
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_1.png)
 
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_2.png)
 
 ![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_3.png)
+
+![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_4.png)
 
 To compare these with the predictions overall (not by specialty) uses the same function without weighting the probability for each specialty.
 

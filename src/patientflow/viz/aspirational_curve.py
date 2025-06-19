@@ -72,7 +72,7 @@ def plot_curve(
     media_file_path : str or Path, optional
         Path to save the plot image, by default None.
     file_name : str, optional
-        Custom filename for saving the plot, by default None.
+        Custom filename for saving the plot. If not provided, uses a cleaned version of the title.
     return_figure : bool, optional
         Whether to return the figure object instead of displaying it, by default False.
     annotate_points : bool, optional
@@ -95,11 +95,6 @@ def plot_curve(
 
     # Plot the curve
     fig = plt.figure(figsize=figsize)
-
-    if not file_name:
-        file_name = (
-            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
-        )
 
     plt.plot(x_values, y_values)
     plt.scatter(x1, y1, color="red")  # Mark the point (x1, y1)
@@ -140,7 +135,11 @@ def plot_curve(
 
     if media_file_path:
         os.makedirs(media_file_path, exist_ok=True)
-        plt.savefig(media_file_path / clean_title_for_filename(title), dpi=300)
+        if file_name:
+            filename = file_name
+        else:
+            filename = clean_title_for_filename(title)
+        plt.savefig(media_file_path / filename, dpi=300)
 
     if return_figure:
         return fig

@@ -398,7 +398,7 @@ The following function enables you to plot the results of hyperparameter trials,
 As I only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
 
 ```python
-from patientflow.viz.training_results import plot_trial_results
+from patientflow.viz.trial_results import plot_trial_results
 
 plot_trial_results(trials_list = model.training_results.training_info['cv_trials'])
 ```

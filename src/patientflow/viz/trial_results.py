@@ -20,6 +20,7 @@ def plot_trial_results(
     trials_list: List[HyperParameterTrial],
     metrics: Optional[List[str]] = None,
     media_file_path=None,
+    file_name=None,
     return_figure=False,
 ):
     """
@@ -44,6 +45,8 @@ def plot_trial_results(
     media_file_path : pathlib.Path or None, optional
         Directory path where the generated plot image will be saved as "trial_results.png".
         If None, the plot is not saved.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "trial_results.png".
     return_figure : bool, optional
         If True, the matplotlib figure is returned instead of being displayed directly.
         Default is False.
@@ -132,7 +135,10 @@ def plot_trial_results(
     plt.tight_layout()
 
     if media_file_path:
-        plt.savefig(media_file_path / "trial_results.png", dpi=300)
+        if file_name:
+            plt.savefig(media_file_path / file_name, dpi=300)
+        else:
+            plt.savefig(media_file_path / "trial_results.png", dpi=300)
 
     if return_figure:
         return fig

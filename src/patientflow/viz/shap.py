@@ -26,6 +26,7 @@ def plot_shap(
     test_visits,
     exclude_from_training_data,
     media_file_path: Optional[Path] = None,
+    file_name: Optional[str] = None,
     return_figure=False,
     label_col: str = "is_admitted",
 ):
@@ -46,6 +47,8 @@ def plot_shap(
     media_file_path : Path, optional
         Directory path where the generated plots will be saved. If None, plots are
         only displayed.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "shap_plot.png".
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it.
     label_col : str, default="is_admitted"
@@ -132,9 +135,12 @@ def plot_shap(
 
         if media_file_path:
             # Save plot
-            shap_plot_path = str(
-                media_file_path / f"shap_plot_{hour:02}{minutes:02}.png"
-            )
+            if file_name:
+                shap_plot_path = str(media_file_path / file_name)
+            else:
+                shap_plot_path = str(
+                    media_file_path / f"shap_plot_{hour:02}{minutes:02}.png"
+                )
             plt.savefig(shap_plot_path)
 
         if return_figure:

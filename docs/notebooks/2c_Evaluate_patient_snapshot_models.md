@@ -42,6 +42,9 @@ I load the data using a `load_data` function that will sort the data and return 
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ```python
 import pandas as pd
 from patientflow.load import set_file_paths, load_data
@@ -269,8 +272,8 @@ From the plot below, we see that the model is discriminating poorly, with a high
 
 ```python
 # without balanced training
-from patientflow.viz.distribution_plots import plot_prediction_distributions
-plot_prediction_distributions(
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -294,11 +297,11 @@ Uniform vs Quantile Strategies:
 - Uniform: Divides predictions into equal-width probability bins (e.g., 0.0-0.1, 0.1-0.2), so some bins may have few or many points.
 - Quantile: Ensures each bin has the same number of predictions, regardless of how wide or narrow each bin's probability range is.
 
-Below, we see reasonable calibration at the lower end, but deteriorating towards the higher end.
+Below, using the uniform strategy, we see reasonable calibration at the lower end, but deteriorating towards the higher end.
 
 ```python
 # without balanced training
-from patientflow.viz.calibration_plot import plot_calibration
+from patientflow.viz.calibration import plot_calibration
 
 plot_calibration(
     trained_models=trained_models,
@@ -324,8 +327,8 @@ Below, we see that some models under-predict the likelihood of admissions, as th
 
 ```python
 ## without balanced training
-from patientflow.viz.madcap_plot import generate_madcap_plots
-generate_madcap_plots(
+from patientflow.viz.madcap import plot_madcap
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -379,11 +382,11 @@ for prediction_time in prediction_times:
 From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the whole test set, without undersampling the majority class, as shown in the calibation plot and MADCAP plots.
 
 ```python
-from patientflow.viz.distribution_plots import plot_prediction_distributions
-from patientflow.viz.calibration_plot import plot_calibration
-from patientflow.viz.madcap_plot import generate_madcap_plots
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.calibration import plot_calibration
+from patientflow.viz.madcap import plot_madcap
 
-plot_prediction_distributions(
+plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -396,7 +399,7 @@ plot_calibration(
     # suptitle="Base model with balanced training data"  # optional
 )
 
-generate_madcap_plots(
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -415,9 +418,9 @@ A solution is to use the validation set to re-calibrate the probabilities genera
 
 ```python
 from patientflow.train.classifiers import train_classifier
-from patientflow.viz.distribution_plots import plot_prediction_distributions
-from patientflow.viz.calibration_plot import plot_calibration
-from patientflow.viz.madcap_plot import generate_madcap_plots
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.calibration import plot_calibration
+from patientflow.viz.madcap import plot_madcap
 from patientflow.load import get_model_key
 
 trained_models = {}
@@ -444,7 +447,7 @@ for prediction_time in prediction_times:
 
     trained_models[model_key] = model
 
-plot_prediction_distributions(
+plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -457,7 +460,7 @@ plot_calibration(
     # suptitle="Base model with balanced training data"  # optional
 )
 
-generate_madcap_plots(
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -485,8 +488,8 @@ The performance is worse for children over all. There are fewer of them in the d
 Analysis like this can help us to understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment.
 
 ```python
-from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
-generate_madcap_plots_by_group(
+from patientflow.viz.madcap import plot_madcap_by_group
+plot_madcap_by_group(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
@@ -511,7 +514,7 @@ generate_madcap_plots_by_group(
 `patientflow` offers functions that generate Shap and feature importance plots for each prediction time.
 
 ```python
-from patientflow.viz.feature_plot import plot_features
+from patientflow.viz.features import plot_features
 
 plot_features(
     trained_models)
@@ -521,7 +524,7 @@ plot_features(
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_33_0.png)
 
 ```python
-from patientflow.viz.shap_plot import plot_shap
+from patientflow.viz.shap import plot_shap
 
 plot_shap(
     trained_models,
@@ -531,23 +534,23 @@ plot_shap(
 
 ```
 
-    Predicted classification (not admitted, admitted):  [1666  952]
+    Predicted classification (not admitted, admitted):  [1663  955]
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
 
-    Predicted classification (not admitted, admitted):  [2823 1326]
+    Predicted classification (not admitted, admitted):  [2843 1306]
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
 
-    Predicted classification (not admitted, admitted):  [4687 2547]
+    Predicted classification (not admitted, admitted):  [4858 2376]
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
 
-    Predicted classification (not admitted, admitted):  [5609 2914]
+    Predicted classification (not admitted, admitted):  [5795 2728]
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
 
-    Predicted classification (not admitted, admitted):  [4256 2354]
+    Predicted classification (not admitted, admitted):  [4301 2309]
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
 

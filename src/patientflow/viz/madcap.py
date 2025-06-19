@@ -10,20 +10,20 @@ Functions
 classify_age : function
     Classifies age into categories based on numeric values or age group strings.
 
-generate_madcap_plots : function
+plot_madcap : function
     Generates MADCAP plots for a list of trained models, comparing estimated probabilities
     to observed values.
 
-plot_madcap_subplot : function
+_plot_madcap_subplot : function
     Plots a single MADCAP subplot showing cumulative predicted and observed values.
 
-plot_madcap_by_group : function
+_plot_madcap_by_group_single : function
     Generates MADCAP plots for specific groups at a given prediction time.
 
-generate_madcap_plots_by_group : function
+plot_madcap_by_group : function
     Generates MADCAP plots for different groups across multiple prediction times.
 
-generate_madcap_plots_by_group(prediction_times, model_file_path, media_file_path, visits_csv_path, grouping_var, grouping_var_name)
+plot_madcap_by_group(prediction_times, model_file_path, media_file_path, visits_csv_path, grouping_var, grouping_var_name)
     Generates MADCAP plots for groups (e.g., age groups) across a series of prediction times.
 """
 
@@ -108,11 +108,12 @@ def classify_age(age, age_categories=None):
         return "unknown"
 
 
-def generate_madcap_plots(
+def plot_madcap(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     media_file_path: Optional[Path] = None,
+    file_name: Optional[str] = None,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
     label_col: str = "is_admitted",
@@ -129,6 +130,8 @@ def generate_madcap_plots(
         List of columns to exclude from training data.
     media_file_path : Path, optional
         Directory path where the generated plots will be saved.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "madcap_plot.png".
     suptitle : str, optional
         Suptitle for the plot.
     return_figure : bool, default=False
@@ -188,7 +191,7 @@ def generate_madcap_plots(
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Plot directly on the single axes
-        plot_madcap_subplot(predict_proba, y_test, prediction_time, axes)
+        _plot_madcap_subplot(predict_proba, y_test, prediction_time, axes)
     else:
         # For multiple plots, ensure axes is always a 2D array
         if num_rows == 1:
@@ -220,7 +223,7 @@ def generate_madcap_plots(
 
             row = i // num_cols
             col = i % num_cols
-            plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
+            _plot_madcap_subplot(predict_proba, y_test, prediction_time, axes[row, col])
 
         # Hide any unused subplots
         for j in range(i + 1, num_rows * num_cols):
@@ -237,7 +240,7 @@ def generate_madcap_plots(
         plt.subplots_adjust(top=0.85)
 
     if media_file_path:
-        plot_name = "madcap_plot"
+        plot_name = file_name if file_name else "madcap_plot.png"
         madcap_plot_path = Path(media_file_path) / plot_name
         plt.savefig(madcap_plot_path, bbox_inches="tight")
 
@@ -249,7 +252,7 @@ def generate_madcap_plots(
         return None
 
 
-def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
+def _plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     """Plot a single MADCAP subplot showing cumulative estimated and observed values.
 
     Parameters
@@ -305,13 +308,14 @@ def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     ax.tick_params(axis="both", which="major", labelsize="x-small")
 
 
-def plot_madcap_by_group(
+def _plot_madcap_by_group_single(
     predict_proba,
     label,
     group,
     _prediction_time,
     group_name,
     media_path=None,
+    file_name: Optional[str] = None,
     plot_difference=True,
     return_figure=False,
 ):
@@ -331,6 +335,8 @@ def plot_madcap_by_group(
         Name of the group variable being plotted (e.g., 'Age Group').
     media_path : str or Path, optional
         Path to save the generated plot.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to a generated name based on group and time.
     plot_difference : bool, default=True
         If True, includes an additional plot showing the difference between predicted
         and observed outcomes.
@@ -410,9 +416,7 @@ def plot_madcap_by_group(
     # fig.tight_layout(pad=1.08, rect=[0, 0.03, 1, 0.95])
 
     if media_path:
-        plot_name = (
-            f"madcap_plot_by_{group_name.replace(' ', '_')}_{hour}{minutes:02}.png"
-        )
+        plot_name = file_name if file_name else f"madcap_plot_by_{group_name.replace(' ', '_')}_{hour}{minutes:02}.png"
         madcap_plot_path = Path(media_path) / plot_name
         plt.savefig(madcap_plot_path, dpi=300, bbox_inches="tight")
 
@@ -424,13 +428,14 @@ def plot_madcap_by_group(
         return None
 
 
-def generate_madcap_plots_by_group(
+def plot_madcap_by_group(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
     exclude_from_training_data: List[str],
     grouping_var: str,
     grouping_var_name: str,
     media_file_path: Optional[Path] = None,
+    file_name: Optional[str] = None,
     plot_difference: bool = False,
     return_figure: bool = False,
     label_col: str = "is_admitted",
@@ -451,6 +456,8 @@ def generate_madcap_plots_by_group(
         A descriptive name for the grouping variable, used in plot titles.
     media_file_path : Path, optional
         Directory path where the generated plots will be saved.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to a generated name based on group and time.
     plot_difference : bool, default=False
         If True, includes difference plot between predicted and observed outcomes.
     return_figure : bool, default=False
@@ -511,14 +518,15 @@ def generate_madcap_plots_by_group(
         else:
             group = X_test[grouping_var]
 
-        fig = plot_madcap_by_group(
+        fig = _plot_madcap_by_group_single(
             predict_proba,
             y_test,
             group,
             prediction_time,
             grouping_var_name,
             media_file_path,
-            plot_difference,
+            file_name=file_name,
+            plot_difference=plot_difference,
             return_figure=True,
         )
         if return_figure:

@@ -20,6 +20,7 @@ from pathlib import Path
 def plot_features(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     media_file_path: Optional[Path] = None,
+    file_name=None,
     top_n: int = 20,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
@@ -32,6 +33,8 @@ def plot_features(
         List of TrainedClassifier objects or dictionary with TrainedClassifier values.
     media_file_path : Path, optional
         Path where the plot should be saved. If None, the plot is only displayed.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "feature_importance_plots.png".
     top_n : int, default=20
         Number of top features to display.
     suptitle : str, optional
@@ -104,7 +107,10 @@ def plot_features(
 
     if media_file_path:
         # Save and display plot
-        feature_plot_path = media_file_path / "feature_importance_plots.png"
+        if file_name:
+            feature_plot_path = media_file_path / file_name
+        else:
+            feature_plot_path = media_file_path / "feature_importance_plots.png"
         plt.savefig(feature_plot_path, bbox_inches="tight")
 
     if return_figure:

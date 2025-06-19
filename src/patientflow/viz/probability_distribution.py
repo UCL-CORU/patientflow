@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from patientflow.predict.emergency_demand import find_probability_threshold_index
 
 
-def calculate_probability_thresholds(
+def _calculate_probability_thresholds(
     probability_sequence, probability_levels=[0.7, 0.9]
 ):
     """Calculate resource thresholds for given probability levels based on the probability distribution.
@@ -40,7 +40,7 @@ def calculate_probability_thresholds(
     Examples
     --------
     >>> pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]  # Probability of needing 0,1,2,3,4,5,6 beds
-    >>> calculate_probability_thresholds(pmf, [0.8, 0.9])
+    >>> _calculate_probability_thresholds(pmf, [0.8, 0.9])
     {0.8: 4, 0.9: 5}
     # This means:
     # - There is an 80% probability of needing at least 4 beds
@@ -64,7 +64,7 @@ def plot_prob_dist(
     truncate_at_beds=None,
     text_size=None,
     bar_colour="#5B9BD5",
-    media_file_name=None,
+    file_name=None,
     probability_thresholds=None,
     show_probability_thresholds=True,
     probability_levels=None,
@@ -108,9 +108,8 @@ def plot_prob_dist(
     bar_colour : str, optional
         The color of the bars in the plot.
         Default is "#5B9BD5"
-    media_file_name : str, optional
-        Name of the file to save the plot. If not provided, the title is used to generate
-        a file name.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to a generated name based on the title.
     probability_thresholds : dict, optional
         A dictionary where keys are points on the cumulative distribution function (as decimals, e.g., 0.9 for 90%)
         and values are the corresponding resource thresholds (bed counts).
@@ -146,7 +145,7 @@ def plot_prob_dist(
 
     With thresholds:
 
-    >>> thresholds = calculate_probability_thresholds(probabilities, [0.8, 0.95])
+    >>> thresholds = _calculate_probability_thresholds(probabilities, [0.8, 0.95])
     >>> plot_prob_dist(probabilities, "Bed Demand with Confidence Levels",
     ...                probability_thresholds=thresholds)
 
@@ -213,15 +212,15 @@ def plot_prob_dist(
 
     # Calculate probability thresholds if probability_levels is provided
     if probability_thresholds is None and probability_levels is not None:
-        probability_thresholds = calculate_probability_thresholds(
+        probability_thresholds = _calculate_probability_thresholds(
             filtered_data["agg_proba"].values, probability_levels
         )
 
     # Create the plot
     fig = plt.figure(figsize=figsize)
 
-    if not media_file_name:
-        media_file_name = (
+    if not file_name:
+        file_name = (
             title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
         )
 
@@ -292,7 +291,7 @@ def plot_prob_dist(
 
     # Save or display the figure
     if media_file_path:
-        plt.savefig(media_file_path / media_file_name.replace(" ", "_"), dpi=300)
+        plt.savefig(media_file_path / file_name.replace(" ", "_"), dpi=300)
 
     if return_figure:
         return fig

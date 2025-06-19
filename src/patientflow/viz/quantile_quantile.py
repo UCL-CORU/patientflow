@@ -41,6 +41,7 @@ def qq_plot(
     figsize=None,
     suptitle=None,
     media_file_path=None,
+    file_name=None,
 ):
     """Generate multiple QQ plots comparing observed values with model predictions.
 
@@ -61,6 +62,8 @@ def qq_plot(
         Super title for the entire figure, displayed above all subplots.
     media_file_path : Path, optional
         Path to save the plot.
+    file_name : str, optional
+        Custom filename to use when saving the plot. If not provided, defaults to "qq_plot.png".
 
     Returns
     -------
@@ -168,7 +171,7 @@ def qq_plot(
         plt.suptitle(suptitle, fontsize=16, y=1.05)
 
     if media_file_path:
-        plt.savefig(media_file_path / "qq_plot.png", dpi=300)
+        plt.savefig(media_file_path / (file_name or "qq_plot.png"), dpi=300)
 
     if return_figure:
         return fig
