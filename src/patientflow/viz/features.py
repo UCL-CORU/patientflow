@@ -1,4 +1,4 @@
-"""Visualization module for plotting feature importances from trained models.
+"""Visualisation module for plotting feature importances from trained models.
 
 This module provides functionality to visualize feature importances from trained
 classifiers, allowing for comparison across different prediction time points.

@@ -639,25 +639,11 @@ create_special_category_objects(train_visits_df.columns)
      'special_func_map': {'paediatric': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba2c0>>,
       'default': <bound method SpecialCategoryParams.opposite_special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba2c0>>}}
 
-If a model has been trained with special parameters, they will be saved within the model object.
-
-```python
-spec_model.special_params
-```
-
-    {'special_category_func': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>,
-     'special_category_dict': {'medical': 0.0,
-      'surgical': 0.0,
-      'haem/onc': 0.0,
-      'paediatric': 1.0},
-     'special_func_map': {'paediatric': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>,
-      'default': <bound method SpecialCategoryParams.opposite_special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>}}
-
 ## Train models for yet-to-arrive patients
 
 Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See [3c_Predict_bed_counts_without_using_patient_snapshots.md](3c_Predict_bed_counts_without_using_patient_snapshots.md) for more information. When making predictions by specialty, arrival rates are learned for each specialty separately.
 
-The `create_yta_filters()` function generates a dictionary of filters for the `WeightedPoissonPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
+The `create_yta_filters()` function generates a dictionary of filters for the `ParametricIncomingAdmissionPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
 
 - For pediatric patients: {"is_child": True}
 - For other specialties: {"specialty": specialty_name, "is_child": False}
@@ -669,14 +655,14 @@ This allows the predictor to
 - Apply appropriate filtering during both training and prediction
 
 ```python
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
 from patientflow.prepare import create_yta_filters
 from datetime import timedelta
 
 x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
 
 specialty_filters = create_yta_filters(ed_visits)
-yta_model_by_spec =  WeightedPoissonPredictor(filters = specialty_filters, verbose=False)
+yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
 
 # calculate the number of days between the start of the training and validation sets; used for working out daily arrival rates
 num_days = (start_validation_set - start_training_set).days
@@ -691,9 +677,32 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
               num_days=num_days )
 ```
 
-The special parameters are not saved with the WeightedPoissonPredictor because they are only used once during initialization to create static filters that map specialties to their configurations (e.g., {'is_child': True} for pediatric cases). These filters, which are derived from the special parameters, are sufficient for the WeightedPoissonPredictor's purpose of making yet-to-arrive predictions by specialty.
+### Saving of special category information
 
-In contrast, the SequencePredictor needs to save the special parameters because it actively uses them during both training and prediction to filter and categorize patients based on their characteristics.
+The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for pediatric cases), but does not need them in the predict method. The filters are saved with the instance.
+
+```python
+yta_model_by_spec.filters
+```
+
+    {'medical': {'specialty': 'medical', 'is_child': False},
+     'surgical': {'specialty': 'surgical', 'is_child': False},
+     'haem/onc': {'specialty': 'haem/onc', 'is_child': False},
+     'paediatric': {'is_child': True}}
+
+In contrast, the `SequencePredictor` save the special parameters as a function, which is used by the predict method to filter and categorise patients based on their characteristics.
+
+```python
+spec_model.special_params
+```
+
+    {'special_category_func': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>,
+     'special_category_dict': {'medical': 0.0,
+      'surgical': 0.0,
+      'haem/onc': 0.0,
+      'paediatric': 1.0},
+     'special_func_map': {'paediatric': <bound method SpecialCategoryParams.special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>,
+      'default': <bound method SpecialCategoryParams.opposite_special_category_func of <patientflow.prepare.SpecialCategoryParams object at 0x12fcba3f0>>}}
 
 ## Changes required in your implementation
 
@@ -993,27 +1002,27 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
     EPUDD plots for medical specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_1.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_1.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_2.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_2.png)
 
     EPUDD plots for surgical specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_4.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_4.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_5.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_5.png)
 
     EPUDD plots for haem/onc specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_7.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_7.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_8.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_8.png)
 
     EPUDD plots for paediatric specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_10.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_10.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_28_11.png)
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_11.png)
 
 ## Summary
 

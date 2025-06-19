@@ -43,7 +43,9 @@ import sympy as sym
 from sympy import expand, symbols
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Tuple
-from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    EmpiricalIncomingAdmissionPredictor,
+)
 
 
 def create_symbols(n):
@@ -485,7 +487,7 @@ def get_prob_dist(
     return prob_dist_dict
 
 
-def get_prob_dist_using_survival_predictor(
+def get_prob_dist_using_survival_curve(
     snapshot_dates: List[date],
     test_visits: pd.DataFrame,
     category: str,
@@ -493,11 +495,11 @@ def get_prob_dist_using_survival_predictor(
     prediction_window: timedelta,
     start_time_col: str,
     end_time_col: str,
-    model: EmpiricalSurvivalPredictor,
+    model: EmpiricalIncomingAdmissionPredictor,
     verbose=False,
 ):
     """
-    Calculate probability distributions for each snapshot date using an EmpiricalSurvivalPredictor.
+    Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
 
     Parameters
     ----------

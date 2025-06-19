@@ -2,19 +2,19 @@
 
 There are situations where we might want to predict bed count distributions without having details of the patients, for example when predicting the number of beds needed for incoming patients such as:
 
-- Patients yet-to-arrive to the Emergency Department, who will need a bed within a prediction window
+- Incoming patients who haven't yet arrived at the Emergency Department, but who will need a bed within a prediction window
 - Emergency patients who arrive via other routes than the ED, and become inpatients (such as emergency transfers from other hospitals)
 - Elective admissions of patients. Planned elective admissions are recorded on a 'To Come In' (TCI) list by patient number. In data, the hospital visit (known as an encounter) for the elective procedure begins at the moment a patient arrives, but may not be recorded in data prior to that point. In a simple case without making use of any data on TCI lists, we might want to predict bed requirements for such patients based on past patterns of such arrivals between a prediction time (eg 12:00) and the end of a prediction window (eg 8 hours later).
 
 For these situations, we can use `patientflow` to learn patterns from past data, and use these to predict a bed count distribution at the aggregate level.
 
-In this notebook, I'll use the example of predicting the number of beds needed for patients yet to arrive to the Emergency Department who will need a bed within a prediction window. I'll show three approaches:
+In this notebook, I'll use the example of predicting the number of beds needed for incoming patients (patients yet to arrive to the Emergency Department who will need a bed within a prediction window). I'll show three approaches:
 
 - a Poisson model trained on past arrival rates of patients who both arrived and were admitted within a prediction window
 - a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned form past data
 - a weighted Poisson model using an aspirational approach; instead of using a survival curve learned form past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
 
-I demonstrate both predictions for whole cohorts of patients, and predictions by specialty.
+I also demonstrate making predictions by specialty for demand from incoming patients.
 
 ```python
 # Reload functions every time
@@ -132,7 +132,7 @@ inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arri
 I will generate an array of dates covered by the data I've loaded. I'm calling these `snapshot_dates` for consistency.
 
 ```python
-from datetime import datetime, time, timedelta, date
+from datetime import timedelta, date
 
 # Create date range
 snapshot_dates = []
@@ -476,24 +476,26 @@ plot_prob_dist(combined_dist, title,
 
 ![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_27_0.png)
 
-### Using the `EmpiricalSurvivalPredictor` class
+### Using the `EmpiricalIncomingAdmissionPredictor` class
 
-A custom class `EmpiricalSurvivalPredictor` has been created, for this purpose, that follows the same logic as the code snippet above.
+A custom class `EmpiricalIncomingAdmissionPredictor` has been created, for this purpose, that follows the same logic as the code snippet above.
 
 A survival curve is generated from the training data, and used determine the probability of admission before the end of the prediction window, for a patient who arrives at a particular moment in the window.
 
-To get a distribution for the number of patients arriving and being admitted within the prediction window, the window (let's say it's 8 hours from now) is divided into discrete segments of time of some length defined by the `yta_time_interval` parameter (let's say this is 15 min), giving us 32 segments of the 8 hour window. For each segment an arrival rate of patients in that segement is calculated. The arrival rate is multiplied by the probability of being admitted by the end of the window, given the time of arrival, to generate a weighted Poisson mean for each segment. The 32 Poisson distributions for each segment are combined to give a probability distribution for the total number of beds needed.
+To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time segments based on the `yta_time_interval` parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 segments.
 
-I demonstrate how you fit the EmpiricalSurvivalPredictor below.
+For each segment, the class calculates two key values: the expected patient arrival rate and the probability that patients arriving in that segment will be admitted by the end of the full window. These values are multiplied together to create a weighted mean for a Poisson distribution representing that segment.
 
-Note: we treat time as discrete, rather than continuous to make calculations easier.
+Finally, all 32 segment distributions are combined to produce an overall probability distribution showing the total number of beds likely needed during the prediction window.
+
+I demonstrate how you fit the `EmpiricalIncomingAdmissionPredictor` below.
 
 ```python
-from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
+from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
 train_visits_copy = train_visits.copy(deep=True)
 
-yta_model_empirical =  EmpiricalSurvivalPredictor(verbose=True)
+yta_model_empirical =  EmpiricalIncomingAdmissionPredictor(verbose=True)
 num_days = (start_validation_set - start_training_set).days
 
 # the arrival_datetime column needs to be set as the index of the dataframe
@@ -510,14 +512,14 @@ yta_model_empirical.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    Weighted Poisson Predictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+    EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
     using prediction window of 8:00:00 after the time of prediction
     and time interval of 0:15:00 within the prediction window.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, used the get_weights() method
-    EmpiricalSurvivalPredictor has been fitted with survival curve containing 881 time points
+    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
-<style>#sk-container-id-12 {
+<style>#sk-container-id-19 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -548,15 +550,15 @@ yta_model_empirical.fit(train_visits_copy,
   }
 }
 
-#sk-container-id-12 {
+#sk-container-id-19 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-12 pre {
+#sk-container-id-19 pre {
   padding: 0;
 }
 
-#sk-container-id-12 input.sk-hidden--visually {
+#sk-container-id-19 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -568,7 +570,7 @@ yta_model_empirical.fit(train_visits_copy,
   width: 1px;
 }
 
-#sk-container-id-12 div.sk-dashed-wrapped {
+#sk-container-id-19 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -576,7 +578,7 @@ yta_model_empirical.fit(train_visits_copy,
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-12 div.sk-container {
+#sk-container-id-19 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -586,7 +588,7 @@ yta_model_empirical.fit(train_visits_copy,
   position: relative;
 }
 
-#sk-container-id-12 div.sk-text-repr-fallback {
+#sk-container-id-19 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -602,14 +604,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-12 div.sk-parallel-item::after {
+#sk-container-id-19 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-12 div.sk-parallel {
+#sk-container-id-19 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -617,28 +619,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-12 div.sk-parallel-item {
+#sk-container-id-19 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-12 div.sk-parallel-item:first-child::after {
+#sk-container-id-19 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-12 div.sk-parallel-item:last-child::after {
+#sk-container-id-19 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-12 div.sk-parallel-item:only-child::after {
+#sk-container-id-19 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-12 div.sk-serial {
+#sk-container-id-19 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -656,14 +658,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-12 div.sk-toggleable {
+#sk-container-id-19 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-12 label.sk-toggleable__label {
+#sk-container-id-19 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -676,13 +678,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-12 label.sk-toggleable__label .caption {
+#sk-container-id-19 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-12 label.sk-toggleable__label-arrow:before {
+#sk-container-id-19 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -690,13 +692,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-12 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-19 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-12 div.sk-toggleable__content {
+#sk-container-id-19 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -705,12 +707,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-12 div.sk-toggleable__content.fitted {
+#sk-container-id-19 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-12 div.sk-toggleable__content pre {
+#sk-container-id-19 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -718,79 +720,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-12 div.sk-toggleable__content.fitted pre {
+#sk-container-id-19 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-12 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-19 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-12 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-19 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-12 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-19 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-12 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-19 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-12 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-19 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-12 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-19 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-12 div.sk-label label.sk-toggleable__label,
-#sk-container-id-12 div.sk-label label {
+#sk-container-id-19 div.sk-label label.sk-toggleable__label,
+#sk-container-id-19 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-12 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-19 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-12 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-19 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-12 div.sk-label label {
+#sk-container-id-19 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-12 div.sk-label-container {
+#sk-container-id-19 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-12 div.sk-estimator {
+#sk-container-id-19 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -800,18 +802,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-12 div.sk-estimator.fitted {
+#sk-container-id-19 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-12 div.sk-estimator:hover {
+#sk-container-id-19 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-12 div.sk-estimator.fitted:hover {
+#sk-container-id-19 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -899,7 +901,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-12 a.estimator_doc_link {
+#sk-container-id-19 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -914,25 +916,25 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-12 a.estimator_doc_link.fitted {
+#sk-container-id-19 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-12 a.estimator_doc_link:hover {
+#sk-container-id-19 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-12 a.estimator_doc_link.fitted:hover {
+#sk-container-id-19 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-12" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalSurvivalPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-12" type="checkbox" checked><label for="sk-estimator-id-12" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalSurvivalPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalSurvivalPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-19" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-19" type="checkbox" checked><label for="sk-estimator-id-19" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 The survival curve that was calculated from the training set is saved with the object returned
 
@@ -1072,7 +1074,7 @@ plot_prob_dist(weighted_poisson_empirical['unfiltered'], title,
 It is also possible to generate predictions by specialty, by passing a dictionary comprised of the required subgroups (the key) and a nested dictionary (the value) specifying how to identify them, with a column name (the nested key) and the values to filter from that column.
 
 ```python
-from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
+from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
 train_visits_copy = train_visits.copy(deep=True)
 num_days = (start_validation_set - start_training_set).days
@@ -1085,7 +1087,7 @@ specialty_filters = filters={
     'haem/onc': {'specialty': 'haem/onc'},
     'paediatric': {'specialty': 'paediatric'}
     }
-yta_model_by_spec_empirical =  EmpiricalSurvivalPredictor(filters = specialty_filters, verbose=True)
+yta_model_by_spec_empirical =  EmpiricalIncomingAdmissionPredictor(filters = specialty_filters, verbose=True)
 
 yta_model_by_spec_empirical.fit(train_visits_copy,
                         prediction_window=timedelta(hours=8),
@@ -1100,14 +1102,14 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    Weighted Poisson Predictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+    EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
     using prediction window of 8:00:00 after the time of prediction
     and time interval of 0:15:00 within the prediction window.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, used the get_weights() method
-    EmpiricalSurvivalPredictor has been fitted with survival curve containing 881 time points
+    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
-<style>#sk-container-id-13 {
+<style>#sk-container-id-20 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -1138,15 +1140,15 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   }
 }
 
-#sk-container-id-13 {
+#sk-container-id-20 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-13 pre {
+#sk-container-id-20 pre {
   padding: 0;
 }
 
-#sk-container-id-13 input.sk-hidden--visually {
+#sk-container-id-20 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -1158,7 +1160,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   width: 1px;
 }
 
-#sk-container-id-13 div.sk-dashed-wrapped {
+#sk-container-id-20 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -1166,7 +1168,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-13 div.sk-container {
+#sk-container-id-20 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -1176,7 +1178,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   position: relative;
 }
 
-#sk-container-id-13 div.sk-text-repr-fallback {
+#sk-container-id-20 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -1192,14 +1194,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-13 div.sk-parallel-item::after {
+#sk-container-id-20 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-13 div.sk-parallel {
+#sk-container-id-20 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -1207,28 +1209,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-13 div.sk-parallel-item {
+#sk-container-id-20 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-13 div.sk-parallel-item:first-child::after {
+#sk-container-id-20 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-13 div.sk-parallel-item:last-child::after {
+#sk-container-id-20 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-13 div.sk-parallel-item:only-child::after {
+#sk-container-id-20 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-13 div.sk-serial {
+#sk-container-id-20 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1246,14 +1248,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-13 div.sk-toggleable {
+#sk-container-id-20 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-13 label.sk-toggleable__label {
+#sk-container-id-20 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -1266,13 +1268,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-13 label.sk-toggleable__label .caption {
+#sk-container-id-20 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-13 label.sk-toggleable__label-arrow:before {
+#sk-container-id-20 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -1280,13 +1282,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-13 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-20 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-13 div.sk-toggleable__content {
+#sk-container-id-20 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -1295,12 +1297,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-13 div.sk-toggleable__content.fitted {
+#sk-container-id-20 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-13 div.sk-toggleable__content pre {
+#sk-container-id-20 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -1308,79 +1310,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-13 div.sk-toggleable__content.fitted pre {
+#sk-container-id-20 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-13 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-20 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-13 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-20 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-13 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-20 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-13 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-20 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-13 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-20 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-13 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-20 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-13 div.sk-label label.sk-toggleable__label,
-#sk-container-id-13 div.sk-label label {
+#sk-container-id-20 div.sk-label label.sk-toggleable__label,
+#sk-container-id-20 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-13 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-20 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-13 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-20 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-13 div.sk-label label {
+#sk-container-id-20 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-13 div.sk-label-container {
+#sk-container-id-20 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-13 div.sk-estimator {
+#sk-container-id-20 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -1390,18 +1392,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-13 div.sk-estimator.fitted {
+#sk-container-id-20 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-13 div.sk-estimator:hover {
+#sk-container-id-20 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-13 div.sk-estimator.fitted:hover {
+#sk-container-id-20 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -1489,7 +1491,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-13 a.estimator_doc_link {
+#sk-container-id-20 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -1504,34 +1506,34 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-13 a.estimator_doc_link.fitted {
+#sk-container-id-20 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-13 a.estimator_doc_link:hover {
+#sk-container-id-20 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-13 a.estimator_doc_link.fitted:hover {
+#sk-container-id-20 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-13" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalSurvivalPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+</style><div id="sk-container-id-20" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
 
-                                    &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
-                                    &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
-                                    &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
-                           verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-13" type="checkbox" checked><label for="sk-estimator-id-13" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalSurvivalPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalSurvivalPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
-                                    &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
-                                    &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
-                                    &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
-                           verbose=True)</pre></div> </div></div></div></div>
+                                             &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
+                                             &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
+                                             &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
+                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-20" type="checkbox" checked><label for="sk-estimator-id-20" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+                                             &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
+                                             &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
+                                             &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
+                                    verbose=True)</pre></div> </div></div></div></div>
 
 ```python
 from patientflow.viz.probability_distribution import plot_prob_dist
@@ -1544,7 +1546,6 @@ for specialty in train_visits.specialty.unique():
         }
 }
     weighted_poisson_empirical = yta_model_by_spec_empirical.predict(prediction_context)
-
 
     title = (
         f'Probability distribution for number of {specialty} beds needed for patients'
@@ -1597,7 +1598,9 @@ print(f'The aspiration is that within {str(x1)} hours of arrival, {str(y1*100)}%
     Inferred project root: /Users/zellaking/Repos/patientflow
     The aspiration is that within 4.0 hours of arrival, 76.0% of patients will have been admitted, and that witin 12.0 hours of arrival, 99.0% of patients will have been admitted
 
-The aspiration can be plotted as an inverted survival curve, as shown below.
+The aspiration can be plotted as a parameterised curve, as shown below. It is the equivalent of a survival curve that has been inverted. However, unless the empirical survival curve above, this curve is defined by parameters that can be changed according to the aspirational targets set.
+
+To change the targets, you can vary the values of x1, y1, x2 and y2.
 
 ```python
 from patientflow.viz.aspirational_curve import plot_curve
@@ -1636,16 +1639,16 @@ The `predict()` method will:
 - convolute the distributions to return a single distribution for admissions within the prediction window of patients yet-to-arrive
 
 ```python
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
 
 train_visits_copy = train_visits.copy(deep=True)
 
-yta_model =  WeightedPoissonPredictor(verbose=True)
+yta_model_parametric =  ParametricIncomingAdmissionPredictor(verbose=True)
 num_days = (start_validation_set - start_training_set).days
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
-yta_model.fit(train_visits_copy,
+yta_model_parametric.fit(train_visits_copy,
               prediction_window=timedelta(hours=8),
               yta_time_interval=timedelta(minutes=15),
               prediction_times=prediction_times,
@@ -1654,13 +1657,13 @@ yta_model.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    Weighted Poisson Predictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+    ParametricIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
     using prediction window of 8:00:00 after the time of prediction
     and time interval of 0:15:00 within the prediction window.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, used the get_weights() method
 
-<style>#sk-container-id-14 {
+<style>#sk-container-id-21 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -1691,15 +1694,15 @@ yta_model.fit(train_visits_copy,
   }
 }
 
-#sk-container-id-14 {
+#sk-container-id-21 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-14 pre {
+#sk-container-id-21 pre {
   padding: 0;
 }
 
-#sk-container-id-14 input.sk-hidden--visually {
+#sk-container-id-21 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -1711,7 +1714,7 @@ yta_model.fit(train_visits_copy,
   width: 1px;
 }
 
-#sk-container-id-14 div.sk-dashed-wrapped {
+#sk-container-id-21 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -1719,7 +1722,7 @@ yta_model.fit(train_visits_copy,
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-14 div.sk-container {
+#sk-container-id-21 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -1729,7 +1732,7 @@ yta_model.fit(train_visits_copy,
   position: relative;
 }
 
-#sk-container-id-14 div.sk-text-repr-fallback {
+#sk-container-id-21 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -1745,14 +1748,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-14 div.sk-parallel-item::after {
+#sk-container-id-21 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-14 div.sk-parallel {
+#sk-container-id-21 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -1760,28 +1763,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-14 div.sk-parallel-item {
+#sk-container-id-21 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-14 div.sk-parallel-item:first-child::after {
+#sk-container-id-21 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-14 div.sk-parallel-item:last-child::after {
+#sk-container-id-21 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-14 div.sk-parallel-item:only-child::after {
+#sk-container-id-21 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-14 div.sk-serial {
+#sk-container-id-21 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1799,14 +1802,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-14 div.sk-toggleable {
+#sk-container-id-21 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-14 label.sk-toggleable__label {
+#sk-container-id-21 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -1819,13 +1822,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-14 label.sk-toggleable__label .caption {
+#sk-container-id-21 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-14 label.sk-toggleable__label-arrow:before {
+#sk-container-id-21 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -1833,13 +1836,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-14 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-21 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-14 div.sk-toggleable__content {
+#sk-container-id-21 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -1848,12 +1851,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-14 div.sk-toggleable__content.fitted {
+#sk-container-id-21 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-14 div.sk-toggleable__content pre {
+#sk-container-id-21 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -1861,79 +1864,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-14 div.sk-toggleable__content.fitted pre {
+#sk-container-id-21 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-14 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-21 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-14 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-21 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-14 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-21 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-14 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-21 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-14 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-21 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-14 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-21 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-14 div.sk-label label.sk-toggleable__label,
-#sk-container-id-14 div.sk-label label {
+#sk-container-id-21 div.sk-label label.sk-toggleable__label,
+#sk-container-id-21 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-14 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-21 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-14 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-21 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-14 div.sk-label label {
+#sk-container-id-21 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-14 div.sk-label-container {
+#sk-container-id-21 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-14 div.sk-estimator {
+#sk-container-id-21 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -1943,18 +1946,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-14 div.sk-estimator.fitted {
+#sk-container-id-21 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-14 div.sk-estimator:hover {
+#sk-container-id-21 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-14 div.sk-estimator.fitted:hover {
+#sk-container-id-21 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -2042,7 +2045,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-14 a.estimator_doc_link {
+#sk-container-id-21 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -2057,30 +2060,30 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-14 a.estimator_doc_link.fitted {
+#sk-container-id-21 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-14 a.estimator_doc_link:hover {
+#sk-container-id-21 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-14 a.estimator_doc_link.fitted:hover {
+#sk-container-id-21 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-14" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-14" type="checkbox" checked><label for="sk-estimator-id-14" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>WeightedPoissonPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>WeightedPoissonPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-21" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-21" type="checkbox" checked><label for="sk-estimator-id-21" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>ParametricIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 Below we view the results of the fit method for the 12:00 prediction time.
 
 ```python
-arrival_rates_by_time_interval = yta_model.weights['unfiltered'][(12,0)]['arrival_rates']
+arrival_rates_by_time_interval = yta_model_parametric.weights['unfiltered'][(12,0)]['arrival_rates']
 print(
     f'The calculated arrival rates for the first 10 discrete time intervals '
     f'for the 12:00 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
@@ -2099,8 +2102,8 @@ prediction_context = {
         'prediction_time': tuple([12,0])
     }
 }
-x1, y1, x2, y2 = 4, 0.95, 12, 0.99
-weighted_poisson_prediction = yta_model.predict(prediction_context, x1, y1, x2, y2)
+
+aspirational_prediction = yta_model_parametric.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2)
 
 ```
 
@@ -2121,7 +2124,7 @@ title = (
     f'\nand need a bed before 20:00 '
     f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
 )
-plot_prob_dist(weighted_poisson_prediction['unfiltered'], title,
+plot_prob_dist(aspirational_prediction['unfiltered'], title,
     include_titles=True,
     truncate_at_beds=40)
 ```
@@ -2140,7 +2143,7 @@ However there might be cases where the historical data don't reflect the desired
 
 ## Postscript - how to evaluate bed counts based on survival curves
 
-The survival curve plot function can be used with multiple datasets. This may be useful to check the alignment of training set and test set survival curves. If the ED has become slower to process patients, this difference may show up in a difference between survival curves. We encountered this issue in our own work, and showed how to mitigate it using a sliding window approach for the survival curve in our [Nature Digital Medicine paper](https://www.nature.com/articles/s41746-022-00649-y). The problem does not show up below because these curves are based on fake data.
+The survival curve plot function can be used with multiple datasets. This may be useful to check the alignment of training set and test set survival curves. If the ED has become slower to process patients, this difference may show up in a difference between survival curves. We encountered this issue in our own work, and showed how to mitigate it using a sliding window approach for the survival curve in our [Nature Digital Medicine paper](https://www.nature.com/articles/s41746-022-00649-y). The problem does not show up below because these curves are based on synthetic data, but it might in your dataset.
 
 ```python
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
@@ -2161,7 +2164,7 @@ survival_df = plot_admission_time_survival_curve([train_visits, valid_visits, te
 The function below can be used to compare the predicted with the observed bed counts. This function will retrieve the observed counts and save them alongside their predicted distribution from the model.
 
 ```python
-from patientflow.aggregate import get_prob_dist_using_survival_predictor
+from patientflow.aggregate import get_prob_dist_using_survival_curve
 from datetime import timedelta
 from patientflow.load import get_model_key
 
@@ -2170,7 +2173,7 @@ test_set_dates = [dt for dt in snapshot_dates if dt >= start_test_set]
 
 for prediction_time in prediction_times:
     model_key = get_model_key('yet_to_arrive', prediction_time)
-    prob_dist_dict_all[model_key]= get_prob_dist_using_survival_predictor(
+    prob_dist_dict_all[model_key]= get_prob_dist_using_survival_curve(
         snapshot_dates=test_set_dates,
         test_visits=test_visits,
         category='unfiltered',
@@ -2183,7 +2186,7 @@ for prediction_time in prediction_times:
     )
 ```
 
-The result can be plotted using the same functions. The model appears as a series of vertical lines because the EmpiricalSurvivalPredictor is very crude; it is trained only on a time of day. We have included it here as a placeholder, to show how modelling of yet-to-arrive patients using past data on time to admission could be done, and how it could be evaluated. You could modify the function to include a weekday/weekend variable, or replace it with a different approach based on moving averages (such as ARIMA).
+The result can be plotted using the same functions. The model appears as a series of vertical lines because the EmpiricalIncomingAdmissionPredictor is trained only on a time of day so there is minimal variation in the predicted distributions. I have included it here as a placeholder, to show how modelling of yet-to-arrive patients using past data on time to admission could be done, and how it could be evaluated. You could modify the function to include a weekday/weekend variable, or replace it with a different approach based on moving averages (such as ARIMA).
 
 ```python
 from patientflow.viz.epudd import plot_epudd

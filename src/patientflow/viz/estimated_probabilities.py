@@ -10,7 +10,6 @@ plot_estimated_probabilities : function
 """
 
 import matplotlib.pyplot as plt
-import pandas as pd
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
@@ -139,7 +138,10 @@ def plot_estimated_probabilities(
         ax.hist(neg_preds, bins=bins, alpha=0.2, color=primary_color, density=True)
         ax.hist(pos_preds, bins=bins, alpha=0.2, color=secondary_color, density=True)
 
-        ax.set_title(f"Distribution of Estimated Probabilities at {hour}:{minutes:02}", fontsize=14)
+        ax.set_title(
+            f"Distribution of Estimated Probabilities at {hour}:{minutes:02}",
+            fontsize=14,
+        )
         ax.set_xlabel("Estimated Probability", fontsize=12)
         ax.set_ylabel("Density", fontsize=12)
         ax.set_xlim(0, 1)
@@ -162,4 +164,4 @@ def plot_estimated_probabilities(
         return fig
     else:
         plt.show()
-        plt.close() 
+        plt.close()

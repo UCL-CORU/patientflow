@@ -24,9 +24,11 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
     get_prob_dist_for_prediction_moment,
     get_prob_dist,
-    get_prob_dist_using_survival_predictor,
+    get_prob_dist_using_survival_curve,
 )
-from patientflow.predictors.weighted_poisson_predictor import EmpiricalSurvivalPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    EmpiricalIncomingAdmissionPredictor,
+)
 
 
 # Mock model for testing
@@ -43,7 +45,7 @@ class MockModel:
         return np.column_stack((1 - probs, probs))
 
 
-class WeightedPoissonPredictor:
+class ParametricIncomingAdmissionPredictor:
     def __init__(self, prediction_window):
         self.prediction_window = prediction_window
         self.weights = {"Category1": 1.0, "Category2": 2.0}
@@ -265,7 +267,7 @@ class TestAggregate(unittest.TestCase):
             # Check that agg_observed is a number
             self.assertIsInstance(result[dt]["agg_observed"], (int, float))
 
-    def test_get_prob_dist_using_survival_predictor(self):
+    def test_get_prob_dist_using_survival_curve(self):
         """Test probability distribution generation using survival predictor"""
         # Create test data for patients
         test_df = pd.DataFrame(
@@ -286,8 +288,8 @@ class TestAggregate(unittest.TestCase):
             }
         )
 
-        # Create and fit the EmpiricalSurvivalPredictor
-        model = EmpiricalSurvivalPredictor()
+        # Create and fit the EmpiricalIncomingAdmissionPredictor
+        model = EmpiricalIncomingAdmissionPredictor()
         model.fit(
             train_df=test_df,
             prediction_window=timedelta(hours=8),
@@ -298,7 +300,7 @@ class TestAggregate(unittest.TestCase):
             end_time_col="departure_datetime",
         )
         # Test the function
-        result = get_prob_dist_using_survival_predictor(
+        result = get_prob_dist_using_survival_curve(
             snapshot_dates=[date(2023, 1, 1), date(2023, 1, 2), date(2023, 1, 3)],
             test_visits=test_df.reset_index(),
             category="unfiltered",
@@ -328,7 +330,7 @@ class TestAggregate(unittest.TestCase):
 
         # Test with start_time_col as index
         test_df_indexed = test_df.set_index("arrival_datetime")
-        result_indexed = get_prob_dist_using_survival_predictor(
+        result_indexed = get_prob_dist_using_survival_curve(
             snapshot_dates=[date(2023, 1, 1), date(2023, 1, 2), date(2023, 1, 3)],
             test_visits=test_df_indexed,
             category="unfiltered",
@@ -354,7 +356,7 @@ class TestAggregate(unittest.TestCase):
         # Test error cases
         with self.assertRaises(ValueError):
             # Test with missing end_time_col
-            get_prob_dist_using_survival_predictor(
+            get_prob_dist_using_survival_curve(
                 snapshot_dates=[date(2023, 1, 1)],
                 test_visits=test_df.drop(columns=["departure_datetime"]),
                 category="medical",
@@ -367,8 +369,8 @@ class TestAggregate(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             # Test with unfitted model
-            unfitted_model = EmpiricalSurvivalPredictor()
-            get_prob_dist_using_survival_predictor(
+            unfitted_model = EmpiricalIncomingAdmissionPredictor()
+            get_prob_dist_using_survival_curve(
                 snapshot_dates=[date(2023, 1, 1)],
                 test_visits=test_df,
                 category="medical",

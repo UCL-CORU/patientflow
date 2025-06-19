@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from typing import Optional
-from pathlib import Path
 
 
 def plot_data_distribution(
@@ -216,4 +214,4 @@ def plot_data_distribution(
         return g
     else:
         plt.show()
-        plt.close() 
+        plt.close()

@@ -62,7 +62,9 @@ import warnings
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
 from patientflow.predictors.single_input_predictor import SingleInputPredictor
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    ParametricIncomingAdmissionPredictor,
+)
 from patientflow.model_artifacts import TrainedClassifier
 
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
@@ -249,7 +251,7 @@ def create_predictions(
     models: Tuple[
         TrainedClassifier,
         Union[SequencePredictor, SingleInputPredictor],
-        WeightedPoissonPredictor,
+        ParametricIncomingAdmissionPredictor,
     ],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
@@ -266,11 +268,11 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], WeightedPoissonPredictor]
+    models : Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
         - spec_model: SequencePredictor or SingleInputPredictor for specialty predictions
-        - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
+        - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
     prediction_snapshots : pandas.DataFrame
@@ -329,8 +331,10 @@ def create_predictions(
         raise TypeError(
             "Second model must be of type SequencePredictor or SingleInputPredictor"
         )
-    if not isinstance(yet_to_arrive_model, WeightedPoissonPredictor):
-        raise TypeError("Third model must be of type WeightedPoissonPredictor")
+    if not isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
+        raise TypeError(
+            "Third model must be of type ParametricIncomingAdmissionPredictor"
+        )
     if "elapsed_los" not in prediction_snapshots.columns:
         raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")
     if not pd.api.types.is_timedelta64_dtype(prediction_snapshots["elapsed_los"]):
@@ -461,7 +465,7 @@ def create_predictions(
 
         prediction_context = {specialty: {"prediction_time": prediction_time}}
         agg_predicted_yta = yet_to_arrive_model.predict(
-            prediction_context, x1, y1, x2, y2
+            prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
         )
 
         predictions[specialty]["in_ed"] = [

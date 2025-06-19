@@ -9,21 +9,24 @@ data filters for tailored predictions across various hospital settings.
 
 Classes
 -------
-WeightedPoissonPredictor : BaseEstimator, TransformerMixin
+IncomingAdmissionPredictor : BaseEstimator, TransformerMixin
+    Base class for admission predictors that handles filtering and arrival rate calculation.
+
+ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions within a given prediction window based on historical
     data and Poisson-binomial distribution using parametric aspirational curves.
 
-EmpiricalSurvivalPredictor : WeightedPoissonPredictor
+EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions instead of parametric curves.
 
 Notes
 -----
-The WeightedPoissonPredictor uses a combination of Poisson and binomial distributions to
+The ParametricIncomingAdmissionPredictor uses a combination of Poisson and binomial distributions to
 model the probability of admissions within a prediction window using parametric curves
 defined by transition points (x1, y1, x2, y2).
 
-The EmpiricalSurvivalPredictor inherits the arrival rate calculation and filtering logic
+The EmpiricalIncomingAdmissionPredictor inherits the arrival rate calculation and filtering logic
 but replaces the parametric approach with empirical survival probabilities and convolution
 of individual Poisson distributions for each time interval.
 
@@ -32,9 +35,9 @@ specific hospital settings or specialties.
 
 Examples
 --------
-Using the parametric WeightedPoissonPredictor:
+Using the parametric ParametricIncomingAdmissionPredictor:
 
->>> predictor = WeightedPoissonPredictor(filters={
+>>> predictor = ParametricIncomingAdmissionPredictor(filters={
 ...     'medical': {'specialty': 'medical'},
 ...     'surgical': {'specialty': 'surgical'},
 ...     'haem_onc': {'specialty': 'haem/onc'},
@@ -43,9 +46,9 @@ Using the parametric WeightedPoissonPredictor:
 >>> predictor.fit(train_data, prediction_window=120, yta_time_interval=30, prediction_times=[8, 12, 16])
 >>> predictions = predictor.predict(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
 
-Using the empirical EmpiricalSurvivalPredictor:
+Using the empirical EmpiricalIncomingAdmissionPredictor:
 
->>> predictor = EmpiricalSurvivalPredictor(filters={
+>>> predictor = EmpiricalIncomingAdmissionPredictor(filters={
 ...     'medical': {'specialty': 'medical'},
 ...     'surgical': {'specialty': 'surgical'}
 ... })
@@ -56,6 +59,7 @@ Using the empirical EmpiricalSurvivalPredictor:
 
 import warnings
 from datetime import datetime, timedelta
+from abc import ABC, abstractmethod
 
 import numpy as np
 
@@ -293,12 +297,12 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
     return closest_prediction_time
 
 
-class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
-    """A predictor for estimating hospital admissions within a prediction window.
+class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
+    """Base class for admission predictors that handles filtering and arrival rate calculation.
 
-    This predictor uses a combination of Poisson and binomial distributions to forecast
-    future admissions, excluding patients who have already arrived. The prediction is
-    based on historical data and can be filtered for specific hospital settings.
+    This abstract base class provides the common functionality for predicting hospital
+    admissions, including data filtering, arrival rate calculation, and basic prediction
+    infrastructure. Subclasses implement specific prediction strategies.
 
     Parameters
     ----------
@@ -326,7 +330,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
     def __init__(self, filters=None, verbose=False):
         """
-        Initialize the WeightedPoissonPredictor with optional filters.
+        Initialize the IncomingAdmissionPredictor with optional filters.
 
         Args:
             filters (dict, optional): A dictionary defining filters for different categories or specialties.
@@ -343,7 +347,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
             import sys
 
             # Create logger
-            self.logger = logging.getLogger(f"{__name__}.WeightedPoissonPredictor")
+            self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
             # Only set up handlers if they don't exist
             if not self.logger.handlers:
@@ -458,7 +462,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         num_days: int,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-    ) -> "WeightedPoissonPredictor":
+    ) -> "IncomingAdmissionPredictor":
         """Fit the model to the training data.
 
         Parameters
@@ -481,7 +485,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        WeightedPoissonPredictor
+        IncomingAdmissionPredictor
             The instance itself, fitted with the training data.
 
         Raises
@@ -550,7 +554,7 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
 
         if self.verbose:
             self.logger.info(
-                f"Weighted Poisson Predictor trained for these times: {prediction_times}"
+                f"{self.__class__.__name__} trained for these times: {prediction_times}"
             )
             self.logger.info(
                 f"using prediction window of {prediction_window} after the time of prediction"
@@ -582,10 +586,70 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         """
         return self.weights
 
-    def predict(
-        self, prediction_context: Dict, x1: float, y1: float, x2: float, y2: float
-    ) -> Dict:
+    @abstractmethod
+    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions for the given context.
+
+        This is an abstract method that must be implemented by subclasses.
+
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        **kwargs
+            Additional keyword arguments specific to the prediction method.
+
+        Returns
+        -------
+        dict
+            A dictionary with predictions for each specified context.
+
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
+        """
+        pass
+
+
+class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
+    """A predictor for estimating hospital admissions using parametric curves.
+
+    This predictor uses a combination of Poisson and binomial distributions to forecast
+    future admissions, excluding patients who have already arrived. The prediction is
+    based on historical data and can be filtered for specific hospital settings.
+
+    Parameters
+    ----------
+    filters : dict, optional
+        Optional filters for data categorization. If None, no filtering is applied.
+    verbose : bool, default=False
+        Whether to enable verbose logging.
+
+    Attributes
+    ----------
+    filters : dict
+        Filters for data categorization.
+    verbose : bool
+        Verbose logging flag.
+    metrics : dict
+        Stores metadata about the model and training data.
+    weights : dict
+        Model parameters computed during fitting.
+
+    Notes
+    -----
+    The predictor implements scikit-learn's BaseEstimator and TransformerMixin
+    interfaces for compatibility with scikit-learn pipelines.
+    """
+
+    def predict(
+        self, prediction_context: Dict, **kwargs
+    ) -> Dict:
+        """Predict the number of admissions for the given context using parametric curves.
 
         Parameters
         ----------
@@ -617,6 +681,16 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         KeyError
             If required keys are missing from the prediction context.
         """
+        # Extract required parameters from kwargs
+        x1 = kwargs.get('x1')
+        y1 = kwargs.get('y1')
+        x2 = kwargs.get('x2')
+        y2 = kwargs.get('y2')
+        
+        # Validate that required parameters are provided
+        if x1 is None or y1 is None or x2 is None or y2 is None:
+            raise ValueError("x1, y1, x2, and y2 parameters are required for parametric prediction")
+
         predictions = {}
 
         # Calculate Ntimes
@@ -693,11 +767,11 @@ class WeightedPoissonPredictor(BaseEstimator, TransformerMixin):
         return predictions
 
 
-class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
+class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor that uses empirical survival curves instead of parameterised curves.
 
     This predictor inherits all the arrival rate calculation and filtering logic from
-    WeightedPoissonPredictor but uses empirical survival probabilities and convolution
+    IncomingAdmissionPredictor but uses empirical survival probabilities and convolution
     of Poisson distributions for prediction instead of the Poisson-binomial approach.
 
     The survival curve is automatically calculated from the training data during the
@@ -718,7 +792,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
     """
 
     def __init__(self, filters=None, verbose=False):
-        """Initialize the EmpiricalSurvivalPredictor."""
+        """Initialize the EmpiricalIncomingAdmissionPredictor."""
         super().__init__(filters, verbose)
         self.survival_df = None
 
@@ -733,7 +807,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
         y=None,
         start_time_col="arrival_datetime",
         end_time_col="departure_datetime",
-    ) -> "EmpiricalSurvivalPredictor":
+    ) -> "EmpiricalIncomingAdmissionPredictor":
         """Fit the model to the training data and calculate empirical survival curve.
 
         Parameters
@@ -765,7 +839,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
 
         Returns
         -------
-        EmpiricalSurvivalPredictor
+        EmpiricalIncomingAdmissionPredictor
             The instance itself, fitted with the training data.
         """
         # Calculate survival curve from training data using existing function
@@ -807,7 +881,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
 
         if self.verbose:
             self.logger.info(
-                f"EmpiricalSurvivalPredictor has been fitted with survival curve containing {len(self.survival_df)} time points"
+                f"EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing {len(self.survival_df)} time points"
             )
 
         return self
@@ -957,7 +1031,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
         return result_df.set_index("sum")
 
     def predict(
-        self, prediction_context: Dict, x1=None, y1=None, x2=None, y2=None, max_value=20
+        self, prediction_context: Dict, **kwargs
     ) -> Dict:
         """Predict the number of admissions using empirical survival curves.
 
@@ -1000,6 +1074,13 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
             )
 
+        # Extract parameters from kwargs with defaults
+        x1 = kwargs.get('x1', None)
+        y1 = kwargs.get('y1', None)
+        x2 = kwargs.get('x2', None)
+        y2 = kwargs.get('y2', None)
+        max_value = kwargs.get('max_value', 20)
+
         predictions = {}
 
         # Calculate survival probabilities once (they're the same for all contexts)
@@ -1038,7 +1119,7 @@ class EmpiricalSurvivalPredictor(WeightedPoissonPredictor):
 
                 # Generate prediction using convolution approach
                 predictions[filter_key] = self._convolve_poisson_distributions(
-                    arrival_rates, survival_probabilities, max_value
+                    arrival_rates, survival_probabilities, max_value=max_value
                 )
 
                 # if self.verbose:

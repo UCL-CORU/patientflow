@@ -416,7 +416,11 @@ def _plot_madcap_by_group_single(
     # fig.tight_layout(pad=1.08, rect=[0, 0.03, 1, 0.95])
 
     if media_path:
-        plot_name = file_name if file_name else f"madcap_plot_by_{group_name.replace(' ', '_')}_{hour}{minutes:02}.png"
+        plot_name = (
+            file_name
+            if file_name
+            else f"madcap_plot_by_{group_name.replace(' ', '_')}_{hour}{minutes:02}.png"
+        )
         madcap_plot_path = Path(media_path) / plot_name
         plt.savefig(madcap_plot_path, dpi=300, bbox_inches="tight")
 

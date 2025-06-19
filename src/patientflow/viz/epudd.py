@@ -1,7 +1,7 @@
 """
 Generate plots comparing observed values with model predictions for discrete distributions.
 
-An Evaluating Predictions for Unique, Discrete, Distributions (EPUDD) plot displays the 
+An Evaluating Predictions for Unique, Discrete, Distributions (EPUDD) plot displays the
 model's predicted CDF values alongside the actual observed values'
 positions within their predicted CDF intervals. For discrete distributions, each predicted
 value has an associated probability, and the CDF is calculated by sorting the values and
@@ -13,7 +13,7 @@ The plot can show three possible positions for each observation within its predi
     * midpoint of the interval
     * upper bound of the interval
 
-By default, the plot only shows the midpoint of the interval. 
+By default, the plot only shows the midpoint of the interval.
 
 For a well-calibrated model, the observed values should fall within their predicted
 intervals, with the distribution of positions showing appropriate uncertainty.

@@ -18,13 +18,15 @@ from patientflow.load import (
 
 from patientflow.train.utils import save_model
 from patientflow.predictors.sequence_predictor import SequencePredictor
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    ParametricIncomingAdmissionPredictor,
+)
 from patientflow.predict.emergency_demand import create_predictions
 
 from patientflow.train.classifiers import train_multiple_classifiers
 from patientflow.train.sequence_predictor import train_sequence_predictor
-from patientflow.train.weighted_poisson_predictor import (
-    train_weighted_poisson_predictor,
+from patientflow.train.train_incoming_admission_predictor import (
+    train_parametric_admission_predictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
 
@@ -107,7 +109,9 @@ def split_and_check_sets(
 def test_real_time_predictions(
     visits,
     models: Tuple[
-        Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor
+        Dict[str, TrainedClassifier],
+        SequencePredictor,
+        ParametricIncomingAdmissionPredictor,
     ],
     prediction_window,
     specialties,
@@ -124,11 +128,11 @@ def test_real_time_predictions(
     visits : pd.DataFrame
         DataFrame containing visit data with columns including 'prediction_time',
         'snapshot_date', and other required features for predictions.
-    models : Tuple[Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor]
+    models : Tuple[Dict[str, TrainedClassifier], SequencePredictor, ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - trained_classifiers: TrainedClassifier containing admission predictions
         - spec_model: SequencePredictor for specialty predictions
-        - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
+        - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_window : int
         Size of the prediction window in minutes for which to generate forecasts.
     specialties : list[str]
@@ -376,7 +380,7 @@ def train_all_models(
 
     num_days = (start_validation_set - start_training_set).days
 
-    yta_model = train_weighted_poisson_predictor(
+    yta_model = train_parametric_admission_predictor(
         train_visits=train_visits,
         train_yta=train_yta,
         prediction_window=prediction_window,

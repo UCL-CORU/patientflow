@@ -341,10 +341,10 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
 ## Train model to predict bed count distributions for patients yet to arrive
 
-As we are predicting by clinical area we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. A dictionary, here called `specialty_filters`, is used to tell the `WeightedPoissonPredictor` which column contains the outcome we want to split by.
+As we are predicting by clinical area we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. A dictionary, here called `specialty_filters`, is used to tell the `ParametricIncomingAdmissionPredictor` which column contains the outcome we want to split by.
 
 ```python
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
 from datetime import timedelta
 
 # set the ED targets
@@ -358,7 +358,7 @@ specialty_filters = filters={
     'haem/onc': {'specialty': 'haem/onc'},
     'paediatric': {'specialty': 'paediatric'}
     }
-yta_model_by_spec =  WeightedPoissonPredictor(filters = specialty_filters, verbose=False)
+yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
 
 # calculate the number of days between the start of the training and validation sets;
 # this is used to calculate daily arrival rates

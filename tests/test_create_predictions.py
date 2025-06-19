@@ -16,7 +16,9 @@ from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 from patientflow.predictors.sequence_predictor import SequencePredictor
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    ParametricIncomingAdmissionPredictor,
+)
 from patientflow.prepare import create_yta_filters
 
 
@@ -189,7 +191,7 @@ def create_spec_model(df, apply_special_category_filtering):
 
 
 def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
-    """Create a test yet-to-arrive model using WeightedPoissonPredictor.
+    """Create a test yet-to-arrive model using ParametricIncomingAdmissionPredictor.
 
     Parameters
     ----------
@@ -212,11 +214,16 @@ def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
 
+    model = ParametricIncomingAdmissionPredictor(filters=filters)
+
+    # Convert timedelta to hours for model name
+    hours = prediction_window.total_seconds() / 3600
+    model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
+
+    # Fit the model
     prediction_times = [(7, 0)]  # 7am predictions
     num_days = 7  # One week of data
 
-    # Create and fit the model
-    model = WeightedPoissonPredictor(filters=filters)
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
         prediction_window=prediction_window,
@@ -225,9 +232,6 @@ def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
         num_days=num_days,
     )
 
-    # Convert timedelta to hours for model name
-    hours = prediction_window.total_seconds() / 3600
-    model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
     return (model, model_name)
 
 
@@ -424,7 +428,7 @@ class TestCreatePredictions(unittest.TestCase):
                 x2=self.x2,
                 y2=self.y2,
             )
-        unfitted_yta_model = WeightedPoissonPredictor()
+        unfitted_yta_model = ParametricIncomingAdmissionPredictor()
         models = (pipeline, spec_model, unfitted_yta_model)
 
         with self.assertRaises(TypeError):
