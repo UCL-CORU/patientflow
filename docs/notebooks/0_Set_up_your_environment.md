@@ -3,7 +3,9 @@
 In this notebook I will
 
 - Suggest how to set up your environment. You might find the checks below useful to confirm that your environment has been set up correctly for the following notebooks to run.
-- Explain where the code expects to find data, and where it and saves models and media by default.
+- Explain where the code expects to find data and where it saves media files by default.
+
+Model files are not saved by these notebooks. Models are re-run for each notebook, so the notebooks will work if run in any order.
 
 See also the [Notebooks README](README.md) in this folder for information about how to set the `project_root` variable.
 
@@ -85,7 +87,7 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(p
 
 ## Summary
 
-In this notebook you have seen
+In this notebook I have shown:
 
-- how to configure your environment to run these notebooks
-- where the notebooks expect to find data, and where they will save models and media, by default
+- How to configure your environment to run these notebooks
+- Where the notebooks expect to find data, and where they will save media file, by default

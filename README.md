@@ -40,10 +40,10 @@ We have created the `patientflow` python package to make it convenient for other
 
 - Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
 - Patient snapshot: A summary of data from the EHR capturing what is known about a current patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
-- Group snapshot: The set of snapshots for a defined group of current patients. Each group snapshot has a date and a prediction time associated with it. 
+- Group snapshot: The set of snapshots for a defined group of current patients. Each group snapshot has a date and a prediction time associated with it.
 - Prediction window: A time period that begins at the prediction time.
 
-For **current patients**, the package includes functions to create patient and group snapshots, to generate patient-level predictions, and to aggregate patient-level predictions into predicted bed counts for a group snapshots. The aggregation functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the prediction window. The snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many current patients will be discharged from a clinical specialty. 
+For **current patients**, the package includes functions to create patient and group snapshots, to generate patient-level predictions, and to aggregate patient-level predictions into predicted bed counts for a group snapshots. The aggregation functions in `patientflow` are designed to receive a group snapshot as an input, and to predict something about that group's demand for beds between the prediction moment and the end of the prediction window. For example, that group could be the patients currently in the Emergency Department (ED), and the predictions could be the number of beds needed by those patients in the prediction window. The snapshot-based approach to predicting demand generalises to other aspects of patient flow in hospitals, such as predictions of how many current patients will be discharged from a clinical specialty.
 
 For **incoming patients**, whose visits are not yet recorded in the EHR data (such as future arrivals to the ED) the aggregation functions make predictions based on past patterns of arrivals.
 
@@ -238,6 +238,6 @@ Thank you for contributing!
 
 ## Acknowledgements
 
-The [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by [Tom Monks](https://github.com/TomMonks) inspired us to create a Python package. This repository is based on a template developed by the [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London. We are grateful to [Lawrence Lai](https://github.com/lawrencelai) for creation of the synthetic dataset, and to Sara Lundell for her extensive work piloting the package for use at Sahlgrenska University Hospital, Gothenburg, Sweden. 
+The [py-pi template](https://github.com/health-data-science-OR/pypi-template) developed by [Tom Monks](https://github.com/TomMonks) inspired us to create a Python package. This repository is based on a template developed by the [Centre for Advanced Research Computing](https://ucl.ac.uk/arc), University College London. We are grateful to [Lawrence Lai](https://github.com/lawrencelai) for creation of the synthetic dataset, and to Sara Lundell for her extensive work piloting the package for use at Sahlgrenska University Hospital, Gothenburg, Sweden.
 
 The development of this repository/package was funded by UCL's QR Policy Support Fund, which is funded by [Research England](https://www.ukri.org/councils/research-england/).

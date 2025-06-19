@@ -8,17 +8,17 @@ using time series cross-validation.
 
 Functions
 ---------
-- evaluate_predictions
-- chronological_cross_validation
-- initialise_model
-- create_column_transformer
-- calculate_class_balance
-- get_feature_metadata
-- get_dataset_metadata
-- create_balance_info
-- evaluate_model
-- train_classifier
-- train_multiple_classifiers
+evaluate_predictions : Calculate multiple metrics (AUC, log loss, AUPRC) for given predictions
+chronological_cross_validation : Perform time series cross-validation with multiple metrics
+initialise_model : Initialize a model with given hyperparameters
+create_column_transformer : Create a column transformer for a dataframe with dynamic column handling
+calculate_class_balance : Calculate class balance ratios for target labels
+get_feature_metadata : Extract feature names and importances from pipeline
+get_dataset_metadata : Get dataset sizes and class balances
+create_balance_info : Create a dictionary with balance information
+evaluate_model : Evaluate model on test set
+train_classifier : Train a single model including data preparation and balancing
+train_multiple_classifiers : Train admission prediction models for multiple prediction times
 """
 
 from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict, Type
@@ -51,14 +51,14 @@ def evaluate_predictions(
     y_true: npt.NDArray[np.int_], y_pred: npt.NDArray[np.float64]
 ) -> FoldResults:
     """Calculate multiple metrics for given predictions.
-    
+
     Parameters
     ----------
     y_true : npt.NDArray[np.int_]
         True binary labels
     y_pred : npt.NDArray[np.float64]
         Predicted probabilities
-        
+
     Returns
     -------
     FoldResults
@@ -75,7 +75,7 @@ def chronological_cross_validation(
     pipeline: Pipeline, X: DataFrame, y: Series, n_splits: int = 5
 ) -> Dict[str, float]:
     """Perform time series cross-validation with multiple metrics.
-    
+
     Parameters
     ----------
     pipeline : Pipeline
@@ -86,7 +86,7 @@ def chronological_cross_validation(
         Target labels
     n_splits : int, optional
         Number of time series splits, by default 5
-        
+
     Returns
     -------
     Dict[str, float]
@@ -161,14 +161,14 @@ def create_column_transformer(
     df: DataFrame, ordinal_mappings: Optional[Dict[str, List[Any]]] = None
 ) -> ColumnTransformer:
     """Create a column transformer for a dataframe with dynamic column handling.
-    
+
     Parameters
     ----------
     df : DataFrame
         Input dataframe
     ordinal_mappings : Dict[str, List[Any]], optional
         Mappings for ordinal categorical features, by default None
-        
+
     Returns
     -------
     ColumnTransformer
@@ -206,12 +206,12 @@ def create_column_transformer(
 
 def calculate_class_balance(y: Series) -> Dict[Any, float]:
     """Calculate class balance ratios for target labels.
-    
+
     Parameters
     ----------
     y : Series
         Target labels
-        
+
     Returns
     -------
     Dict[Any, float]
@@ -225,6 +225,11 @@ def calculate_class_balance(y: Series) -> Dict[Any, float]:
 class FeatureMetadata(TypedDict):
     feature_names: List[str]
     feature_importances: List[float]
+
+
+class DatasetMetadata(TypedDict):
+    train_valid_test_set_no: Dict[str, Optional[int]]
+    train_valid_test_class_balance: Dict[str, Optional[Dict[Any, float]]]
 
 
 def get_feature_metadata(pipeline: Pipeline) -> FeatureMetadata:
@@ -276,11 +281,11 @@ def get_dataset_metadata(
     y_valid: Series,
     X_test: Optional[DataFrame] = None,
     y_test: Optional[Series] = None,
-) -> Dict[str, Dict[str, Any]]:
+) -> DatasetMetadata:
     """Get dataset sizes and class balances.
-    
-    Parameters:
-    -----------
+
+    Parameters
+    ----------
     X_train : DataFrame
         Training features
     X_valid : DataFrame
@@ -293,13 +298,13 @@ def get_dataset_metadata(
         Test features. If None, test set information will be set to None.
     y_test : Series, optional
         Test labels. If None, test set information will be set to None.
-        
-    Returns:
-    --------
-    Dict[str, Dict[str, Any]]
+
+    Returns
+    -------
+    DatasetMetadata
         Dictionary containing dataset sizes and class balances
     """
-    metadata = {
+    metadata: DatasetMetadata = {
         "train_valid_test_set_no": {
             "train_set_no": len(X_train),
             "valid_set_no": len(X_valid),
@@ -308,10 +313,12 @@ def get_dataset_metadata(
         "train_valid_test_class_balance": {
             "y_train_class_balance": calculate_class_balance(y_train),
             "y_valid_class_balance": calculate_class_balance(y_valid),
-            "y_test_class_balance": calculate_class_balance(y_test) if y_test is not None else None,
+            "y_test_class_balance": calculate_class_balance(y_test)
+            if y_test is not None
+            else None,
         },
     }
-    
+
     return metadata
 
 
@@ -324,7 +331,7 @@ def create_balance_info(
     majority_to_minority_ratio: float,
 ) -> Dict[str, Union[bool, int, float]]:
     """Create a dictionary with balance information.
-    
+
     Parameters
     ----------
     is_balanced : bool
@@ -339,7 +346,7 @@ def create_balance_info(
         Positive class rate after balancing
     majority_to_minority_ratio : float
         Ratio of majority to minority class samples
-        
+
     Returns
     -------
     Dict[str, Union[bool, int, float]]
@@ -359,7 +366,7 @@ def evaluate_model(
     pipeline: Pipeline, X_test: DataFrame, y_test: Series
 ) -> Dict[str, float]:
     """Evaluate model on test set.
-    
+
     Parameters
     ----------
     pipeline : Pipeline
@@ -368,7 +375,7 @@ def evaluate_model(
         Test features
     y_test : Series
         Test labels
-        
+
     Returns
     -------
     Dict[str, float]
@@ -403,8 +410,8 @@ def train_classifier(
     """
     Train a single model including data preparation and balancing.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     train_visits : DataFrame
         Training visits dataset
     valid_visits : DataFrame
@@ -440,41 +447,17 @@ def train_classifier(
         Whether to evaluate the final model on the test set. Set to True only when
         satisfied with validation performance to avoid test set contamination.
 
-    Returns:
-    --------
+    Returns
+    -------
     TrainedClassifier
         Trained model, including metrics, and feature information
 
-    Examples:
-    --------
-    # For model development (using only train/validation sets)
-    model = train_classifier(
-        train_visits=train_data,
-        valid_visits=valid_data,
-        prediction_time=(4, 0),
-        exclude_from_training_data=["visit_id", "timestamp"],
-        grid={"n_estimators": [100, 200]},
-        ordinal_mappings={"severity": ["low", "medium", "high"]},
-        evaluate_on_test=False  # Don't evaluate on test set during development
-    )
-    
-    # For final evaluation (after being satisfied with validation performance)
-    model = train_classifier(
-        train_visits=train_data,
-        valid_visits=valid_data,
-        test_visits=test_data,  # Required when evaluate_on_test=True
-        prediction_time=(4, 0),
-        exclude_from_training_data=["visit_id", "timestamp"],
-        grid={"n_estimators": [100, 200]},
-        ordinal_mappings={"severity": ["low", "medium", "high"]},
-        evaluate_on_test=True  # Only evaluate on test set when ready
-    )
     """
     if single_snapshot_per_visit and visit_col is None:
         raise ValueError(
             "visit_col must be provided when single_snapshot_per_visit is True"
         )
-    
+
     if evaluate_on_test and test_visits is None:
         raise ValueError("test_visits must be provided when evaluate_on_test=True")
 
@@ -495,7 +478,7 @@ def train_classifier(
         single_snapshot_per_visit=single_snapshot_per_visit,
         label_col=label_col,
     )
-    
+
     # Only prepare test data if evaluation is requested
     if evaluate_on_test:
         X_test, y_test = prepare_patient_snapshots(
@@ -643,17 +626,21 @@ def train_classifier(
         )
 
         best_model.calibrated_pipeline = calibrated_pipeline
-        
+
         # Only evaluate on test set if requested
         if evaluate_on_test:
-            best_training.test_results = evaluate_model(calibrated_pipeline, X_test, y_test)
+            best_training.test_results = evaluate_model(
+                calibrated_pipeline, X_test, y_test
+            )
         else:
             best_training.test_results = None
 
     else:
         # Only evaluate on test set if requested
         if evaluate_on_test:
-            best_training.test_results = evaluate_model(best_model.pipeline, X_test, y_test)
+            best_training.test_results = evaluate_model(
+                best_model.pipeline, X_test, y_test
+            )
         else:
             best_training.test_results = None
 
@@ -678,7 +665,7 @@ def train_multiple_classifiers(
     evaluate_on_test: bool = False,
 ) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times.
-    
+
     Parameters
     ----------
     train_visits : DataFrame
@@ -711,7 +698,7 @@ def train_multiple_classifiers(
         Name of the label column, by default "is_admitted"
     evaluate_on_test : bool, optional
         Whether to evaluate on test set, by default False
-        
+
     Returns
     -------
     Dict[str, TrainedClassifier]
@@ -719,7 +706,7 @@ def train_multiple_classifiers(
     """
     if evaluate_on_test and test_visits is None:
         raise ValueError("test_visits must be provided when evaluate_on_test=True")
-    
+
     trained_models: Dict[str, TrainedClassifier] = {}
 
     for prediction_time in prediction_times:

@@ -133,7 +133,7 @@ def plot_calibration(
             color=secondary_color,
         )
         ax.set_title(f"Calibration Plot for {hour}:{minutes:02}", fontsize=14)
-        ax.set_xlabel("Mean Predicted Probability", fontsize=12)
+        ax.set_xlabel("Mean Estimated Probability", fontsize=12)
         ax.set_ylabel("Fraction of Positives", fontsize=12)
         ax.legend()
 

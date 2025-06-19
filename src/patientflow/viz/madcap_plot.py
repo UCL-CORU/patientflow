@@ -11,7 +11,7 @@ classify_age : function
     Classifies age into categories based on numeric values or age group strings.
 
 generate_madcap_plots : function
-    Generates MADCAP plots for a list of trained models, comparing predicted probabilities
+    Generates MADCAP plots for a list of trained models, comparing estimated probabilities
     to observed values.
 
 plot_madcap_subplot : function
@@ -49,12 +49,12 @@ exclude_from_training_data = [
 
 # Default age categories for classification
 DEFAULT_AGE_CATEGORIES = {
-    "children": {"numeric": {"max": 17}, "groups": ["0-17"]},
-    "adults": {
+    "Children": {"numeric": {"max": 17}, "groups": ["0-17"]},
+    "Adults < 65": {
         "numeric": {"min": 18, "max": 64},
         "groups": ["18-24", "25-34", "35-44", "45-54", "55-64"],
     },
-    "65 or over": {"numeric": {"min": 65}, "groups": ["65-74", "75-115"]},
+    "Adults 65 or over": {"numeric": {"min": 65}, "groups": ["65-74", "75-115"]},
 }
 
 
@@ -250,7 +250,7 @@ def generate_madcap_plots(
 
 
 def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
-    """Plot a single MADCAP subplot showing cumulative predicted and observed values.
+    """Plot a single MADCAP subplot showing cumulative estimated and observed values.
 
     Parameters
     ----------
@@ -267,7 +267,7 @@ def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     -----
     The plot shows:
 
-    * X-axis: Cases ordered by predicted probability
+    * X-axis: Cases ordered by estimated probability
     * Y-axis: Cumulative count of positive outcomes
     * Two lines: predicted (blue) and observed (orange) cumulative counts
     """
@@ -299,7 +299,7 @@ def plot_madcap_subplot(predict_proba, label, _prediction_time, ax):
     ax.plot(x, model, label="predicted")
     ax.plot(x, observed, label="observed")
     ax.legend(loc="upper left", fontsize="x-small")
-    ax.set_xlabel("Cases ordered by predicted probability", fontsize=12)
+    ax.set_xlabel("Cases ordered by estimated probability", fontsize=12)
     ax.set_ylabel("Cumulative count of positive outcomes", fontsize=12)
     ax.set_title(f"MADCAP Plot for {hour}:{minutes:02}", fontsize=14)
     ax.tick_params(axis="both", which="major", labelsize="x-small")
@@ -320,7 +320,7 @@ def plot_madcap_by_group(
     Parameters
     ----------
     predict_proba : array-like
-        Array of predicted probabilities.
+        Array of estimated probabilities.
     label : array-like
         Array of true labels.
     group : array-like
@@ -384,14 +384,14 @@ def plot_madcap_by_group(
         ax[0, i].plot(x, model, label="predicted")
         ax[0, i].plot(x, observed, label="observed")
         ax[0, i].legend(loc="upper left", fontsize=8)
-        ax[0, i].set_xlabel("Cases ordered by predicted probability", fontsize=8)
+        ax[0, i].set_xlabel("Cases ordered by estimated probability", fontsize=8)
         ax[0, i].set_ylabel("Cumulative count of positive outcomes", fontsize=8)
         ax[0, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
         ax[0, i].tick_params(axis="both", which="major", labelsize=8)
 
         if plot_difference:
             ax[1, i].plot(x, model - observed)
-            ax[1, i].set_xlabel("Cases ordered by predicted probability", fontsize=8)
+            ax[1, i].set_xlabel("Cases ordered by estimated probability", fontsize=8)
             ax[1, i].set_ylabel("Predicted - observed count", fontsize=8)
             ax[1, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
             ax[1, i].tick_params(axis="both", which="major", labelsize=8)

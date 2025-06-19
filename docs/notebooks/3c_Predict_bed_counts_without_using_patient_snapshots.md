@@ -1,6 +1,6 @@
 # 3c. Predict bed counts without using patient snapshots
 
-There are situations where we might want to predict bed count distributions without having details of the patients, for example when predicting the number of beds needed for
+There are situations where we might want to predict bed count distributions without having details of the patients, for example when predicting the number of beds needed for incoming patients such as:
 
 - Patients yet-to-arrive to the Emergency Department, who will need a bed within a prediction window
 - Emergency patients who arrive via other routes than the ED, and become inpatients (such as emergency transfers from other hospitals)

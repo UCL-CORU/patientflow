@@ -1,6 +1,6 @@
 # 2b. Make predictions using patient-level snapshots
 
-Now that the data have been prepared in snapshot form, we have a dataset of unfinished visits. The ultimate goal is to make predictions about whether an outcome of interest (admission, discharge) will happen within a prediction window. For now, I will use a simple outcome variable of admission or not, without worrying about when that admission happened.
+Now that the data have been prepared in snapshot form, we have a dataset of unfinished visits. The ultimate goal is to make predictions about whether an outcome of interest (e.g. admission, discharge) will happen within a prediction window. For now, I will use a simple outcome variable of admission or not, without worrying about when that admission happened.
 
 Everything shown here is standard modelling, but there are some important considerations when working with unfinished hospital visits.
 
@@ -8,17 +8,17 @@ Everything shown here is standard modelling, but there are some important consid
 
 **Random versus temporal splits**
 
-When dividing your data into training, validation and test sets, a random allocation will make your models appear to perform better than they actually would in practice. This is because random splits ignore the temporal nature of healthcare data, where patterns may change over time. A more realistic approach is to use temporal splits, where you train on earlier data and validate/test on later data, mimicking how the model would be deployed in a real-world setting.
+When dividing your data into training, validation and test sets, a random allocation can give an optimistic assessment of prospective model performance, as the model’s robustness to any temporal changes in patient characteristics, flow-outcomes or the relationships between these goes untested. A more robust approach for testing models intended for prospective use is to apply temporal splits, where you train on earlier data and validate/test on later data, mimicking how the model would be deployed in a real-world setting. I show the application of temporal splits here.
 
 **Multiple snapshots per visit**
 
-To use `patientflow` your data should be in snapshot form. I showed how to create this in the last notebook. I defined a series of prediction times, and then sampled finished visit to get snapshots that represent those visits while still in progress. When you follow this method, you may end up with multiple snapshots. Is this OK, for your analysis? You will need to decide whether you include all snapshots from a single visit into a predictive model. These snapshots from the same visit are inherently correlated, which may violate assumptions of the statistical or machine learning methods you are using.
+To use `patientflow` your data should be in snapshot form. I showed how to create this in the last notebook. I defined a series of prediction times, and then sampled finished visits to get snapshots that represent those visits while still in progress. When you follow this method, you may end up with multiple snapshots per patient visit. Is this OK, for your analysis? You will need to decide whether you include all snapshots from a single visit into the training, validation or testing of a predictive model. Snapshots from the same visit are inherently correlated, which may violate assumptions of the statistical or machine learning methods you are using. For this reason, we chose to sample only one snapshot per patient visit.
 
 **Multiple visits per patient**
 
-The patient identifier is also important, because if the same patient appears in training and test sets, there is the potential for data leakage. We took the decision to probabilistically allocate each patient to training, validation and test sets, where the probability of being allocated to each set is in proportion to the number of visits they made in any of those time periods.
+The patient identifier is also important, because if the same patient appears in training and test sets, there is the potential for data leakage. We took the decision to probabilistically allocate each patient to training, validation or test set, where the probability of being allocated to each set is in proportion to the number of visits they made in any of those time periods.
 
-`patientflow` includes functions that handle of all these considerations. I demonstrate them here.
+`patientflow` includes functions to handle all of these considerations. I demonstrate them here.
 
 ```python
 # Reload functions every time
@@ -63,10 +63,10 @@ snapshots_df.head()
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_bmp_orders</th>
-      <th>num_troponin_orders</th>
-      <th>num_cbc_orders</th>
       <th>num_urinalysis_orders</th>
+      <th>num_troponin_orders</th>
+      <th>num_bmp_orders</th>
+      <th>num_cbc_orders</th>
       <th>num_d-dimer_orders</th>
     </tr>
     <tr>
@@ -90,13 +90,13 @@ snapshots_df.head()
       <th>0</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>2690</td>
-      <td>6</td>
+      <td>1958</td>
+      <td>26</td>
       <td>0</td>
-      <td>49</td>
+      <td>37</td>
       <td>5.0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -105,11 +105,11 @@ snapshots_df.head()
       <th>1</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2471</td>
-      <td>16</td>
+      <td>1958</td>
+      <td>26</td>
       <td>0</td>
-      <td>76</td>
-      <td>4.0</td>
+      <td>37</td>
+      <td>5.0</td>
       <td>1</td>
       <td>1</td>
       <td>0</td>
@@ -120,29 +120,29 @@ snapshots_df.head()
       <th>2</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2987</td>
-      <td>9</td>
+      <td>2782</td>
+      <td>36</td>
+      <td>1</td>
+      <td>28</td>
+      <td>3.0</td>
       <td>0</td>
-      <td>58</td>
-      <td>2.0</td>
       <td>1</td>
       <td>1</td>
       <td>1</td>
-      <td>1</td>
-      <td>1</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>3472</td>
-      <td>46</td>
+      <td>504</td>
+      <td>42</td>
       <td>0</td>
-      <td>63</td>
-      <td>5.0</td>
-      <td>0</td>
+      <td>43</td>
+      <td>4.0</td>
       <td>0</td>
       <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -150,15 +150,15 @@ snapshots_df.head()
       <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>41</td>
-      <td>35</td>
+      <td>2405</td>
+      <td>29</td>
       <td>0</td>
-      <td>83</td>
+      <td>28</td>
       <td>4.0</td>
-      <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
   </tbody>
@@ -204,21 +204,21 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
 ```
 
     Patient Set Overlaps (before random assignment):
-    Train-Valid: 0 of 2158
-    Valid-Test: 29 of 1513
-    Train-Test: 100 of 2500
-    All Sets: 0 of 3021 total patients
-    Split sizes: [1802, 631, 1244]
+    Train-Valid: 0 of 2636
+    Valid-Test: 56 of 1851
+    Train-Test: 156 of 3061
+    All Sets: 0 of 3668 total patients
+    Split sizes: [3179, 1025, 2157]
 
-The function above returned information on the split sizes of each, and on how many patients were found in more than one set. In this case, 29 patients were found in the validation and test set periods. These patients will have been allocated to one set probabilistically.
+The function above returned information on the final size of each split, and on how many patients were found in more than one set. In this case, 29 patients were found in the validation and test set periods. Each of these patients has been probabilistically allocated to just one set.
 
 ### Select one snapshot per visit
 
 You will need to decide whether you include all snapshots from a single visit into a predictive model.
 
-Since we train a different model for each prediction time, then any visits spanning more than 24 hours will have multiple rows. If your snapshots are drawn from visits to ED, this should hopefully not happen too often (though sadly it is becoming more common in the UK that people stay more than 24 hours). If your snapshots are drawn from inpatient visits, then it is very likely that you will have multiple rows per patient.
+Since we train a different model for each prediction time, then any visits spanning more than 24 hours will have multiple rows. If your snapshots are drawn from visits to ED, this should hopefully not happen too often. If your snapshots are drawn from inpatient visits, then it is very likely that you will have multiple rows per patient.
 
-We took the decision to select one visit at random, even for our ED visits. The function below gives you the option. If you specify `single_snapshot_per_visit` as True, the `train_classifier` function will expect a `visit_col` parameter.
+We took the decision to select one snapshot per visit at random. The function below gives you this option. If you specify `single_snapshot_per_visit` as True, the `train_classifier` function will expect a `visit_col` parameter.
 
 ## Train a classifier to predict probability of admission
 
@@ -232,12 +232,13 @@ Below I'm using `train_classifier()`, which is a wrapper on standard scikit-lear
 - `use_balanced_training`: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class.
 - `calibrate_probabilities`: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will use a sigmoid function to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.
 - `calibration_method`: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.
+- `evaluate_on_test`: by default, this is set to False so the function will only return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance
 
 By default, the function will use an XGBoost classifier, initialised with the hyperparameter grid provided, with log loss as the evaluation metric. Chronological cross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values.
 
 If you wish to use a different classifier, you can use another argument:
 
-- `model_class` (not shown here): You can pass your own model in an optional model_class argument, which expects classifier class (like XGBClassifier or other scikit-learn compatible classifiers) that can be instantiated and initialised with the parameters provided.
+- `model_class` (not shown here): You can pass your own model in an optional model_class argument, which expects classifier class (like XGBClassifier or other scikit-learn compatible classifiers) that can be instantiated and initialised by providing further parameters.
 
 ```python
 from patientflow.train.classifiers import train_classifier
@@ -247,9 +248,8 @@ exclude_from_training_data=['patient_id', 'visit_number', 'snapshot_date', 'pred
 
 # train the patient-level model
 model = train_classifier(
-    train_visits,
-    valid_visits,
-    test_visits,
+    train_visits=train_visits,
+    valid_visits=valid_visits,
     grid={"n_estimators": [20, 30, 40]},
     prediction_time=(9, 30),
     exclude_from_training_data=exclude_from_training_data,
@@ -258,7 +258,8 @@ model = train_classifier(
     visit_col='visit_number', # as we are using a single snapshot per visit, we need to specify which column contains the visit number
     use_balanced_training=True,
     calibrate_probabilities=True,
-    calibration_method='sigmoid'
+    calibration_method='sigmoid',
+    evaluate_on_test=False, # by default, this is set to False; only evaluate on the test set when happy with validation set performance
 )
 
 ```
@@ -282,7 +283,7 @@ model.training_results
 
 
 
-    TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9759582538006674), 'train_logloss': np.float64(0.2653240180144768), 'train_auprc': np.float64(0.9819403094340785), 'valid_auc': np.float64(0.6894655405868642), 'valid_logloss': np.float64(0.7745006485175), 'valid_auprc': np.float64(0.7046396258814147)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9845161689247697), 'train_logloss': np.float64(0.22865029363070716), 'train_auprc': np.float64(0.9884075328761277), 'valid_auc': np.float64(0.6960234557109557), 'valid_logloss': np.float64(0.8058855112351733), 'valid_auprc': np.float64(0.7067222494470633)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.99099020571293), 'train_logloss': np.float64(0.20279548417803475), 'train_auprc': np.float64(0.9932432729843296), 'valid_auc': np.float64(0.6951122794688971), 'valid_logloss': np.float64(0.8493725817229816), 'valid_auprc': np.float64(0.6895395912326714)})], 'features': {'names': ['age', 'latest_triage_score', 'num_bmp_orders_0', 'num_bmp_orders_1', 'num_troponin_orders_0', 'num_troponin_orders_1', 'num_cbc_orders_0', 'num_cbc_orders_1', 'num_urinalysis_orders_0', 'num_urinalysis_orders_1', 'num_d-dimer_orders_0', 'num_d-dimer_orders_1'], 'importances': [0.12613233923912048, 0.33768123388290405, 0.15913592278957367, 0.0, 0.1018211618065834, 0.0, 0.13997837901115417, 0.0, 0.06779452413320541, 0.0, 0.06745646148920059, 0.0], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 300, 'valid_set_no': 104, 'test_set_no': 214}, 'train_valid_test_class_balance': {'y_train_class_balance': {0: 0.7133333333333334, 1: 0.2866666666666667}, 'y_valid_class_balance': {0: 0.6538461538461539, 1: 0.34615384615384615}, 'y_test_class_balance': {0: 0.6869158878504673, 1: 0.3130841121495327}}}}, calibration_info={'method': 'sigmoid'}, test_results={'test_auc': 0.7537821098588688, 'test_logloss': 0.5493430469872156, 'test_auprc': 0.6141122528416993}, balance_info={'is_balanced': True, 'original_size': 300, 'balanced_size': 172, 'original_positive_rate': np.float64(0.2866666666666667), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
+    TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.2345235821107298), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401688701863), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304359858095), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622072494462), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291934975475), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921775214785), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders_0', 'num_urinalysis_orders_1', 'num_troponin_orders_0', 'num_troponin_orders_1', 'num_bmp_orders_0', 'num_bmp_orders_1', 'num_cbc_orders_0', 'num_cbc_orders_1', 'num_d-dimer_orders_0', 'num_d-dimer_orders_1'], 'importances': [0.07901821285486221, 0.50030118227005, 0.10778335481882095, 0.0, 0.06226950138807297, 0.0, 0.08132454752922058, 0.0, 0.049338143318891525, 0.0, 0.11996506154537201, 0.0], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}}}, calibration_info={'method': 'sigmoid'}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
 
 To get a better view of what is included within the results, here is a list of the fields returned:
 
@@ -300,7 +301,7 @@ for field in fields(model.training_results):
     test_results
     balance_info
 
-The prediction time has been saved with the model. This is used for validation at inference time, to make sure that the requested prediction time and model align.
+The prediction time has been saved with the model. When the model's predict method is used, the method will that the requested prediction time and that of the model align.
 
 ```python
 print(f'The prediction time is: {model.training_results.prediction_time}')
@@ -319,7 +320,10 @@ print(f"\nNumber in each set{results['dataset_info']['train_valid_test_set_no']}
 
 def print_class_balance(d):
     for k in d:
-        print(f"{k.split('_')[1]}: {d[k][0]:.1%} neg, {d[k][1]:.1%} pos")
+        if d[k] is not None:
+            print(f"{k.split('_')[1]}: {d[k][0]:.1%} neg, {d[k][1]:.1%} pos")
+        else:
+            print(f"{k.split('_')[1]}: None")
 
 
 print_class_balance(results['dataset_info']['train_valid_test_class_balance'])
@@ -327,10 +331,10 @@ print_class_balance(results['dataset_info']['train_valid_test_class_balance'])
 
     The training_info object contains the following keys: dict_keys(['cv_trials', 'features', 'dataset_info'])
 
-    Number in each set{'train_set_no': 300, 'valid_set_no': 104, 'test_set_no': 214}
-    train: 71.3% neg, 28.7% pos
-    valid: 65.4% neg, 34.6% pos
-    test: 68.7% neg, 31.3% pos
+    Number in each set{'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}
+    train: 70.1% neg, 29.9% pos
+    valid: 70.2% neg, 29.8% pos
+    test: None
 
 Class balance information is also saved in the training_results, which will store information about the differences between the class balance when forcing the training set to be balanced
 
@@ -339,9 +343,9 @@ model.training_results.balance_info
 ```
 
     {'is_balanced': True,
-     'original_size': 300,
-     'balanced_size': 172,
-     'original_positive_rate': np.float64(0.2866666666666667),
+     'original_size': 412,
+     'balanced_size': 246,
+     'original_positive_rate': np.float64(0.29854368932038833),
      'balanced_positive_rate': np.float64(0.5),
      'majority_to_minority_ratio': 1.0}
 
@@ -360,9 +364,9 @@ Results of hyperparameter tuning are saved in a HyperParameterTrial object
 results['cv_trials']
 ```
 
-    [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9759582538006674), 'train_logloss': np.float64(0.2653240180144768), 'train_auprc': np.float64(0.9819403094340785), 'valid_auc': np.float64(0.6894655405868642), 'valid_logloss': np.float64(0.7745006485175), 'valid_auprc': np.float64(0.7046396258814147)}),
-     HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9845161689247697), 'train_logloss': np.float64(0.22865029363070716), 'train_auprc': np.float64(0.9884075328761277), 'valid_auc': np.float64(0.6960234557109557), 'valid_logloss': np.float64(0.8058855112351733), 'valid_auprc': np.float64(0.7067222494470633)}),
-     HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.99099020571293), 'train_logloss': np.float64(0.20279548417803475), 'train_auprc': np.float64(0.9932432729843296), 'valid_auc': np.float64(0.6951122794688971), 'valid_logloss': np.float64(0.8493725817229816), 'valid_auprc': np.float64(0.6895395912326714)})]
+    [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.2345235821107298), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401688701863), 'valid_auprc': np.float64(0.732305765806727)}),
+     HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304359858095), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622072494462), 'valid_auprc': np.float64(0.739694204530856)}),
+     HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291934975475), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921775214785), 'valid_auprc': np.float64(0.7319157690354547)})]
 
 ```python
 
@@ -375,6 +379,8 @@ print(f'The best parameters are: {best_trial.parameters}')
 
     The best parameters are: {'n_estimators': 20}
 
+Note that, by default, no test set results are returned by train_classifier. To see AUROC, log loss and AUPRC on the test set, change `evaluate_on_test` parameter to True above.
+
 ```python
 print(f'The results on the test set were:')
 model.training_results.test_results
@@ -383,15 +389,21 @@ model.training_results.test_results
 
     The results on the test set were:
 
-
-
-
-
-    {'test_auc': 0.7537821098588688,
-     'test_logloss': 0.5493430469872156,
-     'test_auprc': 0.6141122528416993}
-
 Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.
+
+## Evaluating training results
+
+The following function enables you to plot the results of hyperparameter trials, which have been saved with the trained model. The input to the plot is a list of `HyperParameterTrial` instances containing validation set results and hyperparameter settings. Each trial's `cv_results` dictionary contains 'valid_auc' and 'valid_logloss' metrics, which have been computed for each hyperparameter configuration using the validation set.
+
+As I only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
+
+```python
+from patientflow.viz.training_results import plot_trial_results
+
+plot_trial_results(trials_list = model.training_results.training_info['cv_trials'])
+```
+
+![png](2b_Predict_using_patient_snapshots_files/2b_Predict_using_patient_snapshots_28_0.png)
 
 ## Summary
 
@@ -400,5 +412,7 @@ Here I have shown how `patientflow` can help you
 - handle multiple snapshots per visit and multiple visits per patient
 - impose a temporal split on your training and test sets, allowing for the point above
 - train a model to predict some later outcome using functions that handle class imbalance and calibration
+- access various attributes of the model, that are saved as part of the model object
+- plot the results of hyperparameter tuning
 
-In the next notebook, I show how to evaluate models applied to patient snapshots.
+In the next notebook, I show how to evaluate models applied to patient snapshots. It is good practice to use your validation set results for the evaluations shown in this notebook and the next one, and to use the test set for evaluation only once you are satisified with your model.

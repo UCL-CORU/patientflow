@@ -1,8 +1,8 @@
 # 3a. Prepare group snapshots from patient snapshots
 
-Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a prediction time.
+Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a specific prediction time.
 
-In this notebook, I show how `patientflow` can be used to prepare group snapshots, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
+In this notebook, I show how `patientflow` can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
 
 - `snapshot_date` as the key
 - `snapshot_ids` of each patient snapshot as the values
@@ -11,22 +11,19 @@ This structure is a convenient way to organise the data when making bed count pr
 
 ## About the examples in this notebook
 
-In this notebook I use fake data that resembles visits to the Emergency Department (ED). The dataset covers mutiple snapshot dates and prediction times.
+In this notebook I use fake data that resemble visits to the Emergency Department (ED). The dataset covers mutiple snapshot dates and prediction times.
 
-To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution. In that simple example, every patient has the same probability of the outcome.
+To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution reflecting the sum of these trials. In that simple example, every patient has the same probability of the outcome.
 
-I then train a model that predicts a probability of admission for each patient. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials to visualise the predicted distribution of beds needed for those patients.
+I then train a model that predicts a probability of admission for each patient within a group snapshot. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials and again visualise the predicted distribution for the total number of beds needed for those patients.
 
-I demonstrate functions in `patientflow` that handle the preparation of group snapshots for inference.
+I demonstrate functions in `patientflow` that handle the preparation of group snapshots for making predictions.
 
 ```python
 # Reload functions every time
 %load_ext autoreload
 %autoreload 2
 ```
-
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
 
 ## Generate fake snapshots
 
@@ -70,10 +67,10 @@ snapshots_df.head()
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_troponin_orders</th>
-      <th>num_urinalysis_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_cbc_orders</th>
+      <th>num_urinalysis_orders</th>
+      <th>num_troponin_orders</th>
       <th>num_d-dimer_orders</th>
     </tr>
     <tr>
@@ -97,11 +94,11 @@ snapshots_df.head()
       <th>0</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>270</td>
-      <td>1</td>
+      <td>5453</td>
+      <td>34</td>
       <td>0</td>
-      <td>47</td>
-      <td>5.0</td>
+      <td>36</td>
+      <td>4.0</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
@@ -112,14 +109,14 @@ snapshots_df.head()
       <th>1</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>3678</td>
-      <td>12</td>
+      <td>270</td>
       <td>1</td>
-      <td>44</td>
-      <td>2.0</td>
+      <td>0</td>
+      <td>47</td>
+      <td>5.0</td>
       <td>0</td>
       <td>1</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -127,42 +124,42 @@ snapshots_df.head()
       <th>2</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6514</td>
-      <td>86</td>
+      <td>5453</td>
+      <td>34</td>
       <td>0</td>
-      <td>43</td>
+      <td>36</td>
       <td>4.0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>4956</td>
-      <td>26</td>
+      <td>5294</td>
+      <td>27</td>
       <td>0</td>
-      <td>53</td>
-      <td>5.0</td>
+      <td>36</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>3741</td>
-      <td>9</td>
-      <td>1</td>
-      <td>66</td>
+      <td>5274</td>
+      <td>79</td>
+      <td>0</td>
+      <td>26</td>
       <td>4.0</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -462,7 +459,7 @@ snapshots_df.loc[first_group_snapshot_values]
 More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with the `prepare_patient_snapshots`, which makes the data ready for processing in groups. This will:
 
 - filter visits to include only those at the requested prediction time
-- randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, given the name of the column containing visit identifiers
+- randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, giving the name of the column containing visit identifiers
 - return a tuple of (X, y) matrices, ready for inference. The column containing the outcome (ie the label) is specified in the `label_col` argument.
 
 ```python

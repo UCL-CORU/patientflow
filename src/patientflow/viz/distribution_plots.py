@@ -142,7 +142,7 @@ def plot_prediction_distributions(
         ax.hist(pos_preds, bins=bins, alpha=0.2, color=secondary_color, density=True)
 
         ax.set_title(f"Prediction Distribution at {hour}:{minutes:02}", fontsize=14)
-        ax.set_xlabel("Predicted Probability", fontsize=12)
+        ax.set_xlabel("Estimated Probability", fontsize=12)
         ax.set_ylabel("Density", fontsize=12)
         ax.set_xlim(0, 1)
         ax.legend()
@@ -240,7 +240,7 @@ def plot_data_distributions(
         if pd.api.types.is_numeric_dtype(values) and len(values) > 0:
             # Check if data is actually discrete (all values are integers)
             is_actually_discrete = np.allclose(values, values.round())
-            
+
             # Apply outlier truncation to continuous data OR discrete data with outliers
             # For discrete data, we still want to truncate if there are extreme outliers
             if outlier_method == "iqr":
@@ -255,8 +255,10 @@ def plot_data_distributions(
                 lower_bound = mean_val - outlier_threshold * std_val
                 upper_bound = mean_val + outlier_threshold * std_val
             else:
-                raise ValueError("Invalid outlier_method. Choose from 'iqr' or 'zscore'.")
-            
+                raise ValueError(
+                    "Invalid outlier_method. Choose from 'iqr' or 'zscore'."
+                )
+
             # Only apply truncation if there are actual outliers
             # For discrete data, ensure lower bound is at least 0
             if values.min() < lower_bound or values.max() > upper_bound:
@@ -302,7 +304,9 @@ def plot_data_distributions(
 
     # Add thousands separators to y-axis
     for ax in g.axes.flat:
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda x, p: format(int(x), ","))
+        )
 
     if rotate_x_labels:
         for ax in g.axes.flat:
@@ -316,7 +320,9 @@ def plot_data_distributions(
             if x_limits is not None:
                 # Ensure discrete limits are reasonable: min ≥ 0, max ≥ 1, and use integers
                 lower_limit = max(0, int(x_limits[0]))
-                upper_limit = max(1, int(x_limits[1] + 0.5))  # Round up to ensure we include the max value
+                upper_limit = max(
+                    1, int(x_limits[1] + 0.5)
+                )  # Round up to ensure we include the max value
                 ax.set_xlim(lower_limit - 0.5, upper_limit + 0.5)
             else:
                 # Ensure default discrete limits are reasonable: min ≥ 0, max ≥ 1

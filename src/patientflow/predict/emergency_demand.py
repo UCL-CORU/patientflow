@@ -335,7 +335,9 @@ def create_predictions(
         raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")
     if not pd.api.types.is_timedelta64_dtype(prediction_snapshots["elapsed_los"]):
         actual_type = prediction_snapshots["elapsed_los"].dtype
-        raise ValueError(f"Column 'elapsed_los' must be a timedelta column, but found type: {actual_type}")
+        raise ValueError(
+            f"Column 'elapsed_los' must be a timedelta column, but found type: {actual_type}"
+        )
 
     # Check that all models have been fit
     if not hasattr(classifier, "pipeline") or classifier.pipeline is None:

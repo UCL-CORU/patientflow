@@ -1,3 +1,13 @@
+"""
+Training utility for weighted Poisson prediction models.
+
+This module provides functions for training weighted Poisson prediction models,
+specifically for predicting yet-to-arrive (YTA) patient volumes. It includes
+utilities for creating specialty filters and training weighted Poisson predictors.
+
+The logic in this module is specific to the implementation at UCLH.
+"""
+
 from typing import List
 import pandas as pd
 from pandas import DataFrame
@@ -15,28 +25,20 @@ def create_yta_filters(df):
     with special handling for pediatric patients. It uses the SpecialCategoryParams
     class to determine which specialties correspond to pediatric care.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
         DataFrame containing patient data with columns that include either
-        'age_on_arrival' or 'age_group' for pediatric classification
+        'age_on_arrival' or 'age_group' for pediatric classification.
 
-    Returns:
-    --------
+    Returns
+    -------
     dict
         A dictionary mapping specialty names to filter configurations.
         Each configuration contains:
         - For pediatric specialty: {"is_child": True}
         - For other specialties: {"specialty": specialty_name, "is_child": False}
 
-    Examples:
-    ---------
-    >>> df = pd.DataFrame({'patient_id': [1, 2], 'age_on_arrival': [10, 40]})
-    >>> filters = create_yta_filters(df)
-    >>> print(filters['paediatric'])
-    {'is_child': True}
-    >>> print(filters['medical'])
-    {'specialty': 'medical', 'is_child': False}
     """
     # Get the special category parameters using the picklable implementation
     special_params = create_special_category_objects(df.columns)
@@ -67,22 +69,35 @@ def train_weighted_poisson_predictor(
     num_days: int,
     epsilon: float = 10e-7,
 ) -> WeightedPoissonPredictor:
-    """Train a yet-to-arrive prediction model.
+    """
+    Train a yet-to-arrive prediction model.
 
-    Args:
-        train_visits: Visits dataset (used for identifying special categories)
-        train_yta: Training data for yet-to-arrive predictions
-        prediction_window: Time window for predictions as a timedelta
-        yta_time_interval: Time interval for predictions as a timedelta
-        prediction_times: List of prediction times
-        epsilon: Epsilon parameter for model
-        num_days: Number of days to consider
+    Parameters
+    ----------
+    train_visits : DataFrame
+        Visits dataset (used for identifying special categories).
+    train_yta : DataFrame
+        Training data for yet-to-arrive predictions.
+    prediction_window : timedelta
+        Time window for predictions as a timedelta.
+    yta_time_interval : timedelta
+        Time interval for predictions as a timedelta.
+    prediction_times : List[float]
+        List of prediction times.
+    num_days : int
+        Number of days to consider.
+    epsilon : float, optional
+        Epsilon parameter for model, by default 10e-7.
 
-    Returns:
-        Trained WeightedPoissonPredictor model
+    Returns
+    -------
+    WeightedPoissonPredictor
+        Trained WeightedPoissonPredictor model.
 
-    Raises:
-        TypeError: If prediction_window or yta_time_interval are not timedelta objects
+    Raises
+    ------
+    TypeError
+        If prediction_window or yta_time_interval are not timedelta objects.
     """
     if not isinstance(prediction_window, timedelta):
         raise TypeError("prediction_window must be a timedelta object")

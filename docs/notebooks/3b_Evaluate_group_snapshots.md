@@ -14,7 +14,7 @@ I also plot the difference between expected and observed, which is more revealin
 
 Other methods, such as Quantile-Quantile (QQ) Plots appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution for 10% of prediction moments, and likewise in the highest tenth for 10% of prediction moments.
 
-Using such methods with discrete variables (such as bed counts) is nuanced because the Cumulative Distribution Function (CDF) of a discrete distribution is not continuous. A QQ plot can be difficult to interpret if values are often low or zero. Moreover, in our case, we want to evaluate each observed value for a snapshot against the predicted distribution for that snapshot; thus we are using a different predicted distribution each time.
+Using such methods with discrete variables (such as bed counts) is nuanced because the Cumulative Distribution Function (CDF) of a discrete distribution is not continuous. A QQ plot can be difficult to interpret if values are often low or zero. Moreover, in our case, we want to evaluate each observed value for a snapshot against the predicted distribution for that particular snapshot; we are using a different predicted distribution each time.
 
 I show two approaches to evaluating the performance of models that predict discrete distributions when each observations lies on its own CDF:
 

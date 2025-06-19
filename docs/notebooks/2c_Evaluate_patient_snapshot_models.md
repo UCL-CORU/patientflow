@@ -16,9 +16,13 @@ We don't focus as much on typical classification metrics like Area under the ROC
 The ultimate goal is to predict bed count distributions for groups of patients. Bed count distributions will be calculated in two steps
 
 1. First, we predict the probability of the outcome we are interested in (admission or discharge) for each individual patient, as shown in previous notebooks.
-2. Then, we use these probabilities in Bernoulli trials to get bed count distributions. The Bernouill trials step will be shown in later notebooks.
+2. Then, we use these probabilities to get bed count distributions (this step will be shown in later notebooks).
 
 Because of this approach, the accuracy of the probability values matters more than correct classification. That is why we use log loss to optimise our classifiers.
+
+### About evaluation with temporal splits
+
+In predictive modelling, it is good practice to reserve the test set until you're satisfied with validation set performance. Using test set results to guide model decisions creates data leakage. In this notebook, I'm evaluating on the test set for final assessment only. If these results prompted any model changes, I would need to create a fresh test set for re-evaluation.
 
 ### About the data used in this notebook
 
@@ -28,15 +32,15 @@ The methods shown will work on any data in the same structure.
 
 You can request the datasets that are used here on [Zenodo](https://zenodo.org/records/14866057). Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
 
+## Loading real patient data
+
+I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
+
 ```python
 # Reload functions every time
 %load_ext autoreload
 %autoreload 2
 ```
-
-## Loading real patient data
-
-I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
 
 ```python
 import pandas as pd
@@ -131,7 +135,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
 
     Split sizes: [62071, 10415, 29134]
 
-Next we specify the times of day at which are predictions are to be made. Here I'm deriving from the dataset. Note that there are many more snapshots in the later part of the day 12:00, 15:30 and 22:00
+Next we specify the times of day at which are predictions are to be made. Here I'm deriving these from the dataset. Note that there are many more snapshots in the later part of the day 12:00, 15:30 and 22:00
 
 ```python
 prediction_times = ed_visits.prediction_time.unique()
@@ -217,7 +221,6 @@ for prediction_time in prediction_times:
     model = train_classifier(
         train_visits=train_visits,
         valid_visits=valid_visits,
-        test_visits=test_visits,
         grid={"n_estimators": [20, 30, 40]},
         exclude_from_training_data=exclude_from_training_data,
         ordinal_mappings=ordinal_mappings,
@@ -255,12 +258,12 @@ The plot displays two histograms:
 - Blue line/area: Distribution of predicted probabilities for negative cases (patients who weren't admitted)
 - Orange line/area: Distribution of predicted probabilities for positive cases (patients who were admitted)
 
-Ideal separation between these distributions indicates a well-performing model:
+Separation of these distributions indicates a well-performing model:
 
 - Negative cases (blue) should cluster toward lower probabilities (left side)
 - Positive cases (orange) should cluster toward higher probabilities (right side)
 
-The degree of overlap between distributions helps assess model discrimination ability. Less overlap suggests the model effectively distinguishes between positive and negative cases, while significant overlap indicates areas where the model struggles to differentiate between outcomes.
+The degree of overlap between distributions helps assess model discrimination. Less overlap suggests the model effectively distinguishes between positive and negative cases, while significant overlap indicates areas where the model struggles to differentiate between outcomes.
 
 From the plot below, we see that the model is discriminating poorly, with a high degree of overlap, and very few positive cases at the higher end.
 
@@ -308,14 +311,14 @@ plot_calibration(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png)
 
-### MADCAP (Model Accuracy Diagnostic Calibration Plot)
+### MADCAP Plots
 
-A MADCAP (Model Accuracy Diagnostic Calibration Plot) visually compares the predicted probabilities from a model with the actual outcomes (e.g., admissions or events) in a dataset. This plot helps to assess how well the model's predicted probabilities align with the observed values.
+A MADCAP Plot (Mean Adjusted Deaths Compared Against Predictions; developed by [Gallivan et al 2006](https://academic.oup.com/ejcts/article/29/4/431/477754) and so called given its original use in auditing perioperative deaths) visually compares the predicted probabilities from a model with the actual outcomes (e.g., admissions or events) in a dataset. This plot helps to assess how well the model's predicted probabilities align with the observed values.
 
 The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
 The orange line represents the cumulative observed outcomes, calculated based on the actual labels in the dataset, averaged over the same sorted order of predicted probabilities.
 
-If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom left.
+If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom right.
 
 Below, we see that some models under-predict the likelihood of admissions, as the blue line (predicted outcomes) falls below the orange line (actual outcomes). The models are assigning lower probabilities than they should, meaning that (later) we will under-predict the number of beds needed for these patients.
 
@@ -477,9 +480,9 @@ generate_madcap_plots(
 
 It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.
 
-The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits; the y axis maximum is the total number of snapshots in the test that were in at the prediction time. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.
+The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits; the y axis maximum is the total number of snapshots in the test set for the each prediction time and age group. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.
 
-Analysis like this helps understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment.
+Analysis like this can help us to understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment.
 
 ```python
 from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
@@ -550,13 +553,13 @@ plot_shap(
 
 ## Summary
 
-Here I have shown how visualations within `patientflow` can help you
+Here I have shown how visualisations of model output within `patientflow` can help you
 
 - assess the discrimination and calibration of your models
 - identify areas of weakness in your models by comparing predictions across different patient groups
 
-I have also shown how using balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data.
+I have also shown how using a balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data.
 
-I demonstrated convenient functions to plot feature importances and Shap plots for the trained models.
+I have demonstrated convenient functions to plot feature importances and SHAP plots for the trained models.
 
-This notebook concludes the set covering patient snapshots. We have created predicted probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for the whole cohort of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots.
+This notebook concludes the set of notebooks covering patient snapshots. We have created estimated probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for whole cohorts of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots.

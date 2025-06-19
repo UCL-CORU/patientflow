@@ -1,3 +1,13 @@
+"""
+Training utility for sequence prediction models.
+
+This module provides functions for training sequence-based prediction models,
+specifically for predicting patient outcomes based on visit sequences. It includes
+utilities for filtering patient data and training specialized sequence predictors.
+
+The logic in this module is specific to the implementation at UCLH.
+"""
+
 from pandas import DataFrame
 
 from patientflow.prepare import (
@@ -9,24 +19,24 @@ from patientflow.predictors.sequence_predictor import SequencePredictor
 
 def get_default_visits(admitted: DataFrame) -> DataFrame:
     """
-    Filters a dataframe of patient visits to include only non-pediatric patients.
+    Filter a dataframe of patient visits to include only non-pediatric patients.
 
     This function identifies and removes pediatric patients from the dataset based on
     both age criteria and specialty assignment. It automatically detects the appropriate
     age column format from the provided dataframe.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     admitted : DataFrame
         A pandas DataFrame containing patient visit information. Must include either
         'age_on_arrival' or 'age_group' columns, and a 'specialty' column.
 
-    Returns:
-    --------
+    Returns
+    -------
     DataFrame
         A filtered DataFrame containing only non-pediatric patients (adults).
 
-    Notes:
+    Notes
     ------
     The function automatically detects which age-related columns are present in the
     dataframe and configures the appropriate filtering logic. It removes patients who
@@ -34,10 +44,6 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     1. Identified as pediatric based on age criteria, or
     2. Assigned to a pediatric specialty
 
-    Examples:
-    ---------
-    >>> adult_visits = get_default_visits(all_patient_visits)
-    >>> print(f"Reduced from {len(all_patient_visits)} to {len(adult_visits)} adult visits")
     """
     # Get configuration for categorizing patients based on age columns
     special_params = create_special_category_objects(admitted.columns)
@@ -69,18 +75,28 @@ def train_sequence_predictor(
     grouping_var: str,
     outcome_var: str,
 ) -> SequencePredictor:
-    """Train a specialty prediction model.
+    """
+    Train a specialty prediction model.
 
-    Args:
-        train_visits: Training data containing visit information
-        model_name: Name identifier for the model
-        visit_col: Column name containing visit identifiers
-        input_var: Column name for input sequence
-        grouping_var: Column name for grouping sequence
-        outcome_var: Column name for target variable
+    Parameters
+    ----------
+    train_visits : DataFrame
+        Training data containing visit information.
+    model_name : str
+        Name identifier for the model.
+    visit_col : str
+        Column name containing visit identifiers.
+    input_var : str
+        Column name for input sequence.
+    grouping_var : str
+        Column name for grouping sequence.
+    outcome_var : str
+        Column name for target variable.
 
-    Returns:
-        Trained SequencePredictor model
+    Returns
+    -------
+    SequencePredictor
+        Trained SequencePredictor model.
     """
     visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
     admitted = visits_single[
