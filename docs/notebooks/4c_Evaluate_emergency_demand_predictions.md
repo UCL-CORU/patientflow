@@ -803,14 +803,14 @@ for specialty in specialties:
 ![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_3.png)
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.plot_epudd import plot_epudd
 specialties=['medical', 'surgical', 'haem/onc', 'paediatric']
 
 for specialty in specialties:
 
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    adjusted_qq_plot(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(),
             specialty_prob_dist,
             model_name="admissions",
             suptitle=f"Adjusted QQ plot for {specialty} specialty")
@@ -880,7 +880,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
 The output below shows two plots per specialty - the baseline model using average proportions admitted to each specialty (upper), and a model where specialty of admission is predicted using consult sequences (below). Particularly for specialties with small admission numbers (haem/onc and paediatric) there is an improvement; the extent of over-prediction is reduced.
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.plot_epudd import plot_epudd
 
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
@@ -889,12 +889,12 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    adjusted_qq_plot(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist_baseline,
         model_name="admissions",
         suptitle=f"Adjusted QQ plot for {specialty} specialty using baseline probability")
 
-    adjusted_qq_plot(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist,
         model_name="admissions",
         suptitle=f"Adjusted QQ plot for {specialty} specialty using sequence predictor")

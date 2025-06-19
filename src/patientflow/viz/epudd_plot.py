@@ -1,28 +1,31 @@
 """
 Generate plots comparing observed values with model predictions for discrete distributions.
 
-An adjusted QQ plot displays the model's predicted CDF values alongside the actual observed values'
+An Evaluating Predictions for Unique, Discrete, Distributions (EPUDD) plot displays the 
+model's predicted CDF values alongside the actual observed values'
 positions within their predicted CDF intervals. For discrete distributions, each predicted
 value has an associated probability, and the CDF is calculated by sorting the values and
 computing cumulative probabilities.
 
-The plot shows three possible positions for each observation within its predicted interval:
+The plot can show three possible positions for each observation within its predicted interval:
 
     * lower bound of the interval
     * midpoint of the interval
     * upper bound of the interval
 
+By default, the plot only shows the midpoint of the interval. 
+
 For a well-calibrated model, the observed values should fall within their predicted
 intervals, with the distribution of positions showing appropriate uncertainty.
 
-The visualization helps assess model calibration by comparing:
+The visualisation helps assess model calibration by comparing:
 1. The predicted cumulative distribution function (CDF) values
 2. The actual positions of observations within their predicted intervals
 3. The spread and distribution of these positions
 
 Functions
 ------------
-adjusted_qq_plot : function
+plot_epudd : function
     Generates and plots the comparison of model predictions with observed values.
 """
 
@@ -136,7 +139,7 @@ def _setup_subplot(
     hour, minutes = prediction_time
     ax.set_xlabel("CDF value (probability threshold)")
     ax.set_ylabel("Proportion of observations ≤ threshold")
-    ax.set_title(f"Adjusted QQ plot for {hour}:{minutes:02}")
+    ax.set_title(f"EPUDD plot for {hour}:{minutes:02}")
     ax.set_xlim([0, 1])
     ax.set_ylim([0, 1])
 
@@ -144,7 +147,7 @@ def _setup_subplot(
         ax.legend()
 
 
-def adjusted_qq_plot(
+def plot_epudd(
     prediction_times: List[Tuple[int, int]],
     prob_dist_dict_all: Dict[str, Dict],
     model_name: str = "admissions",
@@ -296,7 +299,7 @@ def adjusted_qq_plot(
     if suptitle:
         plt.suptitle(suptitle, fontsize=16, y=1.05)
     if media_file_path:
-        plt.savefig(media_file_path / "adjusted_qq_plot.png", dpi=300)
+        plt.savefig(media_file_path / "plot_epudd.png", dpi=300)
 
     # Return based on flags
     if return_figure and return_dataframe:

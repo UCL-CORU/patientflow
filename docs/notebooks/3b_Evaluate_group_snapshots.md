@@ -319,9 +319,9 @@ If the observed cdf points track the model cdfs, the model is well calibrated.
 Note that the model points (grey) represent discrete probability mass, averaged over all prediction times in the test set. Because discrete probability mass may be stepped, the model points may not follow the y=x line.
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.plot_epudd import plot_epudd
 
-adjusted_qq_plot(prediction_times,
+plot_epudd(prediction_times,
         prob_dist_dict_all,
         model_name="admissions",
         plot_all_bounds=False)

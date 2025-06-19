@@ -3,7 +3,7 @@ Module for generating probability distribution visualizations.
 
 Functions
 ---------
-prob_dist_plot : Plot a probability distribution as a bar chart with enhanced plotting options.
+plot_prob_dist : Plot a probability distribution as a bar chart with enhanced plotting options.
 """
 
 import itertools
@@ -55,7 +55,7 @@ def calculate_probability_thresholds(
     return thresholds
 
 
-def prob_dist_plot(
+def plot_prob_dist(
     prob_dist_data,
     title,
     media_file_path=None,
@@ -142,19 +142,19 @@ def prob_dist_plot(
     Basic usage with an array of probabilities:
 
     >>> probabilities = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
-    >>> prob_dist_plot(probabilities, "Bed Demand Distribution")
+    >>> plot_prob_dist(probabilities, "Bed Demand Distribution")
 
     With thresholds:
 
     >>> thresholds = calculate_probability_thresholds(probabilities, [0.8, 0.95])
-    >>> prob_dist_plot(probabilities, "Bed Demand with Confidence Levels",
+    >>> plot_prob_dist(probabilities, "Bed Demand with Confidence Levels",
     ...                probability_thresholds=thresholds)
 
     Using with a scipy stats distribution:
 
     >>> from scipy import stats
     >>> poisson_dist = stats.poisson(mu=5)  # Poisson with mean of 5
-    >>> prob_dist_plot(poisson_dist, "Poisson Distribution (μ=5)",
+    >>> plot_prob_dist(poisson_dist, "Poisson Distribution (μ=5)",
     ...                truncate_at_beds=(0, 15))
     """
 

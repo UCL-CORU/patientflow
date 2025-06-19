@@ -971,7 +971,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions_with_speci
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.plot_epudd import plot_epudd
 
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
@@ -980,12 +980,12 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    adjusted_qq_plot(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist_baseline,
         model_name="admissions",
         suptitle=f"Adjusted QQ plot for {specialty} specialty using baseline probability")
 
-    adjusted_qq_plot(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist,
         model_name="admissions",
         suptitle=f"Adjusted QQ plot for {specialty} specialty using sequence predictor")

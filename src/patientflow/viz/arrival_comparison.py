@@ -150,6 +150,7 @@ def plot_arrival_comparison(
     show_only_delta=False,
     media_file_path=None,
     return_figure=False,
+    fig_size=(10, 4),
 ):
     """Plot comparison between observed arrivals and expected arrival rates.
 
@@ -173,6 +174,8 @@ def plot_arrival_comparison(
         Path to save the plot
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it
+    fig_size : tuple, default=(10, 4)
+        Figure size as (width, height) in inches
 
     Returns
     -------
@@ -213,10 +216,12 @@ def plot_arrival_comparison(
 
     # Create figure with subplots if showing delta
     if show_delta and not show_only_delta:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+        fig, (ax1, ax2) = plt.subplots(
+            2, 1, figsize=(fig_size[0], fig_size[1] * 2), sharex=True
+        )
         ax = ax1
     else:
-        plt.figure(figsize=(10, 4))
+        plt.figure(figsize=fig_size)
         ax = plt.gca()
 
     # Ensure arrivals index is timezone-aware
@@ -325,6 +330,7 @@ def plot_multiple_deltas(
     yta_time_interval: timedelta = timedelta(minutes=15),
     media_file_path=None,
     return_figure=False,
+    fig_size=(15, 6),
 ):
     """Plot delta charts for multiple snapshot dates on the same figure.
 
@@ -344,6 +350,8 @@ def plot_multiple_deltas(
         Path to save the plot
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it
+    fig_size : tuple, default=(15, 6)
+        Figure size as (width, height) in inches
 
     Returns
     -------
@@ -351,7 +359,7 @@ def plot_multiple_deltas(
         The figure object if return_figure is True, otherwise None
     """
     # Create figure with subplots
-    fig = plt.figure(figsize=(15, 6))
+    fig = plt.figure(figsize=fig_size)
     gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])

@@ -290,13 +290,13 @@ I use the Poisson model to predict a bed count distribution for the patients yet
 ```python
 prob_dist_data = [poisson_model.pmf(k) for k in range(20)]
 
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed for patients'
     f'\nwho will arrive after {format_prediction_time(prediction_times[0])} on {snapshot_dates[0]} and need a bed before 20:00'
 )
-prob_dist_plot(prob_dist_data, title,
+plot_prob_dist(prob_dist_data, title,
     include_titles=True, truncate_at_beds=40)
 ```
 
@@ -463,14 +463,14 @@ combined_dist = stats.rv_discrete(values=(range(len(combined_pmf)), combined_pmf
 The result is a very similar distribution to that calculated by the more simple approach above.
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed for patients'
     f'\nwho will arrive after {format_prediction_time((12,0))} on {snapshot_dates[0]} and need a bed before 20:00.'
     f'\nTime to admission is estimated using an empirical survival curve'
 )
-prob_dist_plot(combined_dist, title,
+plot_prob_dist(combined_dist, title,
     include_titles=True, truncate_at_beds=40)
 ```
 
@@ -1056,14 +1056,14 @@ weighted_poisson_empirical = yta_model_empirical.predict(prediction_context)
 ```
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed for patients'
     f'\nwho will arrive after {format_prediction_time((12,0))} and need a bed before 20:00.'
     f'\nTime to admission is estimated using an empirical survival curve'
 )
-prob_dist_plot(weighted_poisson_empirical['unfiltered'], title,
+plot_prob_dist(weighted_poisson_empirical['unfiltered'], title,
     include_titles=True, truncate_at_beds=40)
 ```
 
@@ -1534,7 +1534,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
                            verbose=True)</pre></div> </div></div></div></div>
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
 for specialty in train_visits.specialty.unique():
@@ -1551,7 +1551,7 @@ for specialty in train_visits.specialty.unique():
         f'\nwho will arrive after {format_prediction_time((12,0))} and need a bed before 20:00.'
         f'\nTime to admission is estimated using an empirical survival curve'
     )
-    prob_dist_plot(weighted_poisson_empirical[specialty], title,
+    plot_prob_dist(weighted_poisson_empirical[specialty], title,
         include_titles=True, truncate_at_beds=20)
 ```
 
@@ -2091,7 +2091,7 @@ print(
 To use the weighted poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
 prediction_context = {
@@ -2112,7 +2112,7 @@ title = (
     f'who will arrive after {format_prediction_time((12,0))} on {snapshot_dates[0]} '
     f'\nand need a bed before 20:00. Time to admission estimated using an empirical survival curve'
 )
-prob_dist_plot(combined_dist, title,
+plot_prob_dist(combined_dist, title,
     include_titles=True, truncate_at_beds=40)
 
 title = (
@@ -2121,7 +2121,7 @@ title = (
     f'\nand need a bed before 20:00 '
     f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
 )
-prob_dist_plot(weighted_poisson_prediction['unfiltered'], title,
+plot_prob_dist(weighted_poisson_prediction['unfiltered'], title,
     include_titles=True,
     truncate_at_beds=40)
 ```
@@ -2185,9 +2185,9 @@ for prediction_time in prediction_times:
 The result can be plotted using the same functions. The model appears as a series of vertical lines because the EmpiricalSurvivalPredictor is very crude; it is trained only on a time of day. We have included it here as a placeholder, to show how modelling of yet-to-arrive patients using past data on time to admission could be done, and how it could be evaluated. You could modify the function to include a weekday/weekend variable, or replace it with a different approach based on moving averages (such as ARIMA).
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.plot_epudd import plot_epudd
 
-adjusted_qq_plot(prediction_times,
+plot_epudd(prediction_times,
                  prob_dist_dict_all,
                  model_name='yet_to_arrive',
                  plot_all_bounds=False)

@@ -1973,7 +1973,7 @@ group_snapshots_dict = prepare_group_snapshot_dict(
 Below I demonstrate predictions for each specialty in turn.
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.aggregate import get_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
@@ -1992,7 +1992,7 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
         include_titles=True, bar_colour='orange', truncate_at_beds=20)
 
 ```
@@ -2021,7 +2021,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} '
 )
-prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
     include_titles=True, truncate_at_beds=20)
 ```
 
@@ -2052,7 +2052,7 @@ for sex in ['M', 'F']:
         f'in the ED at {format_prediction_time((9,30))} '
         f'on {first_group_snapshot_key} '
     )
-    prob_dist_plot(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
         include_titles=True, truncate_at_beds=20)
 ```
 

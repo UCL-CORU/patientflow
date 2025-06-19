@@ -294,7 +294,7 @@ len(group_snapshots_dict[datetime.date(2031, 10, 9)])
     79
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.aggregate import get_prob_dist
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
 from datetime import timedelta
@@ -328,7 +328,7 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         f'in the ED at {format_prediction_time(random_prediction_time)} '
         f'on {random_prediction_date} '
     )
-    prob_dist_plot(prob_dist_dict[random_prediction_date]['agg_predicted'], title,
+    plot_prob_dist(prob_dist_dict[random_prediction_date]['agg_predicted'], title,
         include_titles=True, truncate_at_beds=20,
         probability_levels=[0.7,0.9],
         show_probability_thresholds=True, bar_colour='orange')
@@ -398,7 +398,7 @@ for specialty in [ 'medical', 'surgical', 'haem/onc', 'paediatric']:
     f'\nand need a bed within 8 hours '
     f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
 )
-    prob_dist_plot(weighted_poisson_prediction[specialty], title,
+    plot_prob_dist(weighted_poisson_prediction[specialty], title,
         include_titles=True,
         truncate_at_beds=20,
         probability_levels=[0.7,0.9],

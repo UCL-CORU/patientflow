@@ -709,12 +709,12 @@ prob_dist_data
            5.19045120e-04, 5.76716800e-05, 4.32537600e-06, 1.96608000e-07,
            4.09600000e-09])
 
-We can plot the predicted distribution using the `prob_dist_plot` function from patientflow.viz
+We can plot the predicted distribution using the `plot_prob_dist` function from patientflow.viz
 
 ```python
 prob_admission_first_group_snapshot = 0.2*len(first_group_snapshot_values)
 
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed by the '
@@ -722,7 +722,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} if each patient has a probability of admission of 0.2'
 )
-prob_dist_plot(prob_dist_data, title,
+plot_prob_dist(prob_dist_data, title,
     include_titles=True)
 ```
 
@@ -813,7 +813,7 @@ bed_count_prob_dist.keys()
 Using the `agg_predicted` key, we can plot the probability distribution:
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.plot_prob_dist import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed by the '
@@ -821,17 +821,17 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} using the trained model for prediction'
 )
-prob_dist_plot(bed_count_prob_dist['agg_predicted'], title,
+plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True)
 
 ```
 
 ![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_26_0.png)
 
-The `prob_dist_plot` function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.
+The `plot_prob_dist` function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.
 
 ```python
-fig = prob_dist_plot(bed_count_prob_dist['agg_predicted'], title,
+fig = plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True, return_figure=True)
 ax = fig.gca()
 ax.axvline(x=bed_count_prob_dist['agg_observed'], color='red', linestyle='--', label='Observed')
@@ -888,7 +888,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {random_snapshot_date} using the trained model for prediction'
 )
-fig = prob_dist_plot(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,
+fig = plot_prob_dist(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,
     include_titles=True, return_figure=True)
 ax = fig.gca()
 ax.axvline(x=prob_dists_for_group_snapshots[random_snapshot_date]['agg_observed'], color='red', linestyle='--', label='Observed')
@@ -907,4 +907,4 @@ In this notebook I have demonstrated the functions in `patientflow` that handle 
 - `get_prob_dist_for_prediction_moment`, which computes predicted and observed probabilities for a specific snapshot date and prediction time.
 - `get_prob_dist` which computes probability distributions for multiple snapshot dates.
 
-I have also shown the use of `prob_dist_plot` to visualise the predicted distribution for one group snapshot.
+I have also shown the use of `plot_prob_dist` to visualise the predicted distribution for one group snapshot.
