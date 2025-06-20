@@ -1,12 +1,12 @@
 """
-This module implements a `SequencePredictor` class that models and predicts the probability distribution
+This module implements a `SequenceToOutcomePredictor` class that models and predicts the probability distribution
 of sequences in categorical data. The class builds a model based on training data, where input sequences
 are mapped to specific outcome categories. It provides methods to fit the model, compute sequence-based
 probabilities, and make predictions on an unseen datatset of input sequences.
 
 Classes
 -------
-SequencePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
+SequenceToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on input sequences.
     Note: All sequence inputs are expected to be tuples. Lists will be automatically converted to tuples,
     and None values will be converted to empty tuples.
@@ -21,7 +21,7 @@ from datetime import datetime
 from patientflow.prepare import create_special_category_objects
 
 
-class SequencePredictor(BaseEstimator, TransformerMixin):
+class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
     """
     A class to model sequence-based predictions for categorical data using input and grouping sequences.
     This class implements both the `fit` and `predict` methods from the parent sklearn classes.
@@ -175,7 +175,7 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
 
         return df
 
-    def fit(self, X: pd.DataFrame) -> "SequencePredictor":
+    def fit(self, X: pd.DataFrame) -> "SequenceToOutcomePredictor":
         """
         Fits the predictor based on training data by computing the proportion of each input variable sequence
         ending in specific outcome variable categories.
@@ -189,8 +189,8 @@ class SequencePredictor(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        self : SequencePredictor
-            The fitted SequencePredictor model with calculated probabilities for each sequence.
+        self : SequenceToOutcomePredictor
+            The fitted SequenceToOutcomePredictor model with calculated probabilities for each sequence.
         """
         # Store metrics about the training data
         self.metrics["train_dttm"] = datetime.now().strftime("%Y-%m-%d %H:%M")

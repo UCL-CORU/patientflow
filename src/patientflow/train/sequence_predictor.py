@@ -14,7 +14,7 @@ from patientflow.prepare import (
     select_one_snapshot_per_visit,
     create_special_category_objects,
 )
-from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
 
 
 def get_default_visits(admitted: DataFrame) -> DataFrame:
@@ -74,7 +74,7 @@ def train_sequence_predictor(
     input_var: str,
     grouping_var: str,
     outcome_var: str,
-) -> SequencePredictor:
+) -> SequenceToOutcomePredictor:
     """
     Train a specialty prediction model.
 
@@ -111,7 +111,7 @@ def train_sequence_predictor(
         lambda x: tuple(x) if x else ()
     )
 
-    spec_model = SequencePredictor(
+    spec_model = SequenceToOutcomePredictor(
         input_var=input_var,
         grouping_var=grouping_var,
         outcome_var=outcome_var,

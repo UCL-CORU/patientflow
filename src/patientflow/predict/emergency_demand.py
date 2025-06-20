@@ -60,7 +60,7 @@ from patientflow.aggregate import (
 
 import warnings
 
-from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
 from patientflow.predictors.single_input_predictor import SingleInputPredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
@@ -250,7 +250,7 @@ def get_specialty_probs(
 def create_predictions(
     models: Tuple[
         TrainedClassifier,
-        Union[SequencePredictor, SingleInputPredictor],
+        Union[SequenceToOutcomePredictor, SingleInputPredictor],
         ParametricIncomingAdmissionPredictor,
     ],
     prediction_time: Tuple,
@@ -268,10 +268,10 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, Union[SequencePredictor, SingleInputPredictor], ParametricIncomingAdmissionPredictor]
+    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, SingleInputPredictor], ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
-        - spec_model: SequencePredictor or SingleInputPredictor for specialty predictions
+        - spec_model: SequenceToOutcomePredictor or SingleInputPredictor for specialty predictions
         - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
@@ -327,9 +327,9 @@ def create_predictions(
 
     if not isinstance(classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier")
-    if not isinstance(spec_model, (SequencePredictor, SingleInputPredictor)):
+    if not isinstance(spec_model, (SequenceToOutcomePredictor, SingleInputPredictor)):
         raise TypeError(
-            "Second model must be of type SequencePredictor or SingleInputPredictor"
+            "Second model must be of type SequenceToOutcomePredictor or SingleInputPredictor"
         )
     if not isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
         raise TypeError(

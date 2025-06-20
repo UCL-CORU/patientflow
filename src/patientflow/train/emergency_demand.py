@@ -1,3 +1,29 @@
+"""
+Emergency demand prediction training module.
+
+This module provides functionality that is specific to the implementation of the
+patientflow package at University College London Hospital (ULCH). It trains models 
+to predict emergency bed demand.
+
+The module trains three model types:
+1. Admission prediction models (multiple classifiers, one for each prediction time)
+2. Specialty prediction models (sequence-based)
+3. Yet-to-arrive prediction models (aspirational)
+
+Functions
+---------
+test_real_time_predictions : Test real-time prediction functionality
+    Selects random test cases and validates that the trained models can
+    generate predictions as if it where making a real-time prediction.
+
+train_all_models : Complete training pipeline
+    Trains all three model types (admissions, specialty, yet-to-arrive)
+    with proper validation and optional model saving.
+
+main : Entry point for training pipeline
+    Loads configuration, data, and runs the complete training process.
+"""
+
 from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
@@ -17,7 +43,7 @@ from patientflow.load import (
 )
 
 from patientflow.train.utils import save_model
-from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -25,92 +51,17 @@ from patientflow.predict.emergency_demand import create_predictions
 
 from patientflow.train.classifiers import train_multiple_classifiers
 from patientflow.train.sequence_predictor import train_sequence_predictor
-from patientflow.train.train_incoming_admission_predictor import (
+from patientflow.train.incoming_admission_predictor import (
     train_parametric_admission_predictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
-
-
-def split_and_check_sets(
-    df: DataFrame,
-    start_training_set: date,
-    start_validation_set: date,
-    start_test_set: date,
-    end_test_set: date,
-    date_column: str = "snapshot_date",
-    print_dates: bool = True,
-) -> None:
-    _df = df.copy()
-    _df[date_column] = pd.to_datetime(_df[date_column]).dt.date
-
-    if print_dates:
-        for value in _df.training_validation_test.unique():
-            subset = _df[_df.training_validation_test == value]
-            counts = subset.training_validation_test.value_counts().values[0]
-            min_date = subset[date_column].min()
-            max_date = subset[date_column].max()
-            print(
-                f"Set: {value}\nNumber of rows: {counts}\nMin Date: {min_date}\nMax Date: {max_date}\n"
-            )
-
-    train_df = _df[_df.training_validation_test == "train"].drop(
-        columns="training_validation_test"
-    )
-    valid_df = _df[_df.training_validation_test == "valid"].drop(
-        columns="training_validation_test"
-    )
-    test_df = _df[_df.training_validation_test == "test"].drop(
-        columns="training_validation_test"
-    )
-
-    try:
-        assert train_df[date_column].min() == start_training_set
-    except AssertionError:
-        print(
-            f"Assertion failed: train_df min date {train_df[date_column].min()} != {start_training_set}"
-        )
-
-    try:
-        assert train_df[date_column].max() < start_validation_set
-    except AssertionError:
-        print(
-            f"Assertion failed: train_df max date {train_df[date_column].max()} >= {start_validation_set}"
-        )
-
-    try:
-        assert valid_df[date_column].min() == start_validation_set
-    except AssertionError:
-        print(
-            f"Assertion failed: valid_df min date {valid_df[date_column].min()} != {start_validation_set}"
-        )
-
-    try:
-        assert valid_df[date_column].max() < start_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: valid_df max date {valid_df[date_column].max()} >= {start_test_set}"
-        )
-
-    try:
-        assert test_df[date_column].min() == start_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: test_df min date {test_df[date_column].min()} != {start_test_set}"
-        )
-
-    try:
-        assert test_df[date_column].max() <= end_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
-        )
 
 
 def test_real_time_predictions(
     visits,
     models: Tuple[
         Dict[str, TrainedClassifier],
-        SequencePredictor,
+        SequenceToOutcomePredictor,
         ParametricIncomingAdmissionPredictor,
     ],
     prediction_window,
@@ -128,10 +79,10 @@ def test_real_time_predictions(
     visits : pd.DataFrame
         DataFrame containing visit data with columns including 'prediction_time',
         'snapshot_date', and other required features for predictions.
-    models : Tuple[Dict[str, TrainedClassifier], SequencePredictor, ParametricIncomingAdmissionPredictor]
+    models : Tuple[Dict[str, TrainedClassifier], SequenceToOutcomePredictor, ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - trained_classifiers: TrainedClassifier containing admission predictions
-        - spec_model: SequencePredictor for specialty predictions
+        - spec_model: SequenceToOutcomePredictor for specialty predictions
         - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_window : int
         Size of the prediction window in minutes for which to generate forecasts.
@@ -417,8 +368,35 @@ def main(data_folder_name=None):
     """
     Main entry point for training patient flow models.
 
-    Args:
-        data_folder_name (str, optional): Name of data folder
+    This function orchestrates the complete training pipeline for emergency demand
+    prediction models. It loads configuration, data, and trains all three model
+    types: admission prediction models, specialty prediction models, and
+    yet-to-arrive prediction models.
+
+    Parameters
+    ----------
+    data_folder_name : str, optional
+        Name of the data folder containing the training datasets.
+        If None, will be extracted from command line arguments.
+
+    Returns
+    -------
+    None
+        The function trains and optionally saves models but does not return
+        any values.
+
+    Notes
+    -----
+    The function performs the following steps:
+    1. Loads configuration from config.yaml
+    2. Loads ED visits and inpatient arrivals data
+    3. Sets up model parameters and hyperparameters
+    4. Trains admission prediction classifiers
+    5. Trains specialty prediction sequence model
+    6. Trains yet-to-arrive prediction model
+    7. Optionally saves trained models
+    8. Optionally tests real-time prediction functionality
+
     """
     # Parse arguments if not provided
     if data_folder_name is None:

@@ -15,7 +15,7 @@ Estimates the number of hospital admissions within a specified prediction window
 - Support for different hospital contexts through configurable filters
 - Aspirational approach to probability of admission within a prediction window
 
-### SequencePredictor
+### SequenceToOutcomePredictor
 
 Models and predicts the probability distribution of sequences in categorical data. This predictor builds a model that maps input sequences to specific outcome categories, making it useful for predicting patient pathways.
 
@@ -55,4 +55,4 @@ For large datasets or time-sensitive predictions:
 
 - The WeightedPoissonPredictor computes time-varying arrival rates which can be computationally intensive
 - Consider precomputing time-varying arrival rates for common scenarios
-- The SequencePredictor's performance depends on the number of unique sequences in the training data
+- The SequenceToOutcomePredictor's performance depends on the number of unique sequences in the training data

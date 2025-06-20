@@ -14,7 +14,9 @@ from pandas import DataFrame
 from datetime import timedelta
 
 from patientflow.prepare import create_special_category_objects
-from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+from patientflow.predictors.incoming_admission_predictors import (
+    ParametricIncomingAdmissionPredictor,
+)
 
 
 def create_yta_filters(df):

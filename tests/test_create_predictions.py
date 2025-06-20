@@ -15,7 +15,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-from patientflow.predictors.sequence_predictor import SequencePredictor
+from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -178,7 +178,7 @@ def create_admissions_model(prediction_time, n):
 
 
 def create_spec_model(df, apply_special_category_filtering):
-    model = SequencePredictor(
+    model = SequenceToOutcomePredictor(
         input_var="consultation_sequence",  # Column containing input sequences
         grouping_var="final_sequence",  # Column containing grouping sequences
         outcome_var="specialty",  # Column containing outcome categories
@@ -407,7 +407,7 @@ class TestCreatePredictions(unittest.TestCase):
                 y2=self.y2,
             )
 
-        unfitted_spec_model = SequencePredictor(
+        unfitted_spec_model = SequenceToOutcomePredictor(
             input_var="consultation_sequence",
             grouping_var="final_sequence",
             outcome_var="specialty",

@@ -646,9 +646,7 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     interfaces for compatibility with scikit-learn pipelines.
     """
 
-    def predict(
-        self, prediction_context: Dict, **kwargs
-    ) -> Dict:
+    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions for the given context using parametric curves.
 
         Parameters
@@ -656,18 +654,21 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
-        x1 : float
-            The x-coordinate of the first transition point on the aspirational curve,
-            where the growth phase ends and the decay phase begins.
-        y1 : float
-            The y-coordinate of the first transition point (x1), representing the target
-            proportion of patients admitted by time x1.
-        x2 : float
-            The x-coordinate of the second transition point on the curve, beyond which
-            all but a few patients are expected to be admitted.
-        y2 : float
-            The y-coordinate of the second transition point (x2), representing the target
-            proportion of patients admitted by time x2.
+        **kwargs
+            Additional keyword arguments for parametric curve configuration:
+            
+            x1 : float
+                The x-coordinate of the first transition point on the aspirational curve,
+                where the growth phase ends and the decay phase begins.
+            y1 : float
+                The y-coordinate of the first transition point (x1), representing the target
+                proportion of patients admitted by time x1.
+            x2 : float
+                The x-coordinate of the second transition point on the curve, beyond which
+                all but a few patients are expected to be admitted.
+            y2 : float
+                The y-coordinate of the second transition point (x2), representing the target
+                proportion of patients admitted by time x2.
 
         Returns
         -------
@@ -682,14 +683,16 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             If required keys are missing from the prediction context.
         """
         # Extract required parameters from kwargs
-        x1 = kwargs.get('x1')
-        y1 = kwargs.get('y1')
-        x2 = kwargs.get('x2')
-        y2 = kwargs.get('y2')
-        
+        x1 = kwargs.get("x1")
+        y1 = kwargs.get("y1")
+        x2 = kwargs.get("x2")
+        y2 = kwargs.get("y2")
+
         # Validate that required parameters are provided
         if x1 is None or y1 is None or x2 is None or y2 is None:
-            raise ValueError("x1, y1, x2, and y2 parameters are required for parametric prediction")
+            raise ValueError(
+                "x1, y1, x2, and y2 parameters are required for parametric prediction"
+            )
 
         predictions = {}
 
@@ -1030,9 +1033,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return result_df.set_index("sum")
 
-    def predict(
-        self, prediction_context: Dict, **kwargs
-    ) -> Dict:
+    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions using empirical survival curves.
 
         Parameters
@@ -1040,20 +1041,11 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
-        x1 : float, optional
-            The x-coordinate of the first transition point on the aspirational curve,
-            where the growth phase ends and the decay phase begins.
-        y1 : float, optional
-            The y-coordinate of the first transition point (x1), representing the target
-            proportion of patients admitted by time x1.
-        x2 : float, optional
-            The x-coordinate of the second transition point on the curve, beyond which
-            all but a few patients are expected to be admitted.
-        y2 : float, optional
-            The y-coordinate of the second transition point (x2), representing the target
-            proportion of patients admitted by time x2.
-        max_value : int, default=20
-            Maximum value for the discrete distribution support.
+        **kwargs
+            Additional keyword arguments for prediction configuration:
+            
+            max_value : int, default=20
+                Maximum value for the discrete distribution support.
 
         Returns
         -------
@@ -1075,11 +1067,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             )
 
         # Extract parameters from kwargs with defaults
-        x1 = kwargs.get('x1', None)
-        y1 = kwargs.get('y1', None)
-        x2 = kwargs.get('x2', None)
-        y2 = kwargs.get('y2', None)
-        max_value = kwargs.get('max_value', 20)
+        max_value = kwargs.get("max_value", 20)
 
         predictions = {}
 
