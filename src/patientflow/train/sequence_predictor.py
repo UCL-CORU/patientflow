@@ -14,7 +14,9 @@ from patientflow.prepare import (
     select_one_snapshot_per_visit,
     create_special_category_objects,
 )
-from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.sequence_to_outcome_predictor import (
+    SequenceToOutcomePredictor,
+)
 
 
 def get_default_visits(admitted: DataFrame) -> DataFrame:

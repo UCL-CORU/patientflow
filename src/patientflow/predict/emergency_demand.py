@@ -20,26 +20,6 @@ get_specialty_probs : function
 create_predictions : function
     Create predictions for emergency demand
 
-Notes
------
-The module requires trained models for admission prediction, specialty prediction,
-and yet-to-arrive prediction. These models must contain
-the necessary pipeline components for feature transformation and prediction.
-
-Examples
---------
->>> from patientflow.predict.emergency_demand import create_predictions
->>> from datetime import timedelta
->>> predictions = create_predictions(
-...     models=(classifier, spec_model, yet_to_arrive_model),
-...     prediction_time=(8, 0),  # 8:00 AM
-...     prediction_snapshots=snapshots_df,
-...     specialties=['surgical', 'medical'],
-...     prediction_window=timedelta(hours=4),
-...     x1=0.5, y1=0.8,
-...     x2=2.0, y2=0.2,
-...     cdf_cut_points=[0.9, 0.7]
-... )
 """
 
 from typing import List, Dict, Tuple, Union
@@ -60,8 +40,10 @@ from patientflow.aggregate import (
 
 import warnings
 
-from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
-from patientflow.predictors.single_input_predictor import SingleInputPredictor
+from patientflow.predictors.sequence_to_outcome_predictor import (
+    SequenceToOutcomePredictor,
+)
+from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -250,7 +232,7 @@ def get_specialty_probs(
 def create_predictions(
     models: Tuple[
         TrainedClassifier,
-        Union[SequenceToOutcomePredictor, SingleInputPredictor],
+        Union[SequenceToOutcomePredictor, ValueToOutcomePredictor],
         ParametricIncomingAdmissionPredictor,
     ],
     prediction_time: Tuple,
@@ -268,10 +250,10 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, SingleInputPredictor], ParametricIncomingAdmissionPredictor]
+    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, ValueToOutcomePredictor], ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
-        - spec_model: SequenceToOutcomePredictor or SingleInputPredictor for specialty predictions
+        - spec_model: SequenceToOutcomePredictor or ValueToOutcomePredictor for specialty predictions
         - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
@@ -327,9 +309,11 @@ def create_predictions(
 
     if not isinstance(classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier")
-    if not isinstance(spec_model, (SequenceToOutcomePredictor, SingleInputPredictor)):
+    if not isinstance(
+        spec_model, (SequenceToOutcomePredictor, ValueToOutcomePredictor)
+    ):
         raise TypeError(
-            "Second model must be of type SequenceToOutcomePredictor or SingleInputPredictor"
+            "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor"
         )
     if not isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
         raise TypeError(

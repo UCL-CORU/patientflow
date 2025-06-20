@@ -15,7 +15,10 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
-from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.sequence_to_outcome_predictor import (
+    SequenceToOutcomePredictor,
+)
+from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -179,6 +182,33 @@ def create_admissions_model(prediction_time, n):
 
 def create_spec_model(df, apply_special_category_filtering):
     model = SequenceToOutcomePredictor(
+        input_var="consultation_sequence",  # Column containing input sequences
+        grouping_var="final_sequence",  # Column containing grouping sequences
+        outcome_var="specialty",  # Column containing outcome categories
+        apply_special_category_filtering=apply_special_category_filtering,
+        admit_col="is_admitted",
+    )
+    model.fit(df)
+
+    return model
+
+
+def create_value_to_outcome_spec_model(df, apply_special_category_filtering):
+    """Create a test specialty model using ValueToOutcomePredictor.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the training data
+    apply_special_category_filtering : bool
+        Whether to apply special category filtering
+
+    Returns
+    -------
+    ValueToOutcomePredictor
+        Fitted ValueToOutcomePredictor model
+    """
+    model = ValueToOutcomePredictor(
         input_var="consultation_sequence",  # Column containing input sequences
         grouping_var="final_sequence",  # Column containing grouping sequences
         outcome_var="specialty",  # Column containing outcome categories
@@ -534,6 +564,86 @@ class TestCreatePredictions(unittest.TestCase):
 
         self.assertIn("paediatric", predictions)
         self.assertNotIn("paediatric", spec_model.weights.keys())
+
+    def test_value_to_outcome_predictor_integration(self):
+        """Test that ValueToOutcomePredictor works with create_predictions function."""
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        # Create models with ValueToOutcomePredictor
+        admission_model, _, yta_model = self.models
+        value_to_outcome_spec_model = create_value_to_outcome_spec_model(
+            self.df, apply_special_category_filtering=False
+        )
+        models = (admission_model, value_to_outcome_spec_model, yta_model)
+
+        predictions = create_predictions(
+            models=models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        # Verify that predictions work correctly with ValueToOutcomePredictor
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
+
+        # Check that we get reasonable predictions
+        self.assertIsInstance(predictions["paediatric"]["in_ed"], list)
+        self.assertIsInstance(predictions["medical"]["yet_to_arrive"], list)
+        self.assertEqual(len(predictions["paediatric"]["in_ed"]), 2)
+        self.assertEqual(len(predictions["medical"]["yet_to_arrive"]), 2)
+
+    def test_value_to_outcome_predictor_with_special_categories(self):
+        """Test ValueToOutcomePredictor with special category filtering."""
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        # Create models with ValueToOutcomePredictor and special category filtering
+        admission_model, _, yta_model = self.models
+        value_to_outcome_spec_model = create_value_to_outcome_spec_model(
+            self.df, apply_special_category_filtering=True
+        )
+        models = (admission_model, value_to_outcome_spec_model, yta_model)
+
+        predictions = create_predictions(
+            models=models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        # Verify that predictions work correctly with special category filtering
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
+
+        # Check that we get reasonable predictions
+        self.assertIsInstance(predictions["paediatric"]["in_ed"], list)
+        self.assertIsInstance(predictions["medical"]["yet_to_arrive"], list)
+        self.assertEqual(len(predictions["paediatric"]["in_ed"]), 2)
+        self.assertEqual(len(predictions["medical"]["yet_to_arrive"]), 2)
 
 
 if __name__ == "__main__":

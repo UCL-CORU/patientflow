@@ -101,6 +101,7 @@ def train_parametric_admission_predictor(
     TypeError
         If prediction_window or yta_time_interval are not timedelta objects.
     """
+
     if not isinstance(prediction_window, timedelta):
         raise TypeError("prediction_window must be a timedelta object")
     if not isinstance(yta_time_interval, timedelta):
@@ -108,8 +109,10 @@ def train_parametric_admission_predictor(
 
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
-            train_yta.loc[:, "arrival_datetime"] = pd.to_datetime(
-                train_yta["arrival_datetime"], utc=True
+            # Convert to datetime using the actual values, not pandas objects
+            train_yta = train_yta.copy()
+            train_yta["arrival_datetime"] = pd.to_datetime(
+                train_yta["arrival_datetime"].values, utc=True
             )
             train_yta.set_index("arrival_datetime", inplace=True)
 

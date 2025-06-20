@@ -228,32 +228,38 @@ def pred_proba_to_agg_predicted(
         # Variance = sum of p_i * (1-p_i)
         variance = (probs * (1 - probs)).sum()
 
-        # Generate probabilities for each possible count using normal approximation
-        counts = np.arange(n + 1)
-        agg_predicted_dict = {}
-
-        for i in counts:
-            # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
-            if i == 0:
-                p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
-            elif i == n:
-                p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
-            else:
-                p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
-                    i - 0.5, loc=mean, scale=np.sqrt(variance)
-                )
-            agg_predicted_dict[i] = p
-
-        # Normalize to ensure the probabilities sum to 1
-        total = sum(agg_predicted_dict.values())
-        if total > 0:
-            for i in agg_predicted_dict:
-                agg_predicted_dict[i] /= total
+        # Handle the case where variance is zero (all probabilities are 0 or 1)
+        if variance == 0:
+            # If variance is zero, all probabilities are the same (either all 0 or all 1)
+            # The distribution is deterministic - all probability mass is at the mean
+            agg_predicted_dict = {int(round(mean)): 1.0}
         else:
-            # If all probabilities are zero, set a uniform distribution
-            n = len(agg_predicted_dict)
-            for i in agg_predicted_dict:
-                agg_predicted_dict[i] = 1.0 / n
+            # Generate probabilities for each possible count using normal approximation
+            counts = np.arange(n + 1)
+            agg_predicted_dict = {}
+
+            for i in counts:
+                # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
+                if i == 0:
+                    p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
+                elif i == n:
+                    p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
+                else:
+                    p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
+                        i - 0.5, loc=mean, scale=np.sqrt(variance)
+                    )
+                agg_predicted_dict[i] = p
+
+            # Normalize to ensure the probabilities sum to 1
+            total = sum(agg_predicted_dict.values())
+            if total > 0:
+                for i in agg_predicted_dict:
+                    agg_predicted_dict[i] /= total
+            else:
+                # If all probabilities are zero, set a uniform distribution
+                n = len(agg_predicted_dict)
+                for i in agg_predicted_dict:
+                    agg_predicted_dict[i] = 1.0 / n
     else:
         # Use the original symbolic computation for smaller datasets
         local_proba = predictions_proba.copy()

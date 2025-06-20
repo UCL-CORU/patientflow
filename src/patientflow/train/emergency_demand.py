@@ -2,7 +2,7 @@
 Emergency demand prediction training module.
 
 This module provides functionality that is specific to the implementation of the
-patientflow package at University College London Hospital (ULCH). It trains models 
+patientflow package at University College London Hospital (ULCH). It trains models
 to predict emergency bed demand.
 
 The module trains three model types:
@@ -27,8 +27,7 @@ main : Entry point for training pipeline
 from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
-from datetime import date, timedelta
+from datetime import timedelta
 import sys
 
 from patientflow.prepare import (
@@ -43,7 +42,9 @@ from patientflow.load import (
 )
 
 from patientflow.train.utils import save_model
-from patientflow.predictors.sequence_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.sequence_to_outcome_predictor import (
+    SequenceToOutcomePredictor,
+)
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -292,7 +293,7 @@ def train_all_models(
 
     # Use predicted_times from visits if not explicitly provided
     if prediction_times is None:
-        prediction_times = visits.prediction_time.unique()
+        prediction_times = list(visits.prediction_time.unique())
 
     # Train admission models
     admission_models = train_multiple_classifiers(

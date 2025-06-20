@@ -1,19 +1,19 @@
 # 1. Introducing our users
 
-This repository offers predictive modelling to support the management of patient flow in hospitals. Here I introduce the people who manage patient flow in hospitals. 
+This repository offers predictive modelling to support the management of patient flow in hospitals. Here I introduce the people who manage patient flow in hospitals.
 
 ## What is patient flow?
 
-Hospitals refer to the streams of patients arriving and leaving as ‘patient flow’. Unplanned admissions create the ‘emergency’ flow, and the hospital must accommodate that flow alongside a flow of ‘elective’ or planned admissions. Sometimes outflows are reduced because patients are waiting for care to become available in another setting.  
+Hospitals refer to the streams of patients arriving and leaving as ‘patient flow’. Unplanned admissions create the ‘emergency’ flow, and the hospital must accommodate that flow alongside a flow of ‘elective’ or planned admissions. Sometimes outflows are reduced because patients are waiting for care to become available in another setting.
 
-There are various ways people are admitted to a hospital specialty: 
+There are various ways people are admitted to a hospital specialty:
 
 - via the Accident & Emergency Department, which is referred to by hospitals as the ED (Emergency Department). Some patients are admitted after visiting Same Day Emergency Care (SDEC). Here, to keep it simple, I refer to the combined flows from ED and SDEC as coming via the ED
 - as an emergency admission via another route, such as a transfer from another hospital
-- as planned (or elective) admissions 
+- as planned (or elective) admissions
 - as an internal transfer from another specialty in the same hospital
 
-And various ways people leave a hospital specialty: 
+And various ways people leave a hospital specialty:
 
 - as a discharge from hospital, to home or another care setting, including another hospital
 - as an internal transfer to another specialty within the same hospital
@@ -21,9 +21,9 @@ And various ways people leave a hospital specialty:
 
 If patient flow works well, each patient will receive timely and appropriate care from the right specialty team, without undue delays. Unfortunately, delays are not uncommon, and they can result in poor patient flow. An example of poor patient flow is when incoming patients wait for many hours in the ED because inpatients who are ready to leave are not being discharged, so no bed is available.
 
-Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward ie a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals. 
+Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward ie a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals.
 
-Hospitals strive to have good patient flow, across all specialties, so far as they are able. 
+Hospitals strive to have good patient flow, across all specialties, so far as they are able.
 
 ## Who is responsible for managing patient flow?
 
@@ -31,25 +31,25 @@ Typically a team of bed managers takes primary responsibility for managing patie
 
 To keep track of the changing situation, bed managers at University College London Hospital's main site convene virtual 'flow huddles' three times a day. In these huddles, staff from the ED and from each ward meet with bed managers to discuss patients coming in (as either emergency or planned admissions), and review which inpatients are likely to be discharged. The flow huddles provide a picture of likely areas of pressure on beds.
 
-If bed pressures are anticipated, bed managers can take action by trying to accelerate discharges, opening up temporary beds and finding staff to cover them, or temporarily diverting ambulances to another hospital. These decisions have consequences for patients, staff and other hospitals. 
+If bed pressures are anticipated, bed managers can take action by trying to accelerate discharges, opening up temporary beds and finding staff to cover them, or temporarily diverting ambulances to another hospital. These decisions have consequences for patients, staff and other hospitals.
 
-## What information do bed managers use to manage patient flow? 
+## What information do bed managers use to manage patient flow?
 
-Bed managers at UCLH, our partner hospital, like to anticipate how many beds will be needed for new patients by the end of the day or shift, and how many beds will become available during that time. To predict how many beds will be needed today, they commonly assume the number of emergency admissions will be the same as yesterday. To work out how many patients will leave, they apply a simple rule based on patients' expected dates of discharge. 
+Bed managers at UCLH, our partner hospital, like to anticipate how many beds will be needed for new patients by the end of the day or shift, and how many beds will become available during that time. To predict how many beds will be needed today, they commonly assume the number of emergency admissions will be the same as yesterday. To work out how many patients will leave, they apply a simple rule based on patients' expected dates of discharge.
 
-These are simple rules of thumb (heuristics), based on information that may not have been updated since midnight. Many hospitals have Electronic Health Records (EHRs), into which data are being entered throughout the day. That up-to-date information could provide a better view; bed managers' understanding of the current situation, and their projection of how it will develop, could be refreshed as new information comes into the EHR. That real-time view is what UCLH wanted to achieve from its EHR. 
+These are simple rules of thumb (heuristics), based on information that may not have been updated since midnight. Many hospitals have Electronic Health Records (EHRs), into which data are being entered throughout the day. That up-to-date information could provide a better view; bed managers' understanding of the current situation, and their projection of how it will develop, could be refreshed as new information comes into the EHR. That real-time view is what UCLH wanted to achieve from its EHR.
 
-## What modelling is useful to bed managers? 
+## What modelling is useful to bed managers?
 
-I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. I started working with University College London Hospital (UCLH) in 2020 because the hospital wanted to make better use of the data streaming into its EHR. My colleague Prof Sonya Crowe led a small project in 2019-2020 to create a prototype of a predictive model of emergency demand that used real-time data. Through that project, and over the subsequent years, we have come to understand the needs of bed managers from predictive modelling. 
+I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clinical Operational Research Unit (CORU) at University College London. I started working with University College London Hospital (UCLH) in 2020 because the hospital wanted to make better use of the data streaming into its EHR. My colleague Prof Sonya Crowe led a small project in 2019-2020 to create a prototype of a predictive model of emergency demand that used real-time data. Through that project, and over the subsequent years, we have come to understand the needs of bed managers from predictive modelling.
 
-*What bed managers we have worked with want from predictive models:*
+_What bed managers we have worked with want from predictive models:_
 
 - **Predictions issued at the times of day they need them:**
-  Our users have a routine where they prepare a situation report of hospital capacity five times each day, and have flow huddles three times a day. They wanted predictions of bed demand to be available to them in the preparation of the reports, and at the flow huddles. 
+  Our users have a routine where they prepare a situation report of hospital capacity five times each day, and have flow huddles three times a day. They wanted predictions of bed demand to be available to them in the preparation of the reports, and at the flow huddles.
 
 - **Predictions over a rolling window:**
-  The current heuristics (used at UCLH and widely across the NHS) rely on daily averages, which means that the predictions run to midnight on the same day. A rolling prediction of 8 to 12 hours is more useful, because it can better inform conversations about what needs to be done during the current day in order to head off pressures before senior staff go home, or during the night shift to ease likely build-ups of patients waiting in the morning.  
+  The current heuristics (used at UCLH and widely across the NHS) rely on daily averages, which means that the predictions run to midnight on the same day. A rolling prediction of 8 to 12 hours is more useful, because it can better inform conversations about what needs to be done during the current day in order to head off pressures before senior staff go home, or during the night shift to ease likely build-ups of patients waiting in the morning.
 
 - **Output at aggregate level rather than individual:**
   It is common for researchers using statistics or Machine Learning to produce models that predict each patient's probability of admission. However, that level of analysis is not useful for bed managers because, when managing capacity, they are mainly interested in overall numbers of beds needed, rather than whether any particular patient will be admitted.
@@ -58,7 +58,7 @@ I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clini
   Predictive models can be trained on historical patterns of admissions and discharges. However, if they can make use of real-time data from the EHR, bed managers will have a better sense of today's demand, rather than that of a typical day.
 
 - **A breakdown of demand by specialty:**
-  Knowing that the whole hospital is going to be short of beds is somewhat useful and does give a sense of the scale of the problem. More precise information - about which specialties are most affected - makes it easier to pinpoint where action is needed. 
+  Knowing that the whole hospital is going to be short of beds is somewhat useful and does give a sense of the scale of the problem. More precise information - about which specialties are most affected - makes it easier to pinpoint where action is needed.
 
 - **Some sense of the uncertainty of predictions:**
   Simple heuristics give bed managers a single number to work with. For example, if 50 patients were admitted yesterday, they might plan for 50 today. This doesn't show how likely the number 50 is; could it be 46 or 54? A good model will give a sense of uncertainty around the suggested number of beds.
@@ -67,12 +67,6 @@ I'm [Zella King](https://github.com/zmek/), a health data scientist in the Clini
 
 In the last five years, we have developed and deployed a model of emergency demand for beds that is running daily at UCLH. We are now working on predictions of the net change in bed demand for each specialty in the next 8 to 24 hours. Our new approach will bring together predictions of emergency and elective admissions, transfers between specialties and discharges in that prediction window.
 
-The `patientflow` repository provides generic functions that serve as building blocks for that modelling. In the following notebooks I will demonstrate the use of these functions, using the example of predicting emergency demand. 
+The `patientflow` repository provides generic functions that serve as building blocks for that modelling. In the following notebooks I will demonstrate the use of these functions, using the example of predicting emergency demand.
 
 Our hope is that you may find the functions useful for your own modelling problems.
-
-
-
-
-
-

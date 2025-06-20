@@ -33,28 +33,6 @@ of individual Poisson distributions for each time interval.
 Both predictors take into account historical data patterns and can be filtered for
 specific hospital settings or specialties.
 
-Examples
---------
-Using the parametric ParametricIncomingAdmissionPredictor:
-
->>> predictor = ParametricIncomingAdmissionPredictor(filters={
-...     'medical': {'specialty': 'medical'},
-...     'surgical': {'specialty': 'surgical'},
-...     'haem_onc': {'specialty': 'haem/onc'},
-...     'paediatric': {'specialty': 'paediatric'}
-... })
->>> predictor.fit(train_data, prediction_window=120, yta_time_interval=30, prediction_times=[8, 12, 16])
->>> predictions = predictor.predict(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
-
-Using the empirical EmpiricalIncomingAdmissionPredictor:
-
->>> predictor = EmpiricalIncomingAdmissionPredictor(filters={
-...     'medical': {'specialty': 'medical'},
-...     'surgical': {'specialty': 'surgical'}
-... })
->>> predictor.fit(train_data, prediction_window=480, yta_time_interval=60,
-...               prediction_times=[8, 12, 16, 20], num_days=90)
->>> predictions = predictor.predict(prediction_context, max_value=25)
 """
 
 import warnings
@@ -656,7 +634,7 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             It should specify either a general context or one based on the applied filters.
         **kwargs
             Additional keyword arguments for parametric curve configuration:
-            
+
             x1 : float
                 The x-coordinate of the first transition point on the aspirational curve,
                 where the growth phase ends and the decay phase begins.
@@ -1043,7 +1021,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             It should specify either a general context or one based on the applied filters.
         **kwargs
             Additional keyword arguments for prediction configuration:
-            
+
             max_value : int, default=20
                 Maximum value for the discrete distribution support.
 

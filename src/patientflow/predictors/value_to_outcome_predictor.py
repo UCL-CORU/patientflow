@@ -1,12 +1,12 @@
 """
-This module implements a `SingleInputPredictor` class that models and predicts the probability distribution
+This module implements a `ValueToOutcomePredictor` class that models and predicts the probability distribution
 of outcomes based on a single categorical input. The class builds a model based on training data, where
 input values are mapped to specific outcome categories through an intermediate grouping variable. It provides
 methods to fit the model, compute probabilities, and make predictions on unseen data.
 
 Classes
 -------
-SingleInputPredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
+ValueToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on a single input value.
     Note: All inputs are expected to be strings. None values will be converted to empty strings during preprocessing.
 """
@@ -19,7 +19,7 @@ from datetime import datetime
 from patientflow.prepare import create_special_category_objects
 
 
-class SingleInputPredictor(BaseEstimator, TransformerMixin):
+class ValueToOutcomePredictor(BaseEstimator, TransformerMixin):
     """
     A class to model predictions for categorical data using a single input value and grouping variable.
     This class implements both the `fit` and `predict` methods from the parent sklearn classes.
@@ -137,7 +137,7 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
 
         return df
 
-    def fit(self, X: pd.DataFrame) -> "SingleInputPredictor":
+    def fit(self, X: pd.DataFrame) -> "ValueToOutcomePredictor":
         """
         Fits the predictor based on training data by computing the proportion of each input value
         ending in specific outcome variable categories.
@@ -153,8 +153,8 @@ class SingleInputPredictor(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        self : SingleInputPredictor
-            The fitted SingleInputPredictor model with calculated probabilities for each input value.
+        self : ValueToOutcomePredictor
+            The fitted ValueToOutcomePredictor model with calculated probabilities for each input value.
             The weights dictionary will contain an empty string key ('') for any null values from the input data.
         """
 

@@ -1,24 +1,24 @@
 # 2c. Evaluate models trained on patient-level snapshots
 
-## Things to consider 
+## Things to consider
 
-In the last notebook, I showed how to train models on patient snapshots using `patientflow`. Now, let's think about how to evaluate those models. 
+In the last notebook, I showed how to train models on patient snapshots using `patientflow`. Now, let's think about how to evaluate those models.
 
 When evaluating patient snapshots, we focus on:
 
-* How well calibrated the predicted probabilities are.
-* How well the probabilities discriminate between patients with and without the outcome.
+- How well calibrated the predicted probabilities are.
+- How well the probabilities discriminate between patients with and without the outcome.
 
-We don't focus as much on typical classification metrics like Area under the ROC curve, accuracy or precision/recall. 
+We don't focus as much on typical classification metrics like Area under the ROC curve, accuracy or precision/recall.
 
-### Why don't we focus on typical classification metrics? 
+### Why don't we focus on typical classification metrics?
 
 The ultimate goal is to predict bed count distributions for groups of patients. Bed count distributions will be calculated in two steps
 
 1. First, we predict the probability of the outcome we are interested in (admission or discharge) for each individual patient, as shown in previous notebooks.
 2. Then, we use these probabilities to get bed count distributions (this step will be shown in later notebooks).
 
-Because of this approach, the accuracy of the probability values matters more than correct classification. That is why we use log loss to optimise our classifiers. 
+Because of this approach, the accuracy of the probability values matters more than correct classification. That is why we use log loss to optimise our classifiers.
 
 ### About evaluation with temporal splits
 
@@ -28,28 +28,22 @@ In predictive modelling, it is good practice to reserve the test set until you'r
 
 I'm going to use real patient data from visits to the Emergency Department (ED) and Same Day Emergency Care (SDEC) unit at University College London Hospital (UCLH) to demonstrate the evaluation. For more information about the data, see [the data exploration notebook](2d_Explore_the_datasets_provided.md).
 
-The methods shown will work on any data in the same structure. 
+The methods shown will work on any data in the same structure.
 
 You can request the datasets that are used here on [Zenodo](https://zenodo.org/records/14866057). Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
 
-
-
-
 ## Loading real patient data
 
-I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`. 
-
+I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
 
 ```python
 # Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 ```
 
     The autoreload extension is already loaded. To reload it, use:
       %reload_ext autoreload
-
-
 
 ```python
 import pandas as pd
@@ -61,28 +55,23 @@ project_root = set_project_root()
 
 # set file paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        project_root, 
+        project_root,
         data_folder_name='data-public', # change this to data-synthetic if you don't have the public dataset
-        verbose=False) 
+        verbose=False)
 
 # load the data
-ed_visits = load_data(data_file_path, 
-                    file_name='ed_visits.csv', 
+ed_visits = load_data(data_file_path,
+                    file_name='ed_visits.csv',
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 ```
 
     Inferred project root: /Users/zellaking/Repos/patientflow
 
-
-
 ```python
 ed_visits.age_group.value_counts()
 ```
-
-
-
 
     age_group
     25-34     23515
@@ -95,12 +84,9 @@ ed_visits.age_group.value_counts()
     65-74     11228
     Name: count, dtype: int64
 
-
-
 Inspecting the data that has been loaded, we can see that it is similar in structure to the fake data that was generated on the fly in the previous notebooks. The dates have been pushed into the future, to minimise the likelihood of re-identifcation of patients.
 
 The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of `patientflow`.
-
 
 ```python
 #  load config file
@@ -113,7 +99,7 @@ print(f"Training set starts: {start_training_set}")
 start_validation_set = params["start_validation_set"]
 print(f"Validation set starts: {start_validation_set}")
 
-start_test_set = params["start_test_set"] 
+start_test_set = params["start_test_set"]
 print(f"Test set starts: {start_test_set}")
 
 end_test_set = params["end_test_set"]
@@ -126,16 +112,14 @@ print(f"Test set ends: {end_test_set}")
     Test set starts: 2031-10-01
     Test set ends: 2032-01-01
 
-
 ## Train one model for each prediction time
 
-First, we apply the temporal splits as shown in the previous notebook. 
-
+First, we apply the temporal splits as shown in the previous notebook.
 
 ```python
 
 
-from datetime import date   
+from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
@@ -145,8 +129,8 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="snapshot_date", # states which column contains the date to use when making the splits 
-    visit_col="visit_number", # states which column contains the visit number to use when making the splits 
+    col_name="snapshot_date", # states which column contains the date to use when making the splits
+    visit_col="visit_number", # states which column contains the visit number to use when making the splits
 
 )
 
@@ -154,9 +138,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
 
     Split sizes: [62071, 10415, 29134]
 
-
 Next we specify the times of day at which are predictions are to be made. Here I'm deriving these from the dataset. Note that there are many more snapshots in the later part of the day 12:00, 15:30 and 22:00
-
 
 ```python
 prediction_times = ed_visits.prediction_time.unique()
@@ -169,7 +151,7 @@ print(ed_visits.prediction_time.value_counts())
 
     Models will be trained for the following prediction times. Note that each prediction time is a tuple of (hour, minute):
     [(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
-    
+
     Number of observations for each prediction time:
     prediction_time
     (15, 30)    35310
@@ -179,14 +161,12 @@ print(ed_visits.prediction_time.value_counts())
     (6, 0)      11984
     Name: count, dtype: int64
 
-
 Define ordinal mappings where appropriate. These include:
 
-* `age_group` - Age on arrival at the ED, defined in groups
-* `latest_obs_manchester_triage_acuity` - Manchester Triage Score (where blue is the lowest acuity and red the highest)
-* `latest_obs_objective_pain_score` - ranging from nil to very severe 
-* `latest_obs_level_of_consciousness` the ACVPU measure of consciousness, where A (aware) and U (unconscious) at are the extremes. 
-
+- `age_group` - Age on arrival at the ED, defined in groups
+- `latest_obs_manchester_triage_acuity` - Manchester Triage Score (where blue is the lowest acuity and red the highest)
+- `latest_obs_objective_pain_score` - ranging from nil to very severe
+- `latest_obs_level_of_consciousness` the ACVPU measure of consciousness, where A (aware) and U (unconscious) at are the extremes.
 
 ```python
 ordinal_mappings = {
@@ -225,20 +205,18 @@ ordinal_mappings = {
 
 In the real data, there are some columns that will be used for predicting admission to specialty, if admitted. I exclude them here.
 
-
 ```python
 exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
 ```
 
-We loop through each prediction time, training a model. To start with, we will not balance the dataset. 
-
+We loop through each prediction time, training a model. To start with, we will not balance the dataset.
 
 ```python
 from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
 
 
-trained_models = {} 
+trained_models = {}
 
 # Loop through each prediction time
 for prediction_time in prediction_times:
@@ -254,10 +232,10 @@ for prediction_time in prediction_times:
         calibrate_probabilities=False,
         use_balanced_training=False,
     )
-    
+
     model_name = 'admissions'
     model_key = get_model_key(model_name, prediction_time)
-    
+
     trained_models[model_key] = model
 ```
 
@@ -267,50 +245,43 @@ for prediction_time in prediction_times:
     Training model for (12, 0)
     Training model for (9, 30)
 
-
 ## Inspecting the base model
 
-Below I show three different charts, all showing the calibration and discrimination of the models, in slightly different ways. 
+Below I show three different charts, all showing the calibration and discrimination of the models, in slightly different ways.
 
 ### Discrimination plots
 
 A discrimination plot shows the spread of predicted probabilities for positive and negative cases.
 
-* X-axis (Predicted Probability): Represents the model's predicted probabilities from 0 to 1.
-* Y-axis (Density): Shows the relative frequency of each probability value.
+- X-axis (Predicted Probability): Represents the model's predicted probabilities from 0 to 1.
+- Y-axis (Density): Shows the relative frequency of each probability value.
 
 The plot displays two histograms:
 
-* Blue line/area: Distribution of predicted probabilities for negative cases (patients who weren't admitted)
-* Orange line/area: Distribution of predicted probabilities for positive cases (patients who were admitted)
+- Blue line/area: Distribution of predicted probabilities for negative cases (patients who weren't admitted)
+- Orange line/area: Distribution of predicted probabilities for positive cases (patients who were admitted)
 
 Separation of these distributions indicates a well-performing model:
 
-* Negative cases (blue) should cluster toward lower probabilities (left side)
-* Positive cases (orange) should cluster toward higher probabilities (right side)
+- Negative cases (blue) should cluster toward lower probabilities (left side)
+- Positive cases (orange) should cluster toward higher probabilities (right side)
 
 The degree of overlap between distributions helps assess model discrimination. Less overlap suggests the model effectively distinguishes between positive and negative cases, while significant overlap indicates areas where the model struggles to differentiate between outcomes.
 
-From the plot below, we see that the model is discriminating poorly, with a high degree of overlap, and very few positive cases at the higher end. 
-
-
+From the plot below, we see that the model is discriminating poorly, with a high degree of overlap, and very few positive cases at the higher end.
 
 ```python
 # without balanced training
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
 plot_estimated_probabilities(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_19_0.png)
-    
-
 
 ### Calibration plots
 
@@ -322,18 +293,18 @@ A calibration plot shows how well a model's predicted probabilities match actual
 A perfectly calibrated model would align its points along the diagonal line, meaning a 70% predicted probability means the event happens 70% of the time.
 
 Uniform vs Quantile Strategies:
+
 - Uniform: Divides predictions into equal-width probability bins (e.g., 0.0-0.1, 0.1-0.2), so some bins may have few or many points.
 - Quantile: Ensures each bin has the same number of predictions, regardless of how wide or narrow each bin's probability range is.
 
 Below, using the uniform strategy, we see reasonable calibration at the lower end, but deteriorating towards the higher end.
-
 
 ```python
 # without balanced training
 from patientflow.viz.calibration import plot_calibration
 
 plot_calibration(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -341,11 +312,7 @@ plot_calibration(
 )
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png)
-    
-
 
 ### MADCAP Plots
 
@@ -354,10 +321,9 @@ A MADCAP Plot (Mean Adjusted Deaths Compared Against Predictions; developed by [
 The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
 The orange line represents the cumulative observed outcomes, calculated based on the actual labels in the dataset, averaged over the same sorted order of predicted probabilities.
 
-If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom right. 
+If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom right.
 
 Below, we see that some models under-predict the likelihood of admissions, as the blue line (predicted outcomes) falls below the orange line (actual outcomes). The models are assigning lower probabilities than they should, meaning that (later) we will under-predict the number of beds needed for these patients.
-
 
 ```python
 ## without balanced training
@@ -369,18 +335,13 @@ plot_madcap(
 )
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png)
-    
-
 
 ## Inspecting a balanced model
 
-These results are not bad, but it is common to attempt to handle unbalanced classes by under-sampling the majority class. 
+These results are not bad, but it is common to attempt to handle unbalanced classes by under-sampling the majority class.
 
-The `train_classifier()` function will balance the training set, if `use_balanced_training` is set to True, as shown below. 
-
+The `train_classifier()` function will balance the training set, if `use_balanced_training` is set to True, as shown below.
 
 ```python
 from patientflow.train.classifiers import train_classifier
@@ -404,10 +365,10 @@ for prediction_time in prediction_times:
         calibration_method="sigmoid",
         use_balanced_training=True,
     )
-    
+
     model_name = 'admissions'
     model_key = get_model_key(model_name, prediction_time)
-    
+
     trained_models[model_key] = model
 
 ```
@@ -418,9 +379,7 @@ for prediction_time in prediction_times:
     Training model for (12, 0)
     Training model for (9, 30)
 
-
-From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the whole test set, without undersampling the majority class, as shown in the calibation plot and MADCAP plots. 
-
+From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the whole test set, without undersampling the majority class, as shown in the calibation plot and MADCAP plots.
 
 ```python
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
@@ -428,12 +387,12 @@ from patientflow.viz.calibration import plot_calibration
 from patientflow.viz.madcap import plot_madcap
 
 plot_estimated_probabilities(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -447,28 +406,15 @@ plot_madcap(
 )
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_0.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_1.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_2.png)
-    
-
 
 ## Inspecting a balanced and calibrated model
 
-A solution is to use the validation set to re-calibrate the probabilities generated by the model, so that they generate predictions that align with the true proportion of positive classes. From the plots below, we can see that calibration has been improved, but the calibration process has led to a truncation of the range of the predicted probabilities. 
-
+A solution is to use the validation set to re-calibrate the probabilities generated by the model, so that they generate predictions that align with the true proportion of positive classes. From the plots below, we can see that calibration has been improved, but the calibration process has led to a truncation of the range of the predicted probabilities.
 
 ```python
 from patientflow.train.classifiers import train_classifier
@@ -495,19 +441,19 @@ for prediction_time in prediction_times:
         calibration_method="sigmoid",
         use_balanced_training=True,
     )
-    
+
     model_name = 'admissions'
     model_key = get_model_key(model_name, prediction_time)
-    
+
     trained_models[model_key] = model
 
 plot_estimated_probabilities(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 plot_calibration(
-    trained_models=trained_models,  
+    trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
     # strategy="quantile",  # optional
@@ -527,34 +473,19 @@ plot_madcap(
     Training model for (12, 0)
     Training model for (9, 30)
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png)
-    
-
 
 ## MADCAP plots by age
 
 It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.
 
-The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits; the y axis maximum is the total number of snapshots in the test set for the each prediction time and age group. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.  
+The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits; the y axis maximum is the total number of snapshots in the test set for the each prediction time and age group. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.
 
-Analysis like this can help us to understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment. 
-
-
+Analysis like this can help us to understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment.
 
 ```python
 from patientflow.viz.madcap import plot_madcap_by_group
@@ -568,123 +499,70 @@ plot_madcap_by_group(
 )
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_1.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_2.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_3.png)
-    
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_4.png)
-    
-
 
 ## Feature importances and Shap plots
 
-`patientflow` offers functions that generate Shap and feature importance plots for each prediction time. 
-
-
-
+`patientflow` offers functions that generate Shap and feature importance plots for each prediction time.
 
 ```python
 from patientflow.viz.features import plot_features
 
 plot_features(
     trained_models)
-    
+
 ```
 
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_33_0.png)
-    
-
-
 
 ```python
 from patientflow.viz.shap import plot_shap
 
 plot_shap(
-    trained_models, 
+    trained_models,
     test_visits,
     exclude_from_training_data)
-    
+
 
 ```
 
     Predicted classification (not admitted, admitted):  [1663  955]
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
-    
-
 
     Predicted classification (not admitted, admitted):  [2843 1306]
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
-    
-
 
     Predicted classification (not admitted, admitted):  [4858 2376]
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
-    
-
 
     Predicted classification (not admitted, admitted):  [5795 2728]
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
-    
-
 
     Predicted classification (not admitted, admitted):  [4301 2309]
 
-
-
-    
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
-    
-
 
 ## Summary
 
 Here I have shown how visualisations of model output within `patientflow` can help you
 
-* assess the discrimination and calibration of your models
-* identify areas of weakness in your models by comparing predictions across different patient groups
+- assess the discrimination and calibration of your models
+- identify areas of weakness in your models by comparing predictions across different patient groups
 
-I have also shown how using a balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data. 
+I have also shown how using a balanced training set, and re-calibrating using the validation set, can help to improve the discrimination of models where you start with imbalanced data. Imbalance is common in healthcare data.
 
-I have demonstrated convenient functions to plot feature importances and SHAP plots for the trained models. 
+I have demonstrated convenient functions to plot feature importances and SHAP plots for the trained models.
 
-This notebook concludes the set of notebooks covering patient snapshots. We have created estimated probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for whole cohorts of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots. 
+This notebook concludes the set of notebooks covering patient snapshots. We have created estimated probabilities for each patient, based on what is known about them at the time of the snapshot. However, bed managers really want predictions for whole cohorts of patients at a time. This is where `patientflow` comes into its own. In the next notebook, I show how to create group snapshots.
