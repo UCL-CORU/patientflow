@@ -11,6 +11,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Ensure full git history (unshallow if needed)
+        run: git fetch --unshallow || true
+      - name: List all tags
+        run: git tag --list
+      - name: Check if repo is shallow
+        run: git rev-parse --is-shallow-repository
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
