@@ -54,5 +54,5 @@
   "keywords": "patient, hospital, bed, demand, real-time, electronic health records",
   "license": "MIT",
   "title": "patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients",
-  "version": "v1.0.1"
+  "version": "v1.0.3"
 }
