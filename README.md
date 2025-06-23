@@ -8,6 +8,7 @@
 [![License][license-badge]](./LICENSE.md)
 [![PyPI version][pypi-version]][pypi-link]
 [![PyPI platforms][pypi-platforms]][pypi-link]
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15722296.svg)](https://doi.org/10.5281/zenodo.15722296)
 
 [![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0007--4110--7284-green.svg)](https://orcid.org/0009-0007-4110-7284)
@@ -50,6 +51,48 @@ For **incoming patients**, whose visits are not yet recorded in the EHR data (su
 In both cases the output is a probability distribution over the number of beds needed. It is possible to create output at different levels of aggregation (for example by sex, or by clinical area), which bed managers find more actionable than whole-hospital predictions. The package includes functions to visualise the predicted probability distributions, and to evaluate them.
 
 A series of notebooks demonstrates the use of the package. I show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset, and an anonymised patient dataset, based on real data from UCLH is available on [Zenodo](https://zenodo.org/records/14866057). Both the synthetic and the real dataset have been prepared in a snapshot structure.
+
+## Citation
+
+If you use this software in your research, please cite it as:
+
+**King, Zella. (2025). PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data (v1.0.3). Zenodo. https://doi.org/10.5281/zenodo.15722296**
+
+BibTeX:
+
+```bibtex
+@software{king_patientflow_2025,
+  title = {PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data},
+  author = {King, Zella},
+  year = {2025},
+  month = {6},
+  version = {v1.0.3},
+  doi = {10.5281/zenodo.15722296},
+  url = {https://doi.org/10.5281/zenodo.15722296},
+  publisher = {Zenodo}
+}
+```
+
+### Dataset
+
+The accompanying dataset is available at: [https://doi.org/10.5281/zenodo.15311282](https://doi.org/10.5281/zenodo.15311282)
+
+**King, Zella, University College London Hospitals NHS Foundation Trust, & Crowe, Sonya. (2025). Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository (Version 1.1.1). Zenodo. https://doi.org/10.5281/zenodo.15311282**
+
+BibTeX:
+
+```bibtex
+@dataset{king_patient_visits_2025,
+  title = {Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository},
+  author = {King, Zella and Crowe, Sonya},
+  year = {2025},
+  month = {4},
+  version = {1.1.1},
+  doi = {10.5281/zenodo.15311282},
+  url = {https://doi.org/10.5281/zenodo.15311282},
+  publisher = {Zenodo}
+}
+```
 
 ## Documentation
 
@@ -156,12 +199,12 @@ The documentation will be available at http://127.0.0.1:8000/ when using `mkdocs
 
 The notebooks in this repository demonstrate the use of some of the functions provided in `patientflow`. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options
 
-- step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on [Zenodo](https://zenodo.org/records/14866057) to real patient data
+- step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on [Zenodo](https://doi.org/10.5281/zenodo.15311282) to real patient data
 - step through the notebooks using synthetic data. You will need to copy the two csv files from `data-synthetic`into your `data-public` folder or change the source in the each notebook. If you use synthetic data, you will not see the same cell output.
 
 ## About the UCLH implementation
 
-This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH). As noted above, please request access to the UCLH dataset via Zenodo.
+This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH). As noted above, please request access to the UCLH dataset via [Zenodo](https://doi.org/10.5281/zenodo.15311282).
 
 There is also a Python script that illustrates the training of the models that predict emergency demand at UCLH and saves them in your local environment using following commands (by default this will run with the synthetic data in its current location; change the `data_folder_name` parameter if you have downloaded the Zenodo dataset in `data-public`)
 
