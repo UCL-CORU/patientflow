@@ -357,6 +357,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#citation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Citation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Citation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dataset
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#documentation" class="md-nav__link">
     <span class="md-ellipsis">
       Documentation
@@ -1155,6 +1179,30 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#citation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Citation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Citation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dataset
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#documentation" class="md-nav__link">
     <span class="md-ellipsis">
       Documentation
@@ -1393,7 +1441,8 @@
 <a href="https://ucl-coru.github.io/patientflow/"><img alt="Documentation" src="https://img.shields.io/badge/docs-ucl--coru.github.io-blue" /></a>
 <a href="LICENSE/"><img alt="License" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
 <a href="https://pypi.org/project/patientflow/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/patientflow" /></a>
-<a href="https://pypi.org/project/patientflow/"><img alt="PyPI platforms" src="https://img.shields.io/pypi/pyversions/patientflow" /></a></p>
+<a href="https://pypi.org/project/patientflow/"><img alt="PyPI platforms" src="https://img.shields.io/pypi/pyversions/patientflow" /></a>
+<a href="https://doi.org/10.5281/zenodo.15722296"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.15722296.svg" /></a></p>
 <p><a href="https://orcid.org/0000-0001-7389-1527"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg" /></a>
 <a href="https://orcid.org/0009-0007-4110-7284"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0009--0007--4110--7284-green.svg" /></a>
 <a href="https://orcid.org/0000-0001-9928-1516"><img alt="ORCID" src="https://img.shields.io/badge/ORCID-0000--0001--9928--1516-green.svg" /></a>
@@ -1416,6 +1465,36 @@
 <p>For <strong>incoming patients</strong>, whose visits are not yet recorded in the EHR data (such as future arrivals to the ED) the aggregation functions make predictions based on past patterns of arrivals.</p>
 <p>In both cases the output is a probability distribution over the number of beds needed. It is possible to create output at different levels of aggregation (for example by sex, or by clinical area), which bed managers find more actionable than whole-hospital predictions. The package includes functions to visualise the predicted probability distributions, and to evaluate them.</p>
 <p>A series of notebooks demonstrates the use of the package. I show how to prepare your data and train models based on a snapshot approach. The repository includes a synthetic dataset, and an anonymised patient dataset, based on real data from UCLH is available on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Both the synthetic and the real dataset have been prepared in a snapshot structure.</p>
+<h2 id="citation">Citation</h2>
+<p>If you use this software in your research, please cite it as:</p>
+<p><strong>King, Zella. (2025). PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data (v1.0.3). Zenodo. https://doi.org/10.5281/zenodo.15722296</strong></p>
+<p>BibTeX:</p>
+<pre><code class="language-bibtex">@software{king_patientflow_2025,
+  title = {PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data},
+  author = {King, Zella},
+  year = {2025},
+  month = {6},
+  version = {v1.0.3},
+  doi = {10.5281/zenodo.15722296},
+  url = {https://doi.org/10.5281/zenodo.15722296},
+  publisher = {Zenodo}
+}
+</code></pre>
+<h3 id="dataset">Dataset</h3>
+<p>The accompanying dataset is available at: <a href="https://doi.org/10.5281/zenodo.15311282">https://doi.org/10.5281/zenodo.15311282</a></p>
+<p><strong>King, Zella, University College London Hospitals NHS Foundation Trust, &amp; Crowe, Sonya. (2025). Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository (Version 1.1.1). Zenodo. https://doi.org/10.5281/zenodo.15311282</strong></p>
+<p>BibTeX:</p>
+<pre><code class="language-bibtex">@dataset{king_patient_visits_2025,
+  title = {Patient visits to the Emergency Department of an Acute Hospital; dataset to accompany the patientflow repository},
+  author = {King, Zella and Crowe, Sonya},
+  year = {2025},
+  month = {4},
+  version = {1.1.1},
+  doi = {10.5281/zenodo.15311282},
+  url = {https://doi.org/10.5281/zenodo.15311282},
+  publisher = {Zenodo}
+}
+</code></pre>
 <h2 id="documentation">Documentation</h2>
 <p>Documentation is available at <a href="https://ucl-coru.github.io/patientflow/">ucl-coru.github.io/patientflow</a>. The full API reference is <a href="https://ucl-coru.github.io/patientflow/api/">here</a>.</p>
 <h2 id="what-patientflow-is-for">What <code>patientflow</code> is for:</h2>
@@ -1496,11 +1575,11 @@ mkdocs build
 <h2 id="using-the-notebooks-in-this-repository">Using the notebooks in this repository</h2>
 <p>The notebooks in this repository demonstrate the use of some of the functions provided in <code>patientflow</code>. The cell output shows the results of running the notebooks. If you want to run them yourself, you have two options</p>
 <ul>
-<li>step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on <a href="https://zenodo.org/records/14866057">Zenodo</a> to real patient data</li>
+<li>step through the notebooks using the real patient datasets that were used to prepare them. For this you need to request access on <a href="https://doi.org/10.5281/zenodo.15311282">Zenodo</a> to real patient data</li>
 <li>step through the notebooks using synthetic data. You will need to copy the two csv files from <code>data-synthetic</code>into your <code>data-public</code> folder or change the source in the each notebook. If you use synthetic data, you will not see the same cell output.</li>
 </ul>
 <h2 id="about-the-uclh-implementation">About the UCLH implementation</h2>
-<p>This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH). As noted above, please request access to the UCLH dataset via Zenodo.</p>
+<p>This repository includes a set of notebooks (prefixed with 4) that show a fully worked example of the implementation of the patientflow package at University College London Hospitals (UCLH). As noted above, please request access to the UCLH dataset via <a href="https://doi.org/10.5281/zenodo.15311282">Zenodo</a>.</p>
 <p>There is also a Python script that illustrates the training of the models that predict emergency demand at UCLH and saves them in your local environment using following commands (by default this will run with the synthetic data in its current location; change the <code>data_folder_name</code> parameter if you have downloaded the Zenodo dataset in <code>data-public</code>)</p>
 <pre><code class="language-sh">cd src
 python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
