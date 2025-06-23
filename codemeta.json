@@ -48,11 +48,11 @@
   "identifier": "10.5281/zenodo.14039423",
   "codeRepository": "https://github.com/UCL-CORU/patientflow",
   "datePublished": "2025-06-02",
-  "dateModified": "2025-06-02",
+  "dateModified": "2025-06-23",
   "dateCreated": "2025-06-02",
   "description": "A Python package for real-time prediction of hospital bed demand from current and incoming patients",
   "keywords": "patient, hospital, bed, demand, real-time, electronic health records",
   "license": "MIT",
   "title": "patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients",
-  "version": "v0.4.3"
+  "version": "v1.0.1"
 }
