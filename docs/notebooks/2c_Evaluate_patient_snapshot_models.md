@@ -523,6 +523,12 @@ plot_features(
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_33_0.png)
 
+The shap package is not loaded by default, due to dependency conflicts. You will need to pip install it here to generate the shap plots.
+
+```python
+!pip install shap
+```
+
 ```python
 from patientflow.viz.shap import plot_shap
 
@@ -536,23 +542,23 @@ plot_shap(
 
     Predicted classification (not admitted, admitted):  [1663  955]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_1.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_1.png)
 
     Predicted classification (not admitted, admitted):  [2843 1306]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_3.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_3.png)
 
     Predicted classification (not admitted, admitted):  [4858 2376]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_5.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_5.png)
 
     Predicted classification (not admitted, admitted):  [5795 2728]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_7.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_7.png)
 
     Predicted classification (not admitted, admitted):  [4301 2309]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_34_9.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_9.png)
 
 ## Summary
 
