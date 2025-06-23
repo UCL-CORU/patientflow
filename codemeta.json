@@ -1,0 +1,58 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "0000-0001-7389-1527",
+      "@type": "Person",
+      "email": "zella.king@ucl.ac.uk",
+      "name": "Zella King",
+      "affiliation": "UCL"
+    },
+    {
+      "@id": "0009-0007-4110-7284",
+      "@type": "Person",
+      "email": "jonathan.gillham@nhs.net",
+      "name": "Jon Gillham",
+      "affiliation": "UCLH"
+    },
+    {
+      "@id": "0000-0001-9928-1516",
+      "@type": "Person",
+      "email": "m.utley@ucl.ac.uk",
+      "name": "Martin Utley",
+      "affiliation": "UCL"
+    },
+    {
+      "@id": "",
+      "@type": "Person",
+      "email": "sara.lundell@vgregion.se",
+      "name": "Sara Lundell",
+      "affiliation": "Sahlgrenska University Hospital"
+    },
+    {
+      "@id": "0000-0001-9104-7960",
+      "@type": "Person",
+      "email": "m.graham@ucl.ac.uk",
+      "name": "Matt Graham",
+      "affiliation": "UCL"
+    },
+    {
+      "@id": "0000-0003-1882-5476",
+      "@type": "Person",
+      "email": "sonya.crowe@ucl.ac.uk",
+      "name": "Sonya Crowe",
+      "affiliation": "UCL"
+    }
+  ],
+  "identifier": "10.5281/zenodo.14039423",
+  "codeRepository": "https://github.com/UCL-CORU/patientflow",
+  "datePublished": "2025-06-02",
+  "dateModified": "2025-06-02",
+  "dateCreated": "2025-06-02",
+  "description": "A Python package for real-time prediction of hospital bed demand from current and incoming patients",
+  "keywords": "patient, hospital, bed, demand, real-time, electronic health records",
+  "license": "MIT",
+  "title": "patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients",
+  "version": "v0.4.3"
+}

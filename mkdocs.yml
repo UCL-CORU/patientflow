@@ -50,7 +50,7 @@ plugins:
           inventories:
             - "https://docs.python.org/3/objects.inv"
           options:
-            docstring_style: google
+            docstring_style: numpy
             show_submodules: true
           paths: [src]
   - include-markdown:

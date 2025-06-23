@@ -34,6 +34,22 @@ from patientflow.errors import MissingKeysError
 
 
 def convert_set_to_dummies(df, column, prefix):
+    """Convert a column containing sets into dummy variables.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame containing the set column
+    column : str
+        Name of the column containing sets to convert
+    prefix : str
+        Prefix to use for the dummy variable column names
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing dummy variables for each unique item in the sets
+    """
     # Explode the set into rows
     exploded_df = df[column].explode().dropna().to_frame()
 
@@ -50,6 +66,24 @@ def convert_set_to_dummies(df, column, prefix):
 
 
 def convert_dict_to_values(df, column, prefix):
+    """Convert a column containing dictionaries into separate columns.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame containing the dictionary column
+    column : str
+        Name of the column containing dictionaries to convert
+    prefix : str
+        Prefix to use for the new column names
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing separate columns for each dictionary key,
+        with values extracted from 'value_as_real' or 'value_as_text' if present
+    """
+
     def extract_relevant_value(d):
         if isinstance(d, dict):
             if "value_as_real" in d or "value_as_text" in d:
@@ -77,6 +111,18 @@ def convert_dict_to_values(df, column, prefix):
 
 
 def apply_set(row: pd.Series) -> str:
+    """Randomly assign a set label based on weighted probabilities.
+
+    Parameters
+    ----------
+    row : pandas.Series
+        Series containing 'training_set', 'validation_set', and 'test_set' weights
+
+    Returns
+    -------
+    str
+        One of 'train', 'valid', or 'test' based on weighted random choice
+    """
     return random.choices(
         ["train", "valid", "test"],
         weights=[row.training_set, row.validation_set, row.test_set],
@@ -92,27 +138,45 @@ def assign_patient_ids(
     date_col: str = "arrival_datetime",
     patient_id: str = "mrn",
     visit_col: str = "encounter",
+    seed: int = 42,
 ) -> pd.DataFrame:
     """Probabilistically assign patient IDs to train/validation/test sets.
 
-    Args:
-        df: DataFrame with patient_id, encounter, and temporal columns
-        start_training_set: Start date for training period
-        start_validation_set: Start date for validation period
-        start_test_set: Start date for test period
-        end_test_set: End date for test period
-        date_col: Column name for temporal splitting
-        patient_id: Column name for patient identifier (default: 'mrn')
-        visit_col: Column name for visit identifier (default: 'encounter')
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame with patient_id, encounter, and temporal columns
+    start_training_set : datetime.date
+        Start date for training period
+    start_validation_set : datetime.date
+        Start date for validation period
+    start_test_set : datetime.date
+        Start date for test period
+    end_test_set : datetime.date
+        End date for test period
+    date_col : str, optional
+        Column name for temporal splitting, by default "arrival_datetime"
+    patient_id : str, optional
+        Column name for patient identifier, by default "mrn"
+    visit_col : str, optional
+        Column name for visit identifier, by default "encounter"
+    seed : int, optional
+        Random seed for reproducible results, by default 42
 
-    Returns:
+    Returns
+    -------
+    pandas.DataFrame
         DataFrame with patient ID assignments based on weighted random sampling
 
-    Notes:
-        - Counts encounters in each time period per patient ID
-        - Randomly assigns each patient ID to one set, weighted by their temporal distribution
-        - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
+    Notes
+    -----
+    - Counts encounters in each time period per patient ID
+    - Randomly assigns each patient ID to one set, weighted by their temporal distribution
+    - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
     """
+    # Set random seed for reproducibility
+    random.seed(seed)
+
     patients: pd.DataFrame = (
         df.groupby([patient_id, visit_col])[date_col].max().reset_index()
     )
@@ -189,28 +253,55 @@ def create_temporal_splits(
     col_name: str = "arrival_datetime",
     patient_id: str = "mrn",
     visit_col: str = "encounter",
+    seed: int = 42,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split dataset into temporal train/validation/test sets.
 
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+    start_train : datetime.date
+        Training start (inclusive)
+    start_valid : datetime.date
+        Validation start (inclusive)
+    start_test : datetime.date
+        Test start (inclusive)
+    end_test : datetime.date
+        Test end (exclusive)
+    col_name : str, optional
+        Primary datetime column for splitting, by default "arrival_datetime"
+    patient_id : str, optional
+        Column name for patient identifier, by default "mrn"
+    visit_col : str, optional
+        Column name for visit identifier, by default "encounter"
+    seed : int, optional
+        Random seed for reproducible results, by default 42
+
+    Returns
+    -------
+    Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
+        Tuple containing (train_df, valid_df, test_df) split dataframes
+
+    Notes
+    -----
     Creates temporal data splits using primary datetime column and optional snapshot dates.
     Handles patient ID grouping if present to prevent data leakage.
-
-    Args:
-        df: Input dataframe
-        start_train: Training start (inclusive)
-        start_valid: Validation start (inclusive)
-        start_test: Test start (inclusive)
-        end_test: Test end (exclusive)
-        col_name: Primary datetime column for splitting
-        patient_id: Column name for patient identifier (default: 'mrn')
-        visit_col: Column name for visit identifier (default: 'encounter')
-
-    Returns:
-        tuple: (train_df, valid_df, test_df) Split dataframes
     """
 
     def get_date_value(series: pd.Series) -> pd.Series:
-        """Convert timestamp or date column to date, handling both types"""
+        """Convert timestamp or date column to date, handling both types.
+
+        Parameters
+        ----------
+        series : pandas.Series
+            Series containing datetime or date values
+
+        Returns
+        -------
+        pandas.Series
+            Series with date values
+        """
         try:
             return pd.to_datetime(series).dt.date
         except (AttributeError, TypeError):
@@ -226,6 +317,7 @@ def create_temporal_splits(
             col_name,
             patient_id,
             visit_col,
+            seed=seed,
         )
         patient_sets: Dict[str, Set] = {
             k: set(set_assignment[set_assignment.training_validation_test == v].index)
@@ -257,29 +349,44 @@ def create_temporal_splits(
 
 
 class SpecialCategoryParams:
-    """
-    A picklable implementation of special category parameters for patient classification.
+    """A picklable implementation of special category parameters for patient classification.
 
     This class identifies pediatric patients based on available age-related columns
-    in the dataset and provides functions to categorize patients accordingly.
+    in the dataset and provides functions to categorise patients accordingly.
     It's designed to be serializable with pickle by implementing the __reduce__ method.
 
-    Attributes:
-        columns (list): List of column names from the dataset
-        method_type (str): The method used for age detection ('age_on_arrival' or 'age_group')
-        special_category_dict (dict): Default category values mapping
+    Parameters
+    ----------
+    columns : list or pandas.Index
+        Column names from the dataset used to determine the appropriate age identification method
+
+    Attributes
+    ----------
+    columns : list
+        List of column names from the dataset
+    method_type : str
+        The method used for age detection ('age_on_arrival' or 'age_group')
+    special_category_dict : dict
+        Default category values mapping
+
+    Raises
+    ------
+    ValueError
+        If neither 'age_on_arrival' nor 'age_group' columns are found
     """
 
     def __init__(self, columns):
-        """
-        Initialize the SpecialCategoryParams object.
+        """Initialize the SpecialCategoryParams object.
 
-        Parameters:
-            columns (list or pandas.Index): Column names from the dataset
-                used to determine the appropriate age identification method
+        Parameters
+        ----------
+        columns : list or pandas.Index
+            Column names from the dataset used to determine the appropriate age identification method
 
-        Raises:
-            ValueError: If neither 'age_on_arrival' nor 'age_group' columns are found
+        Raises
+        ------
+        ValueError
+            If neither 'age_on_arrival' nor 'age_group' columns are found
         """
         self.columns = columns
         self.special_category_dict = {
@@ -297,16 +404,18 @@ class SpecialCategoryParams:
             raise ValueError("Unknown data format: could not find expected age columns")
 
     def special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """
-        Identify if a patient is pediatric based on age data.
+        """Identify if a patient is pediatric based on age data.
 
-        Parameters:
-            row (Union[dict, pd.Series]): A row of patient data containing either
-                'age_on_arrival' or 'age_group'
+        Parameters
+        ----------
+        row : Union[dict, pd.Series]
+            A row of patient data containing either 'age_on_arrival' or 'age_group'
 
-        Returns:
-            bool: True if the patient is pediatric (age < 18 or age_group is '0-17'),
-                 False otherwise
+        Returns
+        -------
+        bool
+            True if the patient is pediatric (age < 18 or age_group is '0-17'),
+            False otherwise
         """
         if self.method_type == "age_on_arrival":
             return row["age_on_arrival"] < 18
@@ -314,28 +423,32 @@ class SpecialCategoryParams:
             return row["age_group"] == "0-17"
 
     def opposite_special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """
-        Identify if a patient is NOT pediatric.
+        """Identify if a patient is NOT pediatric.
 
-        Parameters:
-            row (Union[dict, pd.Series]): A row of patient data
+        Parameters
+        ----------
+        row : Union[dict, pd.Series]
+            A row of patient data
 
-        Returns:
-            bool: True if the patient is NOT pediatric, False if they are pediatric
+        Returns
+        -------
+        bool
+            True if the patient is NOT pediatric, False if they are pediatric
         """
         return not self.special_category_func(row)
 
     def get_params_dict(
         self,
     ) -> Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]:
-        """
-        Get the special parameter dictionary in the format expected by the application.
+        """Get the special parameter dictionary in the format expected by the SequencePredictor.
 
-        Returns:
-            Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]: A dictionary containing:
-                - 'special_category_func': Function to identify pediatric patients
-                - 'special_category_dict': Default category values (float)
-                - 'special_func_map': Mapping of category names to detection functions
+        Returns
+        -------
+        Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]
+            A dictionary containing:
+            - 'special_category_func': Function to identify pediatric patients
+            - 'special_category_dict': Default category values (float)
+            - 'special_func_map': Mapping of category names to detection functions
         """
         return {
             "special_category_func": self.special_category_func,
@@ -347,30 +460,33 @@ class SpecialCategoryParams:
         }
 
     def __reduce__(self) -> Tuple[Type["SpecialCategoryParams"], Tuple[list]]:
-        """
-        Support for pickle serialization.
+        """Support for pickle serialization.
 
-        Returns:
-            Tuple[Type['SpecialCategoryParams'], Tuple[list]]: A tuple containing:
-                - The class itself (to be called as a function)
-                - A tuple of arguments to pass to the class constructor
+        Returns
+        -------
+        Tuple[Type['SpecialCategoryParams'], Tuple[list]]
+            A tuple containing:
+            - The class itself (to be called as a function)
+            - A tuple of arguments to pass to the class constructor
         """
         return (self.__class__, (self.columns,))
 
 
 def create_special_category_objects(columns):
-    """
-    Creates a configuration for categorizing patients with special handling for pediatric cases.
+    """Create a configuration for categorising patients with special handling for pediatric cases.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     columns : list or pandas.Index
         The column names available in the dataset. Used to determine which age format is present.
 
-    Returns:
-    --------
+    Returns
+    -------
     dict
-        A dictionary containing special category configuration.
+        A dictionary containing special category configuration with:
+        - 'special_category_func': Function to identify pediatric patients
+        - 'special_category_dict': Default category values
+        - 'special_func_map': Mapping of category names to detection functions
     """
     # Create the class instance and return its parameter dictionary
     params_obj = SpecialCategoryParams(columns)
@@ -378,6 +494,18 @@ def create_special_category_objects(columns):
 
 
 def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
+    """Validate that a special category parameters dictionary contains all required keys.
+
+    Parameters
+    ----------
+    special_params : Dict[str, Any]
+        Dictionary of special category parameters to validate
+
+    Raises
+    ------
+    MissingKeysError
+        If any required keys are missing from the dictionary
+    """
     required_keys = [
         "special_category_func",
         "special_category_dict",
@@ -390,29 +518,24 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
 
 
 def create_yta_filters(df):
-    """
-    Create specialty filters for categorizing patients by specialty and age group.
+    """Create specialty filters for categorizing patients by specialty and age group.
 
-    This function generates a dictionary of filters based on specialty categories,
-    with special handling for pediatric patients. It uses the SpecialCategoryParams
-    class to determine which specialties correspond to pediatric care.
-
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
         DataFrame containing patient data with columns that include either
         'age_on_arrival' or 'age_group' for pediatric classification
 
-    Returns:
-    --------
+    Returns
+    -------
     dict
         A dictionary mapping specialty names to filter configurations.
         Each configuration contains:
         - For pediatric specialty: {"is_child": True}
         - For other specialties: {"specialty": specialty_name, "is_child": False}
 
-    Examples:
-    ---------
+    Examples
+    --------
     >>> df = pd.DataFrame({'patient_id': [1, 2], 'age_on_arrival': [10, 40]})
     >>> filters = create_yta_filters(df)
     >>> print(filters['paediatric'])
@@ -441,6 +564,22 @@ def create_yta_filters(df):
 
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
+    """Select one random snapshot per visit from a DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame containing visit snapshots
+    visit_col : str
+        Name of the column containing visit identifiers
+    seed : int, optional
+        Random seed for reproducibility, by default 42
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing one randomly selected snapshot per visit
+    """
     # Generate random numbers if not present
     if "random_number" not in df.columns:
         if seed is not None:
@@ -460,30 +599,34 @@ def prepare_patient_snapshots(
     visit_col=None,
     label_col="is_admitted",
 ) -> Tuple[pd.DataFrame, pd.Series]:
-    """
-    Get snapshots of data at a specific prediction time with configurable visit and label columns.
+    """Prepare patient snapshots for model training or prediction.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     df : pandas.DataFrame
-        Input DataFrame containing the data
+        Input DataFrame containing patient visit data
     prediction_time : str or datetime
         The specific prediction time to filter for
-    exclude_columns : list
-        List of columns to exclude from the final DataFrame
-    single_snapshot_per_visit : bool, default=True
-        Whether to select only one snapshot per visit. If True, visit_col must be provided.
+    exclude_columns : list, optional
+        List of columns to exclude from the final DataFrame, by default []
+    single_snapshot_per_visit : bool, optional
+        Whether to select only one snapshot per visit, by default True
     visit_col : str, optional
-        Name of the column containing visit identifiers. Required if single_snapshot_per_visit is True.
-    label_col : str, default="is_admitted"
-        Name of the column containing the target labels
+        Name of the column containing visit identifiers, required if single_snapshot_per_visit is True
+    label_col : str, optional
+        Name of the column containing the target labels, by default "is_admitted"
 
-    Returns:
-    --------
+    Returns
+    -------
     Tuple[pandas.DataFrame, pandas.Series]
         A tuple containing:
         - DataFrame: Processed DataFrame with features
         - Series: Corresponding labels
+
+    Raises
+    ------
+    ValueError
+        If single_snapshot_per_visit is True but visit_col is not provided
     """
     if single_snapshot_per_visit and visit_col is None:
         raise ValueError(
@@ -511,18 +654,29 @@ def prepare_patient_snapshots(
 
 
 def prepare_group_snapshot_dict(df, start_dt=None, end_dt=None):
-    """
-    Prepares a dictionary mapping snapshot dates to their corresponding snapshot indices.
+    """Prepare a dictionary mapping snapshot dates to their corresponding snapshot indices.
 
-    Args:
-    df (pd.DataFrame): DataFrame containing at least a 'snapshot_date' column which represents the dates.
-    start_dt (datetime.date): Start date (optional)
-    end_dt (datetime.date): End date (optional)
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing at least a 'snapshot_date' column
+    start_dt : datetime.date, optional
+        Start date for filtering snapshots, by default None
+    end_dt : datetime.date, optional
+        End date for filtering snapshots, by default None
 
-    Returns:
-    dict: A dictionary where keys are dates and values are arrays of indices corresponding to each date's snapshots.
-    A array can be empty if there are no snapshots associated with a date
+    Returns
+    -------
+    dict
+        A dictionary where:
+        - Keys are dates
+        - Values are arrays of indices corresponding to each date's snapshots
+        - Empty arrays for dates with no snapshots (if start_dt and end_dt are provided)
 
+    Raises
+    ------
+    ValueError
+        If 'snapshot_date' column is not present in the DataFrame
     """
     # Ensure 'snapshot_date' is in the DataFrame
     if "snapshot_date" not in df.columns:
@@ -553,8 +707,19 @@ def prepare_group_snapshot_dict(df, start_dt=None, end_dt=None):
     return snapshots_dict
 
 
-# Function to generate description based on column name
 def generate_description(col_name):
+    """Generate a description for a column based on its name and manual descriptions.
+
+    Parameters
+    ----------
+    col_name : str
+        Name of the column to generate a description for
+
+    Returns
+    -------
+    str
+        A descriptive string explaining the column's purpose and content
+    """
     manual_descriptions = get_manual_descriptions()
 
     # Check if manual description is provided
@@ -582,6 +747,25 @@ def generate_description(col_name):
 
 
 def additional_details(column, col_name):
+    """Generate additional statistical details about a column's contents.
+
+    Parameters
+    ----------
+    column : pandas.Series
+        The column to analyze
+    col_name : str
+        Name of the column (used for context)
+
+    Returns
+    -------
+    str
+        A string containing statistical details about the column's contents, including:
+        - For dates: Date range
+        - For categorical data: Frequency of values
+        - For numeric data: Range, mean, standard deviation, and NA count
+        - For datetime: Date range with time
+    """
+
     def is_date(string):
         try:
             # Try to parse the string using the strptime method
@@ -639,6 +823,20 @@ def additional_details(column, col_name):
 
 
 def find_group_for_colname(column, dict_col_groups):
+    """Find the group name that a column belongs to in the column groups dictionary.
+
+    Parameters
+    ----------
+    column : str
+        Name of the column to find the group for
+    dict_col_groups : dict
+        Dictionary mapping group names to lists of column names
+
+    Returns
+    -------
+    str or None
+        The name of the group the column belongs to, or None if not found
+    """
     for key, values_list in dict_col_groups.items():
         if column in values_list:
             return key
@@ -678,6 +876,30 @@ def get_manual_descriptions():
 
 
 def write_data_dict(df, dict_name, dict_path):
+    """Write a data dictionary for a DataFrame to both Markdown and CSV formats.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame to create a data dictionary for
+    dict_name : str
+        Base name for the output files (without extension)
+    dict_path : str or pathlib.Path
+        Directory path where the data dictionary files will be written
+
+    Returns
+    -------
+    pandas.DataFrame
+        The created data dictionary as a DataFrame
+
+    Notes
+    -----
+    Creates two files:
+    - {dict_name}.md: Markdown format data dictionary
+    - {dict_name}.csv: CSV format data dictionary
+
+    For visit data, includes separate statistics for admitted and non-admitted patients.
+    """
     cols_to_exclude = ["snapshot_id", "visit_number"]
 
     df = df.copy(deep=True)

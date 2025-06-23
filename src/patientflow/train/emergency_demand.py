@@ -1,8 +1,33 @@
+"""
+Emergency demand prediction training module.
+
+This module provides functionality that is specific to the implementation of the
+patientflow package at University College London Hospital (ULCH). It trains models
+to predict emergency bed demand.
+
+The module trains three model types:
+1. Admission prediction models (multiple classifiers, one for each prediction time)
+2. Specialty prediction models (sequence-based)
+3. Yet-to-arrive prediction models (aspirational)
+
+Functions
+---------
+test_real_time_predictions : Test real-time prediction functionality
+    Selects random test cases and validates that the trained models can
+    generate predictions as if it where making a real-time prediction.
+
+train_all_models : Complete training pipeline
+    Trains all three model types (admissions, specialty, yet-to-arrive)
+    with proper validation and optional model saving.
+
+main : Entry point for training pipeline
+    Loads configuration, data, and runs the complete training process.
+"""
+
 from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
-from datetime import date
+from datetime import timedelta
 import sys
 
 from patientflow.prepare import (
@@ -17,97 +42,28 @@ from patientflow.load import (
 )
 
 from patientflow.train.utils import save_model
-from patientflow.predictors.sequence_predictor import SequencePredictor
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from patientflow.predictors.sequence_to_outcome_predictor import (
+    SequenceToOutcomePredictor,
+)
+from patientflow.predictors.incoming_admission_predictors import (
+    ParametricIncomingAdmissionPredictor,
+)
 from patientflow.predict.emergency_demand import create_predictions
 
 from patientflow.train.classifiers import train_multiple_classifiers
 from patientflow.train.sequence_predictor import train_sequence_predictor
-from patientflow.train.weighted_poisson_predictor import (
-    train_weighted_poisson_predictor,
+from patientflow.train.incoming_admission_predictor import (
+    train_parametric_admission_predictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
-
-
-def split_and_check_sets(
-    df: DataFrame,
-    start_training_set: date,
-    start_validation_set: date,
-    start_test_set: date,
-    end_test_set: date,
-    date_column: str = "snapshot_date",
-    print_dates: bool = True,
-) -> None:
-    _df = df.copy()
-    _df[date_column] = pd.to_datetime(_df[date_column]).dt.date
-
-    if print_dates:
-        for value in _df.training_validation_test.unique():
-            subset = _df[_df.training_validation_test == value]
-            counts = subset.training_validation_test.value_counts().values[0]
-            min_date = subset[date_column].min()
-            max_date = subset[date_column].max()
-            print(
-                f"Set: {value}\nNumber of rows: {counts}\nMin Date: {min_date}\nMax Date: {max_date}\n"
-            )
-
-    train_df = _df[_df.training_validation_test == "train"].drop(
-        columns="training_validation_test"
-    )
-    valid_df = _df[_df.training_validation_test == "valid"].drop(
-        columns="training_validation_test"
-    )
-    test_df = _df[_df.training_validation_test == "test"].drop(
-        columns="training_validation_test"
-    )
-
-    try:
-        assert train_df[date_column].min() == start_training_set
-    except AssertionError:
-        print(
-            f"Assertion failed: train_df min date {train_df[date_column].min()} != {start_training_set}"
-        )
-
-    try:
-        assert train_df[date_column].max() < start_validation_set
-    except AssertionError:
-        print(
-            f"Assertion failed: train_df max date {train_df[date_column].max()} >= {start_validation_set}"
-        )
-
-    try:
-        assert valid_df[date_column].min() == start_validation_set
-    except AssertionError:
-        print(
-            f"Assertion failed: valid_df min date {valid_df[date_column].min()} != {start_validation_set}"
-        )
-
-    try:
-        assert valid_df[date_column].max() < start_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: valid_df max date {valid_df[date_column].max()} >= {start_test_set}"
-        )
-
-    try:
-        assert test_df[date_column].min() == start_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: test_df min date {test_df[date_column].min()} != {start_test_set}"
-        )
-
-    try:
-        assert test_df[date_column].max() <= end_test_set
-    except AssertionError:
-        print(
-            f"Assertion failed: test_df max date {test_df[date_column].max()} > {end_test_set}"
-        )
 
 
 def test_real_time_predictions(
     visits,
     models: Tuple[
-        Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor
+        Dict[str, TrainedClassifier],
+        SequenceToOutcomePredictor,
+        ParametricIncomingAdmissionPredictor,
     ],
     prediction_window,
     specialties,
@@ -124,11 +80,11 @@ def test_real_time_predictions(
     visits : pd.DataFrame
         DataFrame containing visit data with columns including 'prediction_time',
         'snapshot_date', and other required features for predictions.
-    models : Tuple[Dict[str, TrainedClassifier], SequencePredictor, WeightedPoissonPredictor]
+    models : Tuple[Dict[str, TrainedClassifier], SequenceToOutcomePredictor, ParametricIncomingAdmissionPredictor]
         Tuple containing:
         - trained_classifiers: TrainedClassifier containing admission predictions
-        - spec_model: SequencePredictor for specialty predictions
-        - yet_to_arrive_model: WeightedPoissonPredictor for yet-to-arrive predictions
+        - spec_model: SequenceToOutcomePredictor for specialty predictions
+        - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_window : int
         Size of the prediction window in minutes for which to generate forecasts.
     specialties : list[str]
@@ -193,7 +149,7 @@ def test_real_time_predictions(
             prediction_time=prediction_time,
             prediction_snapshots=prediction_snapshots,
             specialties=specialties,
-            prediction_window_hrs=prediction_window / 60,
+            prediction_window=prediction_window,
             cdf_cut_points=cdf_cut_points,
             x1=x1,
             y1=y1,
@@ -216,8 +172,8 @@ def train_all_models(
     end_test_set,
     yta,
     prediction_times,
-    prediction_window,
-    yta_time_interval,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta,
     epsilon,
     grid_params,
     exclude_columns,
@@ -286,7 +242,7 @@ def train_all_models(
     The function generates model names internally:
     - "admissions": "admissions"
     - "specialty": "ed_specialty"
-    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours"
+    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours"
     """
     # Validate parameters
     if save_models and model_file_path is None:
@@ -309,7 +265,7 @@ def train_all_models(
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
-        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window/60)}_hours",
+        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours",
     }
 
     if "arrival_datetime" in visits.columns:
@@ -337,7 +293,7 @@ def train_all_models(
 
     # Use predicted_times from visits if not explicitly provided
     if prediction_times is None:
-        prediction_times = visits.prediction_time.unique()
+        prediction_times = list(visits.prediction_time.unique())
 
     # Train admission models
     admission_models = train_multiple_classifiers(
@@ -376,7 +332,7 @@ def train_all_models(
 
     num_days = (start_validation_set - start_training_set).days
 
-    yta_model = train_weighted_poisson_predictor(
+    yta_model = train_parametric_admission_predictor(
         train_visits=train_visits,
         train_yta=train_yta,
         prediction_window=prediction_window,
@@ -393,6 +349,9 @@ def train_all_models(
 
     # Test real-time predictions if requested
     if test_realtime:
+        visits["elapsed_los"] = visits["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
         test_real_time_predictions(
             visits=visits,
             models=(admission_models, specialty_model, yta_model),
@@ -410,8 +369,35 @@ def main(data_folder_name=None):
     """
     Main entry point for training patient flow models.
 
-    Args:
-        data_folder_name (str, optional): Name of data folder
+    This function orchestrates the complete training pipeline for emergency demand
+    prediction models. It loads configuration, data, and trains all three model
+    types: admission prediction models, specialty prediction models, and
+    yet-to-arrive prediction models.
+
+    Parameters
+    ----------
+    data_folder_name : str, optional
+        Name of the data folder containing the training datasets.
+        If None, will be extracted from command line arguments.
+
+    Returns
+    -------
+    None
+        The function trains and optionally saves models but does not return
+        any values.
+
+    Notes
+    -----
+    The function performs the following steps:
+    1. Loads configuration from config.yaml
+    2. Loads ED visits and inpatient arrivals data
+    3. Sets up model parameters and hyperparameters
+    4. Trains admission prediction classifiers
+    5. Trains specialty prediction sequence model
+    6. Trains yet-to-arrive prediction model
+    7. Optionally saves trained models
+    8. Optionally tests real-time prediction functionality
+
     """
     # Parse arguments if not provided
     if data_folder_name is None:
@@ -441,9 +427,9 @@ def main(data_folder_name=None):
     start_validation_set = config["start_validation_set"]
     start_test_set = config["start_test_set"]
     end_test_set = config["end_test_set"]
-    prediction_window = config["prediction_window"]
+    prediction_window = timedelta(minutes=config["prediction_window"])
     epsilon = float(config["epsilon"])
-    yta_time_interval = config["yta_time_interval"]
+    yta_time_interval = timedelta(minutes=config["yta_time_interval"])
     x1, y1, x2, y2 = config["x1"], config["y1"], config["x2"], config["y2"]
 
     # Load data
@@ -459,7 +445,9 @@ def main(data_folder_name=None):
     )
 
     # Create snapshot date
-    ed_visits["snapshot_date"] = pd.to_datetime(ed_visits["snapshot_date"]).dt.date
+    ed_visits["snapshot_date"] = pd.to_datetime(
+        ed_visits["snapshot_date"], dayfirst=True
+    ).dt.date
 
     # Set up model parameters
     grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}

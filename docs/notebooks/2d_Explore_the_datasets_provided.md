@@ -5,7 +5,7 @@ Two datasets have been provided with this repository.
 - `ed_visits.csv`
 - `inpatient_arrivals.csv`
 
-These accompany my fully worked example of the modelling of emergency demand for beds. And they are also useful to illustrate what patient shapshots might be made up of.
+These accompany my fully worked example of the modelling of emergency demand for beds. And they are also useful to illustrate what patient snapshots might be made up of.
 
 This notebook does some data exploration by plotting charts of all relevant variables in each dataset.
 
@@ -50,10 +50,7 @@ project_root = set_project_root()
 Parameters are set in config.json and (for UCLH implementation in config-uclh.yaml). You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defned training, validation and test set dates.
 
 ```python
-from patientflow.load import set_file_paths, load_config_file
-
-# indicate whether the notebook is being run locally for UCLH or with public datasets
-uclh = False
+from patientflow.load import set_file_paths
 
 # set file paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
@@ -68,7 +65,7 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
 
 This notebook has been run using real data which you can download from [Zenodo](https://zenodo.org/records/14866057) on request.
 
-Alternatively you can use the synthetic data that has been created from the distributions of real patient data. The method used to create the synthetic data was to generate sample values following the statistics reported in the [data dictionaries](https://github.com/UCL-CORU/patientflow/tree/main/data-dictionaries).
+Alternatively you can use the synthetic dataset that was generated using a stratified sampling approach based on the distributions reported in the [data dictionaries](https://github.com/UCL-CORU/patientflow/tree/main/data-dictionaries). Two relationships from the original data were preserved: the proportion of admitted versus non-admitted patients and the hourly arrival time patterns. All other variables were sampled independently using summary statistics stratified by admission status. This approach maintains relevant dependencies for admission outcomes while treating other variables as independent of each other.
 
 If you don't have the public data, change the argument in the cell above from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
 
@@ -281,9 +278,9 @@ ed_visits.head()
 <p>5 rows × 68 columns</p>
 </div>
 
-## Explore visits dataset
+## Explore ED visits dataset
 
-Note that each snapshot has a date and a prediction time formatted separately.
+Note that each snapshot has a date and a prediction time formatted separately, with the prediction time as a tuple of (hour, minute). All functions in `patientflow` expect prediction times in this format. Each record in the snapshots dataframe is indexed by a unique snapshot_id.
 
 ```python
 ed_visits.head(10)
@@ -697,71 +694,60 @@ ordinal_mappings = {
 
 ### Arrival and demographic variables
 
-Here I import a function called plot_data_distributions to provide a convenient way of requesting each plot without multiple lines of code for each.
+Here I import a function called `plot_data_distribution` to provide a convenient way of requesting each plot without multiple lines of code for each.
 
 ```python
-from patientflow.viz.distribution_plots import plot_data_distributions
+from patientflow.viz.data_distribution import plot_data_distribution
 
 ```
 
 #### Elapsed Length of Stay
 
-Both admitted and not admitted visits appear to have a long tail of visits lasting more than 24 hours. Note that the data extraction that has created this dataset has not included any snapshots where the ED visit has lasted more than 72 hours.
+Both admitted and not admitted visits appear to have a long tail of visits lasting more than 24 hours. Any snapshots where the ED visit has lasted more than 72 hours are excluded.
 
 ```python
 ed_visits['elapsed_los_hrs'] = ed_visits['elapsed_los']/3600
-plot_data_distributions(df=ed_visits, col_name='elapsed_los_hrs', grouping_var='is_admitted', grouping_var_name='whether patient admitted', plot_type='both',
-                        title = 'Distribution of elapsed length of stay by whether patient admitted')
+plot_data_distribution(df=ed_visits, col_name='elapsed_los_hrs', grouping_var='is_admitted', grouping_var_name='whether patient admitted', plot_type='both',
+                        title = 'Distribution of elapsed length of stay by whether patient admitted', truncate_outliers=False)
 ```
 
 ![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_20_0.png)
 
-Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.
-
-Plotting only the snapshots where the elapsed visit duration is less than 10 hours shows a jump at around 1 hour. The reason for this may be something to do with how the data were extracted; we are investigating.
-
-```python
-plot_data_distributions(ed_visits[ed_visits.elapsed_los_hrs < 10], 'elapsed_los_hrs', 'is_admitted', 'whether patient admitted', plot_type='both',
-                        title = 'Distribution of elapsed length of stay by whether patient admitted (where elapsed length of stay < 10 hours)')
-```
-
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_23_0.png)
-
-Below, I plot the snapshots where the elapsed visit duration is greater than 24 hours. We can see that the long tail of longer visits is more numerous for discharged than for admitted patients. We are not sure why that would be the case.
+Below, I plot the snapshots where the elapsed visit duration is greater than 24 hours. We can see that the long tail of longer visits is more numerous for discharged than for admitted patients. This could be because patients leave the ED without being recorded as discharged on the system.
 
 ```python
 if ed_visits[ed_visits.elapsed_los_hrs >= 24].shape[0] > 0:
-    plot_data_distributions(ed_visits[ed_visits.elapsed_los_hrs >= 24], 'elapsed_los_hrs', 'is_admitted', 'whether patient admitted', plot_type='both',
-                        title = 'Distribution of elapsed length of stay by whether patient admitted (where elapsed length of stay >= 24 hours)')
+    plot_data_distribution(ed_visits[ed_visits.elapsed_los_hrs >= 24], 'elapsed_los_hrs', 'is_admitted', 'whether patient admitted', plot_type='both',
+                        title = 'Distribution of elapsed length of stay by whether patient admitted (where elapsed length of stay >= 24 hours)', truncate_outliers=False)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_25_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_22_0.png)
 
 #### Sex, age group and arrival method
 
 The charts below show distributions between admitted and not admitted patients for sex, age group and arrival method. More older people are admitted. Most walk-ins are discharged.
 
 ```python
-plot_data_distributions(ed_visits, 'sex', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distribution(ed_visits, 'sex', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_27_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_24_0.png)
 
 ```python
 if 'age_group' in ed_visits.columns:
-    plot_data_distributions(ed_visits, 'age_group', 'is_admitted', 'whether patient admitted', plot_type='hist', ordinal_order=ordinal_mappings['age_group'], rotate_x_labels = True)
+    plot_data_distribution(ed_visits, 'age_group', 'is_admitted', 'whether patient admitted', plot_type='hist', ordinal_order=ordinal_mappings['age_group'], rotate_x_labels = True)
 else:
-    plot_data_distributions(ed_visits, 'age_on_arrival', 'is_admitted', 'whether patient admitted', plot_type='hist')
+    plot_data_distribution(ed_visits, 'age_on_arrival', 'is_admitted', 'whether patient admitted', plot_type='hist')
 
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_28_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_25_0.png)
 
 ```python
-plot_data_distributions(ed_visits, 'arrival_method', 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True)
+plot_data_distribution(ed_visits, 'arrival_method', 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_29_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_26_0.png)
 
 ### Count variables
 
@@ -774,18 +760,18 @@ The counts variables record the following, up to the moment of the snapshot
 
 ```python
 for col_name in dict_cols['summary']:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = True)
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = False, truncate_outliers=True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_31_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_28_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_31_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_28_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_31_2.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_28_2.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_31_3.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_28_3.png)
 
-There are some extreme values of num_obs and num_obs_events. I might consider removing the outliers, depending on what model is to be applied to the data
+The plots above have been set to exlude outliers, for better readability. However, there are some extreme values of num_obs and num_obs_events. In such cases, you might consider removing the outliers, depending on what model is to be applied to the data
 
 ```python
 print(ed_visits.num_obs.max())
@@ -800,39 +786,39 @@ print(ed_visits.num_obs_events.max())
 The variable `current_location_type` records the location of the patient at the time of the snapshot. Refer to the [data dictionary](https://github.com/UCL-CORU/patientflow/tree/main/data-dictionaries/ed_visits_data_dictionary.csv) for more information about what each location type means. Patients who visit the UTC (Urgent Treatment Centre) are more likely to be discharged than admitted. The UTC provides care for patients with minor injuries and illnesses.
 
 ```python
-plot_data_distributions(ed_visits, 'current_location_type', 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True)
+plot_data_distribution(ed_visits, 'current_location_type', 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_35_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_32_0.png)
 
 ```python
 for col_name in dict_cols['location'][1:]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist')
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_2.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_2.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_3.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_3.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_4.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_4.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_5.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_5.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_6.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_6.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_7.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_7.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_8.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_8.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_9.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_9.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_10.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_10.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_36_11.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_33_11.png)
 
 ### Observations variables
 
@@ -870,36 +856,39 @@ I first plot the variables that count the number of times something was recorded
 
 ```python
 for col_name in [item for item in dict_cols['observations'] if str(item).startswith('num')]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = True)
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted',
+                            plot_type='hist',
+                            is_discrete = True,
+                            truncate_outliers=True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_2.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_2.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_3.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_3.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_4.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_4.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_5.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_5.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_6.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_6.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_7.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_7.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_8.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_8.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_9.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_9.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_10.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_10.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_11.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_11.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_12.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_12.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_13.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_38_13.png)
 
 #### News Scores and Manchester Triage score values
 
@@ -907,43 +896,50 @@ News Scores are commonly used to track the acuity of a patient, and Manchester T
 
 ```python
 for col_name in [item for item in dict_cols['observations'] if ('manchester' in str(item) ) and str(item).startswith('latest')]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True, ordinal_order=ordinal_mappings['latest_obs_manchester_triage_acuity'])
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True, ordinal_order=ordinal_mappings['latest_obs_manchester_triage_acuity'])
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_43_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_40_0.png)
 
 ```python
-plot_data_distributions(ed_visits, 'latest_obs_objective_pain_score', 'is_admitted', 'whether patient admitted', plot_type='hist', rotate_x_labels = True, ordinal_order=ordinal_mappings['latest_obs_objective_pain_score'])
+plot_data_distribution(ed_visits, 'latest_obs_objective_pain_score', 'is_admitted', 'whether patient admitted',
+                        plot_type='hist',
+                        rotate_x_labels = True,
+                        ordinal_order=ordinal_mappings['latest_obs_objective_pain_score'])
 
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_44_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_41_0.png)
 
 ```python
 
 for col_name in [item for item in dict_cols['observations'] if 'news' in str(item) and str(item).startswith('latest')]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = True)
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_45_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_42_0.png)
 
 The ACVPU score is commonly used to track states of consciousness
 
 ```python
 for col_name in [item for item in dict_cols['observations'] if 'consciousness' in str(item) and str(item).startswith('latest')]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', ordinal_order=ordinal_mappings['latest_obs_level_of_consciousness'])
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted',
+                            plot_type='hist',
+                            ordinal_order=ordinal_mappings['latest_obs_level_of_consciousness'])
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_47_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_44_0.png)
 
 Temporarily excluding the most common value of A from the ACVPU score, we can see the spread of other values
 
 ```python
 for col_name in [item for item in dict_cols['observations'] if 'consciousness' in str(item) and str(item).startswith('latest')]:
-    plot_data_distributions(ed_visits[~(ed_visits.latest_obs_level_of_consciousness == 'A')].copy(), col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', ordinal_order=ordinal_mappings['latest_obs_level_of_consciousness'])
+    plot_data_distribution(ed_visits[~(ed_visits.latest_obs_level_of_consciousness == 'A')].copy(), col_name, 'is_admitted', 'whether patient admitted',
+                            plot_type='hist',
+                            ordinal_order=ordinal_mappings['latest_obs_level_of_consciousness'])
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_49_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_46_0.png)
 
 #### Vital signs values
 
@@ -951,16 +947,17 @@ I now plot the distributions of the vital signs values.
 
 ```python
 for col_name in [item for item in dict_cols['observations'] if str(item).startswith('latest') and ('pulse' in str(item) or 'resp' in str(item) or 'temp' in str(item))]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', is_discrete = True)
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted',
+                            plot_type='hist',
+                            is_discrete = False,
+                            truncate_outliers=True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_51_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_48_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_51_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_48_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_51_2.png)
-
-Above, the temperature range goes as low as 40 degrees, which suggests that the date contain both Celsius and Fahrenheit values. I will need to correct this in the data cleaning process.
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_48_2.png)
 
 ### Lab variables
 
@@ -995,51 +992,53 @@ It is notable in the charts below, which show whether a lab battery was ordered,
 
 ```python
 for col_name in [item for item in dict_cols['lab orders and results'] if str(item).startswith('lab') ]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist')
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_2.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_2.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_3.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_3.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_4.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_4.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_5.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_5.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_6.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_6.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_7.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_52_7.png)
 
 #### Lab results
 
+The plots below show the latest lab values.
+
 ```python
 for col_name in [item for item in dict_cols['lab orders and results'] if str(item).startswith('latest') ]:
-    plot_data_distributions(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist')
+    plot_data_distribution(ed_visits, col_name, 'is_admitted', 'whether patient admitted', plot_type='hist', outlier_threshold=3, truncate_outliers=True)
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_0.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_1.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_1.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_2.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_2.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_3.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_3.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_4.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_4.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_5.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_5.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_6.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_6.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_7.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_7.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_8.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_8.png)
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_9.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_9.png)
 
 ### Consults variables
 
@@ -1048,18 +1047,18 @@ The `has_consultation` variable records whether a referral request was made to a
 The first plot shows that the number of admitted patients with consult requests at the time of the snapshots is about the same as those without. The group without consult requests will have their later in the visit, after the snapshot was recorded.
 
 ```python
-plot_data_distributions(ed_visits, 'has_consultation', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distribution(ed_visits, 'has_consultation', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_60_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_0.png)
 
 A very small number of non-admitted patients have a specialty of admission recorded. These are most likely patients referred from ED to SDEC, which we don't include in the admitted patients.
 
 ```python
-plot_data_distributions(ed_visits, 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distribution(ed_visits, 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_62_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_0.png)
 
 ## Explore inpatient arrivals dataset
 
@@ -1142,18 +1141,18 @@ inpatient_arrivals.head()
 </div>
 
 ```python
-# temporarily add is_admitted column to arrivals dataset, to be able to use the plot_data_distributions function
+# temporarily add is_admitted column to arrivals dataset, to be able to use the plot_data_distribution function
 inpatient_arrivals['is_admitted'] = True
-plot_data_distributions(inpatient_arrivals.reset_index().copy(), 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distribution(inpatient_arrivals.reset_index().copy(), 'specialty', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_65_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_61_0.png)
 
 ```python
-plot_data_distributions(inpatient_arrivals, 'is_child', 'is_admitted', 'whether patient admitted', plot_type='hist')
+plot_data_distribution(inpatient_arrivals, 'is_child', 'is_admitted', 'whether patient admitted', plot_type='hist')
 ```
 
-![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_66_0.png)
+![png](2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_62_0.png)
 
 ## Summary
 

@@ -1,8 +1,8 @@
 # 3a. Prepare group snapshots from patient snapshots
 
-Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a prediction time.
+Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a specific prediction time.
 
-In this notebook, I show how `patientflow` can be used to prepare group snapshots, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
+In this notebook, I show how `patientflow` can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
 
 - `snapshot_date` as the key
 - `snapshot_ids` of each patient snapshot as the values
@@ -11,13 +11,13 @@ This structure is a convenient way to organise the data when making bed count pr
 
 ## About the examples in this notebook
 
-In this notebook I use fake data that resembles visits to the Emergency Department (ED). The dataset covers mutiple snapshot dates and prediction times.
+In this notebook I use fake data that resemble visits to the Emergency Department (ED). The dataset covers mutiple snapshot dates and prediction times.
 
-To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution. In that simple example, every patient has the same probability of the outcome.
+To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution reflecting the sum of these trials. In that simple example, every patient has the same probability of the outcome.
 
-I then train a model that predicts a probability of admission for each patient. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials to visualise the predicted distribution of beds needed for those patients.
+I then train a model that predicts a probability of admission for each patient within a group snapshot. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials and again visualise the predicted distribution for the total number of beds needed for those patients.
 
-I demonstrate functions in `patientflow` that handle the preparation of group snapshots for inference.
+I demonstrate functions in `patientflow` that handle the preparation of group snapshots for making predictions.
 
 ```python
 # Reload functions every time
@@ -70,10 +70,10 @@ snapshots_df.head()
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_troponin_orders</th>
-      <th>num_urinalysis_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_cbc_orders</th>
+      <th>num_urinalysis_orders</th>
+      <th>num_troponin_orders</th>
       <th>num_d-dimer_orders</th>
     </tr>
     <tr>
@@ -97,11 +97,11 @@ snapshots_df.head()
       <th>0</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>270</td>
-      <td>1</td>
+      <td>5453</td>
+      <td>34</td>
       <td>0</td>
-      <td>47</td>
-      <td>5.0</td>
+      <td>36</td>
+      <td>4.0</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
@@ -112,14 +112,14 @@ snapshots_df.head()
       <th>1</th>
       <td>2023-01-01</td>
       <td>(6, 0)</td>
-      <td>3678</td>
-      <td>12</td>
+      <td>270</td>
       <td>1</td>
-      <td>44</td>
-      <td>2.0</td>
+      <td>0</td>
+      <td>47</td>
+      <td>5.0</td>
       <td>0</td>
       <td>1</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -127,42 +127,42 @@ snapshots_df.head()
       <th>2</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6514</td>
-      <td>86</td>
+      <td>5453</td>
+      <td>34</td>
       <td>0</td>
-      <td>43</td>
+      <td>36</td>
       <td>4.0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>4956</td>
-      <td>26</td>
+      <td>5294</td>
+      <td>27</td>
       <td>0</td>
-      <td>53</td>
-      <td>5.0</td>
+      <td>36</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>3741</td>
-      <td>9</td>
-      <td>1</td>
-      <td>66</td>
+      <td>5274</td>
+      <td>79</td>
+      <td>0</td>
+      <td>26</td>
       <td>4.0</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -215,10 +215,10 @@ print(first_group_snapshot_values)
 # snapshots_df.loc[first_group_snapshot_values]
 ```
 
-    There are 12 patients in the first group snapshot
+    There are 11 patients in the first group snapshot
 
     Unique snapshot_ids in the first group snapshot:
-    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 We can use the indices to identify the full patient snapshots.
 
@@ -252,10 +252,10 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>is_admitted</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_troponin_orders</th>
-      <th>num_urinalysis_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_cbc_orders</th>
+      <th>num_urinalysis_orders</th>
+      <th>num_troponin_orders</th>
       <th>num_d-dimer_orders</th>
     </tr>
     <tr>
@@ -279,42 +279,42 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>2</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6514</td>
-      <td>86</td>
+      <td>5453</td>
+      <td>34</td>
       <td>0</td>
-      <td>43</td>
+      <td>36</td>
       <td>4.0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>4956</td>
-      <td>26</td>
+      <td>5294</td>
+      <td>27</td>
       <td>0</td>
-      <td>53</td>
-      <td>5.0</td>
+      <td>36</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>3741</td>
-      <td>9</td>
-      <td>1</td>
-      <td>66</td>
+      <td>5274</td>
+      <td>79</td>
+      <td>0</td>
+      <td>26</td>
       <td>4.0</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -324,11 +324,11 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>5</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>5287</td>
-      <td>41</td>
-      <td>0</td>
-      <td>60</td>
-      <td>4.0</td>
+      <td>6917</td>
+      <td>18</td>
+      <td>1</td>
+      <td>45</td>
+      <td>3.0</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
@@ -339,14 +339,14 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>6</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>872</td>
-      <td>16</td>
+      <td>4234</td>
+      <td>43</td>
       <td>0</td>
-      <td>59</td>
-      <td>3.0</td>
+      <td>98</td>
+      <td>4.0</td>
       <td>1</td>
       <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -354,56 +354,56 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>7</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2108</td>
-      <td>20</td>
+      <td>7613</td>
+      <td>69</td>
+      <td>0</td>
+      <td>46</td>
+      <td>4.0</td>
       <td>1</td>
-      <td>68</td>
-      <td>3.0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
-      <td>1</td>
       <td>0</td>
     </tr>
     <tr>
       <th>8</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6748</td>
-      <td>67</td>
-      <td>0</td>
-      <td>43</td>
-      <td>2.0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>4665</td>
+      <td>83</td>
+      <td>1</td>
+      <td>45</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
-      <td>0</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>9</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2282</td>
-      <td>28</td>
-      <td>1</td>
-      <td>73</td>
-      <td>1.0</td>
+      <td>6012</td>
+      <td>32</td>
+      <td>0</td>
+      <td>22</td>
+      <td>4.0</td>
+      <td>0</td>
       <td>0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>10</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2502</td>
-      <td>50</td>
+      <td>6846</td>
+      <td>6</td>
       <td>0</td>
-      <td>63</td>
-      <td>3.0</td>
+      <td>40</td>
+      <td>4.0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -414,46 +414,31 @@ snapshots_df.loc[first_group_snapshot_values]
       <th>11</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6078</td>
-      <td>31</td>
+      <td>1306</td>
+      <td>66</td>
+      <td>0</td>
+      <td>38</td>
+      <td>3.0</td>
       <td>1</td>
-      <td>34</td>
-      <td>2.0</td>
+      <td>1</td>
       <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>0</td>
     </tr>
     <tr>
       <th>12</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2832</td>
-      <td>84</td>
+      <td>2092</td>
+      <td>71</td>
+      <td>0</td>
+      <td>100</td>
+      <td>2.0</td>
       <td>1</td>
-      <td>32</td>
-      <td>3.0</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>2023-01-01</td>
-      <td>(9, 30)</td>
-      <td>6357</td>
-      <td>74</td>
-      <td>0</td>
-      <td>20</td>
-      <td>NaN</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
   </tbody>
 </table>
@@ -462,7 +447,7 @@ snapshots_df.loc[first_group_snapshot_values]
 More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with the `prepare_patient_snapshots`, which makes the data ready for processing in groups. This will:
 
 - filter visits to include only those at the requested prediction time
-- randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, given the name of the column containing visit identifiers
+- randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, giving the name of the column containing visit identifiers
 - return a tuple of (X, y) matrices, ready for inference. The column containing the outcome (ie the label) is specified in the `label_col` argument.
 
 ```python
@@ -502,10 +487,10 @@ first_snapshot_X
       <th>visit_number</th>
       <th>age</th>
       <th>latest_triage_score</th>
-      <th>num_cbc_orders</th>
-      <th>num_troponin_orders</th>
-      <th>num_urinalysis_orders</th>
       <th>num_bmp_orders</th>
+      <th>num_cbc_orders</th>
+      <th>num_urinalysis_orders</th>
+      <th>num_troponin_orders</th>
       <th>num_d-dimer_orders</th>
     </tr>
     <tr>
@@ -528,39 +513,39 @@ first_snapshot_X
       <th>2</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6514</td>
-      <td>86</td>
-      <td>43</td>
+      <td>5453</td>
+      <td>34</td>
+      <td>36</td>
       <td>4.0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>4956</td>
-      <td>26</td>
-      <td>53</td>
-      <td>5.0</td>
+      <td>5294</td>
+      <td>27</td>
+      <td>36</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
       <td>1</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>4</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>3741</td>
-      <td>9</td>
-      <td>66</td>
+      <td>5274</td>
+      <td>79</td>
+      <td>26</td>
       <td>4.0</td>
-      <td>1</td>
+      <td>0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -570,10 +555,10 @@ first_snapshot_X
       <th>5</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>5287</td>
-      <td>41</td>
-      <td>60</td>
-      <td>4.0</td>
+      <td>6917</td>
+      <td>18</td>
+      <td>45</td>
+      <td>3.0</td>
       <td>1</td>
       <td>0</td>
       <td>0</td>
@@ -584,13 +569,13 @@ first_snapshot_X
       <th>6</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>872</td>
-      <td>16</td>
-      <td>59</td>
-      <td>3.0</td>
+      <td>4234</td>
+      <td>43</td>
+      <td>98</td>
+      <td>4.0</td>
       <td>1</td>
       <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
     </tr>
@@ -598,52 +583,52 @@ first_snapshot_X
       <th>7</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2108</td>
-      <td>20</td>
-      <td>68</td>
-      <td>3.0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>7613</td>
+      <td>69</td>
+      <td>46</td>
+      <td>4.0</td>
       <td>1</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0</td>
       <td>0</td>
     </tr>
     <tr>
       <th>8</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6748</td>
-      <td>67</td>
-      <td>43</td>
-      <td>2.0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>4665</td>
+      <td>83</td>
+      <td>45</td>
+      <td>3.0</td>
+      <td>1</td>
       <td>1</td>
       <td>0</td>
-      <td>0</td>
+      <td>1</td>
+      <td>1</td>
     </tr>
     <tr>
       <th>9</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2282</td>
-      <td>28</td>
-      <td>73</td>
-      <td>1.0</td>
+      <td>6012</td>
+      <td>32</td>
+      <td>22</td>
+      <td>4.0</td>
+      <td>0</td>
       <td>0</td>
       <td>1</td>
-      <td>1</td>
       <td>0</td>
-      <td>1</td>
+      <td>0</td>
     </tr>
     <tr>
       <th>10</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2502</td>
-      <td>50</td>
-      <td>63</td>
-      <td>3.0</td>
+      <td>6846</td>
+      <td>6</td>
+      <td>40</td>
+      <td>4.0</td>
       <td>0</td>
       <td>0</td>
       <td>0</td>
@@ -654,43 +639,29 @@ first_snapshot_X
       <th>11</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>6078</td>
-      <td>31</td>
-      <td>34</td>
-      <td>2.0</td>
+      <td>1306</td>
+      <td>66</td>
+      <td>38</td>
+      <td>3.0</td>
+      <td>1</td>
+      <td>1</td>
       <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
       <td>0</td>
     </tr>
     <tr>
       <th>12</th>
       <td>2023-01-01</td>
       <td>(9, 30)</td>
-      <td>2832</td>
-      <td>84</td>
-      <td>32</td>
-      <td>3.0</td>
+      <td>2092</td>
+      <td>71</td>
+      <td>100</td>
+      <td>2.0</td>
+      <td>1</td>
+      <td>1</td>
       <td>0</td>
       <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>2023-01-01</td>
-      <td>(9, 30)</td>
-      <td>6357</td>
-      <td>74</td>
-      <td>20</td>
-      <td>NaN</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
-      <td>0</td>
+      <td>1</td>
     </tr>
   </tbody>
 </table>
@@ -712,12 +683,12 @@ prob_dist_data
            5.19045120e-04, 5.76716800e-05, 4.32537600e-06, 1.96608000e-07,
            4.09600000e-09])
 
-We can plot the predicted distribution using the `prob_dist_plot` function from patientflow.viz
+We can plot the predicted distribution using the `plot_prob_dist` function from patientflow.viz
 
 ```python
 prob_admission_first_group_snapshot = 0.2*len(first_group_snapshot_values)
 
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed by the '
@@ -725,7 +696,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} if each patient has a probability of admission of 0.2'
 )
-prob_dist_plot(prob_dist_data, title,
+plot_prob_dist(prob_dist_data, title,
     include_titles=True)
 ```
 
@@ -765,7 +736,7 @@ exclude_from_training_data=['visit_number', 'snapshot_date', 'prediction_time']
 model = train_classifier(
     train_visits,
     valid_visits,
-    test_visits,
+    test_visits=test_visits,
     grid={"n_estimators": [30]},
     prediction_time=(9, 30),
     exclude_from_training_data=exclude_from_training_data,
@@ -778,11 +749,11 @@ model = train_classifier(
 ```
 
     Patient Set Overlaps (before random assignment):
-    Train-Valid: 0 of 4338
-    Valid-Test: 75 of 3019
-    Train-Test: 226 of 5084
-    All Sets: 0 of 6070 total patients
-    Split sizes: [3696, 1204, 2502]
+    Train-Valid: 0 of 5318
+    Valid-Test: 102 of 3690
+    Train-Test: 307 of 6129
+    All Sets: 0 of 7364 total patients
+    Split sizes: [6406, 2122, 4304]
 
 Now, using the trained model, I will predict a bed count distribution for one snapshot using `get_prob_dist_for_prediction_moment()`. That function expects the following:
 
@@ -816,7 +787,7 @@ bed_count_prob_dist.keys()
 Using the `agg_predicted` key, we can plot the probability distribution:
 
 ```python
-from patientflow.viz.prob_dist_plot import prob_dist_plot
+from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 title = (
     f'Probability distribution for number of beds needed by the '
@@ -824,17 +795,17 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} using the trained model for prediction'
 )
-prob_dist_plot(bed_count_prob_dist['agg_predicted'], title,
+plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True)
 
 ```
 
 ![png](3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_26_0.png)
 
-The `prob_dist_plot` function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.
+The `plot_prob_dist` function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.
 
 ```python
-fig = prob_dist_plot(bed_count_prob_dist['agg_predicted'], title,
+fig = plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True, return_figure=True)
 ax = fig.gca()
 ax.axvline(x=bed_count_prob_dist['agg_observed'], color='red', linestyle='--', label='Observed')
@@ -891,7 +862,7 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {random_snapshot_date} using the trained model for prediction'
 )
-fig = prob_dist_plot(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,
+fig = plot_prob_dist(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,
     include_titles=True, return_figure=True)
 ax = fig.gca()
 ax.axvline(x=prob_dists_for_group_snapshots[random_snapshot_date]['agg_observed'], color='red', linestyle='--', label='Observed')
@@ -902,7 +873,7 @@ ax.legend();
 
 The returned object is now ready for evaluation, which I cover in the next notebook.
 
-## Conclusion
+## Summary
 
 In this notebook I have demonstrated the functions in `patientflow` that handle the preparation of group snapshots. These include:
 
@@ -910,4 +881,4 @@ In this notebook I have demonstrated the functions in `patientflow` that handle 
 - `get_prob_dist_for_prediction_moment`, which computes predicted and observed probabilities for a specific snapshot date and prediction time.
 - `get_prob_dist` which computes probability distributions for multiple snapshot dates.
 
-I have also shown the use of `prob_dist_plot` to visualise the predicted distribution for one group snapshot.
+I have also shown the use of `plot_prob_dist` to visualise the predicted distribution for one group snapshot.

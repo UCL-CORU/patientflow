@@ -2,21 +2,26 @@
 
 In the last notebook, I showed how to prepare group snapshots using `patientflow`. Now, let's think about how to evaluate those models. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts at each prediction time over the period of the test set.
 
-There are various approaches. Here I demonstrate three.
+There are various approaches. Here I demonstrate two approaches.
 
-### Mean Absolute Error and Mean Percentage Error
+### Comparing observed values with expected
 
-For each prediction moment, subtract the expected value from the predicted probability distribution from the observed number of admissions to get an error value for each prediction time. Over the whole test set, calculate the Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
+A common approach is to express the difference between the expectation of a probability distrubion, and the observed value in terms of Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
 
-This is a common approach so it is worth showing. I also plot the difference between expected and observed, which is more revealing than calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate.
+I also plot the difference between expected and observed, which is more revealing than calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate.
 
-### QQ Plots and Adjusted QQ plots
+### Visual approaches that evaluate the whole distribution
 
-Other methods appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution on 10% of prediction moments, and likewise in the highest tenth on 10% of prediction moments.
+Other methods, such as Quantile-Quantile (QQ) Plots appraise the performance of the model across the whole distribution. If a model predicts the tails of a distribution well, the observed number of beds would appear in the lowest tenth of the distribution for 10% of prediction moments, and likewise in the highest tenth for 10% of prediction moments.
 
-A Quantile-Quantile (QQ) Plot can be used to compare one probability distribution with another. The observed values across the test set are treated as a distribution, and compared with predicted distribution. The plot compares quantiles from the model's predicted distribution with quantiles from the observed distribution.
+Using such methods with discrete variables (such as bed counts) is nuanced because the Cumulative Distribution Function (CDF) of a discrete distribution is not continuous. A QQ plot can be difficult to interpret if values are often low or zero. Moreover, in our case, we want to evaluate each observed value for a snapshot against the predicted distribution for that particular snapshot; we are using a different predicted distribution each time.
 
-With discrete distributions such as bed counts, a QQ plot can be problematic if values are low or zero. We developed an alternative plot, called an Adjusted QQ plot, for the evaluation of discrete distributions. I will show both below to illustrate their differences.
+I show two approaches to evaluating the performance of models that predict discrete distributions when each observations lies on its own CDF:
+
+- Randomised Probabilility Integral Tansform (PIT) Histogram
+- QQ plots adjusted to handle discrete distributions
+
+More information is given below.
 
 ### About the data used in this notebook
 
@@ -31,6 +36,9 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %load_ext autoreload
 %autoreload 2
 ```
+
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
 
 ```python
 import pandas as pd
@@ -250,86 +258,90 @@ for prediction_time, values in results.items():
 
     Time    MAE    MPE
     ----------------------
-    06:00  1.47    31.01%
-    09:30  1.51    36.08%
-    12:00  2.21    32.29%
-    15:30  2.67    22.75%
-    22:00  3.21    24.90%
+    06:00  1.54    33.61%
+    09:30  1.62    38.87%
+    12:00  2.18    31.43%
+    15:30  2.70    23.35%
+    22:00  3.14    23.94%
 
 The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
 
 We can plot the observed values against the expected, as shown below.
 
 ```python
-from patientflow.viz.evaluation_plots import plot_observed_against_expected
-plot_observed_against_expected(results)
+from patientflow.viz.observed_against_expected import plot_deltas
+plot_deltas(results)
 ```
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png)
 
-Fro the plots above:
+From the plots above:
 
 - The 06:00 and 09:30 models data shows a slight positive bias, with more values above zero than below, suggesting under-prediction (observed values higher than expected)
 - The 12:00 model appears more spread out with a wider range of error
 - The 15:30 model has a slight negative bias
 - The 22:00 time slot displays a distinct positive skew, with most values above zero, suggesting consistent under-prediction
 
-### QQ (quantile-quantile) Plots
+## Visual approaches that evaluate the whole distribution
 
-A QQ plot compares a predicted distribution to an observed distribution. In this case, the predicted distribution is the combined set of probability distributions (one for each snapshot date in the test set) at the given prediction time. The observed distribution is derived from the actual number of patients in each group snapshot who were later admitted.
+### Randomised Probabilility Integral Tansform (PIT) Histogram
 
-If the predicted and observed distributions are similar, the qq plot should adhere closely to the y = x line in the plot.
+As noted in the introduction, we want to evaluate each observed value against the predicted distribution for that snapshot; thus we are using a different predicted distribution each time. We have a model that determines a Cumulative Distribution Function (CDF) Fi(x) specific to the discrete random variable associated with the ith observation in a series of counts and we want to assess the accuracy of the underlying model.
+
+For continuous variables, there's an elegant solution called the Probability Integral Transform (PIT) developed by [Czado et al, 2009](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1541-0420.2009.01191.x). Each observation can be mapped to the corresponding value of its CDF; this is referred to as a a probability integral transform (PIT). If the underlying model is well calibrated, a histogram of these PIT values would be uniform, and a cumulative plot of PIT values would have a slope of 1.
+
+For a discrete random variable, instead of a single point, each observation corresponds to a range on the CDF. We identify the range of the cdf Fi(x) associated with the observation oi. For discrete integer variables, this has a lower limit, upper limit and mid-points given by
+li = Fi(oi-1), ui = Fi(oi) and mi = 𝑙𝑖+𝑢𝑖2.
+
+The randomized PIT histogram is obtained by allotting to each observation oi a PIT value sampled at random from the range [li,ui] and then forming a histogram of these (with one convention being to have 10 bins of width 0.1). A well performing model will give a uniform histogram (subject to randomisation and binning).
 
 ```python
-from patientflow.viz.qq_plot import qq_plot
+from patientflow.viz.randomised_pit import plot_randomised_pit
 
-qq_plot(prediction_times,
-        prob_dist_dict_all,
-        model_name="admissions")
+plot_randomised_pit(prediction_times,
+                    prob_dist_dict_all,
+                    suptitle="Randomised Probability Integral Transform (PIT) plots for each prediction time")
 ```
 
-![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_18_0.png)
+![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_19_0.png)
 
-The 12:00 distributions show the closest adherence to the predicted distribution (closest to the diagonal line). The 06:00 and 09:30 deviate in the middle range, suggesting some bias in predictions, and the 22:00 QQ plot shows significant deviation. From an [earlier notebook](2c_Evaluate_patient_snapshot_models.md), we know that the 09:30 and 22:00 admissions models both slightly underestimate each patient's probability of admission. We see this underestimate being propogated here; for both prediction times the points fall below the y=x line. However the 22:00 points fall substantially below; the observed values deviate markedly at the lower end of the distribution. More patients are being admitted than the model expects.
+### Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
 
-However, QQ plots can be problematic when used with discrete distributions. In a discrete distribution, probability mass is assigned in 'chunks' to each discrete value, which makes certain regions of the QQ plot impossible.
+In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418). We call this a Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
 
-Over larger ranges this problem is less marked, because the observed values fall on a greater variety of points on their predicted distributions. However, if the numbers are small (for example if there are two children in the ED, possible values for the predicted distribution will be 0, 1 or 2), the integer nature of a discrete distribution is very marked. Observed values for these small ranges tend to fall at the same points on their predicted distributions, creating a staircase effect in the QQ plot. We will see this when we start making predictions by subplots in the following notebooks.
+In the EPUDD Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that fall at or below each CDF threshold.
 
-## Adjusted QQ plot
+Both sets of points are plotted with the predicted CDF values on the x axis. The difference is:
 
-We handle the discrete nature of the predicted distribution in a Adjusted QQ plot. This approach was used in prior work evaluating a tool to predict short term demand for beds in an intensive care unit. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418).
+- Grey points: Show the full predicted CDF curve
+- Colored points: Show only where the actual observations fall along that their predicted CDF
 
-When mapping an observed value to its is Cumulative Distribution Function (CDF), there is an arbitrary choice as to whether to read the lower or upper value of the CDF at that point, or the mid point between the two. The QQ plots above use the mid point.
+If the observed cdf points track the model cdfs, the model is well calibrated.
 
-In the Adjusted QQ Plot the x axis represents the CDF from the model's predictions and the y axis represents the proportion of observed values that fall below that threshold. For the observed values, there are three CDFs shown on the plot (in colour) and for the model there are three (in grey)
-
-- The lower CDF at a point is the sum of probabilities for all values less than that value
-- The upper CDF at a point is the sum of probabilities for all values less than or equal to that value
-- The mid CDF is the average of upper and lower
-
-If the observed cdf points track the model cdfs, the model performs well.
+Note that the model points (grey) represent discrete probability mass, averaged over all prediction times in the test set. Because discrete probability mass may be stepped, the model points may not follow the y=x line.
 
 ```python
-from patientflow.viz.adjusted_qq_plot import adjusted_qq_plot
+from patientflow.viz.epudd import plot_epudd
 
-adjusted_qq_plot(prediction_times,
+plot_epudd(prediction_times,
         prob_dist_dict_all,
-        model_name="admissions")
+        model_name="admissions",
+        suptitle="Evaluating Predictions for Unique Discrete Distributions (EPUDD) plots for each prediction time",
+        plot_all_bounds=False)
 ```
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_21_0.png)
 
-In the plot above, the 06:00 and 09:30 models perform well. At 12:00 and 15:30 the predicted probabilities are consistently lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.
+In the two sets of plot above, the 06:00 and 09:30 perform reasonably well. At 12:00 and 15:30 the predicted probabilities are lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.
 
-There appears to be some bias introduded at the aggregation step, that has not been propogated through from the patient-level predictions.
+From these plots, there appears to be some bias introduded at the aggregation to group snapshots, that has not been propogated through from the patient-level predictions.
 
-The Adjusted QQ Plot demonstrates that further work is needed to isolate the reason for this bias.
+Further work is needed to isolate the reason for this bias.
 
-## Conclusions
+## Summary
 
-Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, QQ Plots and Adjusted QQ Plots.
+Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, Randomised PIT Histograms and Adjusted QQ Plots.
 
-We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure.
+We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure. This helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further.
 
-I noted above that plots for discrete distributions can be problematic, and demonstrated an Adjusted QQ plot that is designed to evaluate them. It helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further. I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.
+I demonstrated two approaches to such plots. We prefer the Adjusted QQ to the Randomised PIT approach because is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.

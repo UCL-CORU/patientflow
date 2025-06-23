@@ -2,7 +2,7 @@
 Model training results containers.
 
 This module defines a set of data classes to organise results from
-model training processes, including hyperparameter tuning, cross-validation fold metrics,
+model training, including hyperparameter tuning, cross-validation fold metrics,
 and final trained classifier artifacts. These classes serve as structured containers for
 various types of model evaluation outputs and metadata.
 
@@ -77,7 +77,7 @@ class TrainingResults:
     calibration_info : dict of str to Any, optional
         Information about model calibration, if applicable.
     test_results : dict of str to float, optional
-        Evaluation metrics computed on the test dataset.
+        Evaluation metrics computed on the test dataset. None if test evaluation was not performed.
     balance_info : dict of str to bool or int or float, optional
         Information related to class balance (e.g., whether data was balanced, class ratios).
     """
@@ -85,7 +85,7 @@ class TrainingResults:
     prediction_time: Tuple[int, int]
     training_info: Dict[str, Any] = field(default_factory=dict)
     calibration_info: Dict[str, Any] = field(default_factory=dict)
-    test_results: Dict[str, float] = field(default_factory=dict)
+    test_results: Optional[Dict[str, float]] = None
     balance_info: Dict[str, Union[bool, int, float]] = field(default_factory=dict)
 
 

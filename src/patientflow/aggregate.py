@@ -4,194 +4,37 @@ Aggregate Prediction From Patient-Level Probabilities
 This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution.
 The module uses symbolic mathematics to generate and manipulate expressions, enabling the computation of aggregate probabilities based on individual patient-level predictions.
 
-Dependencies:
-    - numpy: For array operations and numerical calculations.
-    - pandas: To handle and manipulate tabular data (DataFrames) for analysis.
-    - sympy: A symbolic mathematics library for building and manipulating symbolic expressions, particularly for calculating probabilities.
-
 Functions
 ---------
-create_symbols(n):
-    Generates a list of symbolic variables to represent probability terms.
+create_symbols : function
+    Generate a sequence of symbolic objects intended for use in mathematical expressions.
 
-    Parameters
-    ----------
-    n : int
-        Number of symbolic variables to generate.
+compute_core_expression : function
+    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.
 
-    Returns
-    -------
-    list of sympy.Symbol
-        A list containing n symbolic variables.
+build_expression : function
+    Construct a cumulative product expression by combining individual symbolic expressions.
 
-compute_core_expression(ri, s):
-    Computes a symbolic expression using symbolic variables and constants.
+expression_subs : function
+    Substitute values into a symbolic expression based on a mapping from symbols to predictions.
 
-    Parameters
-    ----------
-    ri : float
-        A constant value (often a probability).
-    s : sympy.Symbol
-        A symbolic variable.
+return_coeff : function
+    Extract the coefficient of a specified power from an expanded symbolic expression.
 
-    Returns
-    -------
-    sympy.Mul
-        A symbolic expression representing the product of `ri` and `s`.
+model_input_to_pred_proba : function
+    Use a predictive model to convert model input data into predicted probabilities.
 
-build_expression(syms, n):
-    Constructs a cumulative product of symbolic expressions using symbolic variables.
+pred_proba_to_agg_predicted : function
+    Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
 
-    Parameters
-    ----------
-    syms : list of sympy.Symbol
-        A list of symbolic variables.
-    n : int
-        The number of terms to include in the cumulative product.
+get_prob_dist_for_prediction_moment : function
+    Calculate both predicted distributions and observed values for a given date using test data.
 
-    Returns
-    -------
-    sympy.Expr
-        A symbolic expression representing the cumulative product of `syms`.
+get_prob_dist : function
+    Calculate probability distributions for each snapshot date based on given model predictions.
 
-expression_subs(expression, n, predictions):
-    Substitutes numeric values into a symbolic expression.
-
-    Parameters
-    ----------
-    expression : sympy.Expr
-        A symbolic expression to perform substitution on.
-    n : int
-        The number of variables to substitute.
-    predictions : array-like
-        Numeric values (e.g., predicted probabilities) to substitute into the expression.
-
-    Returns
-    -------
-    sympy.Expr
-        The symbolic expression after substitution.
-
-return_coeff(expression, i):
-    Extracts the coefficient corresponding to a specific term in an expanded symbolic expression.
-
-    Parameters
-    ----------
-    expression : sympy.Expr
-        A symbolic expression that has been expanded.
-    i : int
-        The index of the term for which the coefficient is to be extracted.
-
-    Returns
-    -------
-    float
-        The coefficient for the i-th term.
-
-model_input_to_pred_proba(model_input, model):
-    Converts input data into predicted probabilities using the provided model.
-
-    Parameters
-    ----------
-    model_input : array-like
-        The input data to feed into the model.
-    model : object
-        A predictive model object that implements a `predict_proba` method.
-
-    Returns
-    -------
-    array-like
-        The predicted probabilities output by the model.
-
-pred_proba_to_agg_predicted(predictions_proba, weights=None, normal_approx_threshold=30):
-    Aggregates individual predicted probabilities into an overall prediction using provided weights.
-    Uses a Normal approximation for large datasets (> normal_approx_threshold) for better performance.
-
-    Parameters
-    ----------
-    predictions_proba : DataFrame
-        A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
-    weights : array-like, optional
-        An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    DataFrame
-        A DataFrame with a single column 'agg_proba' showing the aggregated probability,
-        indexed from 0 to n, where n is the number of predictions.
-
-get_prob_dist_for_prediction_moment(X_test, model, weights=None, inference_time=False, y_test=None, category_filter=None, normal_approx_threshold=30):
-    Computes predicted and observed probabilities for a specific prediction date.
-
-    Parameters
-    ----------
-    X_test : DataFrame or array-like
-        Input test data to be passed to the model for prediction.
-    model : object or TrainedClassifier
-        Either a predictive model which provides a `predict_proba` method,
-        or a TrainedClassifier object containing a pipeline.
-    weights : array-like, optional
-        Weights for aggregating the predicted probabilities.
-    inference_time : bool
-        Indicates whether the function is used in inference mode (i.e., whether observed data is available).
-    y_test : array-like
-        Observed target values corresponding to the test data (optional for inference).
-    category_filter : array-like, optional
-        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
-        Should be the same length as y_test.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    dict
-        A dictionary containing the predicted and, if applicable, observed probability distributions.
-
-get_prob_dist(snapshots_dict, X_test, y_test, model, weights=None, verbose=False, category_filter=None, normal_approx_threshold=30):
-    Computes probability distributions for multiple snapshot dates.
-
-    Parameters
-    ----------
-    snapshots_dict : dict
-        A dictionary where keys are snapshot dates and values are associated metadata (e.g., test data).
-    X_test : DataFrame or array-like
-        Input test data to be passed to the model.
-    y_test : array-like
-        Observed target values.
-    model : object or TrainedClassifier
-        Either a predictive model which provides a `predict_proba` method,
-        or a TrainedClassifier object containing a pipeline.
-    weights : pandas.Series, optional
-        A Series containing weights for the test data points, which may influence the prediction,
-        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
-    verbose : bool, optional (default=False)
-        If True, print progress information.
-    category_filter : array-like, optional
-        Boolean mask indicating which samples belong to the specific outcome category being analyzed.
-        Should be the same length as y_test.
-    normal_approx_threshold : int, optional (default=30)
-        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
-
-    Returns
-    -------
-    dict
-        A dictionary where each key is a snapshot date and the value is the corresponding probability distribution.
-
-    Raises
-    ------
-    ValueError
-        If snapshots_dict is not properly formatted or empty.
-        If model has no predict_proba method and is not a TrainedClassifier.
-
-    Example Usage
-    -------------
-    # Assuming a predictive model and test data are available
-    snapshot_dates = ['2023-01-01', '2023-01-02']
-    predicted_distribution = get_prob_dist(snapshot_dates, dataset, X_test, y_test, model)
-    print(predicted_distribution)
+get_prob_dist_without_patient_snapshots : function
+    Calculate probability distributions for each snapshot date using an EmpiricalSurvivalPredictor.
 
 """
 
@@ -199,10 +42,10 @@ import pandas as pd
 import sympy as sym
 from sympy import expand, symbols
 from datetime import date, datetime, time, timedelta, timezone
-from patientflow.calculate.admission_in_prediction_window import calculate_probability
-from typing import Dict, List, Tuple, Union
-from scipy.stats import rv_discrete
-from patientflow.predictors.weighted_poisson_predictor import WeightedPoissonPredictor
+from typing import List, Tuple
+from patientflow.predictors.incoming_admission_predictors import (
+    EmpiricalIncomingAdmissionPredictor,
+)
 
 
 def create_symbols(n):
@@ -385,32 +228,38 @@ def pred_proba_to_agg_predicted(
         # Variance = sum of p_i * (1-p_i)
         variance = (probs * (1 - probs)).sum()
 
-        # Generate probabilities for each possible count using normal approximation
-        counts = np.arange(n + 1)
-        agg_predicted_dict = {}
-
-        for i in counts:
-            # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
-            if i == 0:
-                p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
-            elif i == n:
-                p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
-            else:
-                p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
-                    i - 0.5, loc=mean, scale=np.sqrt(variance)
-                )
-            agg_predicted_dict[i] = p
-
-        # Normalize to ensure the probabilities sum to 1
-        total = sum(agg_predicted_dict.values())
-        if total > 0:
-            for i in agg_predicted_dict:
-                agg_predicted_dict[i] /= total
+        # Handle the case where variance is zero (all probabilities are 0 or 1)
+        if variance == 0:
+            # If variance is zero, all probabilities are the same (either all 0 or all 1)
+            # The distribution is deterministic - all probability mass is at the mean
+            agg_predicted_dict = {int(round(mean)): 1.0}
         else:
-            # If all probabilities are zero, set a uniform distribution
-            n = len(agg_predicted_dict)
-            for i in agg_predicted_dict:
-                agg_predicted_dict[i] = 1.0 / n
+            # Generate probabilities for each possible count using normal approximation
+            counts = np.arange(n + 1)
+            agg_predicted_dict = {}
+
+            for i in counts:
+                # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
+                if i == 0:
+                    p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
+                elif i == n:
+                    p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
+                else:
+                    p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
+                        i - 0.5, loc=mean, scale=np.sqrt(variance)
+                    )
+                agg_predicted_dict[i] = p
+
+            # Normalize to ensure the probabilities sum to 1
+            total = sum(agg_predicted_dict.values())
+            if total > 0:
+                for i in agg_predicted_dict:
+                    agg_predicted_dict[i] /= total
+            else:
+                # If all probabilities are zero, set a uniform distribution
+                n = len(agg_predicted_dict)
+                for i in agg_predicted_dict:
+                    agg_predicted_dict[i] = 1.0 / n
     else:
         # Use the original symbolic computation for smaller datasets
         local_proba = predictions_proba.copy()
@@ -536,7 +385,8 @@ def get_prob_dist(
         Either a predictive model which provides a `predict_proba` method,
         or a TrainedClassifier object containing a pipeline.
     weights : pandas.Series, optional
-        A Series containing weights for the test data points.
+        A Series containing weights for the test data points, which may influence the prediction,
+        by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
     verbose : bool, optional (default=False)
         If True, print progress information.
     category_filter : array-like, optional
@@ -643,157 +493,113 @@ def get_prob_dist(
     return prob_dist_dict
 
 
-def get_prob_dist_without_patient_snapshots(
-    prediction_time: Tuple[int, int],
-    categories: List[str],
-    model: Union[WeightedPoissonPredictor, rv_discrete],
-    test_df: pd.DataFrame,
-    prediction_window: int,
+def get_prob_dist_using_survival_curve(
     snapshot_dates: List[date],
-    x1: float = 0.0,  # Default float value instead of None
-    y1: float = 0.0,  # Default float value instead of None
-    x2: float = 0.0,  # Default float value instead of None
-    y2: float = 0.0,  # Default float value instead of None
-    datetime_col: str = "arrival_datetime",
-    max_range: int = 20,
-) -> Dict[str, Dict[date, Dict[str, Union[pd.DataFrame, float]]]]:
+    test_visits: pd.DataFrame,
+    category: str,
+    prediction_time: Tuple[int, int],
+    prediction_window: timedelta,
+    start_time_col: str,
+    end_time_col: str,
+    model: EmpiricalIncomingAdmissionPredictor,
+    verbose=False,
+):
     """
-    Calculate probability distributions for yet-to-arrive patients for each category at a specific prediction time.
+    Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
 
-    Args:
-        prediction_time: Tuple of (hour, minute) representing the prediction time
-        categories: List of categories to analyze
-        model: Prediction model (can be WeightedPoissonPredictor or a statistical distribution)
-        test_df: DataFrame containing test set inpatient arrivals
-        prediction_window: Time window for predictions in minutes
-        snapshot_dates: List[date]
-            List of dates to analyze
-        x1: float
-            First x-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        y1: float
-            First y-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        x2: float
-            Second x-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        y2: float
-            Second y-coordinate for curve parameter (required for WeightedPoissonPredictor)
-        datetime_col: Name of the column containing arrival datetimes (default: 'arrival_datetime')
-        max_range: Maximum number of arrivals to consider in probability distribution (default: 20)
+    Parameters
+    ----------
+    snapshot_dates : array-like
+        Array of dates for which to calculate probability distributions.
+    test_visits : pandas.DataFrame
+        DataFrame containing test visit data. Must have either:
+        - start_time_col as a column and end_time_col as a column, or
+        - start_time_col as the index and end_time_col as a column
+    category : str
+        Category to use for predictions (e.g., 'medical', 'surgical')
+    prediction_time : tuple
+        Tuple of (hour, minute) representing the time of day for predictions
+    prediction_window : timedelta
+        The prediction window duration
+    start_time_col : str
+        Name of the column containing start times (or index name if using index)
+    end_time_col : str
+        Name of the column containing end times
+    model : EmpiricalSurvivalPredictor
+        A fitted instance of EmpiricalSurvivalPredictor
+    verbose : bool, optional (default=False)
+        If True, print progress information
 
-    Returns:
-        Dictionary containing probability distributions for each category
+    Returns
+    -------
+    dict
+        A dictionary mapping snapshot dates to probability distributions.
+
+    Raises
+    ------
+    ValueError
+        If test_visits does not have the required columns or if model is not fitted.
     """
-    # Validate prediction_time format
-    if (
-        not isinstance(prediction_time, (list, tuple))
-        or len(prediction_time) != 2
-        or not isinstance(prediction_time[0], int)
-        or not isinstance(prediction_time[1], int)
-    ):
-        raise ValueError("prediction_time must be a (hour, minute) tuple")
 
-    # Check if model is WeightedPoissonPredictor
-    is_weighted_poisson = (
-        hasattr(model, "__class__")
-        and model.__class__.__name__ == "WeightedPoissonPredictor"
-    )
-
-    # Additional validation for WeightedPoissonPredictor
-    if is_weighted_poisson:
-        # Validate curve parameters are provided
-        if x1 == 0.0 and y1 == 0.0 and x2 == 0.0 and y2 == 0.0:
+    # Validate test_visits has required columns
+    if start_time_col in test_visits.columns:
+        # start_time_col is a regular column
+        if end_time_col not in test_visits.columns:
+            raise ValueError(f"Column '{end_time_col}' not found in DataFrame")
+    else:
+        # Check if start_time_col is the index
+        if test_visits.index.name != start_time_col:
             raise ValueError(
-                "Meaningful curve parameters (x1, y1, x2, y2) are required for WeightedPoissonPredictor"
+                f"'{start_time_col}' not found in DataFrame columns or index (index.name is '{test_visits.index.name}')"
             )
+        if end_time_col not in test_visits.columns:
+            raise ValueError(f"Column '{end_time_col}' not found in DataFrame")
 
-        # Validate prediction window
-        if (
-            not hasattr(model, "prediction_window")
-            or model.prediction_window != prediction_window
-        ):
-            raise ValueError(
-                f"model.prediction_window ({model.prediction_window}) does not match provided prediction_window ({prediction_window})"
-            )
+    # Validate model is fitted
+    if not hasattr(model, "survival_df") or model.survival_df is None:
+        raise ValueError("Model must be fitted before calling get_prob_dist_empirical")
 
-        # Validate categories are subset of model weights keys
-        if not hasattr(model, "weights"):
-            raise ValueError("WeightedPoissonPredictor must have 'weights' attribute")
-        valid_categories = set(model.weights.keys())
-        invalid_categories = set(categories) - valid_categories
-        if invalid_categories:
-            raise ValueError(
-                f"Categories {invalid_categories} not found in model weights. Valid categories are {valid_categories}"
-            )
+    prob_dist_dict = {}
+    if verbose:
+        print(
+            f"Calculating probability distributions for {len(snapshot_dates)} snapshot dates"
+        )
 
-    # Validate datetime_col exists in test_df
-    if datetime_col not in test_df.columns:
-        raise KeyError(f"Column '{datetime_col}' not found in test_df")
+    # Create prediction context that will be the same for all dates
+    prediction_context = {category: {"prediction_time": prediction_time}}
 
-    # Initialize dictionary to store probability distributions
-    prob_dist_dict: Dict[str, Dict[date, Dict[str, Union[pd.DataFrame, float]]]] = {}
-    hour, minute = prediction_time
-
-    # Loop through each category
-    for category in categories:
-        prob_dist_dict[category] = {}
-
-        # Get predicted distribution
-        if is_weighted_poisson:
-            prediction_context = {category: {"prediction_time": prediction_time}}
-            agg_predicted_for_prediction_time = model.predict(
-                prediction_context, x1, y1, x2, y2
-            )[category]
+    for dt in snapshot_dates:
+        # Create prediction moment by combining snapshot date and prediction time
+        prediction_moment = datetime.combine(
+            dt, time(prediction_time[0], prediction_time[1])
+        )
+        # Convert to UTC if the test_visits timestamps are timezone-aware
+        if start_time_col in test_visits.columns:
+            if test_visits[start_time_col].dt.tz is not None:
+                prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
         else:
-            # Assume model is a statistical distribution (e.g., from scipy.stats)
-            agg_predicted_for_prediction_time = pd.DataFrame(
-                {"agg_proba": [model.pmf(k) for k in range(max_range)]},
-                index=range(max_range),
+            if test_visits.index.tz is not None:
+                prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
+
+        # Get predictions from model
+        predictions = model.predict(prediction_context)
+        prob_dist_dict[dt] = {"agg_predicted": predictions[category]}
+
+        # Calculate observed values
+        if start_time_col in test_visits.columns:
+            # start_time_col is a regular column
+            mask = (test_visits[start_time_col] > prediction_moment) & (
+                test_visits[end_time_col] <= prediction_moment + prediction_window
             )
-
-        # Calculate distributions for each date
-        for date_val in snapshot_dates:
-            snapshot_datetime = datetime.combine(
-                date_val, time(hour=hour, minute=minute), tzinfo=timezone.utc
+        else:
+            # start_time_col is the index
+            mask = (test_visits.index > prediction_moment) & (
+                test_visits[end_time_col] <= prediction_moment + prediction_window
             )
-            prob_dist_dict[category][date_val] = {}
+        nrow = mask.sum()
+        prob_dist_dict[dt]["agg_observed"] = int(nrow) if nrow > 0 else 0
 
-            # Store predicted distribution
-            prob_dist_dict[category][date_val]["agg_predicted"] = (
-                agg_predicted_for_prediction_time
-            )
-
-            # Calculate observed count of patients who arrived during the prediction window
-            observed_patients = test_df[
-                (test_df[datetime_col] > snapshot_datetime)
-                & (
-                    test_df[datetime_col]
-                    <= snapshot_datetime + timedelta(minutes=prediction_window)
-                )
-                & (test_df.specialty == category)
-            ]
-
-            if is_weighted_poisson:
-                # Apply weighting for WeightedPoissonPredictor
-                hours_til_arrival = (
-                    observed_patients[datetime_col] - snapshot_datetime
-                ).dt.total_seconds() / 3600
-                remaining_hours_in_window = prediction_window / 60 - hours_til_arrival
-
-                prob_dist_dict[category][date_val]["agg_observed"] = (
-                    remaining_hours_in_window.apply(
-                        lambda x: calculate_probability(
-                            elapsed_los_td_hrs=0,
-                            prediction_window_hrs=x,
-                            x1=x1,
-                            y1=y1,
-                            x2=x2,
-                            y2=y2,
-                        )
-                    ).sum()
-                )
-            else:
-                # Simple count for other model types
-                prob_dist_dict[category][date_val]["agg_observed"] = len(
-                    observed_patients
-                )
+    if verbose:
+        print(f"Processed {len(snapshot_dates)} snapshot dates")
 
     return prob_dist_dict

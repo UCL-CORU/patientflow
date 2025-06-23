@@ -1,5 +1,5 @@
 """
-Fake Emergency Department Visit Generator.
+Generate fake Emergency Department visit data.
 
 This module provides functions to generate fake datasets for patient visits to an emergency department (ED).
 It generates arrival and departure times, triage scores, lab orders, and patient admissions.
@@ -19,7 +19,9 @@ import numpy as np
 from datetime import datetime, timedelta, time
 
 
-def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
+def create_fake_finished_visits(
+    start_date, end_date, mean_patients_per_day, admitted_only=False
+):
     """
     Generate synthetic patient visit data for an emergency department.
 
@@ -34,6 +36,9 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
         The ending date for the simulation (exclusive). Can be a datetime object or a string in 'YYYY-MM-DD' format.
     mean_patients_per_day : float
         The average number of patient visits to generate per day.
+    admitted_only : bool, optional
+        If True, only return admitted patients. The mean_patients_per_day will be adjusted to maintain
+        the same total number of admitted patients as would be expected in the full dataset.
 
     Returns
     -------
@@ -44,6 +49,7 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
         - 'arrival_datetime'
         - 'departure_datetime'
         - 'is_admitted'
+        - 'specialty'
         - 'age'
     observations_df : pandas.DataFrame
         DataFrame containing triage score observations with columns:
@@ -61,6 +67,8 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
     - Patients are more likely to arrive during daytime hours.
     - 20% of patients will have more than one visit during the simulation period.
     - Lab test ordering likelihood depends on the severity of the triage score.
+    - When admitted_only=True, the mean_patients_per_day is adjusted to maintain the same number
+      of admitted patients as would be expected in the full dataset.
     """
 
     # Convert string dates to datetime if needed
@@ -72,8 +80,34 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
     # Set random seed for reproducibility
     np.random.seed(42)  # You can change this seed value as needed
 
+    # Define admission probabilities based on triage score
+    # Triage 1: 80% admission, Triage 2: 60%, Triage 3: 30%, Triage 4: 10%, Triage 5: 2%
+    admission_probabilities = {
+        1: 0.80,  # Highest severity - highest admission probability
+        2: 0.60,
+        3: 0.30,
+        4: 0.10,
+        5: 0.02,  # Lowest severity - lowest admission probability
+    }
+
+    # Define triage score distribution
+    # Most common is 3-4, less common are 2 and 5, least common is 1 (most severe)
+    triage_probabilities = [0.05, 0.15, 0.35, 0.35, 0.10]  # For scores 1-5
+
     # Calculate total days in range (changed to exclusive end date)
     days_range = (end_date - start_date).days
+
+    # If admitted_only is True, adjust mean_patients_per_day to maintain the same number of admitted patients
+    if admitted_only:
+        # Calculate expected admission rate based on triage probabilities and admission probabilities
+        expected_admission_rate = sum(
+            triage_prob * admission_prob
+            for triage_prob, admission_prob in zip(
+                triage_probabilities, admission_probabilities.values()
+            )
+        )
+        # Adjust mean_patients_per_day to maintain the same number of admitted patients
+        mean_patients_per_day = mean_patients_per_day / expected_admission_rate
 
     # Generate random number of patients for each day using Poisson distribution
     daily_patients = np.random.poisson(mean_patients_per_day, days_range)
@@ -89,20 +123,6 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
 
     # Create patient ids
     patient_ids = list(range(1, num_unique_patients + 1))
-
-    # Define admission probabilities based on triage score
-    # Triage 1: 80% admission, Triage 2: 60%, Triage 3: 30%, Triage 4: 10%, Triage 5: 2%
-    admission_probabilities = {
-        1: 0.80,  # Highest severity - highest admission probability
-        2: 0.60,
-        3: 0.30,
-        4: 0.10,
-        5: 0.02,  # Lowest severity - lowest admission probability
-    }
-
-    # Define triage score distribution
-    # Most common is 3-4, less common are 2 and 5, least common is 1 (most severe)
-    triage_probabilities = [0.05, 0.15, 0.35, 0.35, 0.10]  # For scores 1-5
 
     # Define common ED lab tests and their ordering probabilities based on triage score
     lab_tests = ["CBC", "BMP", "Troponin", "D-dimer", "Urinalysis"]
@@ -199,26 +219,39 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
             # Generate triage score (1-5)
             triage_score = np.random.choice([1, 2, 3, 4, 5], p=triage_probabilities)
 
-            # Generate length of stay (in minutes) - log-normal distribution
-            # Most visits are 2 to 6 hours, but some can be shorter or longer
-            length_of_stay = np.random.lognormal(mean=5.2, sigma=0.4)
-            length_of_stay = max(
-                30, min(1440, length_of_stay)
-            )  # Between 30 min and 24 hours
-
-            # Make higher triage scores (more severe) stay longer on average
-            if triage_score <= 2:
-                length_of_stay *= 1.5  # 50% longer stays for more severe cases
-
-            # Calculate departure time
-            departure_datetime = arrival_datetime + timedelta(
-                minutes=int(length_of_stay)
-            )
-
             # Generate admission status based on triage score
             admission_prob = admission_probabilities[triage_score]
             is_admitted = np.random.choice(
                 [0, 1], p=[1 - admission_prob, admission_prob]
+            )
+
+            # Generate specialty for admitted patients
+            if is_admitted:
+                specialty = np.random.choice(
+                    ["medical", "surgical", "haem/onc", "paediatric"],
+                    p=[0.65, 0.25, 0.05, 0.05],
+                )
+            else:
+                specialty = None
+
+            # Skip this visit if admitted_only is True and patient is not admitted
+            if admitted_only and not is_admitted:
+                continue
+
+            # Generate length of stay (in minutes) - log-normal distribution
+            # Most visits are 4 to 12 hours, but some can be shorter or longer
+            length_of_stay = np.random.lognormal(mean=5.8, sigma=0.5)
+            length_of_stay = max(
+                60, min(2880, length_of_stay)
+            )  # Between 1 hour and 48 hours
+
+            # Make higher triage scores (more severe) stay longer on average
+            if triage_score <= 2:
+                length_of_stay *= 1.8  # 80% longer stays for more severe cases
+
+            # Calculate departure time
+            departure_datetime = arrival_datetime + timedelta(
+                minutes=int(length_of_stay)
             )
 
             # For returning patients, use the same age as their first visit
@@ -239,8 +272,9 @@ def create_fake_finished_visits(start_date, end_date, mean_patients_per_day):
                     "visit_number": visit_number,
                     "arrival_datetime": arrival_datetime,
                     "departure_datetime": departure_datetime,
-                    "is_admitted": is_admitted,
                     "age": age,
+                    "is_admitted": is_admitted,
+                    "specialty": specialty,
                 }
             )
 
