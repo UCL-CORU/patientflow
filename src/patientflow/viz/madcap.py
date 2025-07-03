@@ -20,9 +20,6 @@ _plot_madcap_subplot : function
 _plot_madcap_by_group_single : function
     Generates MADCAP plots for specific groups at a given prediction time.
 
-plot_madcap_by_group : function
-    Generates MADCAP plots for different groups across multiple prediction times.
-
 plot_madcap_by_group(prediction_times, model_file_path, media_file_path, visits_csv_path, grouping_var, grouping_var_name)
     Generates MADCAP plots for groups (e.g., age groups) across a series of prediction times.
 """
