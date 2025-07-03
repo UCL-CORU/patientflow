@@ -20,7 +20,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -1225,7 +1225,7 @@
 
 
   
-    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/2c_Evaluate_patient_snapshot_models.md" title="Edit this page" class="md-content__button md-icon">
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/2c_Evaluate_patient_snapshot_models.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1280,19 +1280,6 @@ ed_visits = load_data(data_file_path,
                     eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
 </code></pre>
 <pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
-</code></pre>
-<pre><code class="language-python">ed_visits.age_group.value_counts()
-</code></pre>
-<pre><code>age_group
-25-34     23515
-35-44     17700
-18-24     15400
-45-54     14860
-55-64     14846
-0-17      13586
-75-115    12200
-65-74     11228
-Name: count, dtype: int64
 </code></pre>
 <p>Inspecting the data that has been loaded, we can see that it is similar in structure to the fake data that was generated on the fly in the previous notebooks. The dates have been pushed into the future, to minimise the likelihood of re-identifcation of patients.</p>
 <p>The dates for training, validation and test sets that match this dataset are defined in the config file in the root directory of <code>patientflow</code>.</p>
@@ -1458,15 +1445,15 @@ Training model for (9, 30)
 <p>The degree of overlap between distributions helps assess model discrimination ability. Less overlap suggests the model effectively distinguishes between positive and negative cases, while significant overlap indicates areas where the model struggles to differentiate between outcomes.</p>
 <p>From the plot below, we see that the model is discriminating poorly, with a high degree of overlap, and very few positive cases at the higher end. </p>
 <pre><code class="language-python"># without balanced training
-from patientflow.viz.distribution_plots import plot_prediction_distributions
-plot_prediction_distributions(
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+plot_estimated_probabilities(
     trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_19_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_18_0.png" /></p>
 <h3 id="calibration-plots">Calibration plots</h3>
 <p>A calibration plot shows how well a model's predicted probabilities match actual outcomes.</p>
 <ul>
@@ -1479,7 +1466,7 @@ plot_prediction_distributions(
 - Quantile: Ensures each bin has the same number of predictions, regardless of how wide or narrow each bin's probability range is.</p>
 <p>Below, we see reasonable calibration at the lower end, but deteriorating towards the higher end.</p>
 <pre><code class="language-python"># without balanced training
-from patientflow.viz.calibration_plot import plot_calibration
+from patientflow.viz.calibration import plot_calibration
 
 plot_calibration(
     trained_models=trained_models,  
@@ -1489,7 +1476,7 @@ plot_calibration(
     # suptitle=&quot;Base model with imbalanced training data&quot;  # optional
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_20_0.png" /></p>
 <h3 id="madcap-model-accuracy-diagnostic-calibration-plot">MADCAP (Model Accuracy Diagnostic Calibration Plot)</h3>
 <p>A MADCAP (Model Accuracy Diagnostic Calibration Plot) visually compares the predicted probabilities from a model with the actual outcomes (e.g., admissions or events) in a dataset. This plot helps to assess how well the model's predicted probabilities align with the observed values.</p>
 <p>The blue line represents the cumulative predicted outcomes, which are derived by summing the predicted probabilities as we move through the test set, ordered by increasing probability.
@@ -1497,14 +1484,14 @@ The orange line represents the cumulative observed outcomes, calculated based on
 <p>If the model is well calibrated, these two lines will closely follow each other. If the model discriminates well between positive and negative classes the curves will bow to the bottom left. </p>
 <p>Below, we see that some models under-predict the likelihood of admissions, as the blue line (predicted outcomes) falls below the orange line (actual outcomes). The models are assigning lower probabilities than they should, meaning that (later) we will under-predict the number of beds needed for these patients.</p>
 <pre><code class="language-python">## without balanced training
-from patientflow.viz.madcap_plot import generate_madcap_plots
-generate_madcap_plots(
+from patientflow.viz.madcap import plot_madcap
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_22_0.png" /></p>
 <h2 id="inspecting-a-balanced-model">Inspecting a balanced model</h2>
 <p>These results are not bad, but it is common to attempt to handle unbalanced classes by under-sampling the majority class. </p>
 <p>The <code>train_classifier()</code> function will balance the training set, if <code>use_balanced_training</code> is set to True, as shown below. </p>
@@ -1543,11 +1530,11 @@ Training model for (12, 0)
 Training model for (9, 30)
 </code></pre>
 <p>From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the whole test set, without undersampling the majority class, as shown in the calibation plot and MADCAP plots. </p>
-<pre><code class="language-python">from patientflow.viz.distribution_plots import plot_prediction_distributions
-from patientflow.viz.calibration_plot import plot_calibration
-from patientflow.viz.madcap_plot import generate_madcap_plots
+<pre><code class="language-python">from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.calibration import plot_calibration
+from patientflow.viz.madcap import plot_madcap
 
-plot_prediction_distributions(
+plot_estimated_probabilities(
     trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -1560,21 +1547,21 @@ plot_calibration(
     # suptitle=&quot;Base model with balanced training data&quot;  # optional
 )
 
-generate_madcap_plots(
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_0.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_1.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_27_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_26_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_26_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_26_2.png" /></p>
 <h2 id="inspecting-a-balanced-and-calibrated-model">Inspecting a balanced and calibrated model</h2>
 <p>A solution is to use the validation set to re-calibrate the probabilities generated by the model, so that they generate predictions that align with the true proportion of positive classes. From the plots below, we can see that calibration has been improved, but the calibration process has led to a truncation of the range of the predicted probabilities. </p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
-from patientflow.viz.distribution_plots import plot_prediction_distributions
-from patientflow.viz.calibration_plot import plot_calibration
-from patientflow.viz.madcap_plot import generate_madcap_plots
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.calibration import plot_calibration
+from patientflow.viz.madcap import plot_madcap
 from patientflow.load import get_model_key
 
 trained_models = {}
@@ -1601,7 +1588,7 @@ for prediction_time in prediction_times:
 
     trained_models[model_key] = model
 
-plot_prediction_distributions(
+plot_estimated_probabilities(
     trained_models=trained_models,  
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -1614,7 +1601,7 @@ plot_calibration(
     # suptitle=&quot;Base model with balanced training data&quot;  # optional
 )
 
-generate_madcap_plots(
+plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data
@@ -1626,15 +1613,15 @@ Training model for (6, 0)
 Training model for (12, 0)
 Training model for (9, 30)
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_28_3.png" /></p>
 <h2 id="madcap-plots-by-age">MADCAP plots by age</h2>
 <p>It can be useful to look at sub-categories of patients, to understand whether models perform better for some groups. Here we show MADCAP plots by age group.</p>
 <p>The performance is worse for children over all. There are fewer of them in the data, which can be seen by comparing the y axis limits; the y axis maximum is the total number of snapshots in the test that were in at the prediction time. In general, there are twice as many adults as over 65s (except at 22:00), and very few children. The models perform poorly for children, and best for adults under 65. They tend to under-predict for older people, especially at 22:00 and 06:00.  </p>
 <p>Analysis like this helps understand the limitations of the modelling, and consider alternative approaches. For example, we might consider training a different model for older people, assuming enough data, or gathering more training data before deployment. </p>
-<pre><code class="language-python">from patientflow.viz.madcap_plot import generate_madcap_plots_by_group
-generate_madcap_plots_by_group(
+<pre><code class="language-python">from patientflow.viz.madcap import plot_madcap_by_group
+plot_madcap_by_group(
     trained_models=trained_models,
     test_visits=test_visits,
     exclude_from_training_data=exclude_from_training_data,
@@ -1643,24 +1630,24 @@ generate_madcap_plots_by_group(
     plot_difference=False
 )
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_0.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_1.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_2.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_3.png" /></p>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_31_4.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_3.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_30_4.png" /></p>
 <h2 id="feature-importances-and-shap-plots">Feature importances and Shap plots</h2>
 <p><code>patientflow</code> offers functions that generate Shap and feature importance plots for each prediction time. </p>
-<pre><code class="language-python">from patientflow.viz.feature_plot import plot_features
+<pre><code class="language-python">from patientflow.viz.features import plot_features
 
 plot_features(
     trained_models)
 
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_33_0.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_0.png" /></p>
 <p>Note that shap package is not loaded by default, due to dependency issues. You will need to pip install it here to generate the shap plots.</p>
 <pre><code class="language-python">!pip install shap
 </code></pre>
-<pre><code class="language-python">from patientflow.viz.shap_plot import plot_shap
+<pre><code class="language-python">from patientflow.viz.shap import plot_shap
 
 plot_shap(
     trained_models, 
@@ -1669,41 +1656,21 @@ plot_shap(
 
 
 </code></pre>
-<pre><code>Predicted classification (not admitted, admitted):  [1666  952]
-
-
-/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-  shap.summary_plot(
+<pre><code>Predicted classification (not admitted, admitted):  [1663  955]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_2.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [2823 1326]
-
-
-/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-  shap.summary_plot(
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_1.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [2843 1306]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_5.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [4687 2547]
-
-
-/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-  shap.summary_plot(
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_3.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [4858 2376]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_8.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [5609 2914]
-
-
-/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-  shap.summary_plot(
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_5.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [5795 2728]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_11.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [4256 2354]
-
-
-/Users/zellaking/Repos/patientflow/src/patientflow/viz/shap_plot.py:95: FutureWarning: The NumPy global RNG was seeded by calling `np.random.seed`. In a future version this function will no longer use the global RNG. Pass `rng` explicitly to opt-in to the new behaviour and silence this warning.
-  shap.summary_plot(
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_7.png" /></p>
+<pre><code>Predicted classification (not admitted, admitted):  [4301 2309]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_36_14.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_9.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>
@@ -1783,7 +1750,7 @@ plot_shap(
       <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>
