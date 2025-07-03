@@ -28,7 +28,7 @@ def plot_deltas(
     results2=None,
     title1=None,
     title2=None,
-    main_title="Histograms of Observed - Expected Values",
+    suptitle="Histograms of Observed - Expected Values",
     xlabel="Observed minus expected",
     media_file_path=None,
     file_name=None,
@@ -52,8 +52,8 @@ def plot_deltas(
         Title for the first set of results.
     title2 : str, optional
         Title for the second set of results.
-    main_title : str, default="Histograms of Observed - Expected Values"
-        Main title for the entire plot.
+    suptitle : str, default="Histograms of Observed - Expected Values"
+        Super title for the entire plot.
     xlabel : str, default="Observed minus expected"
         Label for the x-axis of each histogram.
     media_file_path : Path, optional
@@ -92,14 +92,12 @@ def plot_deltas(
 
     # Create the plot
     fig, axes = plt.subplots(num_rows, num_cols, figsize=(width, height), squeeze=False)
-    fig.suptitle(main_title, fontsize=14)
+    fig.suptitle(suptitle, fontsize=14)
 
     # Flatten the axes array
     axes = axes.flatten()
 
-    def plot_results(
-        results, start_index, result_title, global_min, global_max, max_freq
-    ):
+    def plot_results(results, start_index, result_title, global_min, global_max):
         # Convert prediction times to minutes for sorting
         prediction_times_sorted = sorted(
             results.items(),
@@ -132,37 +130,29 @@ def plot_deltas(
             ax.set_xlabel(xlabel)
             ax.set_ylabel("Frequency")
             ax.set_xlim(global_min - 0.5, global_max + 0.5)
-            ax.set_ylim(0, max_freq)
 
     # Calculate global min and max differences for consistent x-axis across both result sets
     all_differences = []
-    max_counts = []
 
-    # Gather all differences and compute histogram data for both result sets
+    # Gather all differences for consistent x-axis scaling
     for results in [results1] + ([results2] if results2 else []):
         for _, values in results.items():
             observed = np.array(values["observed"])
             expected = np.array(values["expected"])
             differences = observed - expected
             all_differences.extend(differences)
-            # Compute histogram data to find maximum frequency
-            counts, _ = np.histogram(differences)
-            max_counts.append(max(counts))
 
     # Find the symmetric range around zero
     abs_max = max(abs(min(all_differences)), abs(max(all_differences)))
     global_min = -math.ceil(abs_max)
     global_max = math.ceil(abs_max)
 
-    # Find the maximum frequency across all histograms
-    max_freq = math.ceil(max(max_counts) * 1.1)  # Add 10% padding
-
     # Plot the first results set
-    plot_results(results1, 0, title1, global_min, global_max, max_freq)
+    plot_results(results1, 0, title1, global_min, global_max)
 
     # Plot the second results set if provided
     if results2:
-        plot_results(results2, num_plots, title2, global_min, global_max, max_freq)
+        plot_results(results2, num_plots, title2, global_min, global_max)
 
     # Hide any unused subplots
     for j in range(num_plots * (2 if results2 else 1), len(axes)):
@@ -200,6 +190,9 @@ def _prepare_arrival_data(
     df_copy = df.copy()
     if "arrival_datetime" in df_copy.columns:
         df_copy.set_index("arrival_datetime", inplace=True)
+        # Ensure the index is timezone-aware to match snapshot_datetime
+        if df_copy.index.tz is None:
+            df_copy.index = df_copy.index.tz_localize("UTC")
 
     return df_copy, snapshot_datetime, default_datetime, prediction_time_obj
 
