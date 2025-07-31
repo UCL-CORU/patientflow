@@ -21,6 +21,7 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
 from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
+    EmpiricalIncomingAdmissionPredictor,
 )
 from patientflow.prepare import create_yta_filters
 
@@ -113,6 +114,57 @@ def create_random_arrivals(n=1000):
     df = pd.DataFrame(
         {
             "arrival_datetime": arrival_datetime,
+            "specialty": specialty,
+            "is_child": is_child,
+        }
+    )
+
+    return df
+
+
+def create_random_arrivals_with_departures(n=1000):
+    """Create random arrival data with arrival times, departure times, and specialties.
+
+    Parameters
+    ----------
+    n : int
+        Number of arrivals to generate
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with arrival_datetime, departure_datetime, and specialty columns
+    """
+    # Use same seed as create_random_df for consistency
+    np.random.seed(0)
+
+    # Generate random arrival times over a week
+    base_date = pd.Timestamp("2023-01-01")
+    arrival_datetime = [
+        base_date + pd.Timedelta(minutes=np.random.randint(0, 60 * 24 * 7))
+        for _ in range(n)
+    ]
+
+    # Generate departure times that are after arrival times
+    # Length of stay between 1 hour and 48 hours
+    length_of_stay_minutes = np.random.randint(60, 48 * 60, size=n)
+    departure_datetime = [
+        arrival + pd.Timedelta(minutes=los)
+        for arrival, los in zip(arrival_datetime, length_of_stay_minutes)
+    ]
+
+    # Use same specialty list as create_random_df
+    specialties = ["medical", "surgical", "haem/onc", "paediatric"]
+    specialty = np.random.choice(specialties, size=n)
+
+    # Generate random is_child values
+    is_child = np.random.choice([True, False], size=n)
+
+    # Create DataFrame
+    df = pd.DataFrame(
+        {
+            "arrival_datetime": arrival_datetime,
+            "departure_datetime": departure_datetime,
             "specialty": specialty,
             "is_child": is_child,
         }
@@ -265,6 +317,53 @@ def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
     return (model, model_name)
 
 
+def create_empirical_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
+    """Create a test yet-to-arrive model using EmpiricalIncomingAdmissionPredictor.
+
+    Parameters
+    ----------
+    prediction_window : timedelta
+        The prediction window as a timedelta
+    df : pd.DataFrame
+        DataFrame containing patient data for filters
+    arrivals_df : pd.DataFrame
+        DataFrame containing historical arrival data with arrival_datetime and specialty columns
+    yta_time_interval : int or timedelta, optional
+        The time interval for predictions in minutes or as timedelta. Default is 60 minutes.
+
+    Returns
+    -------
+    tuple
+        (model, model_name)
+    """
+
+    filters = create_yta_filters(df)
+
+    # Convert yta_time_interval to timedelta if it's an int
+    if isinstance(yta_time_interval, int):
+        yta_time_interval = timedelta(minutes=yta_time_interval)
+
+    model = EmpiricalIncomingAdmissionPredictor(filters=filters)
+
+    # Convert timedelta to hours for model name
+    hours = prediction_window.total_seconds() / 3600
+    model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
+
+    # Fit the model
+    prediction_times = [(7, 0)]  # 7am predictions
+    num_days = 7  # One week of data
+
+    model.fit(
+        train_df=arrivals_df.set_index("arrival_datetime"),
+        prediction_window=prediction_window,
+        yta_time_interval=yta_time_interval,
+        prediction_times=prediction_times,
+        num_days=num_days,
+    )
+
+    return (model, model_name)
+
+
 class TestCreatePredictions(unittest.TestCase):
     def setUp(self):
         self.model_file_path = Path("tmp")
@@ -315,7 +414,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
         self.assertEqual(predictions["paediatric"]["in_ed"], [1, 0])
-        self.assertEqual(predictions["medical"]["yet_to_arrive"], [2, 1])
+        self.assertEqual(predictions["medical"]["yet_to_arrive"], [3, 2])
 
     def test_basic_functionality_with_special_category(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
@@ -364,7 +463,7 @@ class TestCreatePredictions(unittest.TestCase):
             predictions_without_special_category["paediatric"]["in_ed"], [1, 0]
         )
         self.assertEqual(
-            predictions_with_special_category["paediatric"]["in_ed"], [2, 1]
+            predictions_with_special_category["paediatric"]["in_ed"], [2, 2]
         )
 
     def test_single_row_prediction_snapshots(self):
@@ -644,6 +743,55 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIsInstance(predictions["medical"]["yet_to_arrive"], list)
         self.assertEqual(len(predictions["paediatric"]["in_ed"]), 2)
         self.assertEqual(len(predictions["medical"]["yet_to_arrive"]), 2)
+
+    def test_empirical_incoming_admission_predictor_integration(self):
+        """Test that EmpiricalIncomingAdmissionPredictor works with create_predictions function."""
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        # Create models with EmpiricalIncomingAdmissionPredictor
+        admission_model, spec_model, _ = self.models
+        
+        # Create arrivals data with departure times for empirical predictor
+        arrivals_with_departures_df = create_random_arrivals_with_departures(n=1000)
+        
+        empirical_yta_model, _ = create_empirical_yta_model(
+            self.prediction_window, self.df, arrivals_with_departures_df
+        )
+        models = (admission_model, spec_model, empirical_yta_model)
+
+        predictions = create_predictions(
+            models=models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        # Verify that predictions work correctly with EmpiricalIncomingAdmissionPredictor
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        self.assertIn("in_ed", predictions["paediatric"])
+        self.assertIn("yet_to_arrive", predictions["paediatric"])
+
+        # Check that we get reasonable predictions
+        self.assertIsInstance(predictions["paediatric"]["in_ed"], list)
+        self.assertIsInstance(predictions["medical"]["yet_to_arrive"], list)
+        self.assertEqual(len(predictions["paediatric"]["in_ed"]), 2)
+        self.assertEqual(len(predictions["medical"]["yet_to_arrive"]), 2)
+
+        # Verify that the empirical model was used (should have survival curve)
+        self.assertIsInstance(empirical_yta_model, EmpiricalIncomingAdmissionPredictor)
+        survival_curve = empirical_yta_model.get_survival_curve()
+        self.assertIsInstance(survival_curve, pd.DataFrame)
 
 
 if __name__ == "__main__":

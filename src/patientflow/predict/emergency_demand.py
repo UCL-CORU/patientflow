@@ -30,6 +30,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
 from patientflow.calculate.admission_in_prediction_window import (
     calculate_probability,
+    calculate_admission_probability_from_survival_curve,
 )
 
 from patientflow.aggregate import (
@@ -46,6 +47,7 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
 from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
+    EmpiricalIncomingAdmissionPredictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
 
@@ -233,7 +235,7 @@ def create_predictions(
     models: Tuple[
         TrainedClassifier,
         Union[SequenceToOutcomePredictor, ValueToOutcomePredictor],
-        ParametricIncomingAdmissionPredictor,
+        Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor],
     ],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
@@ -250,11 +252,11 @@ def create_predictions(
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, ValueToOutcomePredictor], ParametricIncomingAdmissionPredictor]
+    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, ValueToOutcomePredictor], Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor]]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
         - spec_model: SequenceToOutcomePredictor or ValueToOutcomePredictor for specialty predictions
-        - yet_to_arrive_model: ParametricIncomingAdmissionPredictor for yet-to-arrive predictions
+        - yet_to_arrive_model: ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
     prediction_snapshots : pandas.DataFrame
@@ -315,9 +317,9 @@ def create_predictions(
         raise TypeError(
             "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor"
         )
-    if not isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
+    if not isinstance(yet_to_arrive_model, (ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor)):
         raise TypeError(
-            "Third model must be of type ParametricIncomingAdmissionPredictor"
+            "Third model must be of type ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor"
         )
     if "elapsed_los" not in prediction_snapshots.columns:
         raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")
@@ -409,12 +411,21 @@ def create_predictions(
 
     # Get probability of admission within prediction window for current ED patients
     if use_admission_in_window_prob:
-        prob_admission_in_window = prediction_snapshots.apply(
-            lambda row: calculate_probability(
-                row["elapsed_los"], prediction_window, x1, y1, x2, y2
-            ),
-            axis=1,
-        )
+        # Check if the third model is EmpiricalIncomingAdmissionPredictor and use survival curve
+        if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
+            prob_admission_in_window = prediction_snapshots.apply(
+                lambda row: calculate_admission_probability_from_survival_curve(
+                    row["elapsed_los"], prediction_window, yet_to_arrive_model.survival_df
+                ),
+                axis=1,
+            )
+        else:
+            prob_admission_in_window = prediction_snapshots.apply(
+                lambda row: calculate_probability(
+                    row["elapsed_los"], prediction_window, x1, y1, x2, y2
+                ),
+                axis=1,
+            )
     else:
         prob_admission_in_window = pd.Series(1.0, index=prediction_snapshots.index)
 
@@ -454,13 +465,13 @@ def create_predictions(
 
         predictions[specialty]["in_ed"] = [
             find_probability_threshold_index(
-                agg_predicted_in_ed["agg_proba"].values.cumsum(), cut_point
+                agg_predicted_in_ed["agg_proba"].values, cut_point
             )
             for cut_point in cdf_cut_points
         ]
         predictions[specialty]["yet_to_arrive"] = [
             find_probability_threshold_index(
-                agg_predicted_yta[specialty]["agg_proba"].values.cumsum(), cut_point
+                agg_predicted_yta[specialty]["agg_proba"].values, cut_point
             )
             for cut_point in cdf_cut_points
         ]
