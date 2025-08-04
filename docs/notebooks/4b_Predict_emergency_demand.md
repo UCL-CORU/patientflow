@@ -287,18 +287,12 @@ Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the 
 These two probabilities for each patient snapshot are multiplied and the result passed to `get_prob_dist` function as weights.
 
 ```python
-import datetime
-len(group_snapshots_dict[datetime.date(2031, 10, 9)])
-```
-
-    79
-
-```python
 from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.aggregate import get_prob_dist
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
 from datetime import timedelta
-# Calculate probability of admission within prediction window
+
+# Calculate probability of admission within prediction window using ED targets
 prob_admission_in_window = prediction_snapshots.apply(
     lambda row: calculate_probability(
         elapsed_los = timedelta(seconds=row["elapsed_los"]),
@@ -334,13 +328,13 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         show_probability_thresholds=True, bar_colour='orange')
 ```
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_0.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_0.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_1.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_1.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_2.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_2.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_24_3.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_3.png)
 
 ## Train model to predict bed count distributions for patients yet to arrive
 
@@ -406,13 +400,13 @@ for specialty in [ 'medical', 'surgical', 'haem/onc', 'paediatric']:
         figsize=(6, 4) , bar_colour='green')
 ```
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_0.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_0.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_1.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_1.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_2.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_2.png)
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_28_3.png)
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_3.png)
 
 ##  Combining the predictions into one function for use in real-time inference
 
@@ -441,9 +435,142 @@ create_predictions(
     y2 = y2)
 ```
 
-    {'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
+    {'medical': {'in_ed': [7, 5], 'yet_to_arrive': [1, 0]},
      'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
      'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+     'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
+
+## Make predictions using empirical survival curve
+
+If your implementation does not use ED targets, the predictions can be generated using empirical data to calculate the probability that a patient to be admitted within the prediction window.
+
+First, I show how a survival curve would be used to calculate this probability of admission within the window. Then I re-implement the creation of predictions
+
+```python
+## Add synthetic value for admitted_to_ward_datetime to the dataset, if not available
+
+import numpy as np
+
+if 'admitted_to_ward_datetime' not in train_inpatient_arrivals_df.columns:
+
+    scale_hours = 12  # Average length of stay in hours
+    length_of_stay_minutes = np.random.exponential(scale=scale_hours * 60, size=len(train_inpatient_arrivals_df))
+
+    # Clip to reasonable bounds (1 hour minimum, 2 days maximum)
+    length_of_stay_minutes = np.clip(length_of_stay_minutes, 0, 5 * 24 * 60)
+
+    train_inpatient_arrivals_df['admitted_to_ward_datetime'] = [
+        arrival + pd.Timedelta(minutes=los)
+        for arrival, los in zip(train_inpatient_arrivals_df.index, length_of_stay_minutes)
+    ]
+
+
+```
+
+```python
+from patientflow.viz.survival_curve import plot_admission_time_survival_curve
+title = 'Survival curve showing probability of still being in the ED after a given elapsed time since arrival'
+survival_df = plot_admission_time_survival_curve(train_inpatient_arrivals_df.reset_index(),
+                                   start_time_col="arrival_datetime",
+                                   end_time_col="admitted_to_ward_datetime",
+                                   title=title,
+                                   ylabel='Proportion of patients not yet admitted',
+                                   xlabel='Elapsed time since arrival',
+                                   target_hours=[4, 8],
+                                   annotation_string="{:.1%} of patients admitted\nby {:.0f} hours",
+                                   return_df=True,
+                                   return_figure=False
+)
+```
+
+![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_33_0.png)
+
+`patientflow` includes a function to look up the probability of admission within a prediction window, using the survival curve. This is demonstrated below. It is used in the `create_predictions` function if the optional parameter `use_admission_in_window_prob` is set.
+
+```python
+from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
+
+prob_admission_in_window_from_survival_curve = calculate_admission_probability_from_survival_curve(
+    elapsed_los = timedelta(hours=1),
+    prediction_window = prediction_window,
+    survival_df = survival_df
+)
+
+print(f'Probability of admission in prediction window of {prediction_window.total_seconds() / 3600:.0f} hours, assuming patient has been in ED for 1 hour: {prob_admission_in_window_from_survival_curve:.2}')
+```
+
+    Probability of admission in prediction window of 8 hours, assuming patient has been in ED for 1 hour: 0.48
+
+For an array of patients, the probability of admission within the window would be created as shown below.
+
+```python
+from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
+
+# Calculate probability of admission within prediction window using ED targets
+prob_admission_in_window_from_survival_curve = prediction_snapshots.apply(
+    lambda row: calculate_admission_probability_from_survival_curve(
+        elapsed_los = row["elapsed_los"],
+        prediction_window = prediction_window,
+        survival_df = survival_df
+    ),
+    axis=1,
+)
+
+```
+
+Predictions are created exactly as before. The
+
+```python
+from patientflow.predict.emergency_demand import create_predictions
+from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
+
+# First I'll train the empirical yet-to-arrive model
+train_inpatient_arrivals_df_copy = train_inpatient_arrivals_df.copy(deep=True)
+
+num_days = (start_validation_set - start_training_set).days
+
+# the arrival_datetime column needs to be set as the index of the dataframe
+if 'arrival_datetime' in train_inpatient_arrivals_df_copy.columns:
+    train_inpatient_arrivals_df_copy.set_index('arrival_datetime', inplace=True)
+
+specialty_filters = filters={
+    'medical': {'specialty': 'medical'},
+    'surgical': {'specialty': 'surgical'},
+    'haem/onc': {'specialty': 'haem/onc'},
+    'paediatric': {'specialty': 'paediatric'}
+    }
+
+yta_model_by_spec_empirical =  EmpiricalIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
+yta_model_by_spec_empirical.fit(train_inpatient_arrivals_df_copy,
+                        prediction_window=prediction_window,
+                        yta_time_interval=yta_time_interval,
+                        prediction_times=ed_visits.prediction_time.unique(),
+                        num_days=num_days,
+                        start_time_col='arrival_datetime',
+                        end_time_col='admitted_to_ward_datetime')
+
+models = (admission_model, spec_model, yta_model_by_spec_empirical)
+
+# convert elapsed_los to timedelta to ensure correct calculation of probability of admission within prediction window
+prediction_snapshots['elapsed_los'] = pd.to_timedelta(prediction_snapshots['elapsed_los'], unit='s')
+
+create_predictions(
+    models = models,
+    prediction_time = random_prediction_time,
+    prediction_snapshots = prediction_snapshots,
+    specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
+    prediction_window = prediction_window,
+    cdf_cut_points =  [0.7, 0.9],
+    x1 = x1,
+    y1 = y1,
+    x2 = x2,
+    y2 = y2,
+    use_admission_in_window_prob = True)
+```
+
+    {'medical': {'in_ed': [3, 2], 'yet_to_arrive': [0, 0]},
+     'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
 ## Summary
@@ -454,5 +581,7 @@ Here I have shown how `patientflow` is used at UCLH to generate predictions of e
 - predictions for patients yet-to-arrive to the ED, who will need admission in the next 8 hours
 
 Both sets of predictions assume specified ED targets are met.
+
+I also showed an alternative approach, in which predictions used past data to calculate probability of admission within a prediction window; in this case no assumption is made about ED targets being met.
 
 In the next notebook, I show how to evaluate the predictions against the numbers of patients actually admitted.

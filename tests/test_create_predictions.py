@@ -317,7 +317,9 @@ def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
     return (model, model_name)
 
 
-def create_empirical_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
+def create_empirical_yta_model(
+    prediction_window, df, arrivals_df, yta_time_interval=60
+):
     """Create a test yet-to-arrive model using EmpiricalIncomingAdmissionPredictor.
 
     Parameters
@@ -753,13 +755,14 @@ class TestCreatePredictions(unittest.TestCase):
 
         # Create models with EmpiricalIncomingAdmissionPredictor
         admission_model, spec_model, _ = self.models
-        
+
         # Create arrivals data with departure times for empirical predictor
         arrivals_with_departures_df = create_random_arrivals_with_departures(n=1000)
-        
+
         empirical_yta_model, _ = create_empirical_yta_model(
             self.prediction_window, self.df, arrivals_with_departures_df
         )
+
         models = (admission_model, spec_model, empirical_yta_model)
 
         predictions = create_predictions(

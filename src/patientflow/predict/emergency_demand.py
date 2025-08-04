@@ -235,7 +235,9 @@ def create_predictions(
     models: Tuple[
         TrainedClassifier,
         Union[SequenceToOutcomePredictor, ValueToOutcomePredictor],
-        Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor],
+        Union[
+            ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor
+        ],
     ],
     prediction_time: Tuple,
     prediction_snapshots: pd.DataFrame,
@@ -317,7 +319,10 @@ def create_predictions(
         raise TypeError(
             "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor"
         )
-    if not isinstance(yet_to_arrive_model, (ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor)):
+    if not isinstance(
+        yet_to_arrive_model,
+        (ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor),
+    ):
         raise TypeError(
             "Third model must be of type ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor"
         )
@@ -415,7 +420,9 @@ def create_predictions(
         if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
             prob_admission_in_window = prediction_snapshots.apply(
                 lambda row: calculate_admission_probability_from_survival_curve(
-                    row["elapsed_los"], prediction_window, yet_to_arrive_model.survival_df
+                    row["elapsed_los"],
+                    prediction_window,
+                    yet_to_arrive_model.survival_df,
                 ),
                 axis=1,
             )

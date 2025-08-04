@@ -169,7 +169,7 @@ def calculate_probability(
     y2: float,
 ):
     """
-    Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction, 
+    Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction,
     based on the patient's elapsed time in the ED prior to the moment of prediction and the length of the window
 
     Parameters
@@ -291,10 +291,8 @@ def get_survival_probability(survival_df, time_hours):
     - If the exact time_hours is not in the survival curve data, the function will
       interpolate between the nearest time points
     - If time_hours is less than the minimum time in the data, returns 1.0
-    - If time_hours is greater than the maximum time in the data, returns the last
-      known survival probability and issues a warning. This behavior may need to be
-      reconsidered depending on the specific use case and whether the survival curve
-      has reached its asymptotic value.
+    - If time_hours is greater than the maximum time in the data, uses exponential
+      decay extrapolation based on the last few data points
 
     Examples
     --------
@@ -309,20 +307,59 @@ def get_survival_probability(survival_df, time_hours):
         return 1.0
 
     if time_hours > survival_df["time_hours"].max():
-        # For times beyond the data, we have a few options:
-        # 1. Return the last known value (current behavior)
-        # 2. Extrapolate using the last few points
-        # 3. Return 0 (assuming all patients are eventually admitted/discharged)
-        # 4. Use exponential decay extrapolation
-        
-        # For now, we'll use the last known value, but warn the user
-        warnings.warn(
-            f"Time {time_hours} hours exceeds maximum time in survival data "
-            f"({survival_df['time_hours'].max()} hours). Using last known survival probability "
-            f"({survival_df['survival_probability'].iloc[-1]:.3f}). Consider extending the survival data "
-            "or using a different extrapolation method."
-        )
-        return survival_df["survival_probability"].iloc[-1]
+        # Use exponential decay extrapolation for times beyond the data
+        max_time = survival_df["time_hours"].max()
+        max_prob = survival_df["survival_probability"].iloc[-1]
+
+        # Track whether we attempted exponential fitting and whether it failed
+        attempted_exponential_fitting = False
+        exponential_fitting_failed = False
+
+        # Use the last 3 points to fit exponential decay if available
+        if len(survival_df) >= 3:
+            attempted_exponential_fitting = True
+
+            # Get the last 3 points for fitting
+            last_times = survival_df["time_hours"].iloc[-3:].values
+            last_probs = survival_df["survival_probability"].iloc[-3:].values
+
+            # Fit exponential decay: P(t) = P0 * exp(-lambda * (t - t0))
+            # where P0 is the probability at t0, and lambda is the decay rate
+            t0 = last_times[0]
+            P0 = last_probs[0]
+
+            # Calculate decay rate lambda using the last two points
+            t1, t2 = last_times[-2], last_times[-1]
+            P1, P2 = last_probs[-2], last_probs[-1]
+
+            # For exponential fitting, replace P2 = 0 with a small positive value
+            # to ensure the decay can be calculated while maintaining asymptotic behavior
+            if P2 == 0:
+                P2_fit = 1e-6  # Small positive value for fitting
+            else:
+                P2_fit = P2
+
+            # lambda = -ln(P2/P1) / (t2 - t1)
+            if P2_fit > 0 and P1 > 0 and t2 > t1:
+                lambda_decay = -np.log(P2_fit / P1) / (t2 - t1)
+
+                # Extrapolate using exponential decay
+                extrapolated_prob = P0 * np.exp(-lambda_decay * (time_hours - t0))
+
+                # Ensure the probability doesn't go below 0
+                return max(0.0, extrapolated_prob)
+            else:
+                exponential_fitting_failed = True
+
+        # Fallback: use the last known value if exponential fitting fails
+        # Only warn if we actually attempted exponential fitting but it failed
+        if attempted_exponential_fitting and exponential_fitting_failed:
+            warnings.warn(
+                f"Time {time_hours} hours exceeds maximum time in survival data "
+                f"({max_time} hours). Exponential fitting failed (invalid data), using last known survival probability "
+                f"({max_prob:.3f}) as fallback."
+            )
+        return max_prob
 
     # Find the closest time points for interpolation
     lower_idx = survival_df["time_hours"].searchsorted(time_hours, side="right") - 1
@@ -350,7 +387,7 @@ def calculate_admission_probability_from_survival_curve(
     survival_df,
 ):
     """
-    Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction, 
+    Calculates the probability of an admission occurring within a specified prediction window after the moment of prediction,
     based on the patient's elapsed time in the ED prior to the moment of prediction and the length of the window.
     Uses empirical survival curve data instead of an aspirational curve.
 
@@ -374,13 +411,13 @@ def calculate_admission_probability_from_survival_curve(
     -----
     This function calculates the conditional probability of admission within the prediction window,
     given that the patient hasn't been admitted yet. It uses the formula:
-    
-    P(admission in window | not admitted yet) = 
+
+    P(admission in window | not admitted yet) =
         (P(not admitted at elapsed) - P(not admitted at elapsed + window)) / P(not admitted at elapsed)
-    
+
     Since survival probability = P(not admitted), this becomes:
-    
-    P(admission in window | not admitted yet) = 
+
+    P(admission in window | not admitted yet) =
         (survival_prob(elapsed) - survival_prob(elapsed + window)) / survival_prob(elapsed)
 
     Edge Case Handling
@@ -388,7 +425,7 @@ def calculate_admission_probability_from_survival_curve(
     When elapsed_los is extremely high, the survival probability can reach 0, which would cause
     division by zero. In such cases, this function returns a probability of 1.0, reflecting
     certainty of admission.
-    
+
     When elapsed_hours + prediction_window_hours exceeds the maximum time in the survival data,
     the get_survival_probability function will return the last known survival probability and
     issue a warning. This may affect the accuracy of the admission probability calculation
@@ -396,7 +433,7 @@ def calculate_admission_probability_from_survival_curve(
 
     Example
     -------
-    Calculate the probability that a patient, who has already been in the ED for 3 hours, 
+    Calculate the probability that a patient, who has already been in the ED for 3 hours,
     will be admitted in the next 2 hours using empirical survival data.
 
     >>> from datetime import timedelta
@@ -454,7 +491,7 @@ def calculate_admission_probability_from_survival_curve(
 
     # Calculate the conditional probability of admission within the prediction window
     # given that the patient hasn't been admitted yet
-    # P(admission in window | not admitted yet) = 
+    # P(admission in window | not admitted yet) =
     # (P(not admitted at elapsed) - P(not admitted at elapsed + window)) / P(not admitted at elapsed)
     conditional_prob = (
         survival_prob_at_elapsed - survival_prob_at_end_of_window
