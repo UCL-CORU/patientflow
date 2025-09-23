@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
+    DirectAdmissionPredictor,
     weighted_poisson_binomial,
     aggregate_probabilities,
     convolute_distributions,
@@ -582,6 +583,309 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         # Predictions should still be generated successfully
         self.assertIn("medical", empirical_predictions)
         self.assertIn("surgical", empirical_predictions)
+
+    def test_direct_predictor_initialization(self):
+        """Test DirectAdmissionPredictor initialization."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        self.assertEqual(predictor.filters, self.filters)
+        self.assertFalse(predictor.verbose)
+
+        # Test with verbose mode
+        verbose_predictor = DirectAdmissionPredictor(filters=self.filters, verbose=True)
+        self.assertTrue(verbose_predictor.verbose)
+
+        # Test with no filters
+        no_filter_predictor = DirectAdmissionPredictor(filters=None)
+        self.assertEqual(no_filter_predictor.filters, {})
+
+    def test_direct_predictor_fit(self):
+        """Test DirectAdmissionPredictor fit method."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+
+        # Test successful fit
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Check that weights were calculated
+        self.assertIsInstance(predictor.weights, dict)
+        self.assertTrue(len(predictor.weights) > 0)
+
+        # Check that all filter keys are present
+        for key in self.filters.keys():
+            self.assertIn(key, predictor.weights)
+
+        # Check that prediction times are stored correctly
+        self.assertEqual(predictor.prediction_times, self.prediction_times)
+
+        # Check that arrival_rates are stored for each filter and prediction time
+        for filter_key in self.filters.keys():
+            self.assertIn(filter_key, predictor.weights)
+            for prediction_time in self.prediction_times:
+                self.assertIn(prediction_time, predictor.weights[filter_key])
+                self.assertIn("arrival_rates", predictor.weights[filter_key][prediction_time])
+                arrival_rates = predictor.weights[filter_key][prediction_time]["arrival_rates"]
+                self.assertIsInstance(arrival_rates, list)
+                self.assertTrue(len(arrival_rates) > 0)
+
+    def test_direct_predictor_predict(self):
+        """Test DirectAdmissionPredictor predict method."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Test prediction
+        prediction_context = {
+            "medical": {"prediction_time": (8, 0)},
+            "surgical": {"prediction_time": (12, 0)},
+        }
+
+        predictions = predictor.predict(prediction_context, max_value=30)
+
+        # Check output format
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("medical", predictions)
+        self.assertIn("surgical", predictions)
+
+        # Check that predictions are DataFrames with expected columns
+        for key, pred_df in predictions.items():
+            self.assertIsInstance(pred_df, pd.DataFrame)
+            self.assertIn("agg_proba", pred_df.columns)
+            self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+            
+            # Check that probabilities are non-negative
+            self.assertTrue(np.all(pred_df["agg_proba"] >= 0))
+
+        # Test with custom max_value
+        predictions_small = predictor.predict(prediction_context, max_value=10)
+        for key, pred_df in predictions_small.items():
+            self.assertTrue(pred_df.index.max() <= 9)  # max_value - 1
+            self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+
+        # Test missing parameters - should not require any additional parameters
+        predictions_no_params = predictor.predict(prediction_context)
+        self.assertIsInstance(predictions_no_params, dict)
+
+        # Test invalid filter key
+        invalid_context = {"invalid_key": {"prediction_time": (8, 0)}}
+        with self.assertRaises(ValueError):
+            predictor.predict(invalid_context)
+
+        # Test missing prediction_time
+        invalid_context = {"medical": {"wrong_key": (8, 0)}}
+        with self.assertRaises(ValueError):
+            predictor.predict(invalid_context)
+
+    def test_direct_predictor_mathematical_correctness(self):
+        """Test that DirectAdmissionPredictor produces mathematically correct results."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Get arrival rates for a specific context
+        medical_arrival_rates = predictor.weights["medical"][(8, 0)]["arrival_rates"]
+        total_expected_arrivals = sum(medical_arrival_rates)
+
+        # Make prediction
+        prediction_context = {"medical": {"prediction_time": (8, 0)}}
+        predictions = predictor.predict(prediction_context, max_value=50)
+
+        # Calculate expected value from the distribution
+        pred_df = predictions["medical"]
+        expected_value = sum(pred_df.index * pred_df["agg_proba"])
+
+        # The expected value should be close to the total arrival rate
+        # (since every arrival is assumed to be admitted immediately)
+        self.assertAlmostEqual(expected_value, total_expected_arrivals, places=2)
+
+    def test_direct_predictor_consistency(self):
+        """Test that DirectAdmissionPredictor produces consistent results."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        prediction_context = {"medical": {"prediction_time": (8, 0)}}
+
+        # Make multiple predictions - should be identical
+        pred1 = predictor.predict(prediction_context)
+        pred2 = predictor.predict(prediction_context)
+
+        # Check that results are identical
+        np.testing.assert_array_almost_equal(
+            pred1["medical"]["agg_proba"].values,
+            pred2["medical"]["agg_proba"].values
+        )
+
+    def test_direct_predictor_without_filters(self):
+        """Test DirectAdmissionPredictor without filters."""
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Should have 'unfiltered' key
+        self.assertIn("unfiltered", predictor.weights)
+
+        # Test prediction with unfiltered data
+        prediction_context = {"unfiltered": {"prediction_time": (8, 0)}}
+        predictions = predictor.predict(prediction_context)
+
+        self.assertIn("unfiltered", predictions)
+        pred_df = predictions["unfiltered"]
+        self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+
+    def test_direct_predictor_warning_functionality(self):
+        """Test that DirectAdmissionPredictor properly warns when using non-trained prediction times."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Test prediction with a time not in training data - should warn and use nearest
+        prediction_context = {
+            "medical": {"prediction_time": (14, 30)},  # Not in training times
+            "surgical": {"prediction_time": (6, 0)},  # Not in training times
+        }
+
+        with self.assertWarns(UserWarning) as warning_context:
+            predictions = predictor.predict(prediction_context)
+
+        # Should have warnings for both times
+        warning_messages = [
+            str(warning.message) for warning in warning_context.warnings
+        ]
+        self.assertTrue(any("(14, 30)" in msg for msg in warning_messages))
+        self.assertTrue(any("(6, 0)" in msg for msg in warning_messages))
+
+        # Predictions should still be generated successfully
+        self.assertIn("medical", predictions)
+        self.assertIn("surgical", predictions)
+
+    def test_direct_predictor_comparison_with_others(self):
+        """Test that DirectAdmissionPredictor produces different but reasonable results compared to other predictors."""
+        # Fit all three predictors
+        direct_predictor = DirectAdmissionPredictor(filters=self.filters)
+        parametric_predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        empirical_predictor = EmpiricalIncomingAdmissionPredictor(filters=self.filters)
+
+        direct_predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        parametric_predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        empirical_predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Make predictions
+        prediction_context = {"medical": {"prediction_time": (8, 0)}}
+
+        direct_pred = direct_predictor.predict(prediction_context)
+        parametric_pred = parametric_predictor.predict(
+            prediction_context, x1=2, y1=0.5, x2=4, y2=0.9
+        )
+        empirical_pred = empirical_predictor.predict(prediction_context, max_value=25)
+
+        # All should produce valid probability distributions
+        for pred_dict in [direct_pred, parametric_pred, empirical_pred]:
+            for key, pred_df in pred_dict.items():
+                self.assertTrue(np.all(pred_df["agg_proba"] >= 0))
+                self.assertTrue(
+                    np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10)
+                )
+
+        # Direct predictor should generally have higher expected values
+        # since it assumes 100% admission rate
+        direct_expected = sum(direct_pred["medical"].index * direct_pred["medical"]["agg_proba"])
+        parametric_expected = sum(parametric_pred["medical"].index * parametric_pred["medical"]["agg_proba"])
+        empirical_expected = sum(empirical_pred["medical"].index * empirical_pred["medical"]["agg_proba"])
+
+        # Direct predictor should have the highest expected value (100% admission rate)
+        self.assertGreaterEqual(direct_expected, parametric_expected)
+        self.assertGreaterEqual(direct_expected, empirical_expected)
+
+    def test_direct_predictor_edge_cases(self):
+        """Test DirectAdmissionPredictor edge cases."""
+        # Test with empty filters
+        predictor = DirectAdmissionPredictor(filters={})
+        predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Should have 'unfiltered' key
+        self.assertIn("unfiltered", predictor.weights)
+
+        # Test with single prediction time
+        single_time_predictor = DirectAdmissionPredictor(filters=self.filters)
+        single_time_predictor.fit(
+            self.test_df,
+            self.prediction_window,
+            self.yta_time_interval,
+            [(8, 0)],  # Single prediction time
+            self.num_days,
+        )
+
+        # Test with very short prediction window
+        short_window = timedelta(minutes=30)
+        short_predictor = DirectAdmissionPredictor(filters=self.filters)
+        short_predictor.fit(
+            self.test_df,
+            short_window,
+            self.yta_time_interval,
+            self.prediction_times,
+            self.num_days,
+        )
+
+        # Should still work
+        prediction_context = {"medical": {"prediction_time": (8, 0)}}
+        predictions = short_predictor.predict(prediction_context)
+        self.assertIn("medical", predictions)
 
 
 if __name__ == "__main__":
