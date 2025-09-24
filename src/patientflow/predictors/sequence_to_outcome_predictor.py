@@ -235,7 +235,7 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category
-        prob_input_var_ends_in_observed_specialty = grouping_sequence_to_string.apply(
+        prob_input_var_ends_in_observed_specialty = pd.Series(grouping_sequence_to_string).apply(
             lambda x: self._string_match_input_var(x, reweighted_proportions, prop_keys)
         )
 
