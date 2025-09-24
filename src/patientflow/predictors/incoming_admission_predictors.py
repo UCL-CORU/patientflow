@@ -2,15 +2,20 @@
 Hospital Admissions Forecasting Predictors.
 
 This module implements custom predictors to estimate the number of hospital admissions
-within a specified prediction window using historical admission data. It provides two
-approaches: parametric curves with Poisson-binomial distributions and empirical survival
-curves with convolution of Poisson distributions. Both predictors accommodate different
-data filters for tailored predictions across various hospital settings.
+within a specified prediction window using historical admission data. It provides three
+approaches: direct admission prediction, parametric curves with Poisson-binomial distributions,
+and empirical survival curves with convolution of Poisson distributions. All predictors
+accommodate different data filters for tailored predictions across various hospital settings.
 
 Classes
 -------
 IncomingAdmissionPredictor : BaseEstimator, TransformerMixin
     Base class for admission predictors that handles filtering and arrival rate calculation.
+
+DirectAdmissionPredictor : IncomingAdmissionPredictor
+    Simplest predictor that assumes every arrival is admitted immediately. Uses direct
+    Poisson distribution based on total arrival rates without any admission probability
+    adjustments.
 
 ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions within a given prediction window based on historical
@@ -22,6 +27,11 @@ EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
 
 Notes
 -----
+The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
+intervals and creating a single Poisson distribution. It assumes 100% admission rate,
+making it useful for scenarios where immediate admission is expected or as a baseline
+for comparison with more complex models.
+
 The ParametricIncomingAdmissionPredictor uses a combination of Poisson and binomial distributions to
 model the probability of admissions within a prediction window using parametric curves
 defined by transition points (x1, y1, x2, y2).
@@ -30,7 +40,7 @@ The EmpiricalIncomingAdmissionPredictor inherits the arrival rate calculation an
 but replaces the parametric approach with empirical survival probabilities and convolution
 of individual Poisson distributions for each time interval.
 
-Both predictors take into account historical data patterns and can be filtered for
+All predictors take into account historical data patterns and can be filtered for
 specific hospital settings or specialties.
 
 """
@@ -593,6 +603,127 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         pass
 
 
+class DirectAdmissionPredictor(IncomingAdmissionPredictor):
+    """A predictor that assumes every arrival is admitted immediately.
+    
+    This predictor uses only the arrival rates calculated from historical data
+    and assumes 100% admission probability for all arrivals. No survival curves
+    or parametric models are used - it's a direct Poisson distribution based
+    on the arrival rates.
+    
+    Parameters
+    ----------
+    filters : dict, optional
+        Optional filters for data categorization. If None, no filtering is applied.
+    verbose : bool, default=False
+        Whether to enable verbose logging.
+        
+    Notes
+    -----
+    This is the simplest predictor that directly uses arrival rates without
+    any admission probability adjustments. It sums all arrival rates across
+    time intervals and creates a single Poisson distribution, making it useful
+    for scenarios where immediate admission is expected or as a baseline
+    for comparison with more complex models.
+    """
+
+    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
+        """Predict the number of admissions assuming 100% admission rate.
+        
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        **kwargs
+            Additional keyword arguments for prediction configuration:
+            
+            max_value : int, default=50
+                Maximum value for the discrete distribution support.
+                
+        Returns
+        -------
+        dict
+            A dictionary with predictions for each specified context.
+            
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
+        """
+        from scipy import stats
+        
+        # Extract parameters from kwargs with defaults
+        max_value = kwargs.get("max_value", 50)
+        
+        predictions = {}
+        
+        for filter_key, filter_values in prediction_context.items():
+            try:
+                if filter_key not in self.weights:
+                    raise ValueError(
+                        f"Filter key '{filter_key}' is not recognized in the model weights."
+                    )
+
+                prediction_time = filter_values.get("prediction_time")
+                if prediction_time is None:
+                    raise ValueError(
+                        f"No 'prediction_time' provided for filter '{filter_key}'."
+                    )
+
+                if prediction_time not in self.prediction_times:
+                    prediction_time = find_nearest_previous_prediction_time(
+                        prediction_time, self.prediction_times
+                    )
+
+                arrival_rates = self.weights[filter_key][prediction_time].get(
+                    "arrival_rates"
+                )
+                if arrival_rates is None:
+                    raise ValueError(
+                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                    )
+
+                # Convert arrival rates to numpy array
+                arrival_rates = np.array(arrival_rates)
+                
+                # Since every arrival is admitted immediately, we just sum all arrival rates
+                # to get the total expected arrivals (which equals total admissions)
+                total_arrival_rate = arrival_rates.sum()
+                
+                # Create a simple Poisson distribution with the total arrival rate
+                poisson_dist = stats.poisson(total_arrival_rate)
+                
+                # Generate PMF for the distribution
+                x_values = np.arange(max_value)
+                probabilities = poisson_dist.pmf(x_values)
+                
+                # Create result DataFrame in the same format as other predictors
+                result_df = pd.DataFrame({
+                    "sum": x_values,
+                    "agg_proba": probabilities
+                })
+                
+                # Filter out near-zero probabilities and normalize
+                result_df = result_df[result_df["agg_proba"] > 1e-10]
+                result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
+                
+                predictions[filter_key] = result_df.set_index("sum")
+                
+                if self.verbose:
+                    self.logger.info(
+                        f"Direct prediction for {filter_key} at {prediction_time}: "
+                        f"Expected admissions = {total_arrival_rate:.2f}"
+                    )
+
+            except KeyError as e:
+                raise KeyError(f"Key error occurred: {e!s}")
+
+        return predictions
+
+
 class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor for estimating hospital admissions using parametric curves.
 
@@ -1100,120 +1231,3 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return predictions
 
-
-class DirectAdmissionPredictor(IncomingAdmissionPredictor):
-    """A predictor that assumes every arrival is admitted immediately.
-    
-    This predictor uses only the arrival rates calculated from historical data
-    and assumes 100% admission probability for all arrivals. No survival curves
-    or parametric models are used - it's a direct Poisson distribution based
-    on the arrival rates.
-    
-    Parameters
-    ----------
-    filters : dict, optional
-        Optional filters for data categorization. If None, no filtering is applied.
-    verbose : bool, default=False
-        Whether to enable verbose logging.
-        
-    Notes
-    -----
-    This is the simplest predictor that directly uses arrival rates without
-    any admission probability adjustments.
-    """
-
-    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
-        """Predict the number of admissions assuming 100% admission rate.
-        
-        Parameters
-        ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
-        **kwargs
-            Additional keyword arguments for prediction configuration:
-            
-            max_value : int, default=50
-                Maximum value for the discrete distribution support.
-                
-        Returns
-        -------
-        dict
-            A dictionary with predictions for each specified context.
-            
-        Raises
-        ------
-        ValueError
-            If filter key is not recognized or prediction_time is not provided.
-        KeyError
-            If required keys are missing from the prediction context.
-        """
-        from scipy import stats
-        
-        # Extract parameters from kwargs with defaults
-        max_value = kwargs.get("max_value", 50)
-        
-        predictions = {}
-        
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
-
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
-                )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                # Convert arrival rates to numpy array
-                arrival_rates = np.array(arrival_rates)
-                
-                # Since every arrival is admitted immediately, we just sum all arrival rates
-                # to get the total expected arrivals (which equals total admissions)
-                total_arrival_rate = arrival_rates.sum()
-                
-                # Create a simple Poisson distribution with the total arrival rate
-                poisson_dist = stats.poisson(total_arrival_rate)
-                
-                # Generate PMF for the distribution
-                x_values = np.arange(max_value)
-                probabilities = poisson_dist.pmf(x_values)
-                
-                # Create result DataFrame in the same format as other predictors
-                result_df = pd.DataFrame({
-                    "sum": x_values,
-                    "agg_proba": probabilities
-                })
-                
-                # Filter out near-zero probabilities and normalize
-                result_df = result_df[result_df["agg_proba"] > 1e-10]
-                result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
-                
-                predictions[filter_key] = result_df.set_index("sum")
-                
-                if self.verbose:
-                    self.logger.info(
-                        f"Direct prediction for {filter_key} at {prediction_time}: "
-                        f"Expected admissions = {total_arrival_rate:.2f}"
-                    )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
-
-        return predictions

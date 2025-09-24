@@ -219,31 +219,39 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         proportions = X_grouped.div(row_totals, axis=0)
 
         # Calculate the probability of each grouping sequence occurring in the original data
-        proportions["probability_of_grouping_sequence"] = row_totals / row_totals.sum()
+        probability_of_grouping_sequence = row_totals / row_totals.sum()
 
         # Reweight probabilities of ending with each observed specialty
         # by the likelihood of each grouping sequence occurring
-        for col in proportions.columns[
-            :-1
-        ]:  # Avoid the last column which is the 'probability_of_grouping_sequence'
-            proportions[col] *= proportions["probability_of_grouping_sequence"]
+        reweighted_proportions = proportions.copy()
+        for col in proportions.columns:  
+            reweighted_proportions[col] *= probability_of_grouping_sequence
 
         # Convert final sequence to a string in order to conduct string searches on it
-        proportions["grouping_sequence_to_string"] = proportions.index.map(
+        grouping_sequence_to_string = proportions.index.map(
             lambda x: "-".join(map(str, x))
         )
 
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category
-        proportions["prob_input_var_ends_in_observed_specialty"] = proportions[
-            "grouping_sequence_to_string"
-        ].apply(lambda x: self._string_match_input_var(x, proportions, prop_keys))
+        prob_input_var_ends_in_observed_specialty = grouping_sequence_to_string.apply(
+            lambda x: self._string_match_input_var(x, reweighted_proportions, prop_keys)
+        )
+
+        # Combine all new columns at once to avoid DataFrame fragmentation
+        new_columns = pd.DataFrame({
+            "probability_of_grouping_sequence": probability_of_grouping_sequence,
+            "grouping_sequence_to_string": grouping_sequence_to_string,
+            "prob_input_var_ends_in_observed_specialty": prob_input_var_ends_in_observed_specialty
+        })
+        
+        proportions = pd.concat([proportions, new_columns], axis=1)
 
         # Convert the prob_input_var_ends_in_observed_specialty column to a dictionary
         result_dict = proportions["prob_input_var_ends_in_observed_specialty"].to_dict()
 
-        # Clean the key to remove excess strint quotes
+        # Clean the key to remove excess string quotes
         def clean_tuple_key(key):
             if isinstance(key, tuple):
                 return tuple(
