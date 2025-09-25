@@ -473,24 +473,11 @@ class SpecialCategoryParams:
 
 
 def create_special_category_objects(columns):
-    """Create a configuration for categorising patients with special handling for pediatric cases.
+    """Legacy wrapper: route to patientflow.group.create_special_category_objects."""
+    # Local import avoids module-level cycles
+    from .group import create_special_category_objects as _delegate
 
-    Parameters
-    ----------
-    columns : list or pandas.Index
-        The column names available in the dataset. Used to determine which age format is present.
-
-    Returns
-    -------
-    dict
-        A dictionary containing special category configuration with:
-        - 'special_category_func': Function to identify pediatric patients
-        - 'special_category_dict': Default category values
-        - 'special_func_map': Mapping of category names to detection functions
-    """
-    # Create the class instance and return its parameter dictionary
-    params_obj = SpecialCategoryParams(columns)
-    return params_obj.get_params_dict()
+    return _delegate(columns)
 
 
 def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
@@ -518,49 +505,10 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
 
 
 def create_yta_filters(df):
-    """Create specialty filters for categorizing patients by specialty and age group.
+    """Legacy wrapper: route to patientflow.group.create_yta_filters."""
+    from .group import create_yta_filters as _delegate
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        DataFrame containing patient data with columns that include either
-        'age_on_arrival' or 'age_group' for pediatric classification
-
-    Returns
-    -------
-    dict
-        A dictionary mapping specialty names to filter configurations.
-        Each configuration contains:
-        - For pediatric specialty: {"is_child": True}
-        - For other specialties: {"specialty": specialty_name, "is_child": False}
-
-    Examples
-    --------
-    >>> df = pd.DataFrame({'patient_id': [1, 2], 'age_on_arrival': [10, 40]})
-    >>> filters = create_yta_filters(df)
-    >>> print(filters['paediatric'])
-    {'is_child': True}
-    >>> print(filters['medical'])
-    {'specialty': 'medical', 'is_child': False}
-    """
-    # Get the special category parameters using the picklable implementation
-    special_params = create_special_category_objects(df.columns)
-
-    # Extract necessary data from the special_params
-    special_category_dict = special_params["special_category_dict"]
-
-    # Create the specialty_filters dictionary
-    specialty_filters = {}
-
-    for specialty, is_paediatric_flag in special_category_dict.items():
-        if is_paediatric_flag == 1.0:
-            # For the paediatric specialty, set `is_child` to True
-            specialty_filters[specialty] = {"is_child": True}
-        else:
-            # For other specialties, set `is_child` to False
-            specialty_filters[specialty] = {"specialty": specialty, "is_child": False}
-
-    return specialty_filters
+    return _delegate(df)
 
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):
