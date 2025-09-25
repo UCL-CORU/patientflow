@@ -18,7 +18,7 @@ import ast
 from sklearn.base import BaseEstimator, TransformerMixin
 from datetime import datetime
 
-from patientflow.prepare import create_special_category_objects
+from patientflow.predictors.legacy_compatibility import create_special_category_objects
 
 
 class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):

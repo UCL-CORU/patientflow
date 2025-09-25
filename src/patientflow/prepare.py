@@ -473,9 +473,11 @@ class SpecialCategoryParams:
 
 
 def create_special_category_objects(columns):
-    """Legacy wrapper: route to patientflow.group.create_special_category_objects."""
+    """Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_special_category_objects."""
     # Local import avoids module-level cycles
-    from .group import create_special_category_objects as _delegate
+    from .predictors.legacy_compatibility import (
+        create_special_category_objects as _delegate,
+    )
 
     return _delegate(columns)
 
@@ -505,8 +507,8 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
 
 
 def create_yta_filters(df):
-    """Legacy wrapper: route to patientflow.group.create_yta_filters."""
-    from .group import create_yta_filters as _delegate
+    """Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_yta_filters."""
+    from .predictors.legacy_compatibility import create_yta_filters as _delegate
 
     return _delegate(df)
 
