@@ -64,7 +64,6 @@ params = load_config_file(config_path)
 start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
 
 # apply the temporal splits
-from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
@@ -1889,7 +1888,6 @@ For that I'll also need an admission prediction model, which is set up below.
 
 ```python
 from patientflow.train.classifiers import train_classifier
-from patientflow.load import get_model_key
 
 prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
 ordinal_mappings = {

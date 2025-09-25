@@ -70,7 +70,6 @@ Alternatively you can use the synthetic dataset that was generated using a strat
 If you don't have the public data, change the argument in the cell above from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
 
 ```python
-import pandas as pd
 from patientflow.load import load_data
 
 ed_visits = load_data(data_file_path,

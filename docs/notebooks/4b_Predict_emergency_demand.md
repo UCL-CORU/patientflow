@@ -342,7 +342,6 @@ As we are predicting by clinical area we will want the predicted bed counts for 
 
 ```python
 from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
-from datetime import timedelta
 
 # set the ED targets
 x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]

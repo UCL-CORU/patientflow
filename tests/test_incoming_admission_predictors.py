@@ -627,8 +627,12 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             self.assertIn(filter_key, predictor.weights)
             for prediction_time in self.prediction_times:
                 self.assertIn(prediction_time, predictor.weights[filter_key])
-                self.assertIn("arrival_rates", predictor.weights[filter_key][prediction_time])
-                arrival_rates = predictor.weights[filter_key][prediction_time]["arrival_rates"]
+                self.assertIn(
+                    "arrival_rates", predictor.weights[filter_key][prediction_time]
+                )
+                arrival_rates = predictor.weights[filter_key][prediction_time][
+                    "arrival_rates"
+                ]
                 self.assertIsInstance(arrival_rates, list)
                 self.assertTrue(len(arrival_rates) > 0)
 
@@ -661,7 +665,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             self.assertIsInstance(pred_df, pd.DataFrame)
             self.assertIn("agg_proba", pred_df.columns)
             self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
-            
+
             # Check that probabilities are non-negative
             self.assertTrue(np.all(pred_df["agg_proba"] >= 0))
 
@@ -731,8 +735,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
 
         # Check that results are identical
         np.testing.assert_array_almost_equal(
-            pred1["medical"]["agg_proba"].values,
-            pred2["medical"]["agg_proba"].values
+            pred1["medical"]["agg_proba"].values, pred2["medical"]["agg_proba"].values
         )
 
     def test_direct_predictor_without_filters(self):
@@ -792,7 +795,9 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         """Test that DirectAdmissionPredictor produces different but reasonable results compared to other predictors."""
         # Fit all three predictors
         direct_predictor = DirectAdmissionPredictor(filters=self.filters)
-        parametric_predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        parametric_predictor = ParametricIncomingAdmissionPredictor(
+            filters=self.filters
+        )
         empirical_predictor = EmpiricalIncomingAdmissionPredictor(filters=self.filters)
 
         direct_predictor.fit(
@@ -838,9 +843,15 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
 
         # Direct predictor should generally have higher expected values
         # since it assumes 100% admission rate
-        direct_expected = sum(direct_pred["medical"].index * direct_pred["medical"]["agg_proba"])
-        parametric_expected = sum(parametric_pred["medical"].index * parametric_pred["medical"]["agg_proba"])
-        empirical_expected = sum(empirical_pred["medical"].index * empirical_pred["medical"]["agg_proba"])
+        direct_expected = sum(
+            direct_pred["medical"].index * direct_pred["medical"]["agg_proba"]
+        )
+        parametric_expected = sum(
+            parametric_pred["medical"].index * parametric_pred["medical"]["agg_proba"]
+        )
+        empirical_expected = sum(
+            empirical_pred["medical"].index * empirical_pred["medical"]["agg_proba"]
+        )
 
         # Direct predictor should have the highest expected value (100% admission rate)
         self.assertGreaterEqual(direct_expected, parametric_expected)

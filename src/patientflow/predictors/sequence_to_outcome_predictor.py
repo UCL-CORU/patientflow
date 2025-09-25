@@ -225,7 +225,7 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         # by the likelihood of each grouping sequence occurring
         # This transforms conditional probabilities into overall probabilities
         reweighted_proportions = proportions.copy()
-        for col in proportions.columns:  
+        for col in proportions.columns:
             reweighted_proportions[col] *= probability_of_grouping_sequence
 
         # Convert final sequence to a string in order to conduct string searches on it
@@ -236,18 +236,24 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category
-        grouping_sequence_series = pd.Series(grouping_sequence_to_string, index=proportions.index)
+        grouping_sequence_series = pd.Series(
+            grouping_sequence_to_string, index=proportions.index
+        )
         prob_input_var_ends_in_observed_specialty = grouping_sequence_series.apply(
-            lambda x: self._string_match_input_var(x, reweighted_proportions, prop_keys, grouping_sequence_to_string)
+            lambda x: self._string_match_input_var(
+                x, reweighted_proportions, prop_keys, grouping_sequence_to_string
+            )
         )
 
         # Combine all new columns at once to avoid DataFrame fragmentation
-        new_columns = pd.DataFrame({
-            "probability_of_grouping_sequence": probability_of_grouping_sequence,
-            "grouping_sequence_to_string": grouping_sequence_to_string,
-            "prob_input_var_ends_in_observed_specialty": prob_input_var_ends_in_observed_specialty
-        })
-        
+        new_columns = pd.DataFrame(
+            {
+                "probability_of_grouping_sequence": probability_of_grouping_sequence,
+                "grouping_sequence_to_string": grouping_sequence_to_string,
+                "prob_input_var_ends_in_observed_specialty": prob_input_var_ends_in_observed_specialty,
+            }
+        )
+
         proportions = pd.concat([proportions, new_columns], axis=1)
 
         # Convert the prob_input_var_ends_in_observed_specialty column to a dictionary
@@ -276,7 +282,9 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
 
         return self
 
-    def _string_match_input_var(self, input_var_string, proportions, prop_keys, grouping_sequence_to_string):
+    def _string_match_input_var(
+        self, input_var_string, proportions, prop_keys, grouping_sequence_to_string
+    ):
         """
         Matches a given input sequence string with grouped sequences (expressed as strings) in the dataset and aggregates
         their probabilities for each outcome category. This function filters the data to

@@ -241,9 +241,13 @@ def plot_epudd(
 
     # Create subplot layout
     fig: Figure
-    axs: np.ndarray
-    fig, axs = plt.subplots(1, num_plots, figsize=figsize)
-    axs = [axs] if num_plots == 1 else axs
+    # Matplotlib may return a single Axes or an ndarray of Axes; normalize to a list for typing
+    fig, _axs = plt.subplots(1, num_plots, figsize=figsize)
+    if isinstance(_axs, np.ndarray):
+        axs_list = list(_axs)
+    else:
+        axs_list = [_axs]
+    axs = axs_list
 
     # Define plotting types and colors
     all_types = ["lower", "mid", "upper"]

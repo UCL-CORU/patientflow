@@ -605,19 +605,19 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
 class DirectAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor that assumes every arrival is admitted immediately.
-    
+
     This predictor uses only the arrival rates calculated from historical data
     and assumes 100% admission probability for all arrivals. No survival curves
     or parametric models are used - it's a direct Poisson distribution based
     on the arrival rates.
-    
+
     Parameters
     ----------
     filters : dict, optional
         Optional filters for data categorization. If None, no filtering is applied.
     verbose : bool, default=False
         Whether to enable verbose logging.
-        
+
     Notes
     -----
     This is the simplest predictor that directly uses arrival rates without
@@ -629,7 +629,7 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions assuming 100% admission rate.
-        
+
         Parameters
         ----------
         prediction_context : dict
@@ -637,15 +637,15 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
             It should specify either a general context or one based on the applied filters.
         **kwargs
             Additional keyword arguments for prediction configuration:
-            
+
             max_value : int, default=50
                 Maximum value for the discrete distribution support.
-                
+
         Returns
         -------
         dict
             A dictionary with predictions for each specified context.
-            
+
         Raises
         ------
         ValueError
@@ -654,12 +654,12 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
             If required keys are missing from the prediction context.
         """
         from scipy import stats
-        
+
         # Extract parameters from kwargs with defaults
         max_value = kwargs.get("max_value", 50)
-        
+
         predictions = {}
-        
+
         for filter_key, filter_values in prediction_context.items():
             try:
                 if filter_key not in self.weights:
@@ -688,30 +688,29 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
                 # Convert arrival rates to numpy array
                 arrival_rates = np.array(arrival_rates)
-                
+
                 # Since every arrival is admitted immediately, we just sum all arrival rates
                 # to get the total expected arrivals (which equals total admissions)
                 total_arrival_rate = arrival_rates.sum()
-                
+
                 # Create a simple Poisson distribution with the total arrival rate
                 poisson_dist = stats.poisson(total_arrival_rate)
-                
+
                 # Generate PMF for the distribution
                 x_values = np.arange(max_value)
                 probabilities = poisson_dist.pmf(x_values)
-                
+
                 # Create result DataFrame in the same format as other predictors
-                result_df = pd.DataFrame({
-                    "sum": x_values,
-                    "agg_proba": probabilities
-                })
-                
+                result_df = pd.DataFrame({"sum": x_values, "agg_proba": probabilities})
+
                 # Filter out near-zero probabilities and normalize
                 result_df = result_df[result_df["agg_proba"] > 1e-10]
-                result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
-                
+                result_df["agg_proba"] = (
+                    result_df["agg_proba"] / result_df["agg_proba"].sum()
+                )
+
                 predictions[filter_key] = result_df.set_index("sum")
-                
+
                 if self.verbose:
                     self.logger.info(
                         f"Direct prediction for {filter_key} at {prediction_time}: "
@@ -1230,4 +1229,3 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
                 raise KeyError(f"Key error occurred: {e!s}")
 
         return predictions
-

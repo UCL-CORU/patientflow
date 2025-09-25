@@ -40,7 +40,7 @@ import sys
 
 import pandas as pd
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from typing import Any, Dict, Tuple, Union, Optional
 import argparse
 
