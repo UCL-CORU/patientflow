@@ -618,7 +618,7 @@ apply_special_category_filtering=True,
 admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle pediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for pediatric, 0.0 for others) and functions to identify pediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group).
+Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle paediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for paediatric, 0.0 for others) and functions to identify paediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group).
 
 The `SequenceToOutcomePredictor` applies these rules during both training and prediction, ensuring consistent handling of special categories across the entire prediction pipeline
 
@@ -645,7 +645,7 @@ Predictions for patients who are yet-to-arrive models are based on arrival rates
 
 The `create_yta_filters()` function generates a dictionary of filters for the `ParametricIncomingAdmissionPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
 
-- For pediatric patients: {"is_child": True}
+- For paediatric patients: {"is_child": True}
 - For other specialties: {"specialty": specialty_name, "is_child": False}
 
 This allows the predictor to
@@ -679,7 +679,7 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
 
 ### Saving of special category information
 
-The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for pediatric cases), but does not need them in the predict method. The filters are saved with the instance.
+The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for paediatric cases), but does not need them in the predict method. The filters are saved with the instance.
 
 ```python
 yta_model_by_spec.filters
