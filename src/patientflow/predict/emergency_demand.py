@@ -307,6 +307,14 @@ def create_predictions(
     that contain either a 'pipeline' or 'calibrated_pipeline' attribute. The pipeline
     will be used for making predictions, with calibrated_pipeline taking precedence
     if both exist.
+    
+    Notes on subgroup mapping
+    -------------------------
+    If the specialty model exposes a 'specialty_to_subgroups' attribute
+    (e.g., MultiSubgroupPredictor), that mapping is used to include patients
+    for each subspecialty as a union across listed subgroups. If the mapping
+    is not available, legacy filtering is used via 'special_func_map': a
+    function named by the specialty if present, otherwise the 'default' filter.
     """
     # Validate model types
     classifier, spec_model, yet_to_arrive_model = models
@@ -439,11 +447,38 @@ def create_predictions(
     if special_func_map is None:
         special_func_map = {"default": lambda row: True}
 
+    # Resolve specialty_to_subgroups from the model (preferred path)
+    specialty_to_subgroups: Dict[str, List[str]] = {}
+    if hasattr(spec_model, "specialty_to_subgroups"):
+        try:
+            sts = getattr(spec_model, "specialty_to_subgroups")
+            if isinstance(sts, dict):
+                specialty_to_subgroups = sts
+        except Exception:
+            specialty_to_subgroups = {}
+
+    # Precompute subgroup/function masks once
+    masks_by_func: Dict[str, pd.Series] = {
+        name: prediction_snapshots.apply(func, axis=1)
+        for name, func in special_func_map.items()
+    }
+
     for specialty in specialties:
-        func = special_func_map.get(specialty, special_func_map["default"])
-        non_zero_indices = prediction_snapshots[
-            prediction_snapshots.apply(func, axis=1)
-        ].index
+        # Determine which subgroup functions define eligibility for this subspecialty
+        if specialty_to_subgroups and specialty in specialty_to_subgroups:
+            func_keys = specialty_to_subgroups[specialty]
+        else:
+            # Backward compatible: use a function named by the specialty if present, otherwise default
+            func_keys = [specialty] if specialty in special_func_map else ["default"]
+
+        # Combine the masks with logical OR to include patients from multiple subgroups
+        combined_mask = pd.Series(False, index=prediction_snapshots.index)
+        for key in func_keys:
+            combined_mask = combined_mask | masks_by_func.get(
+                key, pd.Series(False, index=prediction_snapshots.index)
+            )
+
+        non_zero_indices = prediction_snapshots[combined_mask].index
 
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
         prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(

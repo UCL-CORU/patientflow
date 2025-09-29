@@ -93,6 +93,8 @@ class MultiSubgroupPredictor:
         self.min_samples: int = min_samples
         self.models: Dict[str, Any] = {}
         self.special_params: Optional[Dict[str, Any]] = None
+        # Mapping from specialty -> list of subgroup names observed in training data
+        self.specialty_to_subgroups: Dict[str, List[str]] = {}
 
     def fit(self, X: pd.DataFrame) -> "MultiSubgroupPredictor":
         """Train models for each subgroup that has sufficient data."""
@@ -117,6 +119,15 @@ class MultiSubgroupPredictor:
 
         # Create backward compatibility params
         self.special_params = self._create_legacy_params()
+
+        # Infer and store specialty->subgroups mapping from the provided training data
+        try:
+            self.specialty_to_subgroups = infer_specialty_to_subgroups(
+                X, self.subgroup_functions, outcome_var=self.outcome_var
+            )
+        except Exception:
+            # Be robust to unexpected data shapes; leave mapping empty if inference fails
+            self.specialty_to_subgroups = {}
         return self
 
     def predict(
@@ -318,3 +329,63 @@ def create_subgroup_system(
         "special_category_dict": legacy_params["special_category_dict"],
         "special_func_map": legacy_params["special_func_map"],
     }
+
+
+def infer_specialty_to_subgroups(
+    df: pd.DataFrame,
+    subgroup_functions: Dict[str, Callable[[Union[pd.Series, dict]], bool]],
+    outcome_var: str = "observed_specialty",
+) -> Dict[str, List[str]]:
+    """Infer mapping from specialty to contributing subgroups from data.
+
+    For each specialty present in ``df[outcome_var]``, this computes how many
+    rows belong to each subgroup (based on ``subgroup_functions``) and includes
+    every subgroup with at least one occurrence for that specialty.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Historical data with at least ``outcome_var`` and columns needed by
+        ``subgroup_functions``.
+    subgroup_functions : Dict[str, Callable]
+        Mapping of subgroup name -> boolean row predicate.
+    outcome_var : str, default 'observed_specialty'
+        Column containing the realized specialty.
+        
+    Returns
+    -------
+    Dict[str, List[str]]
+        Mapping of specialty -> list of subgroup names to include. The list
+        may be empty if no subgroup appears for that specialty.
+    """
+    if outcome_var not in df.columns:
+        raise ValueError(
+            f"Outcome column '{outcome_var}' not found in DataFrame."
+        )
+
+    # Compute subgroup membership masks (allowing for potential overlaps)
+    subgroup_masks: Dict[str, pd.Series] = {
+        name: df.apply(func, axis=1).fillna(False) for name, func in subgroup_functions.items()
+    }
+
+    # Build counts per (specialty, subgroup)
+    result: Dict[str, List[str]] = {}
+    specialties = df[outcome_var].dropna().unique().tolist()
+
+    for specialty in specialties:
+        spec_mask = df[outcome_var] == specialty
+        spec_total = int(spec_mask.sum())
+        if spec_total == 0:
+            result[specialty] = []
+            continue
+
+        counts: Dict[str, int] = {
+            subgroup: int((spec_mask & mask).sum()) for subgroup, mask in subgroup_masks.items()
+        }
+
+        # Include all subgroups observed at least once
+        eligible = [subgroup for subgroup, cnt in counts.items() if cnt > 0]
+
+        result[specialty] = eligible
+
+    return result
