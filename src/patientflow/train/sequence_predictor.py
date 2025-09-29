@@ -21,9 +21,9 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
 
 def get_default_visits(admitted: DataFrame) -> DataFrame:
     """
-    Filter a dataframe of patient visits to include only non-pediatric patients.
+    Filter a dataframe of patient visits to include only non-paediatric patients.
 
-    This function identifies and removes pediatric patients from the dataset based on
+    This function identifies and removes paediatric patients from the dataset based on
     both age criteria and specialty assignment. It automatically detects the appropriate
     age column format from the provided dataframe.
 
@@ -36,21 +36,21 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     Returns
     -------
     DataFrame
-        A filtered DataFrame containing only non-pediatric patients (adults).
+        A filtered DataFrame containing only non-paediatric patients (adults).
 
     Notes
     ------
     The function automatically detects which age-related columns are present in the
     dataframe and configures the appropriate filtering logic. It removes patients who
     are either:
-    1. Identified as pediatric based on age criteria, or
-    2. Assigned to a pediatric specialty
+    1. Identified as paediatric based on age criteria, or
+    2. Assigned to a paediatric specialty
 
     """
     # Get configuration for categorizing patients based on age columns
     special_params = create_special_category_objects(admitted.columns)
 
-    # Extract function that identifies non-pediatric patients
+    # Extract function that identifies non-paediatric patients
     opposite_special_category_func = special_params["special_func_map"]["default"]
 
     # Determine which category is the special category (should be "paediatric")
@@ -60,7 +60,7 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
         if value == 1.0
     )
 
-    # Filter out pediatric patients based on both age criteria and specialty
+    # Filter out paediatric patients based on both age criteria and specialty
     filtered_admitted = admitted[
         admitted.apply(opposite_special_category_func, axis=1)
         & (admitted["specialty"] != special_category_key)

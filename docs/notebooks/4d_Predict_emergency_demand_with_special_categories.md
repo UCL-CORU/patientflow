@@ -621,7 +621,7 @@ apply_special_category_filtering=True,
 admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle pediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for pediatric, 0.0 for others) and functions to identify pediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group).
+Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle paediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for paediatric, 0.0 for others) and functions to identify paediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group).
 
 The `SequenceToOutcomePredictor` applies these rules during both training and prediction, ensuring consistent handling of special categories across the entire prediction pipeline
 
@@ -636,13 +636,13 @@ from patientflow.prepare import create_special_category_objects
 create_special_category_objects(train_visits_df.columns)
 ```
 
-    {'special_category_func': <function patientflow.group.create_special_category_objects.<locals>.is_pediatric(row)>,
+    {'special_category_func': <function patientflow.group.create_special_category_objects.<locals>.is_paediatric(row)>,
      'special_category_dict': {'medical': 0.0,
       'surgical': 0.0,
       'haem/onc': 0.0,
       'paediatric': 1.0},
-     'special_func_map': {'paediatric': <function patientflow.group.create_special_category_objects.<locals>.is_pediatric(row)>,
-      'default': <function patientflow.group.create_special_category_objects.<locals>.is_not_pediatric(row)>}}
+     'special_func_map': {'paediatric': <function patientflow.group.create_special_category_objects.<locals>.is_paediatric(row)>,
+      'default': <function patientflow.group.create_special_category_objects.<locals>.is_not_paediatric(row)>}}
 
 ## Train models for yet-to-arrive patients
 
@@ -650,7 +650,7 @@ Predictions for patients who are yet-to-arrive models are based on arrival rates
 
 The `create_yta_filters()` function generates a dictionary of filters for the `ParametricIncomingAdmissionPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
 
-- For pediatric patients: {"is_child": True}
+- For paediatric patients: {"is_child": True}
 - For other specialties: {"specialty": specialty_name, "is_child": False}
 
 This allows the predictor to
@@ -684,7 +684,7 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
 
 ### Saving of special category information
 
-The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for pediatric cases), but does not need them in the predict method. The filters are saved with the instance.
+The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for paediatric cases), but does not need them in the predict method. The filters are saved with the instance.
 
 ```python
 yta_model_by_spec.filters
@@ -701,14 +701,14 @@ In contrast, the `SequenceToOutcomePredictor` save the special parameters as a f
 spec_model.special_params
 ```
 
-    {'special_category_func': <function patientflow.group.create_subgroup_functions.<locals>.is_pediatric(row)>,
+    {'special_category_func': <function patientflow.group.create_subgroup_functions.<locals>.is_paediatric(row)>,
      'special_category_dict': {'medical': 0.0,
       'surgical': 0.0,
       'haem/onc': 0.0,
       'paediatric': 1.0},
-     'special_func_map': {'paediatric': <function patientflow.group.create_subgroup_functions.<locals>.is_pediatric(row)>,
+     'special_func_map': {'paediatric': <function patientflow.group.create_subgroup_functions.<locals>.is_paediatric(row)>,
       'default': <function patientflow.group.create_subgroup_system.<locals>.<lambda>(row)>,
-      'pediatric': <function patientflow.group.create_subgroup_functions.<locals>.is_pediatric(row)>,
+      'paediatric': <function patientflow.group.create_subgroup_functions.<locals>.is_paediatric(row)>,
       'adult_male_young': <function patientflow.group.create_subgroup_functions.<locals>.is_adult_male_young(row)>,
       'adult_female_young': <function patientflow.group.create_subgroup_functions.<locals>.is_adult_female_young(row)>,
       'adult_male_senior': <function patientflow.group.create_subgroup_functions.<locals>.is_adult_male_senior(row)>,

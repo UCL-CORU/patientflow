@@ -351,7 +351,7 @@ def create_temporal_splits(
 class SpecialCategoryParams:
     """A picklable implementation of special category parameters for patient classification.
 
-    This class identifies pediatric patients based on available age-related columns
+    This class identifies paediatric patients based on available age-related columns
     in the dataset and provides functions to categorise patients accordingly.
     It's designed to be serializable with pickle by implementing the __reduce__ method.
 
@@ -404,7 +404,7 @@ class SpecialCategoryParams:
             raise ValueError("Unknown data format: could not find expected age columns")
 
     def special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """Identify if a patient is pediatric based on age data.
+        """Identify if a patient is paediatric based on age data.
 
         Parameters
         ----------
@@ -414,7 +414,7 @@ class SpecialCategoryParams:
         Returns
         -------
         bool
-            True if the patient is pediatric (age < 18 or age_group is '0-17'),
+            True if the patient is paediatric (age < 18 or age_group is '0-17'),
             False otherwise
         """
         if self.method_type == "age_on_arrival":
@@ -423,7 +423,7 @@ class SpecialCategoryParams:
             return row["age_group"] == "0-17"
 
     def opposite_special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """Identify if a patient is NOT pediatric.
+        """Identify if a patient is NOT paediatric.
 
         Parameters
         ----------
@@ -433,7 +433,7 @@ class SpecialCategoryParams:
         Returns
         -------
         bool
-            True if the patient is NOT pediatric, False if they are pediatric
+            True if the patient is NOT paediatric, False if they are paediatric
         """
         return not self.special_category_func(row)
 
@@ -446,7 +446,7 @@ class SpecialCategoryParams:
         -------
         Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]
             A dictionary containing:
-            - 'special_category_func': Function to identify pediatric patients
+            - 'special_category_func': Function to identify paediatric patients
             - 'special_category_dict': Default category values (float)
             - 'special_func_map': Mapping of category names to detection functions
         """

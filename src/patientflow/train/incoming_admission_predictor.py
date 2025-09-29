@@ -24,21 +24,21 @@ def create_yta_filters(df):
     Create specialty filters for categorizing patients by specialty and age group.
 
     This function generates a dictionary of filters based on specialty categories,
-    with special handling for pediatric patients. It uses the SpecialCategoryParams
-    class to determine which specialties correspond to pediatric care.
+    with special handling for paediatric patients. It uses the SpecialCategoryParams
+    class to determine which specialties correspond to paediatric care.
 
     Parameters
     ----------
     df : pandas.DataFrame
         DataFrame containing patient data with columns that include either
-        'age_on_arrival' or 'age_group' for pediatric classification.
+        'age_on_arrival' or 'age_group' for paediatric classification.
 
     Returns
     -------
     dict
         A dictionary mapping specialty names to filter configurations.
         Each configuration contains:
-        - For pediatric specialty: {"is_child": True}
+        - For paediatric specialty: {"is_child": True}
         - For other specialties: {"specialty": specialty_name, "is_child": False}
 
     """
