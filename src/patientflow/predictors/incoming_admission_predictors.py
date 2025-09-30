@@ -775,9 +775,29 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         ------
         ValueError
             If filter key is not recognized or prediction_time is not provided.
+            If parametric parameters (x1, y1, x2, y2) are provided (not used by direct predictor).
         KeyError
             If required keys are missing from the prediction context.
         """
+        # Validate that parametric parameters are not provided
+        parametric_params = ['x1', 'y1', 'x2', 'y2']
+        provided_parametric = [param for param in parametric_params if param in kwargs]
+        if provided_parametric:
+            raise ValueError(
+                f"DirectAdmissionPredictor does not use parametric curve parameters. "
+                f"Remove these parameters: {provided_parametric}. "
+                f"Use ParametricIncomingAdmissionPredictor if you need parametric curves."
+            )
+        
+        # Validate that only expected parameters are provided
+        allowed_params = {'max_value'}
+        unexpected_params = set(kwargs.keys()) - allowed_params
+        if unexpected_params:
+            raise ValueError(
+                f"DirectAdmissionPredictor only accepts these parameters: {allowed_params}. "
+                f"Remove these unexpected parameters: {unexpected_params}"
+            )
+
         from scipy import stats
 
         # Extract parameters from kwargs with defaults
@@ -889,18 +909,20 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         **kwargs
             Additional keyword arguments for parametric curve configuration:
 
-            x1 : float
+            x1 : float, required
                 The x-coordinate of the first transition point on the aspirational curve,
                 where the growth phase ends and the decay phase begins.
-            y1 : float
+            y1 : float, required
                 The y-coordinate of the first transition point (x1), representing the target
                 proportion of patients admitted by time x1.
-            x2 : float
+            x2 : float, required
                 The x-coordinate of the second transition point on the curve, beyond which
                 all but a few patients are expected to be admitted.
-            y2 : float
+            y2 : float, required
                 The y-coordinate of the second transition point (x2), representing the target
                 proportion of patients admitted by time x2.
+            max_value : int, optional, default=50
+                Maximum value for the discrete distribution support.
 
         Returns
         -------
@@ -921,9 +943,29 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         y2 = kwargs.get("y2")
 
         # Validate that required parameters are provided
-        if x1 is None or y1 is None or x2 is None or y2 is None:
+        missing_params = []
+        if x1 is None:
+            missing_params.append("x1")
+        if y1 is None:
+            missing_params.append("y1")
+        if x2 is None:
+            missing_params.append("x2")
+        if y2 is None:
+            missing_params.append("y2")
+        
+        if missing_params:
             raise ValueError(
-                "x1, y1, x2, and y2 parameters are required for parametric prediction"
+                f"ParametricIncomingAdmissionPredictor requires these parameters: {missing_params}. "
+                f"Please provide: x1, y1, x2, y2 for aspirational curve configuration."
+            )
+        
+        # Validate that only expected parameters are provided
+        allowed_params = {'x1', 'y1', 'x2', 'y2', 'max_value'}
+        unexpected_params = set(kwargs.keys()) - allowed_params
+        if unexpected_params:
+            raise ValueError(
+                f"ParametricIncomingAdmissionPredictor only accepts these parameters: {allowed_params}. "
+                f"Remove these unexpected parameters: {unexpected_params}"
             )
 
         predictions = {}
@@ -1309,11 +1351,31 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         ------
         ValueError
             If filter key is not recognized or prediction_time is not provided.
+            If parametric parameters (x1, y1, x2, y2) are provided (not used by empirical predictor).
         KeyError
             If required keys are missing from the prediction context.
         RuntimeError
             If survival_df was not provided during fitting.
         """
+        # Validate that parametric parameters are not provided
+        parametric_params = ['x1', 'y1', 'x2', 'y2']
+        provided_parametric = [param for param in parametric_params if param in kwargs]
+        if provided_parametric:
+            raise ValueError(
+                f"EmpiricalIncomingAdmissionPredictor does not use parametric curve parameters. "
+                f"Remove these parameters: {provided_parametric}. "
+                f"Use ParametricIncomingAdmissionPredictor if you need parametric curves."
+            )
+        
+        # Validate that only expected parameters are provided
+        allowed_params = {'max_value'}
+        unexpected_params = set(kwargs.keys()) - allowed_params
+        if unexpected_params:
+            raise ValueError(
+                f"EmpiricalIncomingAdmissionPredictor only accepts these parameters: {allowed_params}. "
+                f"Remove these unexpected parameters: {unexpected_params}"
+            )
+        
         if self.survival_df is None:
             raise RuntimeError(
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
