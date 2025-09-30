@@ -48,7 +48,9 @@ class TestMultiSubgroupPredictor(unittest.TestCase):
 
         self.train_df = pd.DataFrame(
             {
-                "snapshot_date": pd.date_range("2023-01-01", periods=len(input_sequences), freq="h"),
+                "snapshot_date": pd.date_range(
+                    "2023-01-01", periods=len(input_sequences), freq="h"
+                ),
                 self.input_var: input_sequences,
                 self.grouping_var: grouping_sequences,
                 self.outcome_var: outcomes,
@@ -90,7 +92,10 @@ class TestMultiSubgroupPredictor(unittest.TestCase):
         self.assertTrue(series.index.equals(self.valid_df.index))
 
         # First row male with sequence ("A",) should yield a dict
-        self.assertTrue(isinstance(series.iloc[0], dict) or (isinstance(series.iloc[0], float) and np.isnan(series.iloc[0])))
+        self.assertTrue(
+            isinstance(series.iloc[0], dict)
+            or (isinstance(series.iloc[0], float) and np.isnan(series.iloc[0]))
+        )
         # Fourth row has None sequence -> NaN
         self.assertTrue(isinstance(series.iloc[3], float) and np.isnan(series.iloc[3]))
 
@@ -145,11 +150,13 @@ class TestMultiSubgroupPredictor(unittest.TestCase):
         other_group = "all_consultations"
         other_outcome = "specialty"
 
-        df_train = self.train_df.rename(columns={
-            self.input_var: other_input,
-            self.grouping_var: other_group,
-            self.outcome_var: other_outcome,
-        })
+        df_train = self.train_df.rename(
+            columns={
+                self.input_var: other_input,
+                self.grouping_var: other_group,
+                self.outcome_var: other_outcome,
+            }
+        )
         df_valid = self.valid_df.rename(columns={self.input_var: other_input})
 
         model = MultiSubgroupPredictor(
@@ -167,5 +174,3 @@ class TestMultiSubgroupPredictor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

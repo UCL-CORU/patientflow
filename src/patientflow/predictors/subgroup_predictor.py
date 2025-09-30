@@ -242,12 +242,18 @@ class MultiSubgroupPredictor:
             paediatric_func = self.subgroup_functions["paediatric"]
         else:
             # Fallback: no paediatric indicator available; use a no-op (always False)
-            paediatric_func = lambda row: False
+            def _paediatric_noop(row):
+                return False
+
+            paediatric_func = _paediatric_noop
 
         # Create function map for all subgroups plus legacy keys
+        def _default_non_paediatric(row):
+            return not paediatric_func(row)
+
         func_map = {
             "paediatric": paediatric_func,
-            "default": lambda row: not paediatric_func(row),
+            "default": _default_non_paediatric,
         }
         func_map.update(self.subgroup_functions)
 
@@ -351,7 +357,7 @@ def infer_specialty_to_subgroups(
         Mapping of subgroup name -> boolean row predicate.
     outcome_var : str, default 'observed_specialty'
         Column containing the realized specialty.
-        
+
     Returns
     -------
     Dict[str, List[str]]
@@ -359,13 +365,12 @@ def infer_specialty_to_subgroups(
         may be empty if no subgroup appears for that specialty.
     """
     if outcome_var not in df.columns:
-        raise ValueError(
-            f"Outcome column '{outcome_var}' not found in DataFrame."
-        )
+        raise ValueError(f"Outcome column '{outcome_var}' not found in DataFrame.")
 
     # Compute subgroup membership masks (allowing for potential overlaps)
     subgroup_masks: Dict[str, pd.Series] = {
-        name: df.apply(func, axis=1).fillna(False) for name, func in subgroup_functions.items()
+        name: df.apply(func, axis=1).fillna(False)
+        for name, func in subgroup_functions.items()
     }
 
     # Build counts per (specialty, subgroup)
@@ -380,7 +385,8 @@ def infer_specialty_to_subgroups(
             continue
 
         counts: Dict[str, int] = {
-            subgroup: int((spec_mask & mask).sum()) for subgroup, mask in subgroup_masks.items()
+            subgroup: int((spec_mask & mask).sum())
+            for subgroup, mask in subgroup_masks.items()
         }
 
         # Include all subgroups observed at least once

@@ -19,6 +19,10 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
 from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
+from patientflow.predictors.subgroup_predictor import (
+    create_subgroup_functions,
+    MultiSubgroupPredictor,
+)
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
@@ -418,6 +422,43 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertEqual(predictions["paediatric"]["in_ed"], [1, 0])
         self.assertEqual(predictions["medical"]["yet_to_arrive"], [3, 2])
 
+    def test_returns_pmf_when_no_cut_points(self):
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        predictions = create_predictions(
+            models=self.models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=None,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        # Should return PMFs (array-like) rather than index lists
+        for specialty in self.specialties:
+            in_ed = predictions[specialty]["in_ed"]
+            yta = predictions[specialty]["yet_to_arrive"]
+            # Must be array-like with float values that sum to ~1
+            self.assertTrue(
+                hasattr(in_ed, "values") or isinstance(in_ed, (list, tuple, np.ndarray))
+            )
+            self.assertTrue(
+                hasattr(yta, "values") or isinstance(yta, (list, tuple, np.ndarray))
+            )
+            in_ed_vals = np.asarray(in_ed)
+            yta_vals = np.asarray(yta)
+            self.assertGreater(len(in_ed_vals), 0)
+            self.assertGreater(len(yta_vals), 0)
+            self.assertAlmostEqual(float(in_ed_vals.sum()), 1.0, places=3)
+            self.assertAlmostEqual(float(yta_vals.sum()), 1.0, places=3)
+
     def test_basic_functionality_with_special_category(self):
         prediction_snapshots = create_random_df(n=50, include_consults=True)
         prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
@@ -706,6 +747,95 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertEqual(len(predictions["paediatric"]["in_ed"]), 2)
         self.assertEqual(len(predictions["medical"]["yet_to_arrive"]), 2)
 
+    def test_multisubgroup_predictor_integration(self):
+        """Integration test using MultiSubgroupPredictor and predict_dataframe path."""
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        # Create MultiSubgroupPredictor based on SequenceToOutcomePredictor
+        subgroup_functions = create_subgroup_functions()
+        msp = MultiSubgroupPredictor(
+            subgroup_functions=subgroup_functions,
+            base_predictor_class=SequenceToOutcomePredictor,
+            input_var="consultation_sequence",
+            grouping_var="final_sequence",
+            outcome_var="specialty",
+            min_samples=1,
+        )
+        msp.fit(self.df)
+
+        # Replace spec model
+        admission_model, _, yta_model = self.models
+        models = (admission_model, msp, yta_model)
+
+        predictions = create_predictions(
+            models=models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        self.assertIsInstance(predictions, dict)
+        self.assertIn("paediatric", predictions)
+        self.assertIn("medical", predictions)
+        # Threshold lists expected because we pass cdf_cut_points
+        self.assertIsInstance(predictions["paediatric"]["in_ed"], list)
+        self.assertIsInstance(predictions["medical"]["yet_to_arrive"], list)
+
+    def test_specialty_to_subgroups_mapping_filters(self):
+        """Ensure specialty_to_subgroups mapping drives combined mask eligibility."""
+        prediction_snapshots = create_random_df(n=100, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        # Force some rows to be clearly paediatric and some clearly adult so mapping has effect
+        prediction_snapshots.loc[:10, "age_on_arrival"] = 5  # paediatric
+        prediction_snapshots.loc[10:20, "age_on_arrival"] = 70  # adult
+        prediction_snapshots.loc[10:20, "sex"] = "M"
+
+        subgroup_functions = create_subgroup_functions()
+        msp = MultiSubgroupPredictor(
+            subgroup_functions=subgroup_functions,
+            base_predictor_class=SequenceToOutcomePredictor,
+            input_var="consultation_sequence",
+            grouping_var="final_sequence",
+            outcome_var="specialty",
+            min_samples=1,
+        )
+        msp.fit(self.df)
+
+        admission_model, _, yta_model = self.models
+        models = (admission_model, msp, yta_model)
+
+        predictions = create_predictions(
+            models=models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=None,  # PMF mode to avoid threshold dependence
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+
+        # Just assert predictions exist and PMFs are non-empty for specialties
+        # that are likely covered by subgroup mapping
+        for spec in ["paediatric", "medical"]:
+            self.assertIn(spec, predictions)
+            pmf = predictions[spec]["in_ed"]
+            self.assertGreater(len(np.asarray(pmf)), 0)
+
     def test_value_to_outcome_predictor_with_special_categories(self):
         """Test ValueToOutcomePredictor with special category filtering."""
         prediction_snapshots = create_random_df(n=50, include_consults=True)
@@ -795,6 +925,31 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIsInstance(empirical_yta_model, EmpiricalIncomingAdmissionPredictor)
         survival_curve = empirical_yta_model.get_survival_curve()
         self.assertIsInstance(survival_curve, pd.DataFrame)
+
+    def test_no_admission_in_window_prob(self):
+        """Ensure code path with use_admission_in_window_prob=False returns thresholds when cut points provided."""
+        prediction_snapshots = create_random_df(n=50, include_consults=True)
+        prediction_snapshots["elapsed_los"] = prediction_snapshots["elapsed_los"].apply(
+            lambda x: timedelta(seconds=x)
+        )
+
+        predictions = create_predictions(
+            models=self.models,
+            prediction_time=self.prediction_time,
+            prediction_snapshots=prediction_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            cdf_cut_points=self.cdf_cut_points,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            use_admission_in_window_prob=False,
+        )
+
+        for specialty in self.specialties:
+            self.assertIsInstance(predictions[specialty]["in_ed"], list)
+            self.assertIsInstance(predictions[specialty]["yet_to_arrive"], list)
 
 
 if __name__ == "__main__":
