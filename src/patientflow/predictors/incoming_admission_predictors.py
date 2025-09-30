@@ -483,6 +483,85 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         # Apply filters
         self.filters = filters if filters else {}
 
+    # -------------------------
+    # Shared helper utilities
+    # -------------------------
+    def _validate_only_kwargs(self, kwargs: Dict, allowed: set, context: str) -> None:
+        unexpected = set(kwargs.keys()) - allowed
+        if unexpected:
+            raise ValueError(
+                f"{context} only accepts these parameters: {allowed}. Remove these unexpected parameters: {unexpected}"
+            )
+
+    def _ensure_required_kwargs(self, kwargs: Dict, required: set, context: str) -> Dict:
+        missing = [k for k in required if kwargs.get(k) is None]
+        if missing:
+            raise ValueError(
+                f"{context} requires these parameters: {missing}."
+            )
+        return {k: kwargs[k] for k in required}
+
+    def _iter_prediction_inputs(self, prediction_context: Dict):
+        """Yield (filter_key, resolved_prediction_time, arrival_rates_np).
+
+        Centralizes validation, time resolution, and array conversion.
+        """
+        for filter_key, filter_values in prediction_context.items():
+            if filter_key not in self.weights:
+                raise ValueError(
+                    f"Filter key '{filter_key}' is not recognized in the model weights."
+                )
+
+            prediction_time = filter_values.get("prediction_time")
+            if prediction_time is None:
+                raise ValueError(
+                    f"No 'prediction_time' provided for filter '{filter_key}'."
+                )
+
+            if prediction_time not in self.prediction_times:
+                prediction_time = find_nearest_previous_prediction_time(
+                    prediction_time, self.prediction_times
+                )
+
+            arrival_rates = self.weights[filter_key][prediction_time].get(
+                "arrival_rates"
+            )
+            if arrival_rates is None:
+                raise ValueError(
+                    f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                )
+
+            yield filter_key, prediction_time, np.array(arrival_rates)
+
+    def _get_window_and_interval_hours(self):
+        """Return (prediction_window_hours, interval_hours, NTimes)."""
+        return (
+            self.prediction_window_hours,
+            self.yta_time_interval_hours,
+            self.NTimes,
+        )
+
+    def _default_max_value(self, arrival_rates, floor: int = 20, cap: int = 200) -> int:
+        """Unified default max_value based on epsilon and max arrival rate.
+
+        Applies a floor and cap to ensure stable PMF support.
+        """
+        try:
+            mv = int(poisson.ppf(1 - self.epsilon, float(np.max(arrival_rates))))
+        except Exception:
+            mv = floor
+        mv = max(floor, mv)
+        mv = min(cap, mv)
+        return mv
+
+    def _pmf_to_dataframe(self, probabilities: np.ndarray) -> pd.DataFrame:
+        """Convert PMF array to standardized DataFrame indexed by 'sum' with 'agg_proba'."""
+        result_df = pd.DataFrame({"sum": range(len(probabilities)), "agg_proba": probabilities})
+        result_df = result_df[result_df["agg_proba"] > 1e-10]
+        if len(result_df) > 0:
+            result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
+        return result_df.set_index("sum")
+
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
         """Apply a set of filters to a dataframe.
 
@@ -687,6 +766,11 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.metrics["end_date"] = train_df.index.max().date()
         self.metrics["num_days"] = num_days
 
+        # Cache commonly used interval metadata
+        self.NTimes = int(self.prediction_window / self.yta_time_interval)
+        self.prediction_window_hours = self.prediction_window.total_seconds() / 3600
+        self.yta_time_interval_hours = self.yta_time_interval.total_seconds() / 3600
+
         return self
 
     def get_weights(self):
@@ -779,60 +863,16 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         KeyError
             If required keys are missing from the prediction context.
         """
-        # Validate that parametric parameters are not provided
-        parametric_params = ['x1', 'y1', 'x2', 'y2']
-        provided_parametric = [param for param in parametric_params if param in kwargs]
-        if provided_parametric:
-            raise ValueError(
-                f"DirectAdmissionPredictor does not use parametric curve parameters. "
-                f"Remove these parameters: {provided_parametric}. "
-                f"Use ParametricIncomingAdmissionPredictor if you need parametric curves."
-            )
-        
-        # Validate that only expected parameters are provided
-        allowed_params = {'max_value'}
-        unexpected_params = set(kwargs.keys()) - allowed_params
-        if unexpected_params:
-            raise ValueError(
-                f"DirectAdmissionPredictor only accepts these parameters: {allowed_params}. "
-                f"Remove these unexpected parameters: {unexpected_params}"
-            )
+        # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
 
         from scipy import stats
 
-        # Extract parameters from kwargs with defaults
-        max_value = kwargs.get("max_value", 50)
+        # Extract parameters from kwargs with defaults (unified default if not provided)
+        max_value = kwargs.get("max_value")
 
         predictions = {}
 
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
-
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
-                )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                # Convert arrival rates to numpy array
-                arrival_rates = np.array(arrival_rates)
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
 
                 if self.use_generating_functions:
                     # Use the new generating function approach for consistency
@@ -842,17 +882,16 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
                     gf = AdmissionGeneratingFunction(
                         arrival_rates, admission_probs, method='direct'
                     )
-                    predictions[filter_key] = gf.get_distribution(max_value=max_value)
+                    mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+                    predictions[filter_key] = gf.get_distribution(max_value=mv)
                 else:
                     # Use the original approach for backward compatibility
                     total_arrival_rate = arrival_rates.sum()
                     poisson_dist = stats.poisson(total_arrival_rate)
-                    x_values = np.arange(max_value)
+                    mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+                    x_values = np.arange(mv)
                     probabilities = poisson_dist.pmf(x_values)
-                    result_df = pd.DataFrame({"sum": x_values, "agg_proba": probabilities})
-                    result_df = result_df[result_df["agg_proba"] > 1e-10]
-                    result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
-                    predictions[filter_key] = result_df.set_index("sum")
+                    predictions[filter_key] = self._pmf_to_dataframe(probabilities)
 
                 if self.verbose:
                     total_arrival_rate = arrival_rates.sum()
@@ -860,9 +899,6 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
                         f"Direct prediction for {filter_key} at {prediction_time}: "
                         f"Expected admissions = {total_arrival_rate:.2f}"
                     )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
 
         return predictions
 
@@ -936,67 +972,15 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         KeyError
             If required keys are missing from the prediction context.
         """
-        # Extract required parameters from kwargs
-        x1 = kwargs.get("x1")
-        y1 = kwargs.get("y1")
-        x2 = kwargs.get("x2")
-        y2 = kwargs.get("y2")
-
-        # Validate that required parameters are provided
-        missing_params = []
-        if x1 is None:
-            missing_params.append("x1")
-        if y1 is None:
-            missing_params.append("y1")
-        if x2 is None:
-            missing_params.append("x2")
-        if y2 is None:
-            missing_params.append("y2")
-        
-        if missing_params:
-            raise ValueError(
-                f"ParametricIncomingAdmissionPredictor requires these parameters: {missing_params}. "
-                f"Please provide: x1, y1, x2, y2 for aspirational curve configuration."
-            )
-        
-        # Validate that only expected parameters are provided
-        allowed_params = {'x1', 'y1', 'x2', 'y2', 'max_value'}
-        unexpected_params = set(kwargs.keys()) - allowed_params
-        if unexpected_params:
-            raise ValueError(
-                f"ParametricIncomingAdmissionPredictor only accepts these parameters: {allowed_params}. "
-                f"Remove these unexpected parameters: {unexpected_params}"
-            )
+        # Validate/collect kwargs
+        required = {'x1', 'y1', 'x2', 'y2'}
+        params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
+        self._validate_only_kwargs(kwargs, required | {'max_value'}, context=self.__class__.__name__)
 
         predictions = {}
 
-        # Calculate Ntimes
-        if isinstance(self.prediction_window, timedelta) and isinstance(
-            self.yta_time_interval, timedelta
-        ):
-            NTimes = int(self.prediction_window / self.yta_time_interval)
-        elif isinstance(self.prediction_window, timedelta):
-            NTimes = int(
-                self.prediction_window.total_seconds() / 60 / self.yta_time_interval
-            )
-        elif isinstance(self.yta_time_interval, timedelta):
-            NTimes = int(
-                self.prediction_window / (self.yta_time_interval.total_seconds() / 60)
-            )
-        else:
-            NTimes = int(self.prediction_window / self.yta_time_interval)
-
-        # Convert to hours only for numpy operations (which require numeric types)
-        prediction_window_hours = (
-            self.prediction_window.total_seconds() / 3600
-            if isinstance(self.prediction_window, timedelta)
-            else self.prediction_window / 60
-        )
-        yta_time_interval_hours = (
-            self.yta_time_interval.total_seconds() / 3600
-            if isinstance(self.yta_time_interval, timedelta)
-            else self.yta_time_interval / 60
-        )
+        # Use cached metadata
+        prediction_window_hours, yta_time_interval_hours, NTimes = self._get_window_and_interval_hours()
 
         # Calculate theta, probability of admission in prediction window
         # for each time interval, calculate time remaining before end of window
@@ -1005,51 +989,24 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         theta = get_y_from_aspirational_curve(
-            time_remaining_before_end_of_window, x1, y1, x2, y2
+            time_remaining_before_end_of_window, params['x1'], params['y1'], params['x2'], params['y2']
         )
 
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
+        max_value = kwargs.get('max_value')
 
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
+            if self.use_generating_functions:
+                # Use the new generating function approach for better performance
+                gf = AdmissionGeneratingFunction(
+                    arrival_rates, theta, method='parametric'
                 )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                if self.use_generating_functions:
-                    # Use the new generating function approach for better performance
-                    gf = AdmissionGeneratingFunction(
-                        arrival_rates, theta, method='parametric'
-                    )
-                    predictions[filter_key] = gf.get_distribution(
-                        max_value=int(poisson.ppf(1 - self.epsilon, max(arrival_rates)))
-                    )
-                else:
-                    # Use the original approach for backward compatibility
-                    predictions[filter_key] = poisson_binom_generating_function(
-                        NTimes, arrival_rates, theta, self.epsilon
-                    )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
+                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+                predictions[filter_key] = gf.get_distribution(max_value=mv)
+            else:
+                # Use the original approach for backward compatibility
+                predictions[filter_key] = poisson_binom_generating_function(
+                    NTimes, arrival_rates, theta, self.epsilon
+                )
 
         return predictions
 
@@ -1208,28 +1165,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         numpy.ndarray
             Array of admission probabilities for each time interval.
         """
-        # Calculate number of time intervals
-        if isinstance(prediction_window, timedelta) and isinstance(
-            yta_time_interval, timedelta
-        ):
-            NTimes = int(prediction_window / yta_time_interval)
-        elif isinstance(prediction_window, timedelta):
-            NTimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
-        elif isinstance(yta_time_interval, timedelta):
-            NTimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
-        else:
-            NTimes = int(prediction_window / yta_time_interval)
-
-        # Convert to hours for survival probability calculation
-        if isinstance(prediction_window, timedelta):
-            prediction_window_hours = prediction_window.total_seconds() / 3600
-        else:
-            prediction_window_hours = prediction_window / 60
-
-        if isinstance(yta_time_interval, timedelta):
-            yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
-        else:
-            yta_time_interval_hours = yta_time_interval / 60
+        # Use cached metadata for consistency
+        prediction_window_hours, yta_time_interval_hours, NTimes = self._get_window_and_interval_hours()
 
         # Calculate admission probabilities for each time interval
         probabilities = []
@@ -1357,32 +1294,15 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         RuntimeError
             If survival_df was not provided during fitting.
         """
-        # Validate that parametric parameters are not provided
-        parametric_params = ['x1', 'y1', 'x2', 'y2']
-        provided_parametric = [param for param in parametric_params if param in kwargs]
-        if provided_parametric:
-            raise ValueError(
-                f"EmpiricalIncomingAdmissionPredictor does not use parametric curve parameters. "
-                f"Remove these parameters: {provided_parametric}. "
-                f"Use ParametricIncomingAdmissionPredictor if you need parametric curves."
-            )
-        
-        # Validate that only expected parameters are provided
-        allowed_params = {'max_value'}
-        unexpected_params = set(kwargs.keys()) - allowed_params
-        if unexpected_params:
-            raise ValueError(
-                f"EmpiricalIncomingAdmissionPredictor only accepts these parameters: {allowed_params}. "
-                f"Remove these unexpected parameters: {unexpected_params}"
-            )
+        # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
         
         if self.survival_df is None:
             raise RuntimeError(
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
             )
 
-        # Extract parameters from kwargs with defaults
-        max_value = kwargs.get("max_value", 20)
+        # Extract parameters from kwargs with unified default if not provided
+        max_value = kwargs.get("max_value")
 
         predictions = {}
 
@@ -1391,48 +1311,12 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             self.prediction_window, self.yta_time_interval
         )
 
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
-
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
-                )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                # Convert arrival rates to numpy array
-                arrival_rates = np.array(arrival_rates)
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
 
                 # Generate prediction using convolution approach
+                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
                 predictions[filter_key] = self._convolve_poisson_distributions(
-                    arrival_rates, survival_probabilities, max_value=max_value
+                    arrival_rates, survival_probabilities, max_value=mv
                 )
-
-                # if self.verbose:
-                #     total_expected = (arrival_rates * survival_probabilities).sum()
-                #     self.logger.info(
-                #         f"Prediction for {filter_key} at {prediction_time}: "
-                #         f"Expected value ≈ {total_expected:.2f}"
-                #     )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
 
         return predictions
