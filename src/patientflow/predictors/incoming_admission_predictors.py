@@ -15,12 +15,12 @@ AdmissionGeneratingFunction
 
 IncomingAdmissionPredictor : BaseEstimator, TransformerMixin
     Base class for admission predictors that handles filtering and arrival rate calculation.
-    Now supports both generating function and traditional approaches via use_generating_functions flag.
+    Uses generating functions for all predictors; the earlier flag is deprecated and ignored.
 
 DirectAdmissionPredictor : IncomingAdmissionPredictor
     Simplest predictor that assumes every arrival is admitted immediately. Uses direct
     Poisson distribution based on total arrival rates without any admission probability
-    adjustments. Now supports both generating function and traditional approaches.
+    adjustments. Implemented via generating functions.
 
 ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions within a given prediction window based on historical
@@ -29,8 +29,7 @@ ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
 
 EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
-    of Poisson distributions instead of parametric curves. Now supports both generating
-    function and traditional approaches.
+    of Poisson distributions; implemented via generating functions.
 
 Notes
 -----
@@ -451,7 +450,15 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         self.filters = filters if filters else {}
         self.verbose = verbose
-        self.use_generating_functions = use_generating_functions
+        # Always use generating-function path; keep flag only for backward compatibility
+        # If user explicitly sets False, warn and proceed with GF implementation
+        self.use_generating_functions = True
+        if use_generating_functions is False:
+            warnings.warn(
+                "use_generating_functions=False is deprecated and ignored; generating-function implementation is always used.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.metrics = {}  # Add metrics dictionary to store metadata
 
         if verbose:
@@ -874,24 +881,15 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
 
-                if self.use_generating_functions:
-                    # Use the new generating function approach for consistency
-                    # For direct case, admission probabilities are all 1.0 (100% admission rate)
-                    admission_probs = np.ones(len(arrival_rates))
-                    
-                    gf = AdmissionGeneratingFunction(
-                        arrival_rates, admission_probs, method='direct'
-                    )
-                    mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-                    predictions[filter_key] = gf.get_distribution(max_value=mv)
-                else:
-                    # Use the original approach for backward compatibility
-                    total_arrival_rate = arrival_rates.sum()
-                    poisson_dist = stats.poisson(total_arrival_rate)
-                    mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-                    x_values = np.arange(mv)
-                    probabilities = poisson_dist.pmf(x_values)
-                    predictions[filter_key] = self._pmf_to_dataframe(probabilities)
+                # Generating-function approach (always)
+                # For direct case, admission probabilities are all 1.0 (100% admission rate)
+                admission_probs = np.ones(len(arrival_rates))
+                
+                gf = AdmissionGeneratingFunction(
+                    arrival_rates, admission_probs, method='direct'
+                )
+                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+                predictions[filter_key] = gf.get_distribution(max_value=mv)
 
                 if self.verbose:
                     total_arrival_rate = arrival_rates.sum()
@@ -995,18 +993,12 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         max_value = kwargs.get('max_value')
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
-            if self.use_generating_functions:
-                # Use the new generating function approach for better performance
-                gf = AdmissionGeneratingFunction(
-                    arrival_rates, theta, method='parametric'
-                )
-                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-                predictions[filter_key] = gf.get_distribution(max_value=mv)
-            else:
-                # Use the original approach for backward compatibility
-                predictions[filter_key] = poisson_binom_generating_function(
-                    NTimes, arrival_rates, theta, self.epsilon
-                )
+            # Generating-function approach (always)
+            gf = AdmissionGeneratingFunction(
+                arrival_rates, theta, method='parametric'
+            )
+            mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+            predictions[filter_key] = gf.get_distribution(max_value=mv)
 
         return predictions
 
@@ -1207,63 +1199,17 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     def _convolve_poisson_distributions(
         self, arrival_rates, probabilities, max_value=20
     ):
-        """Convolve Poisson distributions for each time interval.
+        """Convolve Poisson distributions for each time interval using generating functions.
 
-        This method can use either the new generating function approach or the original
-        manual convolution method based on the use_generating_functions flag.
-
-        Parameters
-        ----------
-        arrival_rates : numpy.ndarray
-            Array of arrival rates for each time interval.
-        probabilities : numpy.ndarray
-            Array of admission probabilities for each time interval.
-        max_value : int, default=20
-            Maximum value for the discrete distribution support.
-
-        Returns
-        -------
-        pandas.DataFrame
-            DataFrame with 'sum' and 'agg_proba' columns representing the final distribution.
+        Notes
+        -----
+        Legacy manual convolution has been removed in favor of the unified
+        AdmissionGeneratingFunction implementation.
         """
-        if self.use_generating_functions:
-            # Use the new generating function approach for efficiency
-            gf = AdmissionGeneratingFunction(
-                arrival_rates, probabilities, method='empirical'
-            )
-            return gf.get_distribution(max_value=max_value)
-        else:
-            # Use the original approach for backward compatibility
-            from scipy import stats
-
-            # Create weighted Poisson distributions for each time interval
-            weighted_rates = arrival_rates * probabilities
-            poisson_dists = [stats.poisson(rate) for rate in weighted_rates]
-
-            # Get PMF for each distribution
-            x = np.arange(max_value)
-            pmfs = [dist.pmf(x) for dist in poisson_dists]
-
-            # Convolve all distributions together
-            if len(pmfs) == 0:
-                # Handle edge case of no distributions
-                combined_pmf = np.zeros(max_value)
-                combined_pmf[0] = 1.0  # All probability at 0
-            else:
-                combined_pmf = pmfs[0]
-                for pmf in pmfs[1:]:
-                    combined_pmf = np.convolve(combined_pmf, pmf)
-
-            # Create result DataFrame
-            result_df = pd.DataFrame(
-                {"sum": range(len(combined_pmf)), "agg_proba": combined_pmf}
-            )
-
-            # Filter out near-zero probabilities and normalize
-            result_df = result_df[result_df["agg_proba"] > 1e-10]
-            result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
-
-            return result_df.set_index("sum")
+        gf = AdmissionGeneratingFunction(
+            arrival_rates, probabilities, method='empirical'
+        )
+        return gf.get_distribution(max_value=max_value)
 
     def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions using empirical survival curves.
