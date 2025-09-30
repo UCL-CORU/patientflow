@@ -49,6 +49,24 @@ of individual Poisson distributions for each time interval.
 All predictors take into account historical data patterns and can be filtered for
 specific hospital settings or specialties.
 
+Assumptions
+-----------
+Parametric incoming-admissions use a simple per-slice Poisson arrivals model with independent
+filtering. The following assumptions are required for the simplified parametric route to be exact:
+- Symbols and units:
+  - λ_t: expected arrivals within time-slice t (the value produced by `time_varying_arrival_rates`
+    for that slice; units match the slice length).
+  - θ_t: probability an arrival in slice t is admitted within the prediction window
+    (computed via `get_y_from_aspirational_curve`).
+- Arrivals within each time-slice t follow a Poisson process with rate λ_t.
+- Each arrival is independently admitted within the prediction window with probability θ_t,
+  which is constant across that slice (given the model inputs). This independent filtering is
+  sometimes called “Poisson thinning”.
+- Slices are independent for this filtering.
+Under these assumptions, admitted arrivals in slice t are Poisson(λ_t θ_t) and the total admitted
+count is Poisson(Σ_t λ_t θ_t). Intuition: filtering arrivals with probability θ_t reduces the
+effective rate from λ_t to λ_t θ_t.
+
 """
 
 import warnings
@@ -394,16 +412,8 @@ class AdmissionGeneratingFunction:
         return result_df.set_index('sum')
     
     def _parametric_distribution(self, max_value=50):
-        """Poisson-binomial compound distribution for parametric method."""
-        # For parametric case, use the existing proven method
-        # This is complex enough that the existing implementation is appropriate
-        NTimes = len(self.arrival_rates)
-        epsilon = 1e-7
-        
-        # Use the existing poisson_binom_generating_function
-        return poisson_binom_generating_function(
-            NTimes, self.arrival_rates, self.admission_probs, epsilon
-        )
+        """Deprecated: parametric GF route no longer used."""
+        raise NotImplementedError("Parametric GF route removed; use simplified Poisson route in predictor.")
 
 
 class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
@@ -872,7 +882,7 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         """
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
 
-        from scipy import stats
+        # legacy inline import removed
 
         # Extract parameters from kwargs with defaults (unified default if not provided)
         max_value = kwargs.get("max_value")
@@ -930,6 +940,16 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     -----
     The predictor implements scikit-learn's BaseEstimator and TransformerMixin
     interfaces for compatibility with scikit-learn pipelines.
+
+    Assumptions for simplified parametric route
+    -------------------------------------------
+    - Symbols: λ_t = expected arrivals in slice t; θ_t = probability an arrival in slice t is
+      admitted within the prediction window.
+    - Arrivals per time-slice t follow Poisson(λ_t).
+    - Within a slice, each arrival is admitted independently with probability θ_t (constant per slice).
+      This independent filtering is often called “Poisson thinning”.
+    - Slices are independent.
+    Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t).
     """
 
     def predict(self, prediction_context: Dict, **kwargs) -> Dict:
@@ -969,6 +989,14 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             If filter key is not recognized or prediction_time is not provided.
         KeyError
             If required keys are missing from the prediction context.
+
+        Assumptions
+        -----------
+        Uses the Poisson arrivals with independent filtering (often called “Poisson thinning”):
+        - λ_t: expected arrivals in slice t; θ_t: probability of admission within window for arrivals in slice t
+        - Arrivals per slice t follow Poisson(λ_t), slices are independent
+        - Each arrival is admitted independently with probability θ_t (constant per slice)
+        Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t)
         """
         # Validate/collect kwargs
         required = {'x1', 'y1', 'x2', 'y2'}
@@ -993,12 +1021,12 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         max_value = kwargs.get('max_value')
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
-            # Generating-function approach (always)
-            gf = AdmissionGeneratingFunction(
-                arrival_rates, theta, method='parametric'
-            )
+            # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
+            mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
             mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-            predictions[filter_key] = gf.get_distribution(max_value=mv)
+            x_values = np.arange(mv)
+            probabilities = poisson.pmf(x_values, mu)
+            predictions[filter_key] = self._pmf_to_dataframe(probabilities)
 
         return predictions
 
