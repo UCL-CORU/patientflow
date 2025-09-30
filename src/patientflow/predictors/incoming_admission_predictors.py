@@ -1036,9 +1036,9 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         information for empirical probability calculations.
     """
 
-    def __init__(self, filters=None, verbose=False):
+    def __init__(self, filters=None, verbose=False, use_generating_functions=True):
         """Initialize the EmpiricalIncomingAdmissionPredictor."""
-        super().__init__(filters, verbose)
+        super().__init__(filters, verbose, use_generating_functions)
         self.survival_df = None
 
     def fit(
