@@ -8,9 +8,6 @@ from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
     DirectAdmissionPredictor,
-    weighted_poisson_binomial,
-    aggregate_probabilities,
-    convolute_distributions,
     find_nearest_previous_prediction_time,
 )
 
@@ -78,66 +75,6 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             "haem_onc": {"specialty": "haem/onc"},
             "paediatric": {"specialty": "paediatric"},
         }
-
-    def test_weighted_poisson_binomial(self):
-        """Test the weighted_poisson_binomial function."""
-        # Test normal case
-        result = weighted_poisson_binomial(5, 3.0, 0.7)
-        self.assertIsInstance(result, np.ndarray)
-        self.assertEqual(len(result), 6)  # 0 to 5 inclusive
-        self.assertTrue(np.all(result >= 0))
-
-        # Test edge cases
-        result_zero = weighted_poisson_binomial(0, 1.0, 0.5)
-        self.assertEqual(len(result_zero), 1)
-        # For i=0, the result should be poisson.pmf(0, 1.0) * binom.pmf(0, 0, 0.5) = 0.36787944117144233 * 1.0
-        expected_value = 0.36787944117144233  # poisson.pmf(0, 1.0)
-        self.assertAlmostEqual(result_zero[0], expected_value, places=10)
-
-        # Test invalid inputs
-        with self.assertRaises(ValueError):
-            weighted_poisson_binomial(-1, 1.0, 0.5)
-        with self.assertRaises(ValueError):
-            weighted_poisson_binomial(5, -1.0, 0.5)
-        with self.assertRaises(ValueError):
-            weighted_poisson_binomial(5, 1.0, 1.5)
-
-    def test_aggregate_probabilities(self):
-        """Test the aggregate_probabilities function."""
-        lam = np.array([1.0, 2.0, 3.0])
-        theta = np.array([0.5, 0.6, 0.7])
-        kmax = 5
-        time_index = 1
-
-        result = aggregate_probabilities(lam, kmax, theta, time_index)
-        self.assertIsInstance(result, np.ndarray)
-        self.assertEqual(len(result), kmax + 1)
-        self.assertTrue(np.all(result >= 0))
-
-        # Test invalid inputs
-        with self.assertRaises(ValueError):
-            aggregate_probabilities(lam, -1, theta, time_index)
-        with self.assertRaises(ValueError):
-            aggregate_probabilities(lam, kmax, theta, -1)
-        with self.assertRaises(ValueError):
-            aggregate_probabilities(lam, kmax, theta, 3)  # Index out of bounds
-
-    def test_convolute_distributions(self):
-        """Test the convolute_distributions function."""
-        # Create test distributions
-        dist_a = pd.DataFrame({"sum": [0, 1, 2], "prob": [0.3, 0.5, 0.2]})
-        dist_b = pd.DataFrame({"sum": [0, 1], "prob": [0.6, 0.4]})
-
-        result = convolute_distributions(dist_a, dist_b)
-        self.assertIsInstance(result, pd.DataFrame)
-        self.assertTrue("sum" in result.columns)
-        self.assertTrue("prob" in result.columns)
-        self.assertTrue(np.allclose(result["prob"].sum(), 1.0, atol=1e-10))
-
-        # Test invalid inputs
-        invalid_dist = pd.DataFrame({"wrong_col": [1, 2], "prob": [0.5, 0.5]})
-        with self.assertRaises(ValueError):
-            convolute_distributions(invalid_dist, dist_b)
 
     def test_parametric_simplified_poisson_equivalence(self):
         """Parametric predictor should match a single Poisson with mu = sum(lambda * theta)."""
@@ -658,7 +595,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         for key, pred_df in predictions.items():
             self.assertIsInstance(pred_df, pd.DataFrame)
             self.assertIn("agg_proba", pred_df.columns)
-            self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+            # Probabilities sum to less than 1.0 due to tail truncation (acceptable loss <= epsilon)
+            prob_sum = pred_df["agg_proba"].sum()
+            self.assertLessEqual(prob_sum, 1.0)
+            self.assertGreater(prob_sum, 0.99)  # Should be very close to 1.0
 
             # Check that probabilities are non-negative
             self.assertTrue(np.all(pred_df["agg_proba"] >= 0))
@@ -667,7 +607,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictions_small = predictor.predict(prediction_context, max_value=10)
         for key, pred_df in predictions_small.items():
             self.assertTrue(pred_df.index.max() <= 9)  # max_value - 1
-            self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+            # With small max_value, more probability mass is lost from the tail
+            prob_sum = pred_df["agg_proba"].sum()
+            self.assertLessEqual(prob_sum, 1.0)
+            self.assertGreater(prob_sum, 0.5)  # Should still capture majority of mass
 
         # Test missing parameters - should not require any additional parameters
         predictions_no_params = predictor.predict(prediction_context)
@@ -752,7 +695,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
 
         self.assertIn("unfiltered", predictions)
         pred_df = predictions["unfiltered"]
-        self.assertTrue(np.allclose(pred_df["agg_proba"].sum(), 1.0, atol=1e-10))
+        # Probabilities sum to less than 1.0 due to tail truncation (acceptable loss <= epsilon)
+        prob_sum = pred_df["agg_proba"].sum()
+        self.assertLessEqual(prob_sum, 1.0)
+        self.assertGreater(prob_sum, 0.99)  # Should be very close to 1.0
 
     def test_direct_predictor_warning_functionality(self):
         """Test that DirectAdmissionPredictor properly warns when using non-trained prediction times."""

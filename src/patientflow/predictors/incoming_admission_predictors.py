@@ -56,21 +56,27 @@ specific hospital settings or specialties.
 
 Assumptions
 -----------
-Parametric incoming-admissions use a simple per-slice Poisson arrivals model with independent
-filtering. The following assumptions are required for the simplified parametric route to be exact:
+Parametric incoming-admissions use a simple per-slice Poisson arrivals model with
+independent filtering. The following assumptions are required for the simplified
+parametric route to be exact:
+
 - Symbols and units:
-  - λ_t: expected arrivals within time-slice t (the value produced by `time_varying_arrival_rates`
-    for that slice; units match the slice length).
-  - θ_t: probability an arrival in slice t is admitted within the prediction window
-    (computed via `get_y_from_aspirational_curve`).
+    - λ_t: expected arrivals within time-slice t (the value produced by
+      `time_varying_arrival_rates` for that slice; units match the slice length).
+    - θ_t: probability an arrival in slice t is admitted within the prediction
+      window (computed via `get_y_from_aspirational_curve`).
+
 - Arrivals within each time-slice t follow a Poisson process with rate λ_t.
-- Each arrival is independently admitted within the prediction window with probability θ_t,
-  which is constant across that slice (given the model inputs). This independent filtering is
-  sometimes called “Poisson thinning”.
+
+- Each arrival is independently admitted within the prediction window with
+  probability θ_t, which is constant across that slice (given the model inputs).
+  This independent filtering is sometimes called "Poisson thinning".
+
 - Slices are independent for this filtering.
-Under these assumptions, admitted arrivals in slice t are Poisson(λ_t θ_t) and the total admitted
-count is Poisson(Σ_t λ_t θ_t). Intuition: filtering arrivals with probability θ_t reduces the
-effective rate from λ_t to λ_t θ_t.
+
+Under these assumptions, admitted arrivals in slice t are Poisson(λ_t θ_t) and
+the total admitted count is Poisson(Σ_t λ_t θ_t). Intuition: filtering arrivals
+with probability θ_t reduces the effective rate from λ_t to λ_t θ_t.
 
 """
 
@@ -103,155 +109,7 @@ from patientflow.calculate.survival_curve import (
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from scipy.stats import binom, poisson
-
-
-def weighted_poisson_binomial(i, lam, theta):
-    """Calculate weighted probabilities using Poisson and Binomial distributions.
-
-    Parameters
-    ----------
-    i : int
-        The upper bound of the range for the binomial distribution.
-    lam : float
-        The lambda parameter for the Poisson distribution.
-    theta : float
-        The probability of success for the binomial distribution.
-
-    Returns
-    -------
-    numpy.ndarray
-        An array of weighted probabilities.
-
-    Raises
-    ------
-    ValueError
-        If i < 0, lam < 0, or theta is not between 0 and 1.
-    """
-    if i < 0 or lam < 0 or not 0 <= theta <= 1:
-        raise ValueError("Ensure i >= 0, lam >= 0, and 0 <= theta <= 1.")
-
-    arr_seq = np.arange(i + 1)
-    probabilities = binom.pmf(arr_seq, i, theta)
-    return poisson.pmf(i, lam) * probabilities
-
-
-def aggregate_probabilities(lam, kmax, theta, time_index):
-    """Aggregate probabilities for a range of values using the weighted Poisson-Binomial distribution.
-
-    Parameters
-    ----------
-    lam : numpy.ndarray
-        An array of lambda values for each time interval.
-    kmax : int
-        The maximum number of events to consider.
-    theta : numpy.ndarray
-        An array of theta values for each time interval.
-    time_index : int
-        The current time index for which to calculate probabilities.
-
-    Returns
-    -------
-    numpy.ndarray
-        Aggregated probabilities for the given time index.
-
-    Raises
-    ------
-    ValueError
-        If kmax < 0, time_index < 0, or array lengths are invalid.
-    """
-    if kmax < 0 or time_index < 0 or len(lam) <= time_index or len(theta) <= time_index:
-        raise ValueError("Invalid kmax, time_index, or array lengths.")
-
-    probabilities_matrix = np.zeros((kmax + 1, kmax + 1))
-    for i in range(kmax + 1):
-        probabilities_matrix[: i + 1, i] = weighted_poisson_binomial(
-            i, lam[time_index], theta[time_index]
-        )
-    return probabilities_matrix.sum(axis=1)
-
-
-def convolute_distributions(dist_a, dist_b):
-    """Convolutes two probability distributions represented as dataframes.
-
-    Parameters
-    ----------
-    dist_a : pd.DataFrame
-        The first distribution with columns ['sum', 'prob'].
-    dist_b : pd.DataFrame
-        The second distribution with columns ['sum', 'prob'].
-
-    Returns
-    -------
-    pd.DataFrame
-        The convoluted distribution.
-
-    Raises
-    ------
-    ValueError
-        If DataFrames do not contain required 'sum' and 'prob' columns.
-    """
-    if not {"sum", "prob"}.issubset(dist_a.columns) or not {
-        "sum",
-        "prob",
-    }.issubset(dist_b.columns):
-        raise ValueError("DataFrames must contain 'sum' and 'prob' columns.")
-
-    sums = [x + y for x in dist_a["sum"] for y in dist_b["sum"]]
-    probs = [x * y for x in dist_a["prob"] for y in dist_b["prob"]]
-    result = pd.DataFrame(zip(sums, probs), columns=["sum", "prob"])
-    return result.groupby("sum")["prob"].sum().reset_index()
-
-
-def poisson_binom_generating_function(NTimes, arrival_rates, theta, epsilon):
-    """Generate a distribution based on the aggregate of Poisson and Binomial distributions.
-
-    Parameters
-    ----------
-    NTimes : int
-        The number of time intervals.
-    arrival_rates : numpy.ndarray
-        An array of lambda values for each time interval.
-    theta : numpy.ndarray
-        An array of theta values for each time interval.
-    epsilon : float
-        The desired error threshold.
-
-    Returns
-    -------
-    pd.DataFrame
-        The generated distribution.
-
-    Raises
-    ------
-    ValueError
-        If NTimes <= 0 or epsilon is not between 0 and 1.
-    """
-
-    if NTimes <= 0 or epsilon <= 0 or epsilon >= 1:
-        raise ValueError("Ensure NTimes > 0 and 0 < epsilon < 1.")
-
-    maxlam = max(arrival_rates)
-    kmax = int(poisson.ppf(1 - epsilon, maxlam))
-    distribution = np.zeros((kmax + 1, NTimes))
-
-    for j in range(NTimes):
-        distribution[:, j] = aggregate_probabilities(arrival_rates, kmax, theta, j)
-
-    df_list = [
-        pd.DataFrame({"sum": range(kmax + 1), "prob": distribution[:, j]})
-        for j in range(NTimes)
-    ]
-    total_distribution = df_list[0]
-
-    for df in df_list[1:]:
-        total_distribution = convolute_distributions(total_distribution, df)
-
-    total_distribution = total_distribution.rename(
-        columns={"prob": "agg_proba"}
-    ).set_index("sum")
-
-    return total_distribution
+from scipy.stats import poisson
 
 
 def find_nearest_previous_prediction_time(requested_time, prediction_times):
@@ -352,13 +210,15 @@ class AdmissionGeneratingFunction:
                 "arrival_rates and admission_probs must have the same length"
             )
 
-    def get_distribution(self, max_value=50):
+    def get_distribution(self, max_value):
         """Get the probability distribution for the specified method.
 
         Parameters
         ----------
-        max_value : int, default=50
-            Maximum value for the discrete distribution support
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon via _default_max_value(),
+            but can be provided explicitly for custom truncation.
 
         Returns
         -------
@@ -374,8 +234,15 @@ class AdmissionGeneratingFunction:
         else:
             raise ValueError(f"Unknown method: {self.method}")
 
-    def _direct_distribution(self, max_value=50):
-        """Simple Poisson distribution for direct method."""
+    def _direct_distribution(self, max_value):
+        """Simple Poisson distribution for direct method.
+
+        Parameters
+        ----------
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon, but can be provided explicitly.
+        """
         total_rate = np.sum(self.arrival_rates)
         x_values = np.arange(max_value)
         probabilities = poisson.pmf(x_values, total_rate)
@@ -384,17 +251,17 @@ class AdmissionGeneratingFunction:
             {"sum": range(len(probabilities)), "agg_proba": probabilities}
         )
 
-        # Filter and normalize
-        result_df = result_df[result_df["agg_proba"] > 1e-10]
-        if len(result_df) > 0:
-            result_df["agg_proba"] = (
-                result_df["agg_proba"] / result_df["agg_proba"].sum()
-            )
-
         return result_df.set_index("sum")
 
-    def _empirical_distribution(self, max_value=50):
-        """Weighted Poisson convolution for empirical method."""
+    def _empirical_distribution(self, max_value):
+        """Weighted Poisson convolution for empirical method.
+
+        Parameters
+        ----------
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon, but can be provided explicitly.
+        """
         # Create weighted Poisson distributions for each time interval
         weighted_rates = self.arrival_rates * self.admission_probs
         x_values = np.arange(max_value)
@@ -411,16 +278,9 @@ class AdmissionGeneratingFunction:
             {"sum": range(len(probabilities)), "agg_proba": probabilities}
         )
 
-        # Filter and normalize
-        result_df = result_df[result_df["agg_proba"] > 1e-10]
-        if len(result_df) > 0:
-            result_df["agg_proba"] = (
-                result_df["agg_proba"] / result_df["agg_proba"].sum()
-            )
-
         return result_df.set_index("sum")
 
-    def _parametric_distribution(self, max_value=50):
+    def _parametric_distribution(self, max_value):
         """Deprecated: parametric GF route no longer used."""
         raise NotImplementedError(
             "Parametric GF route removed; use simplified Poisson route in predictor."
@@ -577,11 +437,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         result_df = pd.DataFrame(
             {"sum": range(len(probabilities)), "agg_proba": probabilities}
         )
-        result_df = result_df[result_df["agg_proba"] > 1e-10]
-        if len(result_df) > 0:
-            result_df["agg_proba"] = (
-                result_df["agg_proba"] / result_df["agg_proba"].sum()
-            )
         return result_df.set_index("sum")
 
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
@@ -1249,10 +1104,19 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return np.array(probabilities)
 
-    def _convolve_poisson_distributions(
-        self, arrival_rates, probabilities, max_value=20
-    ):
+    def _convolve_poisson_distributions(self, arrival_rates, probabilities, max_value):
         """Convolve Poisson distributions for each time interval using generating functions.
+
+        Parameters
+        ----------
+        arrival_rates : numpy.ndarray
+            Array of arrival rates for each time interval.
+        probabilities : numpy.ndarray
+            Array of admission probabilities for each time interval.
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon via _default_max_value(),
+            but can be provided explicitly for custom truncation.
 
         Notes
         -----
