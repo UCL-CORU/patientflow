@@ -11,7 +11,6 @@ from patientflow.predictors.incoming_admission_predictors import (
     weighted_poisson_binomial,
     aggregate_probabilities,
     convolute_distributions,
-    poisson_binom_generating_function,
     find_nearest_previous_prediction_time,
 )
 
@@ -142,11 +141,11 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
 
     def test_parametric_simplified_poisson_equivalence(self):
         """Parametric predictor should match a single Poisson with mu = sum(lambda * theta)."""
-        NTimes = 3
         arrival_rates = np.array([1.0, 2.0, 1.5])
         theta = np.array([0.5, 0.6, 0.7])
         mu = float(np.sum(arrival_rates * theta))
         from scipy.stats import poisson as _poisson
+
         mv = 50
         expected = _poisson.pmf(np.arange(mv), mu)
         expected = expected[expected > 1e-10]

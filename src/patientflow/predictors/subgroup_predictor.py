@@ -4,8 +4,15 @@ Simple subgroup system for managing multiple patient prediction models.
 This module provides an approach to training and using separate
 SequenceToOutcomePredictor models for different patient subgroups.
 
+Classes
+-------
+MultiSubgroupPredictor
+    Manages multiple SequenceToOutcomePredictor models, one per subgroup
+
 Functions
 ---------
+create_subgroup_functions
+    Create the 5 standard subgroup identification functions
 create_subgroup_system
     Main entry point - creates subgroup functions and multi-model predictor
 create_special_category_objects

@@ -31,6 +31,11 @@ EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions; implemented via generating functions.
 
+Functions
+---------
+find_nearest_previous_prediction_time
+    Find the nearest previous prediction time for a requested time
+
 Notes
 -----
 The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
@@ -311,13 +316,13 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
 
 class AdmissionGeneratingFunction:
     """Unified generating function for admission prediction distributions.
-    
+
     This class provides efficient computation of probability distributions for
     different admission prediction approaches using simple convolution methods.
-    
+
     For typical use cases (32 intervals, max ~50), simple convolution is more
     appropriate than FFT-based methods which add unnecessary complexity.
-    
+
     Parameters
     ----------
     arrival_rates : numpy.ndarray
@@ -326,7 +331,7 @@ class AdmissionGeneratingFunction:
         Array of admission probabilities for each time interval
     method : str, default='empirical'
         Method to use: 'direct', 'parametric', or 'empirical'
-    
+
     Attributes
     ----------
     arrival_rates : numpy.ndarray
@@ -336,84 +341,90 @@ class AdmissionGeneratingFunction:
     method : str
         The prediction method being used
     """
-    
-    def __init__(self, arrival_rates, admission_probs, method='empirical'):
+
+    def __init__(self, arrival_rates, admission_probs, method="empirical"):
         self.arrival_rates = np.array(arrival_rates)
         self.admission_probs = np.array(admission_probs)
         self.method = method
-        
+
         if len(self.arrival_rates) != len(self.admission_probs):
-            raise ValueError("arrival_rates and admission_probs must have the same length")
-    
+            raise ValueError(
+                "arrival_rates and admission_probs must have the same length"
+            )
+
     def get_distribution(self, max_value=50):
         """Get the probability distribution for the specified method.
-        
+
         Parameters
         ----------
         max_value : int, default=50
             Maximum value for the discrete distribution support
-            
+
         Returns
         -------
         pandas.DataFrame
             DataFrame with 'sum' and 'agg_proba' columns representing the distribution
         """
-        if self.method == 'direct':
+        if self.method == "direct":
             return self._direct_distribution(max_value)
-        elif self.method == 'empirical':
+        elif self.method == "empirical":
             return self._empirical_distribution(max_value)
-        elif self.method == 'parametric':
+        elif self.method == "parametric":
             return self._parametric_distribution(max_value)
         else:
             raise ValueError(f"Unknown method: {self.method}")
-    
+
     def _direct_distribution(self, max_value=50):
         """Simple Poisson distribution for direct method."""
         total_rate = np.sum(self.arrival_rates)
         x_values = np.arange(max_value)
         probabilities = poisson.pmf(x_values, total_rate)
-        
-        result_df = pd.DataFrame({
-            'sum': range(len(probabilities)), 
-            'agg_proba': probabilities
-        })
-        
+
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
+
         # Filter and normalize
-        result_df = result_df[result_df['agg_proba'] > 1e-10]
+        result_df = result_df[result_df["agg_proba"] > 1e-10]
         if len(result_df) > 0:
-            result_df['agg_proba'] = result_df['agg_proba'] / result_df['agg_proba'].sum()
-        
-        return result_df.set_index('sum')
-    
+            result_df["agg_proba"] = (
+                result_df["agg_proba"] / result_df["agg_proba"].sum()
+            )
+
+        return result_df.set_index("sum")
+
     def _empirical_distribution(self, max_value=50):
         """Weighted Poisson convolution for empirical method."""
         # Create weighted Poisson distributions for each time interval
         weighted_rates = self.arrival_rates * self.admission_probs
         x_values = np.arange(max_value)
-        
+
         # Start with first distribution
         probabilities = poisson.pmf(x_values, weighted_rates[0])
-        
+
         # Convolve with remaining distributions
         for rate in weighted_rates[1:]:
             pmf_i = poisson.pmf(x_values, rate)
             probabilities = np.convolve(probabilities, pmf_i)[:max_value]
-        
-        result_df = pd.DataFrame({
-            'sum': range(len(probabilities)), 
-            'agg_proba': probabilities
-        })
-        
+
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
+
         # Filter and normalize
-        result_df = result_df[result_df['agg_proba'] > 1e-10]
+        result_df = result_df[result_df["agg_proba"] > 1e-10]
         if len(result_df) > 0:
-            result_df['agg_proba'] = result_df['agg_proba'] / result_df['agg_proba'].sum()
-        
-        return result_df.set_index('sum')
-    
+            result_df["agg_proba"] = (
+                result_df["agg_proba"] / result_df["agg_proba"].sum()
+            )
+
+        return result_df.set_index("sum")
+
     def _parametric_distribution(self, max_value=50):
         """Deprecated: parametric GF route no longer used."""
-        raise NotImplementedError("Parametric GF route removed; use simplified Poisson route in predictor.")
+        raise NotImplementedError(
+            "Parametric GF route removed; use simplified Poisson route in predictor."
+        )
 
 
 class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
@@ -448,16 +459,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     """
 
     def __init__(self, filters=None, verbose=False, use_generating_functions=True):
-        """
-        Initialize the IncomingAdmissionPredictor with optional filters.
-
-        Args:
-            filters (dict, optional): A dictionary defining filters for different categories or specialties.
-                                    If None or empty, no filtering will be applied.
-            verbose (bool, optional): If True, enable info-level logging. Defaults to False.
-            use_generating_functions (bool, optional): If True, use the new generating function approach
-                                                      for better performance. Defaults to True.
-        """
         self.filters = filters if filters else {}
         self.verbose = verbose
         # Always use generating-function path; keep flag only for backward compatibility
@@ -510,12 +511,12 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 f"{context} only accepts these parameters: {allowed}. Remove these unexpected parameters: {unexpected}"
             )
 
-    def _ensure_required_kwargs(self, kwargs: Dict, required: set, context: str) -> Dict:
+    def _ensure_required_kwargs(
+        self, kwargs: Dict, required: set, context: str
+    ) -> Dict:
         missing = [k for k in required if kwargs.get(k) is None]
         if missing:
-            raise ValueError(
-                f"{context} requires these parameters: {missing}."
-            )
+            raise ValueError(f"{context} requires these parameters: {missing}.")
         return {k: kwargs[k] for k in required}
 
     def _iter_prediction_inputs(self, prediction_context: Dict):
@@ -573,10 +574,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
     def _pmf_to_dataframe(self, probabilities: np.ndarray) -> pd.DataFrame:
         """Convert PMF array to standardized DataFrame indexed by 'sum' with 'agg_proba'."""
-        result_df = pd.DataFrame({"sum": range(len(probabilities)), "agg_proba": probabilities})
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
         result_df = result_df[result_df["agg_proba"] > 1e-10]
         if len(result_df) > 0:
-            result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
+            result_df["agg_proba"] = (
+                result_df["agg_proba"] / result_df["agg_proba"].sum()
+            )
         return result_df.set_index("sum")
 
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
@@ -889,24 +894,29 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         predictions = {}
 
-        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Generating-function approach (always)
+            # For direct case, admission probabilities are all 1.0 (100% admission rate)
+            admission_probs = np.ones(len(arrival_rates))
 
-                # Generating-function approach (always)
-                # For direct case, admission probabilities are all 1.0 (100% admission rate)
-                admission_probs = np.ones(len(arrival_rates))
-                
-                gf = AdmissionGeneratingFunction(
-                    arrival_rates, admission_probs, method='direct'
+            gf = AdmissionGeneratingFunction(
+                arrival_rates, admission_probs, method="direct"
+            )
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
+            predictions[filter_key] = gf.get_distribution(max_value=mv)
+
+            if self.verbose:
+                total_arrival_rate = arrival_rates.sum()
+                self.logger.info(
+                    f"Direct prediction for {filter_key} at {prediction_time}: "
+                    f"Expected admissions = {total_arrival_rate:.2f}"
                 )
-                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-                predictions[filter_key] = gf.get_distribution(max_value=mv)
-
-                if self.verbose:
-                    total_arrival_rate = arrival_rates.sum()
-                    self.logger.info(
-                        f"Direct prediction for {filter_key} at {prediction_time}: "
-                        f"Expected admissions = {total_arrival_rate:.2f}"
-                    )
 
         return predictions
 
@@ -999,14 +1009,18 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t)
         """
         # Validate/collect kwargs
-        required = {'x1', 'y1', 'x2', 'y2'}
+        required = {"x1", "y1", "x2", "y2"}
         params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
-        self._validate_only_kwargs(kwargs, required | {'max_value'}, context=self.__class__.__name__)
+        self._validate_only_kwargs(
+            kwargs, required | {"max_value"}, context=self.__class__.__name__
+        )
 
         predictions = {}
 
         # Use cached metadata
-        prediction_window_hours, yta_time_interval_hours, NTimes = self._get_window_and_interval_hours()
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
+        )
 
         # Calculate theta, probability of admission in prediction window
         # for each time interval, calculate time remaining before end of window
@@ -1015,15 +1029,25 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         theta = get_y_from_aspirational_curve(
-            time_remaining_before_end_of_window, params['x1'], params['y1'], params['x2'], params['y2']
+            time_remaining_before_end_of_window,
+            params["x1"],
+            params["y1"],
+            params["x2"],
+            params["y2"],
         )
 
-        max_value = kwargs.get('max_value')
+        max_value = kwargs.get("max_value")
 
-        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
             # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
             mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
-            mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
             x_values = np.arange(mv)
             probabilities = poisson.pmf(x_values, mu)
             predictions[filter_key] = self._pmf_to_dataframe(probabilities)
@@ -1056,7 +1080,6 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     """
 
     def __init__(self, filters=None, verbose=False, use_generating_functions=True):
-        """Initialize the EmpiricalIncomingAdmissionPredictor."""
         super().__init__(filters, verbose, use_generating_functions)
         self.survival_df = None
 
@@ -1186,7 +1209,9 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             Array of admission probabilities for each time interval.
         """
         # Use cached metadata for consistency
-        prediction_window_hours, yta_time_interval_hours, NTimes = self._get_window_and_interval_hours()
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
+        )
 
         # Calculate admission probabilities for each time interval
         probabilities = []
@@ -1235,7 +1260,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         AdmissionGeneratingFunction implementation.
         """
         gf = AdmissionGeneratingFunction(
-            arrival_rates, probabilities, method='empirical'
+            arrival_rates, probabilities, method="empirical"
         )
         return gf.get_distribution(max_value=max_value)
 
@@ -1269,7 +1294,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             If survival_df was not provided during fitting.
         """
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
-        
+
         if self.survival_df is None:
             raise RuntimeError(
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
@@ -1285,12 +1310,17 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             self.prediction_window, self.yta_time_interval
         )
 
-        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(prediction_context):
-
-                # Generate prediction using convolution approach
-                mv = max_value if max_value is not None else self._default_max_value(arrival_rates)
-                predictions[filter_key] = self._convolve_poisson_distributions(
-                    arrival_rates, survival_probabilities, max_value=mv
-                )
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Generate prediction using convolution approach
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
+            predictions[filter_key] = self._convolve_poisson_distributions(
+                arrival_rates, survival_probabilities, max_value=mv
+            )
 
         return predictions

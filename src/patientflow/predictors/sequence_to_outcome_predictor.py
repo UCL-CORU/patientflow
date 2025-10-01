@@ -69,7 +69,6 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         self.metrics = {}
 
     def __repr__(self):
-        """Return a string representation of the estimator."""
         class_name = self.__class__.__name__
         return (
             f"{class_name}(\n"

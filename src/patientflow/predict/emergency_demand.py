@@ -340,12 +340,21 @@ def create_predictions(
         raise TypeError(
             "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor or MultiSubgroupPredictor"
         )
-    if not isinstance(
-        yet_to_arrive_model,
-        (ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor),
-    ):
+    # Check by class name to handle module reloading in Jupyter notebooks
+    yet_to_arrive_class_name = type(yet_to_arrive_model).__name__
+    expected_types = (
+        "ParametricIncomingAdmissionPredictor",
+        "EmpiricalIncomingAdmissionPredictor",
+        "DirectAdmissionPredictor",  # Also accept DirectAdmissionPredictor
+    )
+
+    if yet_to_arrive_class_name not in expected_types:
+        actual_module = type(yet_to_arrive_model).__module__
         raise TypeError(
-            "Third model must be of type ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor"
+            f"Third model must be of type ParametricIncomingAdmissionPredictor, "
+            f"EmpiricalIncomingAdmissionPredictor, or DirectAdmissionPredictor, "
+            f"but got {actual_module}.{yet_to_arrive_class_name}. "
+            f"If you're using Jupyter, try restarting the kernel."
         )
     if "elapsed_los" not in prediction_snapshots.columns:
         raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")

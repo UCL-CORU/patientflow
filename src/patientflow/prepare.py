@@ -376,18 +376,6 @@ class SpecialCategoryParams:
     """
 
     def __init__(self, columns):
-        """Initialize the SpecialCategoryParams object.
-
-        Parameters
-        ----------
-        columns : list or pandas.Index
-            Column names from the dataset used to determine the appropriate age identification method
-
-        Raises
-        ------
-        ValueError
-            If neither 'age_on_arrival' nor 'age_group' columns are found
-        """
         self.columns = columns
         self.special_category_dict = {
             "medical": 0.0,
@@ -460,15 +448,8 @@ class SpecialCategoryParams:
         }
 
     def __reduce__(self) -> Tuple[Type["SpecialCategoryParams"], Tuple[list]]:
-        """Support for pickle serialization.
-
-        Returns
-        -------
-        Tuple[Type['SpecialCategoryParams'], Tuple[list]]
-            A tuple containing:
-            - The class itself (to be called as a function)
-            - A tuple of arguments to pass to the class constructor
-        """
+        # Required for pickle serialization - returns (class, args_tuple) so the
+        # object can be reconstructed by calling self.__class__(self.columns)
         return (self.__class__, (self.columns,))
 
 

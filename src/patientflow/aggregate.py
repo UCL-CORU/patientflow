@@ -72,7 +72,6 @@ class BernoulliGeneratingFunction:
     def __init__(
         self, probabilities: List[float], weights: Optional[List[float]] = None
     ):
-        """Initialize with individual success probabilities and optional weights."""
         self.probs = np.array(probabilities)
         if weights is not None:
             self.probs = self.probs * np.array(weights)
