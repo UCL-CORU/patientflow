@@ -688,6 +688,97 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         pass
 
+    @abstractmethod
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for each time interval.
+
+        This is an abstract method that must be implemented by subclasses.
+        Each subclass implements its own logic for calculating admission probabilities
+        based on their specific approach (direct, parametric, or empirical).
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments specific to the prediction method.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+        """
+        pass
+
+    def predict_mean(self, prediction_context: Dict, **kwargs) -> Dict:
+        """Return just the Poisson mean (expected value) for each context.
+
+        This method extracts the underlying Poisson parameters without computing
+        the full probability distribution, making it suitable for later generation
+        or when only the expected value is needed.
+
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        **kwargs
+            Additional keyword arguments specific to the prediction method.
+            These are passed to the subclass-specific _get_admission_probabilities method.
+
+        Returns
+        -------
+        dict
+            Dictionary with Poisson means and parameters for each context.
+            Structure::
+
+                {
+                    filter_key: {
+                        "mean": float,           # Poisson mean (expected value)
+                        "method": str,           # Prediction method used
+                        "arrival_rates": list,   # Original arrival rates
+                        "admission_probs": list, # Calculated admission probabilities
+                        "prediction_time": tuple # Time of prediction
+                    }
+                }
+
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
+        """
+        # Get admission probabilities using subclass-specific method
+        admission_probs = self._get_admission_probabilities(**kwargs)
+
+        predictions = {}
+
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Calculate Poisson mean: sum of arrival_rates * admission_probs
+            poisson_mean = float(
+                np.sum(np.array(arrival_rates) * np.array(admission_probs))
+            )
+
+            predictions[filter_key] = {
+                "mean": poisson_mean,
+                "method": self.__class__.__name__.replace(
+                    "IncomingAdmissionPredictor", ""
+                ).lower()
+                or "direct",
+                "arrival_rates": arrival_rates.tolist(),
+                "admission_probs": admission_probs.tolist(),
+                "prediction_time": prediction_time,
+            }
+
+            if self.verbose:
+                self.logger.info(
+                    f"Mean prediction for {filter_key} at {prediction_time}: "
+                    f"Expected admissions = {poisson_mean:.2f}"
+                )
+
+        return predictions
+
 
 class DirectAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor that assumes every arrival is admitted immediately.
@@ -774,6 +865,26 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
                 )
 
         return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for direct method (always 1.0).
+
+        For the direct predictor, all arrivals are assumed to be admitted immediately,
+        so admission probabilities are always 1.0 for all time intervals.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored for direct method).
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of ones with length equal to the number of time intervals.
+        """
+        # Use cached metadata to get the number of time intervals
+        _, _, NTimes = self._get_window_and_interval_hours()
+        return np.ones(NTimes)
 
 
 class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
@@ -908,6 +1019,53 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             predictions[filter_key] = self._pmf_to_dataframe(probabilities)
 
         return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for parametric method using aspirational curves.
+
+        Uses the parametric aspirational curve to calculate admission probabilities
+        for each time interval based on the remaining time in the prediction window.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments. Must include:
+            - x1, y1, x2, y2: Parameters for the aspirational curve
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+
+        Raises
+        ------
+        ValueError
+            If required parameters (x1, y1, x2, y2) are missing.
+        """
+        # Validate/collect kwargs
+        required = {"x1", "y1", "x2", "y2"}
+        params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
+
+        # Use cached metadata
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
+        )
+
+        # Calculate time remaining before end of window for each interval
+        time_remaining_before_end_of_window = prediction_window_hours - np.arange(
+            0, prediction_window_hours, yta_time_interval_hours
+        )
+
+        # Calculate admission probabilities using aspirational curve
+        theta = get_y_from_aspirational_curve(
+            time_remaining_before_end_of_window,
+            params["x1"],
+            params["y1"],
+            params["x2"],
+            params["y2"],
+        )
+
+        return theta
 
 
 class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
@@ -1188,3 +1346,37 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             )
 
         return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for empirical method using survival curves.
+
+        Uses the empirical survival curve calculated during fitting to determine
+        admission probabilities for each time interval based on the remaining time
+        in the prediction window.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored for empirical method).
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+
+        Raises
+        ------
+        RuntimeError
+            If survival_df was not provided during fitting.
+        """
+        if self.survival_df is None:
+            raise RuntimeError(
+                "No survival data available. Please call fit() method first to calculate survival curve from training data."
+            )
+
+        # Calculate survival probabilities using existing method
+        survival_probabilities = self._calculate_survival_probabilities(
+            self.prediction_window, self.yta_time_interval
+        )
+
+        return survival_probabilities
