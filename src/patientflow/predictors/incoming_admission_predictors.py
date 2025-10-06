@@ -727,18 +727,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         Returns
         -------
         dict
-            Dictionary with Poisson means and parameters for each context.
-            Structure::
+            Dictionary with Poisson means for each context::
+                {filter_key: float}  # Direct mean values
 
-                {
-                    filter_key: {
-                        "mean": float,           # Poisson mean (expected value)
-                        "method": str,           # Prediction method used
-                        "arrival_rates": list,   # Original arrival rates
-                        "admission_probs": list, # Calculated admission probabilities
-                        "prediction_time": tuple # Time of prediction
-                    }
-                }
+        Notes
+        -----
+        For detailed output with metadata (method, arrival_rates, admission_probs, etc.),
+        use the predict() method instead.
 
         Raises
         ------
@@ -760,16 +755,8 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 np.sum(np.array(arrival_rates) * np.array(admission_probs))
             )
 
-            predictions[filter_key] = {
-                "mean": poisson_mean,
-                "method": self.__class__.__name__.replace(
-                    "IncomingAdmissionPredictor", ""
-                ).lower()
-                or "direct",
-                "arrival_rates": arrival_rates.tolist(),
-                "admission_probs": admission_probs.tolist(),
-                "prediction_time": prediction_time,
-            }
+            # Return direct mean values
+            predictions[filter_key] = poisson_mean
 
             if self.verbose:
                 self.logger.info(
