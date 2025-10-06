@@ -2,26 +2,47 @@
 Hospital Admissions Forecasting Predictors.
 
 This module implements custom predictors to estimate the number of hospital admissions
-within a specified prediction window using historical admission data. It provides two
-approaches: parametric curves with Poisson-binomial distributions and empirical survival
-curves with convolution of Poisson distributions. Both predictors accommodate different
-data filters for tailored predictions across various hospital settings.
+within a specified prediction window using historical admission data. It provides three
+approaches: direct admission prediction, parametric curves with Poisson-binomial distributions,
+and empirical survival curves with convolution of Poisson distributions. All predictors
+accommodate different data filters for tailored predictions across various hospital settings.
 
 Classes
 -------
+AdmissionGeneratingFunction
+    Unified generating function class for computation of admission prediction
+    distributions using probability generating functions.
+
 IncomingAdmissionPredictor : BaseEstimator, TransformerMixin
     Base class for admission predictors that handles filtering and arrival rate calculation.
+    Uses generating functions for all predictors; the earlier flag is deprecated and ignored.
+
+DirectAdmissionPredictor : IncomingAdmissionPredictor
+    Simplest predictor that assumes every arrival is admitted immediately. Uses direct
+    Poisson distribution based on total arrival rates without any admission probability
+    adjustments. Implemented via generating functions.
 
 ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions within a given prediction window based on historical
     data and Poisson-binomial distribution using parametric aspirational curves.
+    Now uses efficient generating functions for better performance.
 
 EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
-    of Poisson distributions instead of parametric curves.
+    of Poisson distributions; implemented via generating functions.
+
+Functions
+---------
+find_nearest_previous_prediction_time
+    Find the nearest previous prediction time for a requested time
 
 Notes
 -----
+The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
+intervals and creating a single Poisson distribution. It assumes 100% admission rate,
+making it useful for scenarios where immediate admission is expected or as a baseline
+for comparison with more complex models.
+
 The ParametricIncomingAdmissionPredictor uses a combination of Poisson and binomial distributions to
 model the probability of admissions within a prediction window using parametric curves
 defined by transition points (x1, y1, x2, y2).
@@ -30,8 +51,32 @@ The EmpiricalIncomingAdmissionPredictor inherits the arrival rate calculation an
 but replaces the parametric approach with empirical survival probabilities and convolution
 of individual Poisson distributions for each time interval.
 
-Both predictors take into account historical data patterns and can be filtered for
+All predictors take into account historical data patterns and can be filtered for
 specific hospital settings or specialties.
+
+Assumptions
+-----------
+Parametric incoming-admissions use a simple per-slice Poisson arrivals model with
+independent filtering. The following assumptions are required for the simplified
+parametric route to be exact:
+
+- Symbols and units:
+    - λ_t: expected arrivals within time-slice t (the value produced by
+      `time_varying_arrival_rates` for that slice; units match the slice length).
+    - θ_t: probability an arrival in slice t is admitted within the prediction
+      window (computed via `get_y_from_aspirational_curve`).
+
+- Arrivals within each time-slice t follow a Poisson process with rate λ_t.
+
+- Each arrival is independently admitted within the prediction window with
+  probability θ_t, which is constant across that slice (given the model inputs).
+  This independent filtering is sometimes called "Poisson thinning".
+
+- Slices are independent for this filtering.
+
+Under these assumptions, admitted arrivals in slice t are Poisson(λ_t θ_t) and
+the total admitted count is Poisson(Σ_t λ_t θ_t). Intuition: filtering arrivals
+with probability θ_t reduces the effective rate from λ_t to λ_t θ_t.
 
 """
 
@@ -64,155 +109,7 @@ from patientflow.calculate.survival_curve import (
 # Import sklearn base classes for custom transformer creation
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from scipy.stats import binom, poisson
-
-
-def weighted_poisson_binomial(i, lam, theta):
-    """Calculate weighted probabilities using Poisson and Binomial distributions.
-
-    Parameters
-    ----------
-    i : int
-        The upper bound of the range for the binomial distribution.
-    lam : float
-        The lambda parameter for the Poisson distribution.
-    theta : float
-        The probability of success for the binomial distribution.
-
-    Returns
-    -------
-    numpy.ndarray
-        An array of weighted probabilities.
-
-    Raises
-    ------
-    ValueError
-        If i < 0, lam < 0, or theta is not between 0 and 1.
-    """
-    if i < 0 or lam < 0 or not 0 <= theta <= 1:
-        raise ValueError("Ensure i >= 0, lam >= 0, and 0 <= theta <= 1.")
-
-    arr_seq = np.arange(i + 1)
-    probabilities = binom.pmf(arr_seq, i, theta)
-    return poisson.pmf(i, lam) * probabilities
-
-
-def aggregate_probabilities(lam, kmax, theta, time_index):
-    """Aggregate probabilities for a range of values using the weighted Poisson-Binomial distribution.
-
-    Parameters
-    ----------
-    lam : numpy.ndarray
-        An array of lambda values for each time interval.
-    kmax : int
-        The maximum number of events to consider.
-    theta : numpy.ndarray
-        An array of theta values for each time interval.
-    time_index : int
-        The current time index for which to calculate probabilities.
-
-    Returns
-    -------
-    numpy.ndarray
-        Aggregated probabilities for the given time index.
-
-    Raises
-    ------
-    ValueError
-        If kmax < 0, time_index < 0, or array lengths are invalid.
-    """
-    if kmax < 0 or time_index < 0 or len(lam) <= time_index or len(theta) <= time_index:
-        raise ValueError("Invalid kmax, time_index, or array lengths.")
-
-    probabilities_matrix = np.zeros((kmax + 1, kmax + 1))
-    for i in range(kmax + 1):
-        probabilities_matrix[: i + 1, i] = weighted_poisson_binomial(
-            i, lam[time_index], theta[time_index]
-        )
-    return probabilities_matrix.sum(axis=1)
-
-
-def convolute_distributions(dist_a, dist_b):
-    """Convolutes two probability distributions represented as dataframes.
-
-    Parameters
-    ----------
-    dist_a : pd.DataFrame
-        The first distribution with columns ['sum', 'prob'].
-    dist_b : pd.DataFrame
-        The second distribution with columns ['sum', 'prob'].
-
-    Returns
-    -------
-    pd.DataFrame
-        The convoluted distribution.
-
-    Raises
-    ------
-    ValueError
-        If DataFrames do not contain required 'sum' and 'prob' columns.
-    """
-    if not {"sum", "prob"}.issubset(dist_a.columns) or not {
-        "sum",
-        "prob",
-    }.issubset(dist_b.columns):
-        raise ValueError("DataFrames must contain 'sum' and 'prob' columns.")
-
-    sums = [x + y for x in dist_a["sum"] for y in dist_b["sum"]]
-    probs = [x * y for x in dist_a["prob"] for y in dist_b["prob"]]
-    result = pd.DataFrame(zip(sums, probs), columns=["sum", "prob"])
-    return result.groupby("sum")["prob"].sum().reset_index()
-
-
-def poisson_binom_generating_function(NTimes, arrival_rates, theta, epsilon):
-    """Generate a distribution based on the aggregate of Poisson and Binomial distributions.
-
-    Parameters
-    ----------
-    NTimes : int
-        The number of time intervals.
-    arrival_rates : numpy.ndarray
-        An array of lambda values for each time interval.
-    theta : numpy.ndarray
-        An array of theta values for each time interval.
-    epsilon : float
-        The desired error threshold.
-
-    Returns
-    -------
-    pd.DataFrame
-        The generated distribution.
-
-    Raises
-    ------
-    ValueError
-        If NTimes <= 0 or epsilon is not between 0 and 1.
-    """
-
-    if NTimes <= 0 or epsilon <= 0 or epsilon >= 1:
-        raise ValueError("Ensure NTimes > 0 and 0 < epsilon < 1.")
-
-    maxlam = max(arrival_rates)
-    kmax = int(poisson.ppf(1 - epsilon, maxlam))
-    distribution = np.zeros((kmax + 1, NTimes))
-
-    for j in range(NTimes):
-        distribution[:, j] = aggregate_probabilities(arrival_rates, kmax, theta, j)
-
-    df_list = [
-        pd.DataFrame({"sum": range(kmax + 1), "prob": distribution[:, j]})
-        for j in range(NTimes)
-    ]
-    total_distribution = df_list[0]
-
-    for df in df_list[1:]:
-        total_distribution = convolute_distributions(total_distribution, df)
-
-    total_distribution = total_distribution.rename(
-        columns={"prob": "agg_proba"}
-    ).set_index("sum")
-
-    return total_distribution
+from scipy.stats import poisson
 
 
 def find_nearest_previous_prediction_time(requested_time, prediction_times):
@@ -275,6 +172,121 @@ def find_nearest_previous_prediction_time(requested_time, prediction_times):
     return closest_prediction_time
 
 
+class AdmissionGeneratingFunction:
+    """Unified generating function for admission prediction distributions.
+
+    This class provides efficient computation of probability distributions for
+    different admission prediction approaches using simple convolution methods.
+
+    For typical use cases (32 intervals, max ~50), simple convolution is more
+    appropriate than FFT-based methods which add unnecessary complexity.
+
+    Parameters
+    ----------
+    arrival_rates : numpy.ndarray
+        Array of arrival rates for each time interval
+    admission_probs : numpy.ndarray
+        Array of admission probabilities for each time interval
+    method : str, default='empirical'
+        Method to use: 'direct', 'parametric', or 'empirical'
+
+    Attributes
+    ----------
+    arrival_rates : numpy.ndarray
+        Arrival rates for each time interval
+    admission_probs : numpy.ndarray
+        Admission probabilities for each time interval
+    method : str
+        The prediction method being used
+    """
+
+    def __init__(self, arrival_rates, admission_probs, method="empirical"):
+        self.arrival_rates = np.array(arrival_rates)
+        self.admission_probs = np.array(admission_probs)
+        self.method = method
+
+        if len(self.arrival_rates) != len(self.admission_probs):
+            raise ValueError(
+                "arrival_rates and admission_probs must have the same length"
+            )
+
+    def get_distribution(self, max_value):
+        """Get the probability distribution for the specified method.
+
+        Parameters
+        ----------
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon via _default_max_value(),
+            but can be provided explicitly for custom truncation.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with 'sum' and 'agg_proba' columns representing the distribution
+        """
+        if self.method == "direct":
+            return self._direct_distribution(max_value)
+        elif self.method == "empirical":
+            return self._empirical_distribution(max_value)
+        elif self.method == "parametric":
+            return self._parametric_distribution(max_value)
+        else:
+            raise ValueError(f"Unknown method: {self.method}")
+
+    def _direct_distribution(self, max_value):
+        """Simple Poisson distribution for direct method.
+
+        Parameters
+        ----------
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon, but can be provided explicitly.
+        """
+        total_rate = np.sum(self.arrival_rates)
+        x_values = np.arange(max_value)
+        probabilities = poisson.pmf(x_values, total_rate)
+
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
+
+        return result_df.set_index("sum")
+
+    def _empirical_distribution(self, max_value):
+        """Weighted Poisson convolution for empirical method.
+
+        Parameters
+        ----------
+        max_value : int
+            Maximum value for the discrete distribution support.
+            Typically determined using epsilon, but can be provided explicitly.
+        """
+        # Create weighted Poisson distributions for each time interval
+        weighted_rates = self.arrival_rates * self.admission_probs
+        x_values = np.arange(max_value)
+
+        # Start with first distribution
+        probabilities = poisson.pmf(x_values, weighted_rates[0])
+
+        # Convolve with remaining distributions
+        for rate in weighted_rates[1:]:
+            pmf_i = poisson.pmf(x_values, rate)
+            probabilities = np.convolve(probabilities, pmf_i)[:max_value]
+
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
+
+        return result_df.set_index("sum")
+
+    def _parametric_distribution(self, max_value):
+        """Deprecated: parametric GF route no longer used."""
+        raise NotImplementedError(
+            "Parametric GF route removed; use simplified Poisson route in predictor."
+        )
+
+
 class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     """Base class for admission predictors that handles filtering and arrival rate calculation.
 
@@ -306,17 +318,18 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     interfaces for compatibility with scikit-learn pipelines.
     """
 
-    def __init__(self, filters=None, verbose=False):
-        """
-        Initialize the IncomingAdmissionPredictor with optional filters.
-
-        Args:
-            filters (dict, optional): A dictionary defining filters for different categories or specialties.
-                                    If None or empty, no filtering will be applied.
-            verbose (bool, optional): If True, enable info-level logging. Defaults to False.
-        """
+    def __init__(self, filters=None, verbose=False, use_generating_functions=True):
         self.filters = filters if filters else {}
         self.verbose = verbose
+        # Always use generating-function path; keep flag only for backward compatibility
+        # If user explicitly sets False, warn and proceed with GF implementation
+        self.use_generating_functions = True
+        if use_generating_functions is False:
+            warnings.warn(
+                "use_generating_functions=False is deprecated and ignored; generating-function implementation is always used.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.metrics = {}  # Add metrics dictionary to store metadata
 
         if verbose:
@@ -347,6 +360,84 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         # Apply filters
         self.filters = filters if filters else {}
+
+    # -------------------------
+    # Shared helper utilities
+    # -------------------------
+    def _validate_only_kwargs(self, kwargs: Dict, allowed: set, context: str) -> None:
+        unexpected = set(kwargs.keys()) - allowed
+        if unexpected:
+            raise ValueError(
+                f"{context} only accepts these parameters: {allowed}. Remove these unexpected parameters: {unexpected}"
+            )
+
+    def _ensure_required_kwargs(
+        self, kwargs: Dict, required: set, context: str
+    ) -> Dict:
+        missing = [k for k in required if kwargs.get(k) is None]
+        if missing:
+            raise ValueError(f"{context} requires these parameters: {missing}.")
+        return {k: kwargs[k] for k in required}
+
+    def _iter_prediction_inputs(self, prediction_context: Dict):
+        """Yield (filter_key, resolved_prediction_time, arrival_rates_np).
+
+        Centralizes validation, time resolution, and array conversion.
+        """
+        for filter_key, filter_values in prediction_context.items():
+            if filter_key not in self.weights:
+                raise ValueError(
+                    f"Filter key '{filter_key}' is not recognized in the model weights."
+                )
+
+            prediction_time = filter_values.get("prediction_time")
+            if prediction_time is None:
+                raise ValueError(
+                    f"No 'prediction_time' provided for filter '{filter_key}'."
+                )
+
+            if prediction_time not in self.prediction_times:
+                prediction_time = find_nearest_previous_prediction_time(
+                    prediction_time, self.prediction_times
+                )
+
+            arrival_rates = self.weights[filter_key][prediction_time].get(
+                "arrival_rates"
+            )
+            if arrival_rates is None:
+                raise ValueError(
+                    f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                )
+
+            yield filter_key, prediction_time, np.array(arrival_rates)
+
+    def _get_window_and_interval_hours(self):
+        """Return (prediction_window_hours, interval_hours, NTimes)."""
+        return (
+            self.prediction_window_hours,
+            self.yta_time_interval_hours,
+            self.NTimes,
+        )
+
+    def _default_max_value(self, arrival_rates, floor: int = 20, cap: int = 200) -> int:
+        """Unified default max_value based on epsilon and max arrival rate.
+
+        Applies a floor and cap to ensure stable PMF support.
+        """
+        try:
+            mv = int(poisson.ppf(1 - self.epsilon, float(np.max(arrival_rates))))
+        except Exception:
+            mv = floor
+        mv = max(floor, mv)
+        mv = min(cap, mv)
+        return mv
+
+    def _pmf_to_dataframe(self, probabilities: np.ndarray) -> pd.DataFrame:
+        """Convert PMF array to standardized DataFrame indexed by 'sum' with 'agg_proba'."""
+        result_df = pd.DataFrame(
+            {"sum": range(len(probabilities)), "agg_proba": probabilities}
+        )
+        return result_df.set_index("sum")
 
     def filter_dataframe(self, df: pd.DataFrame, filters: Dict) -> pd.DataFrame:
         """Apply a set of filters to a dataframe.
@@ -552,6 +643,11 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.metrics["end_date"] = train_df.index.max().date()
         self.metrics["num_days"] = num_days
 
+        # Cache commonly used interval metadata
+        self.NTimes = int(self.prediction_window / self.yta_time_interval)
+        self.prediction_window_hours = self.prediction_window.total_seconds() / 3600
+        self.yta_time_interval_hours = self.yta_time_interval.total_seconds() / 3600
+
         return self
 
     def get_weights(self):
@@ -592,6 +688,180 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         pass
 
+    @abstractmethod
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for each time interval.
+
+        This is an abstract method that must be implemented by subclasses.
+        Each subclass implements its own logic for calculating admission probabilities
+        based on their specific approach (direct, parametric, or empirical).
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments specific to the prediction method.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+        """
+        pass
+
+    def predict_mean(self, prediction_context: Dict, **kwargs) -> float:
+        """Return just the Poisson mean (expected value) for each context.
+
+        This method extracts the underlying Poisson mean without computing
+        the full probability distribution, making it suitable for later generation
+        or when only the expected value is needed.
+
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        **kwargs
+            Additional keyword arguments specific to the prediction method.
+            These are passed to the subclass-specific _get_admission_probabilities method.
+
+        Returns
+        -------
+        float
+            The Poisson mean (expected value) for the single context specified in prediction_context.
+
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+        KeyError
+            If required keys are missing from the prediction context.
+        """
+        # Get admission probabilities using subclass-specific method
+        admission_probs = self._get_admission_probabilities(**kwargs)
+
+        # Iterate through the single filter_key (as per usage pattern)
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Calculate Poisson mean: sum of arrival_rates * admission_probs
+            poisson_mean = float(
+                np.sum(np.array(arrival_rates) * np.array(admission_probs))
+            )
+
+            # Return the single mean value immediately
+            return poisson_mean
+
+        # This should never be reached due to validation in _iter_prediction_inputs,
+        # but included for mypy compliance
+        raise ValueError("No valid prediction context provided")
+
+
+class DirectAdmissionPredictor(IncomingAdmissionPredictor):
+    """A predictor that assumes every arrival is admitted immediately.
+
+    This predictor uses only the arrival rates calculated from historical data
+    and assumes 100% admission probability for all arrivals. No survival curves
+    or parametric models are used - it's a direct Poisson distribution based
+    on the arrival rates.
+
+    Parameters
+    ----------
+    filters : dict, optional
+        Optional filters for data categorization. If None, no filtering is applied.
+    verbose : bool, default=False
+        Whether to enable verbose logging.
+
+    Notes
+    -----
+    This is the simplest predictor that directly uses arrival rates without
+    any admission probability adjustments. It sums all arrival rates across
+    time intervals and creates a single Poisson distribution, making it useful
+    for scenarios where immediate admission is expected or as a baseline
+    for comparison with more complex models.
+    """
+
+    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
+        """Predict the number of admissions assuming 100% admission rate.
+
+        Parameters
+        ----------
+        prediction_context : dict
+            A dictionary defining the context for which predictions are to be made.
+            It should specify either a general context or one based on the applied filters.
+        **kwargs
+            Additional keyword arguments for prediction configuration:
+
+            max_value : int, default=50
+                Maximum value for the discrete distribution support.
+
+        Returns
+        -------
+        dict
+            A dictionary with predictions for each specified context.
+
+        Raises
+        ------
+        ValueError
+            If filter key is not recognized or prediction_time is not provided.
+            If parametric parameters (x1, y1, x2, y2) are provided (not used by direct predictor).
+        KeyError
+            If required keys are missing from the prediction context.
+        """
+        # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
+
+        # legacy inline import removed
+
+        # Extract parameters from kwargs with defaults (unified default if not provided)
+        max_value = kwargs.get("max_value")
+
+        predictions = {}
+
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Generating-function approach (always)
+            # For direct case, admission probabilities are all 1.0 (100% admission rate)
+            admission_probs = np.ones(len(arrival_rates))
+
+            gf = AdmissionGeneratingFunction(
+                arrival_rates, admission_probs, method="direct"
+            )
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
+            predictions[filter_key] = gf.get_distribution(max_value=mv)
+
+            if self.verbose:
+                total_arrival_rate = arrival_rates.sum()
+                self.logger.info(
+                    f"Direct prediction for {filter_key} at {prediction_time}: "
+                    f"Expected admissions = {total_arrival_rate:.2f}"
+                )
+
+        return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for direct method (always 1.0).
+
+        For the direct predictor, all arrivals are assumed to be admitted immediately,
+        so admission probabilities are always 1.0 for all time intervals.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored for direct method).
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of ones with length equal to the number of time intervals.
+        """
+        # Use cached metadata to get the number of time intervals
+        _, _, NTimes = self._get_window_and_interval_hours()
+        return np.ones(NTimes)
+
 
 class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor for estimating hospital admissions using parametric curves.
@@ -622,6 +892,16 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     -----
     The predictor implements scikit-learn's BaseEstimator and TransformerMixin
     interfaces for compatibility with scikit-learn pipelines.
+
+    Assumptions for simplified parametric route
+    -------------------------------------------
+    - Symbols: λ_t = expected arrivals in slice t; θ_t = probability an arrival in slice t is
+      admitted within the prediction window.
+    - Arrivals per time-slice t follow Poisson(λ_t).
+    - Within a slice, each arrival is admitted independently with probability θ_t (constant per slice).
+      This independent filtering is often called “Poisson thinning”.
+    - Slices are independent.
+    Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t).
     """
 
     def predict(self, prediction_context: Dict, **kwargs) -> Dict:
@@ -635,18 +915,20 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         **kwargs
             Additional keyword arguments for parametric curve configuration:
 
-            x1 : float
+            x1 : float, required
                 The x-coordinate of the first transition point on the aspirational curve,
                 where the growth phase ends and the decay phase begins.
-            y1 : float
+            y1 : float, required
                 The y-coordinate of the first transition point (x1), representing the target
                 proportion of patients admitted by time x1.
-            x2 : float
+            x2 : float, required
                 The x-coordinate of the second transition point on the curve, beyond which
                 all but a few patients are expected to be admitted.
-            y2 : float
+            y2 : float, required
                 The y-coordinate of the second transition point (x2), representing the target
                 proportion of patients admitted by time x2.
+            max_value : int, optional, default=50
+                Maximum value for the discrete distribution support.
 
         Returns
         -------
@@ -659,47 +941,27 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             If filter key is not recognized or prediction_time is not provided.
         KeyError
             If required keys are missing from the prediction context.
-        """
-        # Extract required parameters from kwargs
-        x1 = kwargs.get("x1")
-        y1 = kwargs.get("y1")
-        x2 = kwargs.get("x2")
-        y2 = kwargs.get("y2")
 
-        # Validate that required parameters are provided
-        if x1 is None or y1 is None or x2 is None or y2 is None:
-            raise ValueError(
-                "x1, y1, x2, and y2 parameters are required for parametric prediction"
-            )
+        Assumptions
+        -----------
+        Uses the Poisson arrivals with independent filtering (often called “Poisson thinning”):
+        - λ_t: expected arrivals in slice t; θ_t: probability of admission within window for arrivals in slice t
+        - Arrivals per slice t follow Poisson(λ_t), slices are independent
+        - Each arrival is admitted independently with probability θ_t (constant per slice)
+        Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t)
+        """
+        # Validate/collect kwargs
+        required = {"x1", "y1", "x2", "y2"}
+        params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
+        self._validate_only_kwargs(
+            kwargs, required | {"max_value"}, context=self.__class__.__name__
+        )
 
         predictions = {}
 
-        # Calculate Ntimes
-        if isinstance(self.prediction_window, timedelta) and isinstance(
-            self.yta_time_interval, timedelta
-        ):
-            NTimes = int(self.prediction_window / self.yta_time_interval)
-        elif isinstance(self.prediction_window, timedelta):
-            NTimes = int(
-                self.prediction_window.total_seconds() / 60 / self.yta_time_interval
-            )
-        elif isinstance(self.yta_time_interval, timedelta):
-            NTimes = int(
-                self.prediction_window / (self.yta_time_interval.total_seconds() / 60)
-            )
-        else:
-            NTimes = int(self.prediction_window / self.yta_time_interval)
-
-        # Convert to hours only for numpy operations (which require numeric types)
-        prediction_window_hours = (
-            self.prediction_window.total_seconds() / 3600
-            if isinstance(self.prediction_window, timedelta)
-            else self.prediction_window / 60
-        )
-        yta_time_interval_hours = (
-            self.yta_time_interval.total_seconds() / 3600
-            if isinstance(self.yta_time_interval, timedelta)
-            else self.yta_time_interval / 60
+        # Use cached metadata
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
         )
 
         # Calculate theta, probability of admission in prediction window
@@ -709,43 +971,77 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         theta = get_y_from_aspirational_curve(
-            time_remaining_before_end_of_window, x1, y1, x2, y2
+            time_remaining_before_end_of_window,
+            params["x1"],
+            params["y1"],
+            params["x2"],
+            params["y2"],
         )
 
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
+        max_value = kwargs.get("max_value")
 
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
-                )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                predictions[filter_key] = poisson_binom_generating_function(
-                    NTimes, arrival_rates, theta, self.epsilon
-                )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
+            mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
+            x_values = np.arange(mv)
+            probabilities = poisson.pmf(x_values, mu)
+            predictions[filter_key] = self._pmf_to_dataframe(probabilities)
 
         return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for parametric method using aspirational curves.
+
+        Uses the parametric aspirational curve to calculate admission probabilities
+        for each time interval based on the remaining time in the prediction window.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments. Must include:
+            - x1, y1, x2, y2: Parameters for the aspirational curve
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+
+        Raises
+        ------
+        ValueError
+            If required parameters (x1, y1, x2, y2) are missing.
+        """
+        # Validate/collect kwargs
+        required = {"x1", "y1", "x2", "y2"}
+        params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
+
+        # Use cached metadata
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
+        )
+
+        # Calculate time remaining before end of window for each interval
+        time_remaining_before_end_of_window = prediction_window_hours - np.arange(
+            0, prediction_window_hours, yta_time_interval_hours
+        )
+
+        # Calculate admission probabilities using aspirational curve
+        theta = get_y_from_aspirational_curve(
+            time_remaining_before_end_of_window,
+            params["x1"],
+            params["y1"],
+            params["x2"],
+            params["y2"],
+        )
+
+        return theta
 
 
 class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
@@ -772,9 +1068,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         information for empirical probability calculations.
     """
 
-    def __init__(self, filters=None, verbose=False):
-        """Initialize the EmpiricalIncomingAdmissionPredictor."""
-        super().__init__(filters, verbose)
+    def __init__(self, filters=None, verbose=False, use_generating_functions=True):
+        super().__init__(filters, verbose, use_generating_functions)
         self.survival_df = None
 
     def fit(
@@ -902,28 +1197,10 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         numpy.ndarray
             Array of admission probabilities for each time interval.
         """
-        # Calculate number of time intervals
-        if isinstance(prediction_window, timedelta) and isinstance(
-            yta_time_interval, timedelta
-        ):
-            NTimes = int(prediction_window / yta_time_interval)
-        elif isinstance(prediction_window, timedelta):
-            NTimes = int(prediction_window.total_seconds() / 60 / yta_time_interval)
-        elif isinstance(yta_time_interval, timedelta):
-            NTimes = int(prediction_window / (yta_time_interval.total_seconds() / 60))
-        else:
-            NTimes = int(prediction_window / yta_time_interval)
-
-        # Convert to hours for survival probability calculation
-        if isinstance(prediction_window, timedelta):
-            prediction_window_hours = prediction_window.total_seconds() / 3600
-        else:
-            prediction_window_hours = prediction_window / 60
-
-        if isinstance(yta_time_interval, timedelta):
-            yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
-        else:
-            yta_time_interval_hours = yta_time_interval / 60
+        # Use cached metadata for consistency
+        prediction_window_hours, yta_time_interval_hours, NTimes = (
+            self._get_window_and_interval_hours()
+        )
 
         # Calculate admission probabilities for each time interval
         probabilities = []
@@ -961,10 +1238,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return np.array(probabilities)
 
-    def _convolve_poisson_distributions(
-        self, arrival_rates, probabilities, max_value=20
-    ):
-        """Convolve Poisson distributions for each time interval.
+    def _convolve_poisson_distributions(self, arrival_rates, probabilities, max_value):
+        """Convolve Poisson distributions for each time interval using generating functions.
 
         Parameters
         ----------
@@ -972,44 +1247,20 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             Array of arrival rates for each time interval.
         probabilities : numpy.ndarray
             Array of admission probabilities for each time interval.
-        max_value : int, default=20
+        max_value : int
             Maximum value for the discrete distribution support.
+            Typically determined using epsilon via _default_max_value(),
+            but can be provided explicitly for custom truncation.
 
-        Returns
-        -------
-        pandas.DataFrame
-            DataFrame with 'sum' and 'agg_proba' columns representing the final distribution.
+        Notes
+        -----
+        Legacy manual convolution has been removed in favor of the unified
+        AdmissionGeneratingFunction implementation.
         """
-        from scipy import stats
-
-        # Create weighted Poisson distributions for each time interval
-        weighted_rates = arrival_rates * probabilities
-        poisson_dists = [stats.poisson(rate) for rate in weighted_rates]
-
-        # Get PMF for each distribution
-        x = np.arange(max_value)
-        pmfs = [dist.pmf(x) for dist in poisson_dists]
-
-        # Convolve all distributions together
-        if len(pmfs) == 0:
-            # Handle edge case of no distributions
-            combined_pmf = np.zeros(max_value)
-            combined_pmf[0] = 1.0  # All probability at 0
-        else:
-            combined_pmf = pmfs[0]
-            for pmf in pmfs[1:]:
-                combined_pmf = np.convolve(combined_pmf, pmf)
-
-        # Create result DataFrame
-        result_df = pd.DataFrame(
-            {"sum": range(len(combined_pmf)), "agg_proba": combined_pmf}
+        gf = AdmissionGeneratingFunction(
+            arrival_rates, probabilities, method="empirical"
         )
-
-        # Filter out near-zero probabilities and normalize
-        result_df = result_df[result_df["agg_proba"] > 1e-10]
-        result_df["agg_proba"] = result_df["agg_proba"] / result_df["agg_proba"].sum()
-
-        return result_df.set_index("sum")
+        return gf.get_distribution(max_value=max_value)
 
     def predict(self, prediction_context: Dict, **kwargs) -> Dict:
         """Predict the number of admissions using empirical survival curves.
@@ -1034,18 +1285,21 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         ------
         ValueError
             If filter key is not recognized or prediction_time is not provided.
+            If parametric parameters (x1, y1, x2, y2) are provided (not used by empirical predictor).
         KeyError
             If required keys are missing from the prediction context.
         RuntimeError
             If survival_df was not provided during fitting.
         """
+        # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
+
         if self.survival_df is None:
             raise RuntimeError(
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
             )
 
-        # Extract parameters from kwargs with defaults
-        max_value = kwargs.get("max_value", 20)
+        # Extract parameters from kwargs with unified default if not provided
+        max_value = kwargs.get("max_value")
 
         predictions = {}
 
@@ -1054,48 +1308,51 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             self.prediction_window, self.yta_time_interval
         )
 
-        for filter_key, filter_values in prediction_context.items():
-            try:
-                if filter_key not in self.weights:
-                    raise ValueError(
-                        f"Filter key '{filter_key}' is not recognized in the model weights."
-                    )
-
-                prediction_time = filter_values.get("prediction_time")
-                if prediction_time is None:
-                    raise ValueError(
-                        f"No 'prediction_time' provided for filter '{filter_key}'."
-                    )
-
-                if prediction_time not in self.prediction_times:
-                    prediction_time = find_nearest_previous_prediction_time(
-                        prediction_time, self.prediction_times
-                    )
-
-                arrival_rates = self.weights[filter_key][prediction_time].get(
-                    "arrival_rates"
-                )
-                if arrival_rates is None:
-                    raise ValueError(
-                        f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
-                    )
-
-                # Convert arrival rates to numpy array
-                arrival_rates = np.array(arrival_rates)
-
-                # Generate prediction using convolution approach
-                predictions[filter_key] = self._convolve_poisson_distributions(
-                    arrival_rates, survival_probabilities, max_value=max_value
-                )
-
-                # if self.verbose:
-                #     total_expected = (arrival_rates * survival_probabilities).sum()
-                #     self.logger.info(
-                #         f"Prediction for {filter_key} at {prediction_time}: "
-                #         f"Expected value ≈ {total_expected:.2f}"
-                #     )
-
-            except KeyError as e:
-                raise KeyError(f"Key error occurred: {e!s}")
+        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
+            prediction_context
+        ):
+            # Generate prediction using convolution approach
+            mv = (
+                max_value
+                if max_value is not None
+                else self._default_max_value(arrival_rates)
+            )
+            predictions[filter_key] = self._convolve_poisson_distributions(
+                arrival_rates, survival_probabilities, max_value=mv
+            )
 
         return predictions
+
+    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+        """Get admission probabilities for empirical method using survival curves.
+
+        Uses the empirical survival curve calculated during fitting to determine
+        admission probabilities for each time interval based on the remaining time
+        in the prediction window.
+
+        Parameters
+        ----------
+        **kwargs
+            Additional keyword arguments (ignored for empirical method).
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of admission probabilities for each time interval.
+
+        Raises
+        ------
+        RuntimeError
+            If survival_df was not provided during fitting.
+        """
+        if self.survival_df is None:
+            raise RuntimeError(
+                "No survival data available. Please call fit() method first to calculate survival curve from training data."
+            )
+
+        # Calculate survival probabilities using existing method
+        survival_probabilities = self._calculate_survival_probabilities(
+            self.prediction_window, self.yta_time_interval
+        )
+
+        return survival_probabilities

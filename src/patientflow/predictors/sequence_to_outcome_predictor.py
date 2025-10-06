@@ -18,7 +18,7 @@ import ast
 from sklearn.base import BaseEstimator, TransformerMixin
 from datetime import datetime
 
-from patientflow.prepare import create_special_category_objects
+from patientflow.predictors.legacy_compatibility import create_special_category_objects
 
 
 class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
@@ -69,7 +69,6 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         self.metrics = {}
 
     def __repr__(self):
-        """Return a string representation of the estimator."""
         class_name = self.__class__.__name__
         return (
             f"{class_name}(\n"
@@ -219,31 +218,47 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         proportions = X_grouped.div(row_totals, axis=0)
 
         # Calculate the probability of each grouping sequence occurring in the original data
-        proportions["probability_of_grouping_sequence"] = row_totals / row_totals.sum()
+        probability_of_grouping_sequence = row_totals / row_totals.sum()
 
         # Reweight probabilities of ending with each observed specialty
         # by the likelihood of each grouping sequence occurring
-        for col in proportions.columns[
-            :-1
-        ]:  # Avoid the last column which is the 'probability_of_grouping_sequence'
-            proportions[col] *= proportions["probability_of_grouping_sequence"]
+        # This transforms conditional probabilities into overall probabilities
+        reweighted_proportions = proportions.copy()
+        for col in proportions.columns:
+            reweighted_proportions[col] *= probability_of_grouping_sequence
 
         # Convert final sequence to a string in order to conduct string searches on it
-        proportions["grouping_sequence_to_string"] = proportions.index.map(
+        grouping_sequence_to_string = proportions.index.map(
             lambda x: "-".join(map(str, x))
         )
 
         # Row-wise function to return, for each input sequence,
         # the proportion that end up in each final sequence and thereby
         # the probability of it ending in any observed category
-        proportions["prob_input_var_ends_in_observed_specialty"] = proportions[
-            "grouping_sequence_to_string"
-        ].apply(lambda x: self._string_match_input_var(x, proportions, prop_keys))
+        grouping_sequence_series = pd.Series(
+            grouping_sequence_to_string, index=proportions.index
+        )
+        prob_input_var_ends_in_observed_specialty = grouping_sequence_series.apply(
+            lambda x: self._string_match_input_var(
+                x, reweighted_proportions, prop_keys, grouping_sequence_to_string
+            )
+        )
+
+        # Combine all new columns at once to avoid DataFrame fragmentation
+        new_columns = pd.DataFrame(
+            {
+                "probability_of_grouping_sequence": probability_of_grouping_sequence,
+                "grouping_sequence_to_string": grouping_sequence_to_string,
+                "prob_input_var_ends_in_observed_specialty": prob_input_var_ends_in_observed_specialty,
+            }
+        )
+
+        proportions = pd.concat([proportions, new_columns], axis=1)
 
         # Convert the prob_input_var_ends_in_observed_specialty column to a dictionary
         result_dict = proportions["prob_input_var_ends_in_observed_specialty"].to_dict()
 
-        # Clean the key to remove excess strint quotes
+        # Clean the key to remove excess string quotes
         def clean_tuple_key(key):
             if isinstance(key, tuple):
                 return tuple(
@@ -266,7 +281,9 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
 
         return self
 
-    def _string_match_input_var(self, input_var_string, proportions, prop_keys):
+    def _string_match_input_var(
+        self, input_var_string, proportions, prop_keys, grouping_sequence_to_string
+    ):
         """
         Matches a given input sequence string with grouped sequences (expressed as strings) in the dataset and aggregates
         their probabilities for each outcome category. This function filters the data to
@@ -281,10 +298,12 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         input_var_string : str
             The sequence of inputs represented as a string, used to match against sequences in the proportions DataFrame.
         proportions : pd.DataFrame
-            DataFrame containing proportions data with an additional column 'grouping_sequence_to_string'
-            which includes string representations of sequences.
+            DataFrame containing reweighted proportions data for each outcome category. Must have the same index as grouping_sequence_to_string.
         prop_keys : np.array
-            Array of unique outcomes to consider in calculations.
+            Array of unique outcome category names to consider in calculations.
+        grouping_sequence_to_string : pd.Index
+            Index containing string representations of the grouping sequences, with the same index as proportions.
+            Used to create boolean masks for filtering proportions rows.
 
         Returns
         -------
@@ -294,9 +313,8 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
 
         """
         # Filter rows where the grouped sequence string starts with the input sequence string
-        props = proportions[
-            proportions["grouping_sequence_to_string"].str.match("^" + input_var_string)
-        ][prop_keys].sum()
+        mask = grouping_sequence_to_string.str.match("^" + input_var_string)
+        props = proportions[mask][prop_keys].sum()
 
         # Sum of all probabilities to normalize them
         props_total = props.sum()

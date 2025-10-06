@@ -681,7 +681,8 @@ def plot_arrival_deltas(
         # Create bins centered on integer values
         bin_edges = np.arange(unique_values.min() - 0.5, unique_values.max() + 1.5, 1)
 
-        ax2.hist(final_deltas, bins=bin_edges, color="grey", alpha=0.7)
+        # Convert numpy array of bin edges to a plain Python list for type clarity
+        ax2.hist(final_deltas, bins=list(bin_edges), color="grey", alpha=0.7)
         ax2.axvline(x=0, color="gray", linestyle="--", alpha=0.5)
         ax2.set_xlabel("Final Difference (Actual - Expected)")
         ax2.set_ylabel("Count")

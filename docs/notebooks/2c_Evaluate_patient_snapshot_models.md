@@ -39,7 +39,6 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
 
 ```python
-import pandas as pd
 from patientflow.load import set_file_paths, load_data
 
 # set project root
@@ -97,7 +96,6 @@ First, we apply the temporal splits as shown in the previous notebook.
 ```python
 
 
-from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits

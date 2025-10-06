@@ -95,7 +95,6 @@ print(f"Test set ends: {end_test_set}")
 See previous notebooks for more on the code below.
 
 ```python
-from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
@@ -337,8 +336,8 @@ Further work is needed to isolate the reason for this bias.
 
 ## Summary
 
-Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, Randomised PIT Histograms and Adjusted QQ Plots.
+Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, Randomised PIT Histograms and plots for Evaluating Predictions for Unique Discrete Distributions (EPUDD).
 
 We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure. This helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further.
 
-I demonstrated two approaches to such plots. We prefer the Adjusted QQ to the Randomised PIT approach because is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.
+I demonstrated two approaches to such plots. We prefer the EPUDD to the Randomised PIT approach because is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.

@@ -271,7 +271,7 @@ The function returns an object of type TrainedClassifer(). Meta data and metrics
 ```python
 print(f'Object returned is of type: {type(model)}')
 
-print(f'\nThe metadata from the training process are returned in the `training_results` attribute:')
+print('\nThe metadata from the training process are returned in the `training_results` attribute:')
 model.training_results
 ```
 
@@ -382,7 +382,7 @@ print(f'The best parameters are: {best_trial.parameters}')
 Note that, by default, no test set results are returned by train_classifier. To see AUROC, log loss and AUPRC on the test set, change `evaluate_on_test` parameter to True above.
 
 ```python
-print(f'The results on the test set were:')
+print('The results on the test set were:')
 model.training_results.test_results
 
 ```

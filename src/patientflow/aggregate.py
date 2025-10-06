@@ -1,31 +1,24 @@
 """
 Aggregate Prediction From Patient-Level Probabilities
 
-This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution.
-The module uses symbolic mathematics to generate and manipulate expressions, enabling the computation of aggregate probabilities based on individual patient-level predictions.
+This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution
+using a generating function approach.
+
+The module usesdynamic programming to compute the exact probability distribution of sums of
+independent Bernoulli random variables, which is mathematically equivalent to multiplying their generating
+functions but computationally much more efficient.
 
 Functions
 ---------
-create_symbols : function
-    Generate a sequence of symbolic objects intended for use in mathematical expressions.
-
-compute_core_expression : function
-    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.
-
-build_expression : function
-    Construct a cumulative product expression by combining individual symbolic expressions.
-
-expression_subs : function
-    Substitute values into a symbolic expression based on a mapping from symbols to predictions.
-
-return_coeff : function
-    Extract the coefficient of a specified power from an expanded symbolic expression.
+BernoulliGeneratingFunction : class
+    Efficient generating function implementation for sums of Bernoulli random variables.
 
 model_input_to_pred_proba : function
     Use a predictive model to convert model input data into predicted probabilities.
 
 pred_proba_to_agg_predicted : function
     Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
+    Uses dynamic programming for exact computation (small n) or normal approximation (large n).
 
 get_prob_dist_for_prediction_moment : function
     Calculate both predicted distributions and observed values for a given date using test data.
@@ -33,131 +26,160 @@ get_prob_dist_for_prediction_moment : function
 get_prob_dist : function
     Calculate probability distributions for each snapshot date based on given model predictions.
 
-get_prob_dist_without_patient_snapshots : function
-    Calculate probability distributions for each snapshot date using an EmpiricalSurvivalPredictor.
+get_prob_dist_using_survival_curve : function
+    Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
 
 """
 
 import pandas as pd
-import sympy as sym
-from sympy import expand, symbols
+import numpy as np
+from scipy.stats import norm
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict, Any
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
 
 
-def create_symbols(n):
+class BernoulliGeneratingFunction:
     """
-    Generate a sequence of symbolic objects intended for use in mathematical expressions.
+    Generating function implementation for sums of independent Bernoulli random variables.
+
+    This class is based on the mathematical principle that the generating function of
+    a sum of independent random variables is the product of their individual generating functions.
+
+    For Bernoulli random variables with success probabilities p_i, the generating function is:
+    G_i(z) = (1 - p_i) + p_i * z
+
+    The product G_1(z) * G_2(z) * ... * G_n(z) gives the generating function of the sum,
+    and the coefficient of z^k gives P(sum = k).
 
     Parameters
     ----------
+    probabilities : List[float]
+        List of success probabilities for each Bernoulli random variable
+    weights : Optional[List[float]]
+        Optional weights to apply to each probability (for weighted predictions)
+
+    Attributes
+    ----------
+    probs : np.ndarray
+        Array of (possibly weighted) success probabilities
     n : int
-        Number of symbols to create.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the generated symbolic objects.
-
+        Number of random variables
     """
-    return symbols(f"r0:{n}")
+
+    def __init__(
+        self, probabilities: List[float], weights: Optional[List[float]] = None
+    ):
+        self.probs = np.array(probabilities)
+        if weights is not None:
+            self.probs = self.probs * np.array(weights)
+        self.n = len(self.probs)
+
+    def exact_distribution(self) -> Dict[int, float]:
+        """
+        Calculate exact probability distribution using dynamic programming.
+
+        This method computes `P(sum = k)` for `k = 0, 1, ..., n` using the recurrence relation:
+        `dp[i][k] = dp[i-1][k] * (1 - p_i) + dp[i-1][k-1] * p_i`
+
+        Returns
+        -------
+        Dict[int, float]
+            Dictionary mapping `{k: P(sum = k)}` for `k = 0, 1, ..., n`
+        """
+        if self.n == 0:
+            return {0: 1.0}
+
+        # Dynamic programming approach
+        # `dp[i][k]` = probability that first i variables sum to k
+        dp = np.zeros((self.n + 1, self.n + 1))
+        dp[0][0] = 1.0  # Base case: 0 variables sum to 0 with probability 1
+
+        for i in range(1, self.n + 1):
+            p_i = self.probs[i - 1]
+            for k in range(i + 1):  # Can't sum to more than i with i variables
+                if k == 0:
+                    # All previous variables are 0, current variable is 0
+                    dp[i][k] = dp[i - 1][k] * (1 - p_i)
+                else:
+                    # Either: previous sum to k and current is 0, OR previous sum to k-1 and current is 1
+                    dp[i][k] = dp[i - 1][k] * (1 - p_i) + dp[i - 1][k - 1] * p_i
+
+        return {k: dp[self.n][k] for k in range(self.n + 1)}
+
+    def normal_approximation(self) -> Dict[int, float]:
+        """
+        Use normal approximation with continuity correction for large datasets.
+
+        For sums of independent Bernoulli random variables:
+        - Mean = sum of probabilities
+        - Variance = sum of p_i * (1 - p_i)
+
+        Uses continuity correction: P(X = k) ≈ P(k - 0.5 < Y < k + 0.5)
+        where Y ~ Normal(mean, variance)
+
+        Returns
+        -------
+        Dict[int, float]
+            Dictionary mapping {k: P(sum = k)} for k = 0, 1, ..., n
+        """
+        mean = self.probs.sum()
+        variance = (self.probs * (1 - self.probs)).sum()
+
+        if variance == 0:
+            # Deterministic case: all probabilities are 0 or 1
+            return {int(round(mean)): 1.0}
+
+        std = np.sqrt(variance)
+        result = {}
+
+        for k in range(self.n + 1):
+            if k == 0:
+                p = norm.cdf(0.5, loc=mean, scale=std)
+            elif k == self.n:
+                p = 1 - norm.cdf(self.n - 0.5, loc=mean, scale=std)
+            else:
+                p = norm.cdf(k + 0.5, loc=mean, scale=std) - norm.cdf(
+                    k - 0.5, loc=mean, scale=std
+                )
+            result[k] = max(0, p)  # Ensure non-negative probabilities
+
+        # Normalize to ensure probabilities sum to 1
+        total = sum(result.values())
+        if total > 0:
+            for k in result:
+                result[k] /= total
+        else:
+            # Fallback to uniform distribution if something went wrong
+            uniform_prob = 1.0 / (self.n + 1)
+            result = {k: uniform_prob for k in range(self.n + 1)}
+
+        return result
+
+    def get_distribution(self, normal_approx_threshold: int = 30) -> Dict[int, float]:
+        """
+        Get probability distribution using exact or approximate method based on problem size.
+
+        Parameters
+        ----------
+        normal_approx_threshold : int, optional (default=30)
+            Use normal approximation if n > threshold for better performance.
+            Set to None or a very large number to always use exact computation.
+
+        Returns
+        -------
+        Dict[int, float]
+            Dictionary mapping {k: P(sum = k)} for all possible values k
+        """
+        if normal_approx_threshold is not None and self.n > normal_approx_threshold:
+            return self.normal_approximation()
+        else:
+            return self.exact_distribution()
 
 
-def compute_core_expression(ri, s):
-    """
-    Compute a symbolic expression involving a basic mathematical operation with a symbol and a constant.
-
-    Parameters
-    ----------
-    ri : float
-        The constant value to substitute into the expression.
-    s : Symbol
-        The symbolic object used in the expression.
-
-    Returns
-    -------
-    Expr
-        The symbolic expression after substitution.
-
-    """
-    r = sym.Symbol("r")
-    core_expression = (1 - r) + r * s
-    return core_expression.subs({r: ri})
-
-
-def build_expression(syms, n):
-    """
-    Construct a cumulative product expression by combining individual symbolic expressions.
-
-    Parameters
-    ----------
-    syms : iterable
-        Iterable containing symbols to use in the expressions.
-    n : int
-        The number of terms to include in the cumulative product.
-
-    Returns
-    -------
-    Expr
-        The cumulative product of the expressions.
-
-    """
-    s = sym.Symbol("s")
-    expression = 1
-    for i in range(n):
-        expression *= compute_core_expression(syms[i], s)
-    return expression
-
-
-def expression_subs(expression, n, predictions):
-    """
-    Substitute values into a symbolic expression based on a mapping from symbols to predictions.
-
-    Parameters
-    ----------
-    expression : Expr
-        The symbolic expression to perform substitution on.
-    n : int
-        Number of symbols and corresponding predictions.
-    predictions : list
-        List of numerical predictions to substitute.
-
-    Returns
-    -------
-    Expr
-        The expression after performing the substitution.
-
-    """
-    syms = create_symbols(n)
-    substitution = dict(zip(syms, predictions))
-    return expression.subs(substitution)
-
-
-def return_coeff(expression, i):
-    """
-    Extract the coefficient of a specified power from an expanded symbolic expression.
-
-    Parameters
-    ----------
-    expression : Expr
-        The expression to expand and extract from.
-    i : int
-        The power of the term whose coefficient is to be extracted.
-
-    Returns
-    -------
-    number
-        The coefficient of the specified power in the expression.
-
-    """
-    s = sym.Symbol("s")
-    return expand(expression).coeff(s, i)
-
-
-def model_input_to_pred_proba(model_input, model):
+def model_input_to_pred_proba(model_input: Any, model: Any) -> pd.DataFrame:
     """
     Use a predictive model to convert model input data into predicted probabilities.
 
@@ -170,10 +192,9 @@ def model_input_to_pred_proba(model_input, model):
 
     Returns
     -------
-    DataFrame
+    pd.DataFrame
         A pandas DataFrame containing the predicted probabilities for the positive class,
         with one column labeled 'pred_proba'.
-
     """
     if len(model_input) == 0:
         return pd.DataFrame(columns=["pred_proba"])
@@ -185,91 +206,60 @@ def model_input_to_pred_proba(model_input, model):
 
 
 def pred_proba_to_agg_predicted(
-    predictions_proba, weights=None, normal_approx_threshold=30
-):
+    predictions_proba: pd.DataFrame,
+    weights: Optional[np.ndarray] = None,
+    normal_approx_threshold: int = 30,
+) -> pd.DataFrame:
     """
-    Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
-    Uses a Normal approximation for large datasets (> normal_approx_threshold) for better performance.
+    Convert individual probability predictions into aggregate predicted probability distribution.
+
+    This function uses a generating function approach based on dynamic programming
+    to compute the exact probability distribution of the sum of independent Bernoulli random
+    variables. For large datasets, it automatically switches to a normal approximation for
+    better performance.
+
+    Mathematical Background
+    ----------------------
+    Each patient has a probability p_i of needing a bed (Bernoulli random variable).
+    The total number of beds needed is the sum of these Bernoulli variables.
+
+    The generating function approach computes:
+    P(Total = k) = coefficient of z^k in ∏(1 - p_i + p_i * z)
+
+    This is computed efficiently using dynamic programming without symbolic expansion.
 
     Parameters
     ----------
-    predictions_proba : DataFrame
+    predictions_proba : pd.DataFrame
         A DataFrame containing the probability predictions; must have a single column named 'pred_proba'.
-    weights : array-like, optional
+    weights : np.ndarray, optional
         An array of weights, of the same length as the DataFrame rows, to apply to each prediction.
+        Useful for incorporating patient-specific factors or sampling weights.
     normal_approx_threshold : int, optional (default=30)
-        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
+        If the number of rows in predictions_proba exceeds this threshold, use a Normal distribution
+        approximation for better performance. Set to None or a very large number to always use
+        exact computation.
 
     Returns
     -------
-    DataFrame
-        A DataFrame with a single column 'agg_proba' showing the aggregated probability,
-        indexed from 0 to n, where n is the number of predictions.
+    pd.DataFrame
+        A DataFrame with a single column 'agg_proba' showing the aggregated probability distribution,
+        indexed from 0 to n, where n is the number of predictions. Each row gives P(total = k)
+        where k is the row index.
+
     """
     n = len(predictions_proba)
 
     if n == 0:
-        agg_predicted_dict = {0: 1}
-    elif normal_approx_threshold is not None and n > normal_approx_threshold:
-        # Apply a normal approximation for large datasets
-        import numpy as np
-        from scipy.stats import norm
+        return pd.DataFrame({"agg_proba": [1]}, index=[0])
 
-        # Apply weights if provided
-        if weights is not None:
-            probs = predictions_proba["pred_proba"].values * weights
-        else:
-            probs = predictions_proba["pred_proba"].values
+    # Extract probabilities
+    probabilities = predictions_proba["pred_proba"].values.tolist()
+    weights_list = weights.tolist() if weights is not None else None
 
-        # Calculate mean and variance for the normal approximation
-        # For a sum of Bernoulli variables, mean = sum of probabilities
-        mean = probs.sum()
-        # Variance = sum of p_i * (1-p_i)
-        variance = (probs * (1 - probs)).sum()
-
-        # Handle the case where variance is zero (all probabilities are 0 or 1)
-        if variance == 0:
-            # If variance is zero, all probabilities are the same (either all 0 or all 1)
-            # The distribution is deterministic - all probability mass is at the mean
-            agg_predicted_dict = {int(round(mean)): 1.0}
-        else:
-            # Generate probabilities for each possible count using normal approximation
-            counts = np.arange(n + 1)
-            agg_predicted_dict = {}
-
-            for i in counts:
-                # Probability that count = i is the probability that a normal RV falls between i-0.5 and i+0.5
-                if i == 0:
-                    p = norm.cdf(0.5, loc=mean, scale=np.sqrt(variance))
-                elif i == n:
-                    p = 1 - norm.cdf(n - 0.5, loc=mean, scale=np.sqrt(variance))
-                else:
-                    p = norm.cdf(i + 0.5, loc=mean, scale=np.sqrt(variance)) - norm.cdf(
-                        i - 0.5, loc=mean, scale=np.sqrt(variance)
-                    )
-                agg_predicted_dict[i] = p
-
-            # Normalize to ensure the probabilities sum to 1
-            total = sum(agg_predicted_dict.values())
-            if total > 0:
-                for i in agg_predicted_dict:
-                    agg_predicted_dict[i] /= total
-            else:
-                # If all probabilities are zero, set a uniform distribution
-                n = len(agg_predicted_dict)
-                for i in agg_predicted_dict:
-                    agg_predicted_dict[i] = 1.0 / n
-    else:
-        # Use the original symbolic computation for smaller datasets
-        local_proba = predictions_proba.copy()
-        if weights is not None:
-            local_proba["pred_proba"] *= weights
-
-        syms = create_symbols(n)
-        expression = build_expression(syms, n)
-        expression = expression_subs(expression, n, local_proba["pred_proba"])
-        agg_predicted_dict = {i: return_coeff(expression, i) for i in range(n + 1)}
+    # Use generating function approach
+    gf = BernoulliGeneratingFunction(probabilities, weights_list)
+    agg_predicted_dict = gf.get_distribution(normal_approx_threshold)
 
     agg_predicted = pd.DataFrame.from_dict(
         agg_predicted_dict, orient="index", columns=["agg_proba"]
@@ -278,16 +268,19 @@ def pred_proba_to_agg_predicted(
 
 
 def get_prob_dist_for_prediction_moment(
-    X_test,
-    model,
-    weights=None,
-    inference_time=False,
-    y_test=None,
-    category_filter=None,
-    normal_approx_threshold=30,
-):
+    X_test: Any,
+    model: Any,
+    weights: Optional[np.ndarray] = None,
+    inference_time: bool = False,
+    y_test: Optional[pd.Series] = None,
+    category_filter: Optional[pd.Series] = None,
+    normal_approx_threshold: int = 30,
+) -> Dict[str, Any]:
     """
     Calculate both predicted distributions and observed values for a given date using test data.
+
+    This function applies the generating function approach to compute aggregate
+    probability distributions efficiently.
 
     Parameters
     ----------
@@ -296,7 +289,7 @@ def get_prob_dist_for_prediction_moment(
     model : object or TrainedClassifier
         Either a predictive model which provides a `predict_proba` method,
         or a TrainedClassifier object containing a pipeline.
-    weights : array-like, optional
+    weights : np.ndarray, optional
         Weights to apply to the predictions for aggregate calculation.
     inference_time : bool, optional (default=False)
         If True, do not calculate or return actual aggregate.
@@ -306,13 +299,15 @@ def get_prob_dist_for_prediction_moment(
         Boolean mask indicating which samples belong to the specific outcome category being analyzed.
         Should be the same length as y_test.
     normal_approx_threshold : int, optional (default=30)
-        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
+        If the number of rows in X_test exceeds this threshold, use a Normal distribution approximation
+        for better performance. Set to None or a very large number to always use exact computation.
 
     Returns
     -------
-    dict
+    Dict[str, Any]
         A dictionary with keys 'agg_predicted' and, if inference_time is False, 'agg_observed'.
+        - 'agg_predicted': DataFrame with probability distribution
+        - 'agg_observed': int with actual observed count
 
     Raises
     ------
@@ -344,11 +339,14 @@ def get_prob_dist_for_prediction_moment(
         prediction_moment_dict["agg_predicted"] = agg_predicted
 
         if not inference_time:
-            # Apply category filter when calculating observed sum
-            if category_filter is None:
-                prediction_moment_dict["agg_observed"] = sum(y_test)
-            else:
-                prediction_moment_dict["agg_observed"] = sum(y_test & category_filter)
+            # Calculate observed sum with optional category filter
+            if y_test is None:
+                raise ValueError("y_test must be provided if inference_time is False.")
+
+            observed_bool = y_test.astype(bool)
+            if category_filter is not None:
+                observed_bool = observed_bool & category_filter.astype(bool)
+            prediction_moment_dict["agg_observed"] = int(observed_bool.sum())
     else:
         prediction_moment_dict["agg_predicted"] = pd.DataFrame(
             {"agg_proba": [1]}, index=[0]
@@ -360,21 +358,24 @@ def get_prob_dist_for_prediction_moment(
 
 
 def get_prob_dist(
-    snapshots_dict,
-    X_test,
-    y_test,
-    model,
-    weights=None,
-    verbose=False,
-    category_filter=None,
-    normal_approx_threshold=30,
-):
+    snapshots_dict: Dict[date, List[int]],
+    X_test: Any,
+    y_test: Any,
+    model: Any,
+    weights: Optional[pd.Series] = None,
+    verbose: bool = False,
+    category_filter: Optional[Any] = None,
+    normal_approx_threshold: int = 30,
+) -> Dict[date, Dict[str, Any]]:
     """
     Calculate probability distributions for each snapshot date based on given model predictions.
 
+    This function uses the refactored generating function approach for significant performance
+    improvements over the original symbolic mathematics implementation.
+
     Parameters
     ----------
-    snapshots_dict : dict
+    snapshots_dict : Dict[date, List[int]]
         A dictionary mapping snapshot dates to indices in `X_test` and `y_test`.
         Must have datetime.date objects as keys and lists of indices as values.
     X_test : DataFrame or array-like
@@ -384,7 +385,7 @@ def get_prob_dist(
     model : object or TrainedClassifier
         Either a predictive model which provides a `predict_proba` method,
         or a TrainedClassifier object containing a pipeline.
-    weights : pandas.Series, optional
+    weights : pd.Series, optional
         A Series containing weights for the test data points, which may influence the prediction,
         by default None. If provided, the weights should be indexed similarly to `X_test` and `y_test`.
     verbose : bool, optional (default=False)
@@ -393,19 +394,21 @@ def get_prob_dist(
         Boolean mask indicating which samples belong to the specific outcome category being analyzed.
         Should be the same length as y_test.
     normal_approx_threshold : int, optional (default=30)
-        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation.
-        Set to None or a very large number to always use the exact symbolic computation.
+        If the number of rows in a snapshot exceeds this threshold, use a Normal distribution approximation
+        for better performance. Set to None or a very large number to always use exact computation.
 
     Returns
     -------
-    dict
+    Dict[date, Dict[str, Any]]
         A dictionary mapping snapshot dates to probability distributions.
+        Each value contains 'agg_predicted' (DataFrame) and 'agg_observed' (int).
 
     Raises
     ------
     ValueError
         If snapshots_dict is not properly formatted or empty.
         If model has no predict_proba method and is not a TrainedClassifier.
+
     """
     # Validate snapshots_dict format
     if not snapshots_dict:
@@ -441,7 +444,9 @@ def get_prob_dist(
         )
 
         if len(snapshots_dict) > 10:
-            print("This may take a minute or more")
+            print(
+                "Using efficient generating function approach - much faster than before!"
+            )
 
     # Initialize a counter for notifying the user every 10 snapshot dates processed
     count = 0
@@ -472,7 +477,7 @@ def get_prob_dist(
                     snapshots_to_include
                 ]
 
-            # Pass the normal_approx_threshold to get_prob_dist_for_prediction_moment
+            # Use the refactored generating function approach
             prob_dist_dict[dt] = get_prob_dist_for_prediction_moment(
                 X_test=X_test.loc[snapshots_to_include],
                 y_test=y_test.loc[snapshots_to_include],
@@ -502,22 +507,25 @@ def get_prob_dist_using_survival_curve(
     start_time_col: str,
     end_time_col: str,
     model: EmpiricalIncomingAdmissionPredictor,
-    verbose=False,
-):
+    verbose: bool = False,
+) -> Dict[date, Dict[str, Any]]:
     """
     Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
 
+    This function maintains the same interface as the original but benefits from any internal
+    improvements in the EmpiricalIncomingAdmissionPredictor implementation.
+
     Parameters
     ----------
-    snapshot_dates : array-like
+    snapshot_dates : List[date]
         Array of dates for which to calculate probability distributions.
-    test_visits : pandas.DataFrame
+    test_visits : pd.DataFrame
         DataFrame containing test visit data. Must have either:
         - start_time_col as a column and end_time_col as a column, or
         - start_time_col as the index and end_time_col as a column
     category : str
         Category to use for predictions (e.g., 'medical', 'surgical')
-    prediction_time : tuple
+    prediction_time : Tuple[int, int]
         Tuple of (hour, minute) representing the time of day for predictions
     prediction_window : timedelta
         The prediction window duration
@@ -525,15 +533,16 @@ def get_prob_dist_using_survival_curve(
         Name of the column containing start times (or index name if using index)
     end_time_col : str
         Name of the column containing end times
-    model : EmpiricalSurvivalPredictor
-        A fitted instance of EmpiricalSurvivalPredictor
+    model : EmpiricalIncomingAdmissionPredictor
+        A fitted instance of EmpiricalIncomingAdmissionPredictor
     verbose : bool, optional (default=False)
         If True, print progress information
 
     Returns
     -------
-    dict
+    Dict[date, Dict[str, Any]]
         A dictionary mapping snapshot dates to probability distributions.
+        Each value contains 'agg_predicted' (DataFrame) and 'agg_observed' (int).
 
     Raises
     ------
@@ -557,7 +566,9 @@ def get_prob_dist_using_survival_curve(
 
     # Validate model is fitted
     if not hasattr(model, "survival_df") or model.survival_df is None:
-        raise ValueError("Model must be fitted before calling get_prob_dist_empirical")
+        raise ValueError(
+            "Model must be fitted before calling get_prob_dist_using_survival_curve"
+        )
 
     prob_dist_dict = {}
     if verbose:

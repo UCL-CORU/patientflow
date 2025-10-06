@@ -351,7 +351,7 @@ def create_temporal_splits(
 class SpecialCategoryParams:
     """A picklable implementation of special category parameters for patient classification.
 
-    This class identifies pediatric patients based on available age-related columns
+    This class identifies paediatric patients based on available age-related columns
     in the dataset and provides functions to categorise patients accordingly.
     It's designed to be serializable with pickle by implementing the __reduce__ method.
 
@@ -376,18 +376,6 @@ class SpecialCategoryParams:
     """
 
     def __init__(self, columns):
-        """Initialize the SpecialCategoryParams object.
-
-        Parameters
-        ----------
-        columns : list or pandas.Index
-            Column names from the dataset used to determine the appropriate age identification method
-
-        Raises
-        ------
-        ValueError
-            If neither 'age_on_arrival' nor 'age_group' columns are found
-        """
         self.columns = columns
         self.special_category_dict = {
             "medical": 0.0,
@@ -404,7 +392,7 @@ class SpecialCategoryParams:
             raise ValueError("Unknown data format: could not find expected age columns")
 
     def special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """Identify if a patient is pediatric based on age data.
+        """Identify if a patient is paediatric based on age data.
 
         Parameters
         ----------
@@ -414,7 +402,7 @@ class SpecialCategoryParams:
         Returns
         -------
         bool
-            True if the patient is pediatric (age < 18 or age_group is '0-17'),
+            True if the patient is paediatric (age < 18 or age_group is '0-17'),
             False otherwise
         """
         if self.method_type == "age_on_arrival":
@@ -423,7 +411,7 @@ class SpecialCategoryParams:
             return row["age_group"] == "0-17"
 
     def opposite_special_category_func(self, row: Union[dict, pd.Series]) -> bool:
-        """Identify if a patient is NOT pediatric.
+        """Identify if a patient is NOT paediatric.
 
         Parameters
         ----------
@@ -433,7 +421,7 @@ class SpecialCategoryParams:
         Returns
         -------
         bool
-            True if the patient is NOT pediatric, False if they are pediatric
+            True if the patient is NOT paediatric, False if they are paediatric
         """
         return not self.special_category_func(row)
 
@@ -446,7 +434,7 @@ class SpecialCategoryParams:
         -------
         Dict[str, Union[Callable, Dict[str, float], Dict[str, Callable]]]
             A dictionary containing:
-            - 'special_category_func': Function to identify pediatric patients
+            - 'special_category_func': Function to identify paediatric patients
             - 'special_category_dict': Default category values (float)
             - 'special_func_map': Mapping of category names to detection functions
         """
@@ -460,37 +448,19 @@ class SpecialCategoryParams:
         }
 
     def __reduce__(self) -> Tuple[Type["SpecialCategoryParams"], Tuple[list]]:
-        """Support for pickle serialization.
-
-        Returns
-        -------
-        Tuple[Type['SpecialCategoryParams'], Tuple[list]]
-            A tuple containing:
-            - The class itself (to be called as a function)
-            - A tuple of arguments to pass to the class constructor
-        """
+        # Required for pickle serialization - returns (class, args_tuple) so the
+        # object can be reconstructed by calling self.__class__(self.columns)
         return (self.__class__, (self.columns,))
 
 
 def create_special_category_objects(columns):
-    """Create a configuration for categorising patients with special handling for pediatric cases.
+    """Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_special_category_objects."""
+    # Local import avoids module-level cycles
+    from .predictors.legacy_compatibility import (
+        create_special_category_objects as _delegate,
+    )
 
-    Parameters
-    ----------
-    columns : list or pandas.Index
-        The column names available in the dataset. Used to determine which age format is present.
-
-    Returns
-    -------
-    dict
-        A dictionary containing special category configuration with:
-        - 'special_category_func': Function to identify pediatric patients
-        - 'special_category_dict': Default category values
-        - 'special_func_map': Mapping of category names to detection functions
-    """
-    # Create the class instance and return its parameter dictionary
-    params_obj = SpecialCategoryParams(columns)
-    return params_obj.get_params_dict()
+    return _delegate(columns)
 
 
 def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
@@ -518,49 +488,10 @@ def validate_special_category_objects(special_params: Dict[str, Any]) -> None:
 
 
 def create_yta_filters(df):
-    """Create specialty filters for categorizing patients by specialty and age group.
+    """Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_yta_filters."""
+    from .predictors.legacy_compatibility import create_yta_filters as _delegate
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        DataFrame containing patient data with columns that include either
-        'age_on_arrival' or 'age_group' for pediatric classification
-
-    Returns
-    -------
-    dict
-        A dictionary mapping specialty names to filter configurations.
-        Each configuration contains:
-        - For pediatric specialty: {"is_child": True}
-        - For other specialties: {"specialty": specialty_name, "is_child": False}
-
-    Examples
-    --------
-    >>> df = pd.DataFrame({'patient_id': [1, 2], 'age_on_arrival': [10, 40]})
-    >>> filters = create_yta_filters(df)
-    >>> print(filters['paediatric'])
-    {'is_child': True}
-    >>> print(filters['medical'])
-    {'specialty': 'medical', 'is_child': False}
-    """
-    # Get the special category parameters using the picklable implementation
-    special_params = create_special_category_objects(df.columns)
-
-    # Extract necessary data from the special_params
-    special_category_dict = special_params["special_category_dict"]
-
-    # Create the specialty_filters dictionary
-    specialty_filters = {}
-
-    for specialty, is_paediatric_flag in special_category_dict.items():
-        if is_paediatric_flag == 1.0:
-            # For the paediatric specialty, set `is_child` to True
-            specialty_filters[specialty] = {"is_child": True}
-        else:
-            # For other specialties, set `is_child` to False
-            specialty_filters[specialty] = {"specialty": specialty, "is_child": False}
-
-    return specialty_filters
+    return _delegate(df)
 
 
 def select_one_snapshot_per_visit(df, visit_col, seed=42):

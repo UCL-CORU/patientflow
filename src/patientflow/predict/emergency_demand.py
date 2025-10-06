@@ -22,7 +22,7 @@ create_predictions : function
 
 """
 
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Union, Optional, Any
 from datetime import timedelta
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
@@ -45,6 +45,7 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
 from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
+from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
@@ -234,7 +235,9 @@ def get_specialty_probs(
 def create_predictions(
     models: Tuple[
         TrainedClassifier,
-        Union[SequenceToOutcomePredictor, ValueToOutcomePredictor],
+        Union[
+            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        ],
         Union[
             ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor
         ],
@@ -247,17 +250,17 @@ def create_predictions(
     y1: float,
     x2: float,
     y2: float,
-    cdf_cut_points: List[float],
+    cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
-) -> Dict[str, Dict[str, List[int]]]:
+) -> Dict[str, Dict[str, Any]]:
     """Create predictions for emergency demand for a single prediction moment.
 
     Parameters
     ----------
-    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, ValueToOutcomePredictor], Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor]]
+    models : Tuple[TrainedClassifier, Union[SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor], Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor]]
         Tuple containing:
         - classifier: TrainedClassifier containing admission predictions
-        - spec_model: SequenceToOutcomePredictor or ValueToOutcomePredictor for specialty predictions
+        - spec_model: SequenceToOutcomePredictor or ValueToOutcomePredictor or MultiSubgroupPredictor for specialty predictions
         - yet_to_arrive_model: ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor for yet-to-arrive predictions
     prediction_time : Tuple
         Hour and minute of time for model inference
@@ -275,8 +278,10 @@ def create_predictions(
         X-coordinate of second point for probability curve
     y2 : float
         Y-coordinate of second point for probability curve
-    cdf_cut_points : List[float]
-        List of cumulative distribution function cut points (e.g., [0.9, 0.7])
+    cdf_cut_points : Optional[List[float]], optional
+        If provided, return per-specialty lists of threshold indices for each cut point
+        (e.g., [0.9, 0.7]). If omitted/None, return the raw PMFs (agg_proba) for
+        both in-ED and yet-to-arrive predictions for backward compatibility.
     use_admission_in_window_prob : bool, optional
         Whether to use probability calculation for admission within prediction window for patients
         already in the ED. If False, probability is set to 1.0 for all current ED patients.
@@ -284,14 +289,21 @@ def create_predictions(
 
     Returns
     -------
-    Dict[str, Dict[str, List[int]]]
-        Nested dictionary containing predictions for each specialty:
-        {
-            'specialty_name': {
-                'in_ed': [pred1, pred2, ...],
-                'yet_to_arrive': [pred1, pred2, ...]
+    Dict[str, Dict[str, Any]]
+        If cdf_cut_points is provided:
+            {
+                'specialty_name': {
+                    'in_ed': [int, int, ...],
+                    'yet_to_arrive': [int, int, ...]
+                }
             }
-        }
+        Else (cdf_cut_points is None):
+            {
+                'specialty_name': {
+                    'in_ed': agg_proba (array-like of floats),
+                    'yet_to_arrive': agg_proba (array-like of floats)
+                }
+            }
 
     Raises
     ------
@@ -307,6 +319,14 @@ def create_predictions(
     that contain either a 'pipeline' or 'calibrated_pipeline' attribute. The pipeline
     will be used for making predictions, with calibrated_pipeline taking precedence
     if both exist.
+
+    Notes on subgroup mapping
+    -------------------------
+    If the specialty model exposes a 'specialty_to_subgroups' attribute
+    (e.g., MultiSubgroupPredictor), that mapping is used to include patients
+    for each subspecialty as a union across listed subgroups. If the mapping
+    is not available, legacy filtering is used via 'special_func_map': a
+    function named by the specialty if present, otherwise the 'default' filter.
     """
     # Validate model types
     classifier, spec_model, yet_to_arrive_model = models
@@ -314,17 +334,27 @@ def create_predictions(
     if not isinstance(classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier")
     if not isinstance(
-        spec_model, (SequenceToOutcomePredictor, ValueToOutcomePredictor)
+        spec_model,
+        (SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor),
     ):
         raise TypeError(
-            "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor"
+            "Second model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor or MultiSubgroupPredictor"
         )
-    if not isinstance(
-        yet_to_arrive_model,
-        (ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor),
-    ):
+    # Check by class name to handle module reloading in Jupyter notebooks
+    yet_to_arrive_class_name = type(yet_to_arrive_model).__name__
+    expected_types = (
+        "ParametricIncomingAdmissionPredictor",
+        "EmpiricalIncomingAdmissionPredictor",
+        "DirectAdmissionPredictor",  # Also accept DirectAdmissionPredictor
+    )
+
+    if yet_to_arrive_class_name not in expected_types:
+        actual_module = type(yet_to_arrive_model).__module__
         raise TypeError(
-            "Third model must be of type ParametricIncomingAdmissionPredictor or EmpiricalIncomingAdmissionPredictor"
+            f"Third model must be of type ParametricIncomingAdmissionPredictor, "
+            f"EmpiricalIncomingAdmissionPredictor, or DirectAdmissionPredictor, "
+            f"but got {actual_module}.{yet_to_arrive_class_name}. "
+            f"If you're using Jupyter, try restarting the kernel."
         )
     if "elapsed_los" not in prediction_snapshots.columns:
         raise ValueError("Column 'elapsed_los' not found in prediction_snapshots")
@@ -337,8 +367,14 @@ def create_predictions(
     # Check that all models have been fit
     if not hasattr(classifier, "pipeline") or classifier.pipeline is None:
         raise ValueError("Classifier model has not been fit")
-    if not hasattr(spec_model, "weights") or spec_model.weights is None:
-        raise ValueError("Specialty model has not been fit")
+    # Validate specialty model has been fit
+    if isinstance(spec_model, (SequenceToOutcomePredictor, ValueToOutcomePredictor)):
+        if not hasattr(spec_model, "weights") or spec_model.weights is None:
+            raise ValueError("Specialty model has not been fit")
+    else:
+        # MultiSubgroupPredictor path: require subgroup mapping to exist (set during fit)
+        if not hasattr(spec_model, "specialty_to_subgroups"):
+            raise ValueError("Specialty model has not been fit")
     if (
         not hasattr(yet_to_arrive_model, "prediction_window")
         or yet_to_arrive_model.prediction_window is None
@@ -374,11 +410,18 @@ def create_predictions(
     if special_category_dict is not None and not set(specialties) == set(
         special_category_dict.keys()
     ):
-        raise ValueError(
-            "Requested specialties do not match the specialty dictionary defined in special_params"
+        # Only enforce the legacy check if there is no subgroup mapping available
+        has_mapping = (
+            hasattr(spec_model, "specialty_to_subgroups")
+            and isinstance(getattr(spec_model, "specialty_to_subgroups"), dict)
+            and len(getattr(spec_model, "specialty_to_subgroups")) > 0
         )
+        if not has_mapping:
+            raise ValueError(
+                "Requested specialties do not match the specialty dictionary defined in special_params"
+            )
 
-    predictions: Dict[str, Dict[str, List[int]]] = {
+    predictions: Dict[str, Dict[str, Any]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
 
@@ -405,14 +448,19 @@ def create_predictions(
         prediction_snapshots_temp, pipeline
     )
 
-    # Get predictions of admission to specialty
-    prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
-        specialties,
-        spec_model,
-        prediction_snapshots,
-        special_category_func=special_category_func,
-        special_category_dict=special_category_dict,
-    )
+    # Get predictions of admission to specialty using vectorized API when available
+    if hasattr(spec_model, "predict_dataframe"):
+        prediction_snapshots.loc[:, "specialty_prob"] = spec_model.predict_dataframe(
+            prediction_snapshots
+        )
+    else:
+        prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
+            specialties,
+            spec_model,
+            prediction_snapshots,
+            special_category_func=special_category_func,
+            special_category_dict=special_category_dict,
+        )
 
     # Get probability of admission within prediction window for current ED patients
     if use_admission_in_window_prob:
@@ -439,20 +487,41 @@ def create_predictions(
     if special_func_map is None:
         special_func_map = {"default": lambda row: True}
 
+    # Resolve specialty_to_subgroups directly from the model attribute
+    specialty_to_subgroups: Dict[str, List[str]] = getattr(
+        spec_model, "specialty_to_subgroups", {}
+    )
+
+    # Precompute subgroup/function masks once
+    masks_by_func: Dict[str, pd.Series] = {
+        name: prediction_snapshots.apply(func, axis=1)
+        for name, func in special_func_map.items()
+    }
+
     for specialty in specialties:
-        func = special_func_map.get(specialty, special_func_map["default"])
-        non_zero_indices = prediction_snapshots[
-            prediction_snapshots.apply(func, axis=1)
-        ].index
+        # Determine which subgroup functions define eligibility for this subspecialty
+        if specialty_to_subgroups and specialty in specialty_to_subgroups:
+            func_keys = specialty_to_subgroups[specialty]
+        else:
+            # Backward compatible: use a function named by the specialty if present, otherwise default
+            func_keys = [specialty] if specialty in special_func_map else ["default"]
+
+        # Combine the masks with logical OR to include patients from multiple subgroups
+        combined_mask = pd.Series(False, index=prediction_snapshots.index)
+        for key in func_keys:
+            combined_mask = combined_mask | masks_by_func.get(
+                key, pd.Series(False, index=prediction_snapshots.index)
+            )
+
+        non_zero_indices = prediction_snapshots[combined_mask].index
 
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
-        prob_admission_to_specialty = prediction_snapshots["specialty_prob"].apply(
-            lambda x: x[specialty]
+        # Extract per-row probability for this specialty from dicts (apply indices first)
+        filtered_prob_admission_to_specialty = (
+            prediction_snapshots["specialty_prob"]
+            .loc[non_zero_indices]
+            .apply(lambda d: d.get(specialty, 0.0) if isinstance(d, dict) else 0.0)
         )
-
-        filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
-            non_zero_indices
-        ]
         filtered_prob_admission_in_window = prob_admission_in_window.loc[
             non_zero_indices
         ]
@@ -470,17 +539,23 @@ def create_predictions(
             prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
         )
 
-        predictions[specialty]["in_ed"] = [
-            find_probability_threshold_index(
-                agg_predicted_in_ed["agg_proba"].values, cut_point
-            )
-            for cut_point in cdf_cut_points
-        ]
-        predictions[specialty]["yet_to_arrive"] = [
-            find_probability_threshold_index(
-                agg_predicted_yta[specialty]["agg_proba"].values, cut_point
-            )
-            for cut_point in cdf_cut_points
-        ]
+        if cdf_cut_points is not None:
+            predictions[specialty]["in_ed"] = [
+                find_probability_threshold_index(
+                    agg_predicted_in_ed["agg_proba"].values, cut_point
+                )
+                for cut_point in cdf_cut_points
+            ]
+            predictions[specialty]["yet_to_arrive"] = [
+                find_probability_threshold_index(
+                    agg_predicted_yta[specialty]["agg_proba"].values, cut_point
+                )
+                for cut_point in cdf_cut_points
+            ]
+        else:
+            predictions[specialty]["in_ed"] = agg_predicted_in_ed["agg_proba"]
+            predictions[specialty]["yet_to_arrive"] = agg_predicted_yta[specialty][
+                "agg_proba"
+            ]
 
     return predictions
