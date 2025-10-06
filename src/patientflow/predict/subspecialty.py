@@ -235,8 +235,28 @@ def build_subspecialty_data(
                 f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
             )
 
-    # Drop legacy special_params enforcement; rely on subgroup mapping
+    special_params = spec_model.special_params
 
+    if special_params:
+        special_category_func = special_params["special_category_func"]
+        special_category_dict = special_params["special_category_dict"]
+        special_func_map = special_params["special_func_map"]
+    else:
+        special_category_func = special_category_dict = special_func_map = None
+
+    if special_category_dict is not None and not set(specialties) == set(
+        special_category_dict.keys()
+    ):
+        # Only enforce the legacy check if there is no subgroup mapping available
+        has_mapping = (
+            hasattr(spec_model, "specialty_to_subgroups")
+            and isinstance(getattr(spec_model, "specialty_to_subgroups"), dict)
+            and len(getattr(spec_model, "specialty_to_subgroups")) > 0
+        )
+        if not has_mapping:
+            raise ValueError(
+                "Requested specialties do not match the specialty dictionary defined in special_params"
+            )
     # Use calibrated pipeline if available
     pipeline = (
         classifier.calibrated_pipeline
@@ -265,13 +285,6 @@ def build_subspecialty_data(
             prediction_snapshots
         )
     else:
-        special_params = getattr(spec_model, "special_params", None)
-        special_category_func = (
-            special_params.get("special_category_func") if special_params else None
-        )
-        special_category_dict = (
-            special_params.get("special_category_dict") if special_params else None
-        )
         prediction_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
             specialties,
             spec_model,
@@ -299,12 +312,15 @@ def build_subspecialty_data(
     else:
         prob_admission_in_window = pd.Series(1.0, index=prediction_snapshots.index)
 
-    # Subgroup eligibility combination
-    # Use subgroup mapping only. Fallback to including all rows if no mapping
-    special_func_map = {"default": lambda row: True}
+    if special_func_map is None:
+        special_func_map = {"default": lambda row: True}
+        
+    # Resolve specialty_to_subgroups directly from the model attribute
     specialty_to_subgroups: Dict[str, List[str]] = getattr(
         spec_model, "specialty_to_subgroups", {}
     )
+
+    # Precompute subgroup/function masks once
     masks_by_func: Dict[str, pd.Series] = {
         name: prediction_snapshots.apply(func, axis=1)
         for name, func in special_func_map.items()
@@ -326,6 +342,7 @@ def build_subspecialty_data(
 
         non_zero_indices = prediction_snapshots[combined_mask].index
         filtered_prob_admission_after_ed = prob_admission_after_ed.loc[non_zero_indices]
+
         filtered_prob_admission_to_specialty = (
             prediction_snapshots["specialty_prob"]
             .loc[non_zero_indices]
@@ -361,7 +378,3 @@ def build_subspecialty_data(
         subspecialty_data[spec]["lambda_elective_yta"] = lambda_elective
 
     return subspecialty_data
-
-
-
-
