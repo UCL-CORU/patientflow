@@ -708,7 +708,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         pass
 
-    def predict_mean(self, prediction_context: Dict, **kwargs) -> Dict:
+    def predict_mean(self, prediction_context: Dict, **kwargs) -> float:
         """Return just the Poisson mean (expected value) for each context.
 
         This method extracts the underlying Poisson parameters without computing
@@ -726,14 +726,16 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         Returns
         -------
-        dict
-            Dictionary with Poisson means for each context::
-                {filter_key: float}  # Direct mean values
+        float
+            The Poisson mean (expected value) for the single context specified in prediction_context.
 
         Notes
         -----
         For detailed output with metadata (method, arrival_rates, admission_probs, etc.),
         use the predict() method instead.
+        
+        This method expects prediction_context to contain exactly one filter_key,
+        which matches the usage pattern in the codebase.
 
         Raises
         ------
@@ -745,8 +747,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         # Get admission probabilities using subclass-specific method
         admission_probs = self._get_admission_probabilities(**kwargs)
 
-        predictions = {}
-
+        # Iterate through the single filter_key (as per usage pattern)
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
             prediction_context
         ):
@@ -754,17 +755,9 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             poisson_mean = float(
                 np.sum(np.array(arrival_rates) * np.array(admission_probs))
             )
-
-            # Return direct mean values
-            predictions[filter_key] = poisson_mean
-
-            if self.verbose:
-                self.logger.info(
-                    f"Mean prediction for {filter_key} at {prediction_time}: "
-                    f"Expected admissions = {poisson_mean:.2f}"
-                )
-
-        return predictions
+            
+            # Return the single mean value immediately
+            return poisson_mean
 
 
 class DirectAdmissionPredictor(IncomingAdmissionPredictor):
