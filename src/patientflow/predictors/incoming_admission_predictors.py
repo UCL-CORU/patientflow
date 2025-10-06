@@ -711,7 +711,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     def predict_mean(self, prediction_context: Dict, **kwargs) -> float:
         """Return just the Poisson mean (expected value) for each context.
 
-        This method extracts the underlying Poisson parameters without computing
+        This method extracts the underlying Poisson mean without computing
         the full probability distribution, making it suitable for later generation
         or when only the expected value is needed.
 
@@ -728,14 +728,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         -------
         float
             The Poisson mean (expected value) for the single context specified in prediction_context.
-
-        Notes
-        -----
-        For detailed output with metadata (method, arrival_rates, admission_probs, etc.),
-        use the predict() method instead.
-        
-        This method expects prediction_context to contain exactly one filter_key,
-        which matches the usage pattern in the codebase.
 
         Raises
         ------
@@ -755,9 +747,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             poisson_mean = float(
                 np.sum(np.array(arrival_rates) * np.array(admission_probs))
             )
-            
+
             # Return the single mean value immediately
             return poisson_mean
+
+        # This should never be reached due to validation in _iter_prediction_inputs,
+        # but included for mypy compliance
+        raise ValueError("No valid prediction context provided")
 
 
 class DirectAdmissionPredictor(IncomingAdmissionPredictor):
