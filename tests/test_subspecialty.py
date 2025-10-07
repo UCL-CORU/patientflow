@@ -266,8 +266,15 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.prediction_window, self.train_df, self.arrivals_df
         )
 
+        # Create inpatient discharge classifier (same structure as ED classifier but for discharge prediction)
+        inpatient_discharge_model, _, _ = _create_admissions_model(
+            self.prediction_time, n=1000
+        )
+        self.inpatient_discharge_model = inpatient_discharge_model
+
         self.models = (
-            self.admissions_model,
+            self.admissions_model,  # ED classifier
+            self.inpatient_discharge_model,  # Inpatient discharge classifier
             self.spec_model,
             self.param_yta_model,
             self.direct_non_ed,
@@ -279,12 +286,22 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         df["elapsed_los"] = df["elapsed_los"].apply(lambda x: timedelta(seconds=x))
         return df
 
+    def _make_inpatient_snapshots(self, n=50):
+        """Create inpatient snapshots with current_specialty column"""
+        df = _create_random_df(n=n, include_consults=False)
+        df["elapsed_los"] = df["elapsed_los"].apply(lambda x: timedelta(seconds=x))
+        # Add current_specialty column - assign random specialties
+        df["current_specialty"] = np.random.choice(self.specialties, size=n)
+        return df
+
     def test_basic_functionality_returns_expected_keys(self):
-        snapshots = self._make_snapshots(50)
+        ed_snapshots = self._make_snapshots(50)
+        inpatient_snapshots = self._make_inpatient_snapshots(30)
         result = build_subspecialty_data(
             models=self.models,
             prediction_time=self.prediction_time,
-            prediction_snapshots=snapshots,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             specialties=self.specialties,
             prediction_window=self.prediction_window,
             x1=self.x1,
@@ -298,11 +315,16 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.assertIn(spec, result)
             spec_data = result[spec]
             self.assertIn("pmf_ed_current_within_window", spec_data)
+            self.assertIn("pmf_inpatient_departures_within_window", spec_data)
             self.assertIn("lambda_ed_yta_within_window", spec_data)
             self.assertIn("lambda_non_ed_yta_within_window", spec_data)
             self.assertIn("lambda_elective_yta_within_window", spec_data)
-            pmf = np.asarray(spec_data["pmf_ed_current_within_window"])
-            self.assertGreater(len(pmf), 0)
+            ed_pmf = np.asarray(spec_data["pmf_ed_current_within_window"])
+            inpatient_pmf = np.asarray(
+                spec_data["pmf_inpatient_departures_within_window"]
+            )
+            self.assertGreater(len(ed_pmf), 0)
+            self.assertGreater(len(inpatient_pmf), 0)
             self.assertIsInstance(spec_data["lambda_ed_yta_within_window"], float)
             self.assertIsInstance(spec_data["lambda_non_ed_yta_within_window"], float)
             self.assertIsInstance(spec_data["lambda_elective_yta_within_window"], float)
@@ -313,17 +335,20 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.prediction_window, self.train_df, empirical_arrivals
         )
         models = (
-            self.admissions_model,
+            self.admissions_model,  # ED classifier
+            self.inpatient_discharge_model,  # Inpatient discharge classifier
             self.spec_model,
             empirical_yta,
             self.direct_non_ed,
             self.direct_elective,
         )
-        snapshots = self._make_snapshots(40)
+        ed_snapshots = self._make_snapshots(40)
+        inpatient_snapshots = self._make_inpatient_snapshots(25)
         result = build_subspecialty_data(
             models=models,
             prediction_time=self.prediction_time,
-            prediction_snapshots=snapshots,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             specialties=self.specialties,
             prediction_window=self.prediction_window,
             x1=self.x1,
@@ -337,13 +362,15 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
 
     def test_prediction_time_and_window_mismatch_errors(self):
-        snapshots = self._make_snapshots(10)
+        ed_snapshots = self._make_snapshots(10)
+        inpatient_snapshots = self._make_inpatient_snapshots(5)
         # Wrong prediction time
         with self.assertRaises(ValueError):
             build_subspecialty_data(
                 models=self.models,
                 prediction_time=(8, 0),
-                prediction_snapshots=snapshots,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots,
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
                 x1=self.x1,
@@ -358,7 +385,8 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             other_window, self.train_df, self.arrivals_df
         )
         models = (
-            self.admissions_model,
+            self.admissions_model,  # ED classifier
+            self.inpatient_discharge_model,  # Inpatient discharge classifier
             self.spec_model,
             self.param_yta_model,
             self.direct_non_ed,
@@ -368,7 +396,8 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             build_subspecialty_data(
                 models=models,
                 prediction_time=self.prediction_time,
-                prediction_snapshots=snapshots,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots,
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
                 x1=self.x1,
@@ -378,13 +407,15 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             )
 
     def test_missing_or_invalid_elapsed_los(self):
-        snapshots = self._make_snapshots(5)
-        # Missing column
+        ed_snapshots = self._make_snapshots(5)
+        inpatient_snapshots = self._make_inpatient_snapshots(3)
+        # Missing column in ED snapshots
         with self.assertRaises(ValueError):
             build_subspecialty_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
-                prediction_snapshots=snapshots.drop(columns=["elapsed_los"]),
+                ed_snapshots=ed_snapshots.drop(columns=["elapsed_los"]),
+                inpatient_snapshots=inpatient_snapshots,
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
                 x1=self.x1,
@@ -392,14 +423,31 @@ class TestBuildSubspecialtyData(unittest.TestCase):
                 x2=self.x2,
                 y2=self.y2,
             )
-        # Wrong dtype
-        snapshots_bad = snapshots.copy()
-        snapshots_bad["elapsed_los"] = snapshots_bad["elapsed_los"].dt.total_seconds()
+        # Missing column in inpatient snapshots
         with self.assertRaises(ValueError):
             build_subspecialty_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
-                prediction_snapshots=snapshots_bad,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots.drop(columns=["elapsed_los"]),
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+        # Wrong dtype for ED snapshots
+        ed_snapshots_bad = ed_snapshots.copy()
+        ed_snapshots_bad["elapsed_los"] = ed_snapshots_bad[
+            "elapsed_los"
+        ].dt.total_seconds()
+        with self.assertRaises(ValueError):
+            build_subspecialty_data(
+                models=self.models,
+                prediction_time=self.prediction_time,
+                ed_snapshots=ed_snapshots_bad,
+                inpatient_snapshots=inpatient_snapshots,
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
                 x1=self.x1,
@@ -420,17 +468,20 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         msp.fit(self.train_df)
         models = (
-            self.admissions_model,
+            self.admissions_model,  # ED classifier
+            self.inpatient_discharge_model,  # Inpatient discharge classifier
             msp,
             self.param_yta_model,
             self.direct_non_ed,
             self.direct_elective,
         )
-        snapshots = self._make_snapshots(60)
+        ed_snapshots = self._make_snapshots(60)
+        inpatient_snapshots = self._make_inpatient_snapshots(35)
         result = build_subspecialty_data(
             models=models,
             prediction_time=self.prediction_time,
-            prediction_snapshots=snapshots,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             specialties=self.specialties,
             prediction_window=self.prediction_window,
             x1=self.x1,

@@ -759,12 +759,11 @@ class HierarchicalPredictor:
             Organizational structure of the hospital
         predictor : DemandPredictor
             Core prediction engine for demand calculations
-        
+
         """
         self.hierarchy = hierarchy
         self.predictor = predictor
         self.cache: Dict[str, DemandPrediction] = {}
-        
 
     def predict_all_levels(
         self, hospital_id: str, subspecialty_data: Dict[str, Dict]
