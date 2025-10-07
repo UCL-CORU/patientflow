@@ -726,10 +726,12 @@ class HierarchicalPredictor:
             Organizational structure of the hospital
         predictor : DemandPredictor
             Core prediction engine for demand calculations
+        
         """
         self.hierarchy = hierarchy
         self.predictor = predictor
         self.cache: Dict[str, DemandPrediction] = {}
+        
 
     def predict_all_levels(
         self, hospital_id: str, subspecialty_data: Dict[str, Dict]
@@ -745,8 +747,8 @@ class HierarchicalPredictor:
         hospital_id : str
             Unique identifier for the hospital
         subspecialty_data : dict[str, dict]
-            Dictionary mapping subspecialty_id to prediction parameters.
-            Each subspecialty entry should contain:
+            Dictionary mapping subspecialty_id to prediction parameters. Each
+            subspecialty entry should contain:
             - 'prob_admission_pats_in_ed': numpy.ndarray
               Probability mass function for current ED patients
             - 'lambda_ed_yta': float
@@ -929,8 +931,8 @@ def create_hierarchical_predictor(
         Hospital identifier to link all boards to a single hospital
     subspecialty_data : dict[str, dict]
         Dictionary mapping subspecialty_id to prediction parameters prepared by
-        build_subspecialty_data. Used for validation here and passed to downstream
-        prediction calls via HierarchicalPredictor.predict_all_levels().
+        build_subspecialty_data. Used only for validation here; pass this to
+        predictor.predict_all_levels(hospital_id, subspecialty_data) when running predictions.
     epsilon : float, default=1e-7
         Truncation threshold for probability distribution tails during
         convolution operations. Smaller values provide higher accuracy but
