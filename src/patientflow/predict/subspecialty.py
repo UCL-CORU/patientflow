@@ -21,7 +21,7 @@ Notes
 -----
 This module integrates with the broader patientflow ecosystem by:
 1. Using trained classifiers and specialty models from the train module
-2. Processing patient snapshots from the prepare module  
+2. Processing patient snapshots from the prepare module
 3. Computing admission probabilities using the calculate module
 
 """
@@ -63,7 +63,9 @@ from patientflow.model_artifacts import TrainedClassifier
 def build_subspecialty_data(
     models: Tuple[
         TrainedClassifier,
-        Union[SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor],
+        Union[
+            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        ],
         Union[
             ParametricIncomingAdmissionPredictor,
             EmpiricalIncomingAdmissionPredictor,
@@ -87,13 +89,13 @@ def build_subspecialty_data(
     This function processes current patient snapshots through trained models and
     computes, for each subspecialty, the probability distribution of admissions
     from current ED patients and the expected means of yet-to-arrive admissions.
-    
+
     The function combines three sources of demand:
     1. Current ED patients (converted to probability mass function)
     2. Yet-to-arrive ED patients (converted to Poisson parameters)
     3. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
     4. Yet-to-arrive elective patients (converted to Poisson parameters)
-    
+
     Parameters
     ----------
     models : tuple
@@ -128,14 +130,14 @@ def build_subspecialty_data(
     -------
     dict[str, dict[str, Any]]
         Dictionary mapping subspecialty_id to prediction parameters:
-        - 'prob_admission_pats_in_ed': numpy.ndarray
-          Probability mass function for current ED admissions within window
-        - 'lambda_ed_yta': float
-          Poisson parameter for ED yet-to-arrive admissions
-        - 'lambda_non_ed_yta': float
-          Poisson parameter for non-ED emergency admissions
-        - 'lambda_elective_yta': float
-          Poisson parameter for elective admissions
+        - 'pmf_ed_current_within_window': numpy.ndarray
+          Probability mass function for current ED admissions within the prediction window
+        - 'lambda_ed_yta_within_window': float
+          Poisson parameter for ED yet-to-arrive admissions within the prediction window
+        - 'lambda_non_ed_yta_within_window': float
+          Poisson parameter for non-ED emergency admissions within the prediction window
+        - 'lambda_elective_yta_within_window': float
+          Poisson parameter for elective admissions within the prediction window
 
     Raises
     ------
@@ -146,7 +148,13 @@ def build_subspecialty_data(
         don't match between models and requested parameters
 
     """
-    classifier, spec_model, yet_to_arrive_model, non_ed_yta_model, elective_yta_model = models
+    (
+        classifier,
+        spec_model,
+        yet_to_arrive_model,
+        non_ed_yta_model,
+        elective_yta_model,
+    ) = models
 
     # Validate model types
     if not isinstance(classifier, TrainedClassifier):
@@ -174,9 +182,13 @@ def build_subspecialty_data(
 
     # Validate that non-ED and elective models are DirectAdmissionPredictor
     if not isinstance(non_ed_yta_model, DirectAdmissionPredictor):
-        raise TypeError("Fourth model must be of type DirectAdmissionPredictor (non-ED emergency)")
+        raise TypeError(
+            "Fourth model must be of type DirectAdmissionPredictor (non-ED emergency)"
+        )
     if not isinstance(elective_yta_model, DirectAdmissionPredictor):
-        raise TypeError("Fifth model must be of type DirectAdmissionPredictor (elective)")
+        raise TypeError(
+            "Fifth model must be of type DirectAdmissionPredictor (elective)"
+        )
 
     # Validate elapsed_los column presence and dtype
     if "elapsed_los" not in prediction_snapshots.columns:
@@ -222,7 +234,9 @@ def build_subspecialty_data(
     # Ensure DirectAdmissionPredictors are fit and aligned to the requested prediction window
     for name, model in (("non-ED", non_ed_yta_model), ("elective", elective_yta_model)):
         if not hasattr(model, "prediction_window") or model.prediction_window is None:
-            raise ValueError(f"{name} DirectAdmissionPredictor has not been fit (missing prediction_window)")
+            raise ValueError(
+                f"{name} DirectAdmissionPredictor has not been fit (missing prediction_window)"
+            )
         if model.prediction_window != prediction_window:
             raise ValueError(
                 f"Requested prediction window {prediction_window} does not match the prediction window of the trained {name} model {model.prediction_window}"
@@ -298,7 +312,9 @@ def build_subspecialty_data(
         if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
             prob_admission_in_window = prediction_snapshots.apply(
                 lambda row: calculate_admission_probability_from_survival_curve(
-                    row["elapsed_los"], prediction_window, yet_to_arrive_model.survival_df
+                    row["elapsed_los"],
+                    prediction_window,
+                    yet_to_arrive_model.survival_df,
                 ),
                 axis=1,
             )
@@ -314,7 +330,7 @@ def build_subspecialty_data(
 
     if special_func_map is None:
         special_func_map = {"default": lambda row: True}
-        
+
     # Resolve specialty_to_subgroups directly from the model attribute
     specialty_to_subgroups: Dict[str, List[str]] = getattr(
         spec_model, "specialty_to_subgroups", {}
@@ -359,13 +375,21 @@ def build_subspecialty_data(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
 
-        subspecialty_data[spec]["prob_admission_pats_in_ed"] = np.array(agg_predicted_in_ed["agg_proba"])
+        subspecialty_data[spec]["pmf_ed_current_within_window"] = np.array(
+            agg_predicted_in_ed["agg_proba"]
+        )
 
         prediction_context = {spec: {"prediction_time": prediction_time}}
 
-        lambda_ed = float(yet_to_arrive_model.predict_mean(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2))
+        lambda_ed = float(
+            yet_to_arrive_model.predict_mean(
+                prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
+            )
+        )
         lambda_non_ed = float(
-            non_ed_yta_model.predict_mean(prediction_context) if non_ed_yta_model is not None else 0.0
+            non_ed_yta_model.predict_mean(prediction_context)
+            if non_ed_yta_model is not None
+            else 0.0
         )
         lambda_elective = float(
             elective_yta_model.predict_mean(prediction_context)
@@ -373,8 +397,8 @@ def build_subspecialty_data(
             else 0.0
         )
 
-        subspecialty_data[spec]["lambda_ed_yta"] = lambda_ed
-        subspecialty_data[spec]["lambda_non_ed_yta"] = lambda_non_ed
-        subspecialty_data[spec]["lambda_elective_yta"] = lambda_elective
+        subspecialty_data[spec]["lambda_ed_yta_within_window"] = lambda_ed
+        subspecialty_data[spec]["lambda_non_ed_yta_within_window"] = lambda_non_ed
+        subspecialty_data[spec]["lambda_elective_yta_within_window"] = lambda_elective
 
     return subspecialty_data
