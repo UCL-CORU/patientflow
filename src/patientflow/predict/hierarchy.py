@@ -87,6 +87,39 @@ class DemandPrediction:
         """
         return len(self.probabilities) - 1
 
+    def to_pretty(self, max_probs: int = 10, precision: int = 3) -> str:
+        """Return a concise, human-friendly string representation.
+
+        Parameters
+        ----------
+        max_probs : int, default 10
+            Maximum number of head probabilities to display from the PMF
+        precision : int, default 3
+            Number of decimal places for numeric values
+
+        Returns
+        -------
+        str
+            Formatted summary string
+        """
+        probs = self.probabilities
+        head_n = min(len(probs), max_probs)
+        head = ", ".join([f"{p:.{precision}g}" for p in probs[:head_n]])
+        tail_note = "" if head_n == len(probs) else f" … +{len(probs) - head_n} more"
+
+        pct_items = ", ".join(
+            [f"P{p}={self.percentiles.get(p)}" for p in sorted(self.percentiles.keys())]
+        )
+
+        return (
+            f"{self.entity_type}: {self.entity_id}\n"
+            f"EV={self.expected_value:.{precision}f}; {pct_items}\n"
+            f"PMF[0:{head_n}]: [{head}]{tail_note}"
+        )
+
+    def __str__(self) -> str:
+        return self.to_pretty()
+
 
 class DemandPredictor:
     """Hierarchical demand prediction for hospital bed capacity.
@@ -142,7 +175,7 @@ class DemandPredictor:
     ) -> DemandPrediction:
         """Predict demand for a single subspecialty.
 
-        This method combines three sources of patient demand:
+        This method combines four sources of patient demand:
         1. Current ED patients within window (pre-computed PMF)
         2. Yet-to-arrive ED patients within window (Poisson distribution)
         3. Yet-to-arrive non-ED emergency patients within window (Poisson distribution)
