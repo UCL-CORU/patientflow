@@ -186,7 +186,9 @@ def _create_value_to_outcome_spec_model(df, apply_special_category_filtering):
     return model
 
 
-def _create_parametric_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
+def _create_parametric_yta_model(
+    prediction_window, df, arrivals_df, yta_time_interval=60
+):
     filters = create_yta_filters(df)
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
@@ -203,7 +205,9 @@ def _create_parametric_yta_model(prediction_window, df, arrivals_df, yta_time_in
     return model
 
 
-def _create_empirical_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
+def _create_empirical_yta_model(
+    prediction_window, df, arrivals_df, yta_time_interval=60
+):
     filters = create_yta_filters(df)
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
@@ -293,15 +297,15 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         for spec in self.specialties:
             self.assertIn(spec, result)
             spec_data = result[spec]
-            self.assertIn("prob_admission_pats_in_ed", spec_data)
-            self.assertIn("lambda_ed_yta", spec_data)
-            self.assertIn("lambda_non_ed_yta", spec_data)
-            self.assertIn("lambda_elective_yta", spec_data)
-            pmf = np.asarray(spec_data["prob_admission_pats_in_ed"])
+            self.assertIn("pmf_ed_current_within_window", spec_data)
+            self.assertIn("lambda_ed_yta_within_window", spec_data)
+            self.assertIn("lambda_non_ed_yta_within_window", spec_data)
+            self.assertIn("lambda_elective_yta_within_window", spec_data)
+            pmf = np.asarray(spec_data["pmf_ed_current_within_window"])
             self.assertGreater(len(pmf), 0)
-            self.assertIsInstance(spec_data["lambda_ed_yta"], float)
-            self.assertIsInstance(spec_data["lambda_non_ed_yta"], float)
-            self.assertIsInstance(spec_data["lambda_elective_yta"], float)
+            self.assertIsInstance(spec_data["lambda_ed_yta_within_window"], float)
+            self.assertIsInstance(spec_data["lambda_non_ed_yta_within_window"], float)
+            self.assertIsInstance(spec_data["lambda_elective_yta_within_window"], float)
 
     def test_empirical_yta_integration(self):
         empirical_arrivals = _create_random_arrivals_with_departures(n=1000)
@@ -328,7 +332,9 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             y2=self.y2,
         )
         self.assertIn("medical", result)
-        self.assertGreater(len(np.asarray(result["medical"]["prob_admission_pats_in_ed"])), 0)
+        self.assertGreater(
+            len(np.asarray(result["medical"]["pmf_ed_current_within_window"])), 0
+        )
 
     def test_prediction_time_and_window_mismatch_errors(self):
         snapshots = self._make_snapshots(10)
@@ -437,5 +443,3 @@ class TestBuildSubspecialtyData(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
