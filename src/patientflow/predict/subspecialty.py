@@ -5,7 +5,9 @@ downstream roll-up or forecasting workflow. It converts trained model
 outputs and current patient snapshots into:
 
 - A probability mass function (PMF) for admissions from current ED patients
+- A probability mass function (PMF) for departures from current inpatients
 - Poisson means for yet-to-arrive admissions (ED, non-ED emergency, elective)
+- Transfer arrival distributions from internal subspecialty movements
 
 The outputs are independent per subspecialty and do not presuppose any
 particular consolidation hierarchy. They can be used directly for single-
@@ -16,6 +18,12 @@ Functions
 ---------
 build_subspecialty_data
     Prepare subspecialty-level prediction inputs from trained models and snapshots
+compute_transfer_arrivals
+    Calculate arrival PMFs from internal transfers between subspecialties
+scale_pmf_by_probability
+    Scale a departure PMF by compound transfer probability
+convolve_pmfs
+    Convolve two probability mass functions for aggregation
 
 Notes
 -----
@@ -23,6 +31,7 @@ This module integrates with the broader patientflow ecosystem by:
 1. Using trained classifiers and specialty models from the train module
 2. Processing patient snapshots from the prepare module
 3. Computing admission probabilities using the calculate module
+4. Modeling internal patient transfers using the transfer predictor
 
 """
 
@@ -488,3 +497,250 @@ def build_subspecialty_data(
         subspecialty_data[spec]["lambda_elective_yta_within_window"] = lambda_elective
 
     return subspecialty_data
+
+
+def scale_pmf_by_probability(pmf: np.ndarray, compound_prob: float) -> np.ndarray:
+    """Scale a departure PMF by compound probability for transfer destination.
+
+    This function creates a mixture distribution representing: "given these
+    departures, how many actually transfer to our destination?" It accounts
+    for the fact that most departures don't go to any specific destination.
+
+    The scaling works as follows:
+    - P(0 transfers) = P(0 departed) + P(n>0 departed but none went to destination)
+    - P(k transfers, k>0) = compound_prob × P(k departed)
+
+    This is effectively a Binomial thinning of each possible departure count.
+
+    Parameters
+    ----------
+    pmf : numpy.ndarray
+        Probability mass function for number of departures. pmf[k] = P(k departures)
+    compound_prob : float
+        Combined probability: prob_transfer × prob_destination.
+        Represents P(departure goes to this specific destination)
+
+    Returns
+    -------
+    numpy.ndarray
+        Scaled PMF representing the distribution of transfers to the destination
+
+    Examples
+    --------
+    >>> # 50% chance of 0 departures, 50% chance of 2 departures
+    >>> pmf = np.array([0.5, 0.0, 0.5])
+    >>> # 20% of departures go to our destination
+    >>> scaled = scale_pmf_by_probability(pmf, 0.2)
+    >>> # Most weight on 0 (no departures OR departures went elsewhere)
+    >>> # Some weight on 1 or 2 transfers
+
+    Notes
+    -----
+    For compound_prob = 0.0, returns [1.0, 0.0, ...] (no transfers possible).
+    For compound_prob = 1.0, returns the original pmf (all departures transfer here).
+    """
+    if compound_prob == 0.0:
+        # No transfers to this destination
+        return np.array([1.0, 0.0])
+
+    if compound_prob == 1.0:
+        # All departures go to this destination
+        return pmf.copy()
+
+    n_max = len(pmf) - 1
+    scaled_pmf = np.zeros(n_max + 1)
+
+    # P(0 transfers to destination) includes:
+    # 1. P(0 departures) - these definitely don't transfer
+    # 2. P(k>0 departures) * P(none go to destination)
+    #    = P(k departures) * (1 - compound_prob)^k
+    scaled_pmf[0] = pmf[0]  # Start with P(0 departures)
+
+    for k in range(1, n_max + 1):
+        if pmf[k] > 0:
+            # P(none of k departures go to destination)
+            prob_none_transfer = (1 - compound_prob) ** k
+            scaled_pmf[0] += pmf[k] * prob_none_transfer
+
+            # P(exactly j of k departures go to destination)
+            # Using binomial: C(k,j) * p^j * (1-p)^(k-j)
+            from scipy.stats import binom
+
+            for j in range(1, k + 1):
+                prob_j_transfers = binom.pmf(j, k, compound_prob)
+                scaled_pmf[j] += pmf[k] * prob_j_transfers
+
+    return scaled_pmf
+
+
+def convolve_pmfs(pmf1: np.ndarray, pmf2: np.ndarray) -> np.ndarray:
+    """Convolve two probability mass functions.
+
+    Convolution of PMFs gives the distribution of the sum of two independent
+    random variables. This is used to aggregate arrivals from multiple source
+    subspecialties.
+
+    Mathematically: P(total = k) = sum over all i,j where i+j=k of P1(i) × P2(j)
+
+    Parameters
+    ----------
+    pmf1 : numpy.ndarray
+        First probability mass function
+    pmf2 : numpy.ndarray
+        Second probability mass function
+
+    Returns
+    -------
+    numpy.ndarray
+        Convolved PMF representing the distribution of the sum
+
+    Examples
+    --------
+    >>> # Two independent sources, each with 50% chance of 0 or 1 arrival
+    >>> pmf1 = np.array([0.5, 0.5])
+    >>> pmf2 = np.array([0.5, 0.5])
+    >>> result = convolve_pmfs(pmf1, pmf2)
+    >>> # Result: 25% chance of 0, 50% chance of 1, 25% chance of 2
+    >>> np.allclose(result, [0.25, 0.5, 0.25])
+    True
+
+    Notes
+    -----
+    This function uses numpy.convolve which implements discrete convolution
+    efficiently using FFT for large arrays.
+    """
+    return np.convolve(pmf1, pmf2)
+
+
+def compute_transfer_arrivals(
+    subspecialty_data: Dict[str, Dict[str, Any]],
+    transfer_model: Any,
+    subspecialties: List[str],
+) -> Dict[str, np.ndarray]:
+    """
+    Compute arrival PMFs from internal transfers for each subspecialty.
+
+    This function uses departure PMFs from subspecialty_data and transfer
+    probabilities from transfer_model to calculate how many patients arrive
+    at each subspecialty from transfers within other subspecialties.
+
+    The algorithm:
+    1. For each target subspecialty:
+       a. Initialize with zero arrivals (PMF = [1.0, 0.0])
+       b. For each potential source subspecialty:
+          - Get the departure PMF from the source
+          - Get transfer probabilities (prob_transfer, destination_dist)
+          - If this source sends patients to the target:
+            * Calculate compound_prob = prob_transfer × prob_destination
+            * Scale the departure PMF by compound_prob
+            * Convolve with accumulating arrival PMF
+       c. Store the final aggregated arrival PMF
+
+    Parameters
+    ----------
+    subspecialty_data : dict
+        Output from build_subspecialty_data, containing departure PMFs.
+        Must have 'pmf_inpatient_departures_within_window' for each subspecialty.
+    transfer_model : TransferProbabilityPredictor
+        Trained transfer probability model with methods:
+        - get_transfer_prob(source) -> float
+        - get_destination_distribution(source) -> dict
+    subspecialties : list of str
+        List of all subspecialties in the system
+
+    Returns
+    -------
+    dict
+        Mapping of subspecialty_id to PMF of arrivals from transfers.
+        {
+            'subspecialty_name': numpy.ndarray (PMF of transfer arrivals)
+        }
+
+    Raises
+    ------
+    KeyError
+        If subspecialty_data is missing required 'pmf_inpatient_departures_within_window'
+    ValueError
+        If transfer_model has not been fitted
+
+    Examples
+    --------
+    >>> # After computing subspecialty_data with departure PMFs
+    >>> transfer_arrivals = compute_transfer_arrivals(
+    ...     subspecialty_data,
+    ...     transfer_model,
+    ...     subspecialties=['cardiology', 'surgery', 'medicine']
+    ... )
+    >>> # Access arrival PMF for a specific subspecialty
+    >>> cardiology_arrivals = transfer_arrivals['cardiology']
+
+    Notes
+    -----
+    Assumptions:
+    - Transfers from different source subspecialties are independent
+    - Transfer probabilities are constant across patients
+    - The departure PMF already accounts for the timing window
+    - Self-transfers (source == target) are excluded
+    
+    The function handles zero probabilities naturally without requiring a threshold
+    parameter. Convolution operations are numerically stable even with small
+    probabilities.
+    """
+    predicted_arrivals = {}
+
+    for target_subspecialty in subspecialties:
+        # Initialize with zero arrivals: P(0 arrivals) = 1.0
+        arrival_pmf = np.array([1.0, 0.0])
+
+        for source_subspecialty in subspecialties:
+            # Skip self-transfers
+            if source_subspecialty == target_subspecialty:
+                continue
+
+            # Get departure PMF for source
+            if "pmf_inpatient_departures_within_window" not in subspecialty_data[
+                source_subspecialty
+            ]:
+                raise KeyError(
+                    f"Missing 'pmf_inpatient_departures_within_window' for "
+                    f"subspecialty '{source_subspecialty}'"
+                )
+
+            departure_pmf = subspecialty_data[source_subspecialty][
+                "pmf_inpatient_departures_within_window"
+            ]
+
+            # Get transfer probabilities from model
+            try:
+                prob_transfer = transfer_model.get_transfer_prob(source_subspecialty)
+                dest_dist = transfer_model.get_destination_distribution(
+                    source_subspecialty
+                )
+            except (ValueError, KeyError) as e:
+                raise ValueError(
+                    f"Error getting transfer probabilities for '{source_subspecialty}': {e}"
+                )
+
+            # Skip if no transfers from this source
+            if prob_transfer == 0:
+                continue
+
+            # Check if this source sends to our target
+            if target_subspecialty not in dest_dist:
+                continue
+
+            prob_this_dest = dest_dist[target_subspecialty]
+
+            # Calculate compound probability
+            compound_prob = prob_transfer * prob_this_dest
+
+            # Scale the departure PMF by compound probability
+            scaled_pmf = scale_pmf_by_probability(departure_pmf, compound_prob)
+
+            # Accumulate by convolving with existing arrival PMF
+            arrival_pmf = convolve_pmfs(arrival_pmf, scaled_pmf)
+
+        # Store the final arrival PMF for this target
+        predicted_arrivals[target_subspecialty] = arrival_pmf
+
+    return predicted_arrivals
