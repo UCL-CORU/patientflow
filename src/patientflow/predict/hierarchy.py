@@ -27,6 +27,8 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 from scipy.stats import poisson
 
+from patientflow.predict.subspecialty import SubspecialtyPredictionInputs
+
 
 @dataclass
 class DemandPrediction:
@@ -155,23 +157,13 @@ class DemandPredictor:
     """
 
     def __init__(self, epsilon: float = 1e-7):
-        """Initialize the demand predictor.
-
-        Parameters
-        ----------
-        epsilon : float, default=1e-7
-            Truncation threshold for probability distribution tails
-        """
         self.epsilon = epsilon
         self.cache: Dict[str, DemandPrediction] = {}
 
     def predict_subspecialty(
         self,
         subspecialty_id: str,
-        pmf_ed_current_within_window: np.ndarray,
-        lambda_ed_yta_within_window: float,
-        lambda_non_ed_yta_within_window: float,
-        lambda_elective_yta_within_window: float,
+        inputs: SubspecialtyPredictionInputs,
     ) -> DemandPrediction:
         """Predict demand for a single subspecialty.
 
@@ -188,14 +180,9 @@ class DemandPredictor:
         ----------
         subspecialty_id : str
             Unique identifier for the subspecialty
-        pmf_ed_current_within_window : numpy.ndarray
-            Pre-computed PMF for number of current ED patients admitted to this subspecialty within the window
-        lambda_ed_yta_within_window : float
-            Poisson lambda for ED patients yet to arrive within the window
-        lambda_non_ed_yta_within_window : float
-            Poisson lambda for non-ED emergency patients yet to arrive within the window
-        lambda_elective_yta_within_window : float
-            Poisson lambda for elective patients yet to arrive within the window
+        inputs : SubspecialtyPredictionInputs
+            Dataclass containing all prediction inputs for this subspecialty.
+            See SubspecialtyPredictionInputs for field details.
 
         Returns
         -------
@@ -211,9 +198,9 @@ class DemandPredictor:
         """
         # Combine three Poisson sources
         lambda_combined_yta = (
-            lambda_ed_yta_within_window
-            + lambda_non_ed_yta_within_window
-            + lambda_elective_yta_within_window
+            inputs.lambda_ed_yta_within_window
+            + inputs.lambda_non_ed_yta_within_window
+            + inputs.lambda_elective_yta_within_window
         )
 
         # Generate combined Poisson distribution
@@ -221,7 +208,7 @@ class DemandPredictor:
         p_poisson = self._poisson_pmf(lambda_combined_yta, max_poisson)
 
         # Convolve ED current-within-window PMF with combined Poisson
-        p_total = self._convolve(pmf_ed_current_within_window, p_poisson)
+        p_total = self._convolve(inputs.pmf_ed_current_within_window, p_poisson)
         p_total = self._truncate(p_total)
 
         return self._create_prediction(subspecialty_id, "subspecialty", p_total)
@@ -578,10 +565,6 @@ class HospitalHierarchy:
     """
 
     def __init__(self):
-        """Initialize an empty hospital hierarchy.
-
-        Creates empty dictionaries for each level of the hierarchy.
-        """
         self.subspecialties = {}  # subspecialty_id -> parent reporting_unit_id
         self.reporting_units = {}  # reporting_unit_id -> parent division_id
         self.divisions = {}  # division_id -> parent board_id
@@ -744,22 +727,14 @@ class HierarchicalPredictor:
     """
 
     def __init__(self, hierarchy: HospitalHierarchy, predictor: DemandPredictor):
-        """Initialize the hierarchical predictor.
-
-        Parameters
-        ----------
-        hierarchy : HospitalHierarchy
-            Organizational structure of the hospital
-        predictor : DemandPredictor
-            Core prediction engine for demand calculations
-
-        """
         self.hierarchy = hierarchy
         self.predictor = predictor
         self.cache: Dict[str, DemandPrediction] = {}
 
     def predict_all_levels(
-        self, hospital_id: str, subspecialty_data: Dict[str, Dict]
+        self,
+        hospital_id: str,
+        subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
     ) -> Dict[str, DemandPrediction]:
         """Compute predictions for all levels bottom-up.
 
@@ -771,17 +746,9 @@ class HierarchicalPredictor:
         ----------
         hospital_id : str
             Unique identifier for the hospital
-        subspecialty_data : dict[str, dict]
-            Dictionary mapping subspecialty_id to prediction parameters. Each
-            subspecialty entry should contain:
-            - 'prob_admission_pats_in_ed': numpy.ndarray
-              Probability mass function for current ED patients
-            - 'lambda_ed_yta': float
-              Poisson parameter for ED yet-to-arrive patients
-            - 'lambda_non_ed_yta': float
-              Poisson parameter for non-ED emergency yet-to-arrive patients
-            - 'lambda_elective_yta': float
-              Poisson parameter for elective yet-to-arrive patients
+        subspecialty_data : dict[str, SubspecialtyPredictionInputs]
+            Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass
+            containing all prediction parameters for that subspecialty
 
         Returns
         -------
@@ -803,8 +770,8 @@ class HierarchicalPredictor:
         results = {}
 
         # Level 1: Subspecialties
-        for subspecialty_id, params in subspecialty_data.items():
-            pred = self.predictor.predict_subspecialty(subspecialty_id, **params)
+        for subspecialty_id, inputs in subspecialty_data.items():
+            pred = self.predictor.predict_subspecialty(subspecialty_id, inputs)
             results[subspecialty_id] = pred
             self.cache[subspecialty_id] = pred
 
@@ -933,7 +900,7 @@ def populate_hierarchy_from_dataframe(
 def create_hierarchical_predictor(
     specs_df: pd.DataFrame,
     hospital_id: str,
-    subspecialty_data: Dict[str, Dict],
+    subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
     epsilon: float = 1e-7,
 ) -> HierarchicalPredictor:
     """Create a HierarchicalPredictor from a hospital structure DataFrame.
@@ -954,9 +921,9 @@ def create_hierarchical_predictor(
         Additional columns are ignored.
     hospital_id : str
         Hospital identifier to link all boards to a single hospital
-    subspecialty_data : dict[str, dict]
-        Dictionary mapping subspecialty_id to prediction parameters prepared by
-        build_subspecialty_data. Used only for validation here; pass this to
+    subspecialty_data : dict[str, SubspecialtyPredictionInputs]
+        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass
+        prepared by build_subspecialty_data. Used only for validation here; pass this to
         predictor.predict_all_levels(hospital_id, subspecialty_data) when running predictions.
     epsilon : float, default=1e-7
         Truncation threshold for probability distribution tails during

@@ -6,6 +6,7 @@ import pandas as pd
 
 from patientflow.predict.subspecialty import (
     build_subspecialty_data,
+    SubspecialtyPredictionInputs,
     scale_pmf_by_probability,
     convolve_pmfs,
     compute_transfer_arrivals,
@@ -293,11 +294,11 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         return df
 
     def _make_inpatient_snapshots(self, n=50):
-        """Create inpatient snapshots with current_specialty column"""
+        """Create inpatient snapshots with current_subspecialty column"""
         df = _create_random_df(n=n, include_consults=False)
         df["elapsed_los"] = df["elapsed_los"].apply(lambda x: timedelta(seconds=x))
-        # Add current_specialty column - assign random specialties
-        df["current_specialty"] = np.random.choice(self.specialties, size=n)
+        # Add current_subspecialty column - assign random specialties
+        df["current_subspecialty"] = np.random.choice(self.specialties, size=n)
         return df
 
     def test_basic_functionality_returns_expected_keys(self):
@@ -320,20 +321,23 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         for spec in self.specialties:
             self.assertIn(spec, result)
             spec_data = result[spec]
-            self.assertIn("pmf_ed_current_within_window", spec_data)
-            self.assertIn("pmf_inpatient_departures_within_window", spec_data)
-            self.assertIn("lambda_ed_yta_within_window", spec_data)
-            self.assertIn("lambda_non_ed_yta_within_window", spec_data)
-            self.assertIn("lambda_elective_yta_within_window", spec_data)
-            ed_pmf = np.asarray(spec_data["pmf_ed_current_within_window"])
-            inpatient_pmf = np.asarray(
-                spec_data["pmf_inpatient_departures_within_window"]
+            self.assertIsInstance(spec_data, SubspecialtyPredictionInputs)
+            # Check all attributes exist
+            self.assertTrue(hasattr(spec_data, "pmf_ed_current_within_window"))
+            self.assertTrue(
+                hasattr(spec_data, "pmf_inpatient_departures_within_window")
             )
+            self.assertTrue(hasattr(spec_data, "lambda_ed_yta_within_window"))
+            self.assertTrue(hasattr(spec_data, "lambda_non_ed_yta_within_window"))
+            self.assertTrue(hasattr(spec_data, "lambda_elective_yta_within_window"))
+            # Check values
+            ed_pmf = np.asarray(spec_data.pmf_ed_current_within_window)
+            inpatient_pmf = np.asarray(spec_data.pmf_inpatient_departures_within_window)
             self.assertGreater(len(ed_pmf), 0)
             self.assertGreater(len(inpatient_pmf), 0)
-            self.assertIsInstance(spec_data["lambda_ed_yta_within_window"], float)
-            self.assertIsInstance(spec_data["lambda_non_ed_yta_within_window"], float)
-            self.assertIsInstance(spec_data["lambda_elective_yta_within_window"], float)
+            self.assertIsInstance(spec_data.lambda_ed_yta_within_window, float)
+            self.assertIsInstance(spec_data.lambda_non_ed_yta_within_window, float)
+            self.assertIsInstance(spec_data.lambda_elective_yta_within_window, float)
 
     def test_empirical_yta_integration(self):
         empirical_arrivals = _create_random_arrivals_with_departures(n=1000)
@@ -364,7 +368,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         self.assertIn("medical", result)
         self.assertGreater(
-            len(np.asarray(result["medical"]["pmf_ed_current_within_window"])), 0
+            len(np.asarray(result["medical"].pmf_ed_current_within_window)), 0
         )
 
     def test_prediction_time_and_window_mismatch_errors(self):

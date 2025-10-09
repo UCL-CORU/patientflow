@@ -48,7 +48,9 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         X = pd.DataFrame(
             {
                 "current_subspecialty": ["cardiology"] * 10,
-                "next_subspecialty": ["surgery"] * 5 + ["medicine"] * 3 + ["oncology"] * 2,
+                "next_subspecialty": ["surgery"] * 5
+                + ["medicine"] * 3
+                + ["oncology"] * 2,
             }
         )
         predictor = TransferProbabilityEstimator()
@@ -136,21 +138,23 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
     def test_error_handling(self):
         """Test essential error conditions."""
         predictor = TransferProbabilityEstimator()
-        
+
         # Test unfitted error
         with self.assertRaises(ValueError):
             predictor.get_transfer_prob("cardiology")
-        
+
         # Test missing columns
         X_bad = pd.DataFrame({"wrong_column": ["cardiology"]})
         with self.assertRaises(ValueError):
             predictor.fit(X_bad, self.subspecialties)
-        
+
         # Test invalid subspecialties type
-        X = pd.DataFrame({
-            "current_subspecialty": ["cardiology"],
-            "next_subspecialty": [None],
-        })
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+            }
+        )
         with self.assertRaises(TypeError):
             predictor.fit(X, "not_a_collection")
 
