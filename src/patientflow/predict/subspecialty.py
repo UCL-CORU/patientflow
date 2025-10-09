@@ -7,7 +7,7 @@ outputs and current patient snapshots into:
 - A probability mass function (PMF) for admissions from current ED patients
 - A probability mass function (PMF) for departures from current inpatients
 - Poisson means for yet-to-arrive admissions (ED, non-ED emergency, elective)
-- Transfer arrival distributions from internal subspecialty movements
+- A probability mass function (PMF) for transfer arrivals from other subspecialties
 
 The outputs are independent per subspecialty and do not presuppose any
 particular consolidation hierarchy. They can be used directly for single-
@@ -49,6 +49,9 @@ from patientflow.predictors.value_to_outcome_predictor import (
 from patientflow.predictors.subgroup_predictor import (
     MultiSubgroupPredictor,
 )
+from patientflow.predictors.transfer_predictor import (
+    TransferProbabilityEstimator,
+)
 from patientflow.aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
@@ -73,9 +76,6 @@ class SubspecialtyPredictionInputs:
     pmf_ed_current_within_window : np.ndarray
         Probability mass function for current ED admissions within the prediction window.
         Array where pmf[k] represents P(k ED patients admitted to this subspecialty).
-    pmf_inpatient_departures_within_window : np.ndarray
-        Probability mass function for current inpatient departures within the prediction window.
-        Array where pmf[k] represents P(k current inpatients depart from this subspecialty).
     lambda_ed_yta_within_window : float
         Poisson parameter (rate) for ED yet-to-arrive admissions within the prediction window.
         Represents the expected number of new ED arrivals who will be admitted to this subspecialty.
@@ -85,6 +85,12 @@ class SubspecialtyPredictionInputs:
     lambda_elective_yta_within_window : float
         Poisson parameter (rate) for elective admissions within the prediction window.
         Represents the expected number of planned/elective admissions to this subspecialty.
+    pmf_transfer_arrivals_within_window : np.ndarray
+        Probability mass function for transfer arrivals from other subspecialties within the prediction window.
+        Array where pmf[k] represents P(k patients transfer into this subspecialty from other subspecialties).
+    pmf_inpatient_departures_within_window : np.ndarray
+        Probability mass function for current inpatient departures within the prediction window.
+        Array where pmf[k] represents P(k current inpatients depart from this subspecialty).
 
     Notes
     -----
@@ -93,10 +99,11 @@ class SubspecialtyPredictionInputs:
     """
 
     pmf_ed_current_within_window: np.ndarray
-    pmf_inpatient_departures_within_window: np.ndarray
     lambda_ed_yta_within_window: float
     lambda_non_ed_yta_within_window: float
     lambda_elective_yta_within_window: float
+    pmf_transfer_arrivals_within_window: np.ndarray
+    pmf_inpatient_departures_within_window: np.ndarray
 
     def __repr__(self) -> str:
         """Return a clean, readable representation showing PMF values and lambdas."""
@@ -133,15 +140,17 @@ class SubspecialtyPredictionInputs:
                 return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (mode@{mode_idx})"
 
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
+        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
         inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window)
 
         return (
             f"SubspecialtyPredictionInputs(\n"
-            f"  ED current        {ed_pmf_str}\n"
-            f"  Inpatient depart  {inpt_pmf_str}\n"
-            f"  λ ED yet-to-arrive:    {self.lambda_ed_yta_within_window:.3f}\n"
-            f"  λ non-ED emergency:    {self.lambda_non_ed_yta_within_window:.3f}\n"
-            f"  λ elective:            {self.lambda_elective_yta_within_window:.3f}\n"
+            f"  ED current arrivals   {ed_pmf_str}\n"
+            f"  λ ED yet-to-arrive:   {self.lambda_ed_yta_within_window:.3f}\n"
+            f"  λ non-ED emergency:   {self.lambda_non_ed_yta_within_window:.3f}\n"
+            f"  λ elective:           {self.lambda_elective_yta_within_window:.3f}\n"
+            f"  Transfer arrivals     {transfer_pmf_str}\n"
+            f"  Inpatient departures  {inpt_pmf_str}\n"
             f")"
         )
 
@@ -159,6 +168,7 @@ def build_subspecialty_data(
         ],
         DirectAdmissionPredictor,
         DirectAdmissionPredictor,
+        TransferProbabilityEstimator,
     ],
     prediction_time: Tuple[int, int],
     ed_snapshots: pd.DataFrame,
@@ -176,13 +186,13 @@ def build_subspecialty_data(
 
     This function processes current patient snapshots through trained models and
     computes, for each subspecialty, the probability distribution of admissions
-    from current ED patients, departures from current inpatients, and the expected
-    means of yet-to-arrive admissions.
+    from current ED patients, departures from current inpatients, the expected
+    means of yet-to-arrive admissions, and transfer arrival distributions.
 
     Parameters
     ----------
     models : tuple
-        Tuple of six trained models:
+        Tuple of seven trained models:
 
         - ed_classifier: TrainedClassifier for ED admission probability prediction
         - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
@@ -192,6 +202,7 @@ def build_subspecialty_data(
           for ED yet-to-arrive predictions
         - non_ed_yta_model: DirectAdmissionPredictor for non-ED emergency predictions
         - elective_yta_model: DirectAdmissionPredictor for elective predictions
+        - transfer_model: TransferProbabilityEstimator for internal transfer predictions
     prediction_time : tuple of (int, int)
         Hour and minute for inference time
     ed_snapshots : pandas.DataFrame
@@ -230,13 +241,14 @@ def build_subspecialty_data(
 
     Notes
     -----
-    The function combines five sources of demand:
+    The function combines six sources of demand:
 
     1. Current ED patients (converted to probability mass function)
     2. Current inpatients (converted to probability mass function for departures)
     3. Yet-to-arrive ED patients (converted to Poisson parameters)
     4. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
     5. Yet-to-arrive elective patients (converted to Poisson parameters)
+    6. Transfer arrivals from other subspecialties (converted to probability mass function)
 
     """
     (
@@ -246,6 +258,7 @@ def build_subspecialty_data(
         yet_to_arrive_model,
         non_ed_yta_model,
         elective_yta_model,
+        transfer_model,
     ) = models
 
     # Validate model types
@@ -284,6 +297,10 @@ def build_subspecialty_data(
     if not isinstance(elective_yta_model, DirectAdmissionPredictor):
         raise TypeError(
             "Sixth model must be of type DirectAdmissionPredictor (elective)"
+        )
+    if not isinstance(transfer_model, TransferProbabilityEstimator):
+        raise TypeError(
+            "Seventh model must be of type TransferProbabilityEstimator (transfer)"
         )
 
     # Validate elapsed_los column presence and dtype for ED snapshots
@@ -360,6 +377,10 @@ def build_subspecialty_data(
             raise ValueError(
                 f"Requested prediction window {prediction_window} does not match the prediction window of the trained {name} model {model.prediction_window}"
             )
+
+    # Ensure TransferProbabilityEstimator has been fitted
+    if not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_:
+        raise ValueError("Transfer model has not been fit")
 
     # Validate specialties alignment
     if hasattr(yet_to_arrive_model, "filters"):
@@ -487,7 +508,8 @@ def build_subspecialty_data(
 
     # No subgroup processing needed for inpatients (no weighting required)
 
-    subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
+    # First pass: gather computed data in temporary structure
+    temp_subspecialty_data: Dict[str, Dict[str, Any]] = {}
 
     for spec in specialties:
         if specialty_to_subgroups and spec in specialty_to_subgroups:
@@ -540,26 +562,54 @@ def build_subspecialty_data(
 
         prediction_context = {spec: {"prediction_time": prediction_time}}
 
-        subspecialty_data[spec] = SubspecialtyPredictionInputs(
-            pmf_ed_current_within_window=np.array(agg_predicted_in_ed["agg_proba"]),
-            pmf_inpatient_departures_within_window=np.array(
+        # Store computed data in temporary dictionary
+        temp_subspecialty_data[spec] = {
+            "pmf_ed_current_within_window": np.array(agg_predicted_in_ed["agg_proba"]),
+            "pmf_inpatient_departures_within_window": np.array(
                 agg_predicted_inpatient_departures["agg_proba"]
             ),
-            lambda_ed_yta_within_window=float(
+            "lambda_ed_yta_within_window": float(
                 yet_to_arrive_model.predict_mean(
                     prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
                 )
             ),
-            lambda_non_ed_yta_within_window=float(
+            "lambda_non_ed_yta_within_window": float(
                 non_ed_yta_model.predict_mean(prediction_context)
                 if non_ed_yta_model is not None
                 else 0.0
             ),
-            lambda_elective_yta_within_window=float(
+            "lambda_elective_yta_within_window": float(
                 elective_yta_model.predict_mean(prediction_context)
                 if elective_yta_model is not None
                 else 0.0
             ),
+        }
+
+    # Compute transfer arrivals using the departure PMFs from temporary data
+    transfer_arrivals = compute_transfer_arrivals(
+        temp_subspecialty_data, transfer_model, specialties
+    )
+
+    # Second pass: create final immutable dataclass objects with all data
+    subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
+    for spec in specialties:
+        subspecialty_data[spec] = SubspecialtyPredictionInputs(
+            pmf_ed_current_within_window=temp_subspecialty_data[spec][
+                "pmf_ed_current_within_window"
+            ],
+            lambda_ed_yta_within_window=temp_subspecialty_data[spec][
+                "lambda_ed_yta_within_window"
+            ],
+            lambda_non_ed_yta_within_window=temp_subspecialty_data[spec][
+                "lambda_non_ed_yta_within_window"
+            ],
+            lambda_elective_yta_within_window=temp_subspecialty_data[spec][
+                "lambda_elective_yta_within_window"
+            ],
+            pmf_transfer_arrivals_within_window=transfer_arrivals[spec],
+            pmf_inpatient_departures_within_window=temp_subspecialty_data[spec][
+                "pmf_inpatient_departures_within_window"
+            ],
         )
 
     return subspecialty_data
@@ -679,7 +729,7 @@ def convolve_pmfs(pmf1: np.ndarray, pmf2: np.ndarray) -> np.ndarray:
 
 
 def compute_transfer_arrivals(
-    subspecialty_data: Dict[str, Dict[str, Any]],
+    subspecialty_data: Union[Dict[str, Dict[str, Any]], Dict[str, SubspecialtyPredictionInputs]],
     transfer_model: Any,
     subspecialties: List[str],
 ) -> Dict[str, np.ndarray]:
@@ -692,8 +742,8 @@ def compute_transfer_arrivals(
     Parameters
     ----------
     subspecialty_data : dict
-        Output from build_subspecialty_data, containing departure PMFs.
-        Must have 'pmf_inpatient_departures_within_window' for each subspecialty.
+        Either a dict of dicts with 'pmf_inpatient_departures_within_window' keys,
+        or a dict of SubspecialtyPredictionInputs objects.
     transfer_model : TransferProbabilityEstimator
         Trained transfer probability estimator with methods:
         - get_transfer_prob(source) -> float
@@ -767,19 +817,22 @@ def compute_transfer_arrivals(
             if source_subspecialty == target_subspecialty:
                 continue
 
-            # Get departure PMF for source
-            if (
-                "pmf_inpatient_departures_within_window"
-                not in subspecialty_data[source_subspecialty]
-            ):
-                raise KeyError(
-                    f"Missing 'pmf_inpatient_departures_within_window' for "
-                    f"subspecialty '{source_subspecialty}'"
+            # Get departure PMF for source (handle both dict and dataclass)
+            source_data = subspecialty_data[source_subspecialty]
+            if isinstance(source_data, SubspecialtyPredictionInputs):
+                departure_pmf = source_data.pmf_inpatient_departures_within_window
+            elif isinstance(source_data, dict):
+                if "pmf_inpatient_departures_within_window" not in source_data:
+                    raise KeyError(
+                        f"Missing 'pmf_inpatient_departures_within_window' for "
+                        f"subspecialty '{source_subspecialty}'"
+                    )
+                departure_pmf = source_data["pmf_inpatient_departures_within_window"]
+            else:
+                raise TypeError(
+                    f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
+                    f"got {type(source_data)}"
                 )
-
-            departure_pmf = subspecialty_data[source_subspecialty][
-                "pmf_inpatient_departures_within_window"
-            ]
 
             # Get transfer probabilities from model
             try:
