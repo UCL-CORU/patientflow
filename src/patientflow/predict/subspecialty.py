@@ -99,14 +99,41 @@ class SubspecialtyPredictionInputs:
     lambda_elective_yta_within_window: float
 
     def __repr__(self) -> str:
+        """Return a clean, readable representation showing PMF values and lambdas."""
+
         def format_pmf(arr: np.ndarray, max_display: int = 10) -> str:
-            """Format PMF array for display, showing first max_display values."""
+            """Format PMF array, automatically showing the most informative range."""
             if len(arr) <= max_display:
                 values = ", ".join(f"{v:.3f}" for v in arr)
                 return f"[{values}]"
+
+            # Find where the probability mass is concentrated
+            mode_idx = int(np.argmax(arr))
+            
+            # Determine display window centered on mode
+            half_window = max_display // 2
+            start_idx = max(0, mode_idx - half_window)
+            end_idx = min(len(arr), start_idx + max_display)
+            
+            # Adjust if we're near the end
+            if end_idx - start_idx < max_display:
+                start_idx = max(0, end_idx - max_display)
+            
+            # Format the displayed portion
+            display_values = ", ".join(f"{v:.3f}" for v in arr[start_idx:end_idx])
+            
+            # Build output with index information
+            if start_idx == 0 and end_idx == len(arr):
+                return f"[{display_values}]"
+            elif start_idx == 0:
+                remaining = len(arr) - end_idx
+                return f"[{display_values}, ... +{remaining} more] (sum={arr.sum():.3f})"
+            elif end_idx == len(arr):
+                return f"[... {start_idx} before, {display_values}] (sum={arr.sum():.3f})"
             else:
-                head = ", ".join(f"{v:.3f}" for v in arr[:max_display])
-                return f"[{head}, ... +{len(arr) - max_display} more] (sum={arr.sum():.3f})"
+                before = start_idx
+                after = len(arr) - end_idx
+                return f"[... {before} before, {display_values}, +{after} more] (mode@{mode_idx}, sum={arr.sum():.3f})"
 
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
         inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window)
