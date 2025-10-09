@@ -113,10 +113,12 @@ class DemandPrediction:
             [f"P{p}={self.percentiles.get(p)}" for p in sorted(self.percentiles.keys())]
         )
 
+        # Use fixed-width formatting for proper alignment
         return (
             f"{self.entity_type}: {self.entity_id}\n"
-            f"EV={self.expected_value:.{precision}f}; {pct_items}\n"
-            f"PMF[0:{head_n}]: [{head}]{tail_note}"
+            f"  {'Expectation:':<16} {self.expected_value:.{precision}f}\n"
+            f"  {'Percentiles:':<16} {pct_items}\n"
+            f"  {'PMF[0:' + str(head_n) + ']:':<16} [{head}]{tail_note}"
         )
 
     def __str__(self) -> str:
@@ -692,6 +694,26 @@ class HospitalHierarchy:
         """
         return [bid for bid, hid in self.boards.items() if hid == hospital_id]
 
+    def get_all_subspecialties(self) -> List[str]:
+        """Get all subspecialty identifiers in the hierarchy.
+
+        Returns
+        -------
+        list[str]
+            List of all subspecialty identifiers
+        """
+        return list(self.subspecialties.keys())
+
+    def get_all_hospitals(self) -> List[str]:
+        """Get all hospital identifiers in the hierarchy.
+
+        Returns
+        -------
+        list[str]
+            List of all hospital identifiers
+        """
+        return list(set(self.boards.values()))
+
 
 class HierarchicalPredictor:
     """High-level interface for hierarchical predictions with caching.
@@ -733,8 +755,8 @@ class HierarchicalPredictor:
 
     def predict_all_levels(
         self,
-        hospital_id: str,
         subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
+        hospital_id: Optional[str] = None,
     ) -> Dict[str, DemandPrediction]:
         """Compute predictions for all levels bottom-up.
 
@@ -744,17 +766,24 @@ class HierarchicalPredictor:
 
         Parameters
         ----------
-        hospital_id : str
-            Unique identifier for the hospital
         subspecialty_data : dict[str, SubspecialtyPredictionInputs]
             Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass
             containing all prediction parameters for that subspecialty
+        hospital_id : str, optional
+            Unique identifier for the hospital. If not provided and the hierarchy
+            contains exactly one hospital, that hospital will be used automatically.
+            Required if the hierarchy contains multiple hospitals.
 
         Returns
         -------
         dict[str, DemandPrediction]
             Dictionary mapping entity_id to DemandPrediction for all levels:
             subspecialties, reporting units, divisions, boards, and hospital
+
+        Raises
+        ------
+        ValueError
+            If hospital_id is not provided and the hierarchy contains multiple hospitals
 
         Notes
         -----
@@ -767,6 +796,19 @@ class HierarchicalPredictor:
 
         All predictions are cached for efficient retrieval.
         """
+        # Determine hospital_id if not provided
+        if hospital_id is None:
+            hospitals = self.hierarchy.get_all_hospitals()
+            if len(hospitals) == 0:
+                raise ValueError("No hospitals found in hierarchy")
+            elif len(hospitals) == 1:
+                hospital_id = hospitals[0]
+            else:
+                raise ValueError(
+                    f"Multiple hospitals found in hierarchy: {hospitals}. "
+                    "Please specify hospital_id parameter."
+                )
+
         results = {}
 
         # Level 1: Subspecialties
@@ -939,7 +981,8 @@ def create_hierarchical_predictor(
 
     1. Use create_hierarchical_predictor() to set up the predictor with hospital structure
     2. Use build_subspecialty_data() to prepare prediction inputs from patient data
-    3. Use predictor.predict_all_levels(hospital_id, subspecialty_data) to compute predictions
+    3. Use predictor.predict_all_levels(subspecialty_data) to compute predictions
+       (hospital_id is automatically inferred if there's only one hospital)
 
     The function automatically handles duplicate relationships and missing
     values in the DataFrame by removing duplicates and dropping rows with
