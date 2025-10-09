@@ -98,6 +98,29 @@ class SubspecialtyPredictionInputs:
     lambda_non_ed_yta_within_window: float
     lambda_elective_yta_within_window: float
 
+    def __repr__(self) -> str:
+        def format_pmf(arr: np.ndarray, max_display: int = 10) -> str:
+            """Format PMF array for display, showing first max_display values."""
+            if len(arr) <= max_display:
+                values = ", ".join(f"{v:.3f}" for v in arr)
+                return f"[{values}]"
+            else:
+                head = ", ".join(f"{v:.3f}" for v in arr[:max_display])
+                return f"[{head}, ... +{len(arr) - max_display} more] (sum={arr.sum():.3f})"
+
+        ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
+        inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window)
+
+        return (
+            f"SubspecialtyPredictionInputs(\n"
+            f"  PMF ED current:        {ed_pmf_str}\n"
+            f"  PMF inpatient depart:  {inpt_pmf_str}\n"
+            f"  λ ED yet-to-arrive:    {self.lambda_ed_yta_within_window:.3f}\n"
+            f"  λ non-ED emergency:    {self.lambda_non_ed_yta_within_window:.3f}\n"
+            f"  λ elective:            {self.lambda_elective_yta_within_window:.3f}\n"
+            f")"
+        )
+
 
 def build_subspecialty_data(
     models: Tuple[
