@@ -248,6 +248,25 @@ def _create_direct_predictor(prediction_window, df, arrivals_df, yta_time_interv
     return model
 
 
+def _create_transfer_model(specialties):
+    """Create a simple transfer model for testing."""
+    # Create some basic transfer data
+    transfers = []
+    for _ in range(100):
+        source = np.random.choice(specialties)
+        # 50% chance of transfer vs discharge
+        if np.random.rand() < 0.5:
+            dest = np.random.choice([s for s in specialties if s != source])
+        else:
+            dest = None  # Discharge
+        transfers.append({"current_subspecialty": source, "next_subspecialty": dest})
+    
+    X = pd.DataFrame(transfers)
+    model = TransferProbabilityEstimator()
+    model.fit(X, set(specialties))
+    return model
+
+
 class TestBuildSubspecialtyData(unittest.TestCase):
     def setUp(self):
         self.prediction_time = (7, 0)
@@ -279,6 +298,9 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         self.inpatient_discharge_model = inpatient_discharge_model
 
+        # Create transfer model
+        self.transfer_model = _create_transfer_model(self.specialties)
+
         self.models = (
             self.admissions_model,  # ED classifier
             self.inpatient_discharge_model,  # Inpatient discharge classifier
@@ -286,6 +308,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.param_yta_model,
             self.direct_non_ed,
             self.direct_elective,
+            self.transfer_model,  # Transfer model
         )
 
     def _make_snapshots(self, n=50):
@@ -330,11 +353,14 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.assertTrue(hasattr(spec_data, "lambda_ed_yta_within_window"))
             self.assertTrue(hasattr(spec_data, "lambda_non_ed_yta_within_window"))
             self.assertTrue(hasattr(spec_data, "lambda_elective_yta_within_window"))
+            self.assertTrue(hasattr(spec_data, "pmf_transfer_arrivals_within_window"))
             # Check values
             ed_pmf = np.asarray(spec_data.pmf_ed_current_within_window)
             inpatient_pmf = np.asarray(spec_data.pmf_inpatient_departures_within_window)
+            transfer_pmf = np.asarray(spec_data.pmf_transfer_arrivals_within_window)
             self.assertGreater(len(ed_pmf), 0)
             self.assertGreater(len(inpatient_pmf), 0)
+            self.assertGreater(len(transfer_pmf), 0)
             self.assertIsInstance(spec_data.lambda_ed_yta_within_window, float)
             self.assertIsInstance(spec_data.lambda_non_ed_yta_within_window, float)
             self.assertIsInstance(spec_data.lambda_elective_yta_within_window, float)
@@ -351,6 +377,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             empirical_yta,
             self.direct_non_ed,
             self.direct_elective,
+            self.transfer_model,  # Transfer model
         )
         ed_snapshots = self._make_snapshots(40)
         inpatient_snapshots = self._make_inpatient_snapshots(25)
@@ -401,6 +428,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.param_yta_model,
             self.direct_non_ed,
             bad_elective,
+            self.transfer_model,  # Transfer model
         )
         with self.assertRaises(ValueError):
             build_subspecialty_data(
@@ -484,6 +512,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.param_yta_model,
             self.direct_non_ed,
             self.direct_elective,
+            self.transfer_model,  # Transfer model
         )
         ed_snapshots = self._make_snapshots(60)
         inpatient_snapshots = self._make_inpatient_snapshots(35)
