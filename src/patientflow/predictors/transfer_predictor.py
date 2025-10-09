@@ -10,12 +10,6 @@ The predictor follows sklearn conventions with fit() and predict() methods, allo
 it to be saved and loaded as a model artifact alongside other predictors in the
 patientflow ecosystem.
 
-Classes
--------
-TransferProbabilityPredictor : BaseEstimator, TransformerMixin
-    Predictor for patient transfer probabilities between subspecialties.
-    Stores static transfer probabilities derived from historical patient movement data.
-
 Notes
 -----
 This predictor is designed to work in conjunction with inpatient departure classifiers
@@ -28,21 +22,20 @@ distributions for each subspecialty from transfers.
 """
 
 import pandas as pd
-import numpy as np
-from typing import Dict, Set, List
+from typing import Dict, Set, Optional
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
-    """Predict patient transfer destinations from subspecialty movement patterns.
+class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
+    """Estimate patient transfer probabilities from subspecialty movement patterns.
 
-    This predictor computes and stores transfer probabilities between subspecialties
+    This estimator computes and stores transfer probabilities between subspecialties
     based on historical patient movement data. For each source subspecialty, it
     calculates:
     1. The probability that a departure results in a transfer (vs discharge)
     2. The distribution of destinations given that a transfer occurs
 
-    The predictor follows sklearn conventions with fit() and predict() methods,
+    The estimator follows sklearn conventions with fit() and predict() methods,
     allowing it to be saved and loaded as a model artifact.
 
     Parameters
@@ -85,20 +78,20 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
     ...     'next_subspecialty': ['surgery', None, None]  # None = discharge
     ... })
     >>> subspecialties = {'cardiology', 'surgery', 'medicine'}
-    >>> 
-    >>> # Train the predictor with default column names
-    >>> predictor = TransferProbabilityPredictor()
-    >>> predictor.fit(X, subspecialties)
-    >>> 
+    >>>
+    >>> # Train the estimator with default column names
+    >>> estimator = TransferProbabilityEstimator()
+    >>> estimator.fit(X, subspecialties)
+    >>>
     >>> # Or with custom column names
-    >>> predictor = TransferProbabilityPredictor(
+    >>> estimator = TransferProbabilityEstimator(
     ...     source_col='from_ward',
     ...     destination_col='to_ward'
     ... )
-    >>> 
+    >>>
     >>> # Get transfer probabilities
-    >>> prob_transfer = predictor.get_transfer_prob('cardiology')
-    >>> destinations = predictor.get_destination_distribution('cardiology')
+    >>> prob_transfer = estimator.get_transfer_prob('cardiology')
+    >>> destinations = estimator.get_destination_distribution('cardiology')
 
     Notes
     -----
@@ -111,9 +104,13 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
     probability distributions, even for subspecialties with no observed transfers.
     """
 
-    def __init__(self, source_col: str = "current_subspecialty", destination_col: str = "next_subspecialty"):
-        """Initialize the transfer probability predictor.
-        
+    def __init__(
+        self,
+        source_col: str = "current_subspecialty",
+        destination_col: str = "next_subspecialty",
+    ):
+        """Initialize the transfer probability estimator.
+
         Parameters
         ----------
         source_col : str, default='current_subspecialty'
@@ -123,12 +120,11 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         """
         self.source_col = source_col
         self.destination_col = destination_col
-        self.transfer_probabilities = None
-        self.subspecialties = None
+        self.transfer_probabilities: Optional[Dict[str, Dict]] = None
+        self.subspecialties: Optional[Set[str]] = None
         self.is_fitted_ = False
 
     def __repr__(self) -> str:
-        """Return string representation of the predictor."""
         class_name = self.__class__.__name__
         if not self.is_fitted_:
             return (
@@ -139,12 +135,16 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
                 f")"
             )
 
-        n_subspecialties = len(self.subspecialties) if self.subspecialties else 0
-        n_with_transfers = sum(
-            1
-            for stats in self.transfer_probabilities.values()
-            if stats["prob_transfer"] > 0
-        ) if self.transfer_probabilities else 0
+        n_subspecialties = (
+            len(self.subspecialties) if self.subspecialties is not None else 0
+        )
+        n_with_transfers = 0
+        if self.transfer_probabilities is not None:
+            n_with_transfers = sum(
+                1
+                for stats in self.transfer_probabilities.values()
+                if stats["prob_transfer"] > 0
+            )
 
         return (
             f"{class_name}(\n"
@@ -158,9 +158,8 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
 
     def fit(
         self, X: pd.DataFrame, subspecialties: Set[str]
-    ) -> "TransferProbabilityPredictor":
-        """
-        Fit the transfer probability model from patient movement data.
+    ) -> "TransferProbabilityEstimator":
+        """Fit the transfer probability estimator from patient movement data.
 
         This method computes transfer probabilities from historical patient
         movements between subspecialties. For each source subspecialty, it
@@ -177,8 +176,8 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
 
         Returns
         -------
-        self : TransferProbabilityPredictor
-            The fitted predictor
+        self : TransferProbabilityEstimator
+            The fitted estimator
 
         Raises
         ------
@@ -215,8 +214,7 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
     def _prepare_transfer_probabilities(
         self, subspecialties: Set[str], X: pd.DataFrame
     ) -> Dict[str, Dict]:
-        """
-        Prepare transfer probabilities dictionary from patient movement data.
+        """Prepare transfer probabilities dictionary from patient movement data.
 
         This is the core computation method that calculates transfer statistics
         for each subspecialty.
@@ -250,9 +248,7 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
 
         for source_subspecialty in subspecialties:
             # Filter to movements from this source
-            source_movements = X[
-                X[self.source_col] == source_subspecialty
-            ].copy()
+            source_movements = X[X[self.source_col] == source_subspecialty].copy()
 
             if len(source_movements) == 0:
                 # No data for this subspecialty - set prob_transfer to 0
@@ -290,8 +286,7 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         return transfer_probabilities
 
     def get_transfer_prob(self, source_subspecialty: str) -> float:
-        """
-        Get the probability that a departure from a subspecialty is a transfer.
+        """Get the probability that a departure from a subspecialty is a transfer.
 
         Parameters
         ----------
@@ -314,9 +309,11 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         """
         if not self.is_fitted_:
             raise ValueError(
-                "This TransferProbabilityPredictor instance is not fitted yet. "
+                "This TransferProbabilityEstimator instance is not fitted yet. "
                 "Call 'fit' with appropriate arguments before using this method."
             )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
 
         if source_subspecialty not in self.transfer_probabilities:
             raise KeyError(
@@ -326,9 +323,10 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
 
         return self.transfer_probabilities[source_subspecialty]["prob_transfer"]
 
-    def get_destination_distribution(self, source_subspecialty: str) -> Dict[str, float]:
-        """
-        Get the distribution of destinations given that a transfer occurs.
+    def get_destination_distribution(
+        self, source_subspecialty: str
+    ) -> Dict[str, float]:
+        """Get the distribution of destinations given that a transfer occurs.
 
         Parameters
         ----------
@@ -356,9 +354,11 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         """
         if not self.is_fitted_:
             raise ValueError(
-                "This TransferProbabilityPredictor instance is not fitted yet. "
+                "This TransferProbabilityEstimator instance is not fitted yet. "
                 "Call 'fit' with appropriate arguments before using this method."
             )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
 
         if source_subspecialty not in self.transfer_probabilities:
             raise KeyError(
@@ -371,8 +371,7 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         ]
 
     def predict(self, source_subspecialty: str) -> Dict[str, float]:
-        """
-        Get full transfer statistics for a source subspecialty.
+        """Get full transfer statistics for a source subspecialty.
 
         This is a convenience method that returns both the transfer probability
         and destination distribution in a single call.
@@ -398,9 +397,11 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         """
         if not self.is_fitted_:
             raise ValueError(
-                "This TransferProbabilityPredictor instance is not fitted yet. "
+                "This TransferProbabilityEstimator instance is not fitted yet. "
                 "Call 'fit' with appropriate arguments before using this method."
             )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
 
         if source_subspecialty not in self.transfer_probabilities:
             raise KeyError(
@@ -411,8 +412,7 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         return self.transfer_probabilities[source_subspecialty].copy()
 
     def get_all_transfer_probabilities(self) -> Dict[str, Dict]:
-        """
-        Get the complete transfer probabilities dictionary.
+        """Get the complete transfer probabilities dictionary.
 
         Returns
         -------
@@ -427,8 +427,10 @@ class TransferProbabilityPredictor(BaseEstimator, TransformerMixin):
         """
         if not self.is_fitted_:
             raise ValueError(
-                "This TransferProbabilityPredictor instance is not fitted yet. "
+                "This TransferProbabilityEstimator instance is not fitted yet. "
                 "Call 'fit' with appropriate arguments before using this method."
             )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
 
         return self.transfer_probabilities.copy()

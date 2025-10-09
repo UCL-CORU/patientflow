@@ -4,7 +4,13 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-from patientflow.predict.subspecialty import build_subspecialty_data
+from patientflow.predict.subspecialty import (
+    build_subspecialty_data,
+    scale_pmf_by_probability,
+    convolve_pmfs,
+    compute_transfer_arrivals,
+)
+from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
 from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 from patientflow.load import get_model_key
 
@@ -490,6 +496,327 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             y2=self.y2,
         )
         self.assertIn("paediatric", result)
+
+
+class TestScalePMFByProbability(unittest.TestCase):
+    """Test suite for scale_pmf_by_probability function."""
+
+    def test_edge_cases(self):
+        """Test edge cases: zero and unit probability."""
+        pmf = np.array([0.5, 0.3, 0.2])
+
+        # Zero probability should return [1.0, 0.0]
+        result_zero = scale_pmf_by_probability(pmf, 0.0)
+        np.testing.assert_array_almost_equal(result_zero, np.array([1.0, 0.0]))
+
+        # Unit probability should return original PMF
+        result_one = scale_pmf_by_probability(pmf, 1.0)
+        np.testing.assert_array_almost_equal(result_one, pmf)
+
+    def test_binomial_thinning_calculation(self):
+        """Test the binomial thinning calculation with a simple case."""
+        # 50% chance of 0 departures, 50% chance of 2 departures
+        pmf = np.array([0.5, 0.0, 0.5])
+        compound_prob = 0.5
+
+        result = scale_pmf_by_probability(pmf, compound_prob)
+
+        # P(0 transfers) = P(0 departures) + P(2 depart, none transfer)
+        #                = 0.5 + 0.5 * (1-0.5)^2 = 0.5 + 0.125 = 0.625
+        self.assertAlmostEqual(result[0], 0.625)
+        self.assertAlmostEqual(np.sum(result), 1.0)
+
+    def test_expected_value_scaling(self):
+        """Test that expected value scales linearly with compound probability."""
+        pmf = np.array([0.0, 0.0, 1.0])  # Certain to have 2 departures
+
+        for compound_prob in [0.1, 0.5, 0.9]:
+            result = scale_pmf_by_probability(pmf, compound_prob)
+            expected_transfers = np.sum(result * np.arange(len(result)))
+            self.assertAlmostEqual(expected_transfers, 2 * compound_prob, places=6)
+
+    def test_probability_conservation(self):
+        """Test that probabilities sum to 1.0 for various inputs."""
+        np.random.seed(42)
+        raw_pmf = np.random.rand(10)
+        pmf = raw_pmf / raw_pmf.sum()
+
+        for compound_prob in [0.0, 0.25, 0.5, 0.75, 1.0]:
+            result = scale_pmf_by_probability(pmf, compound_prob)
+            self.assertAlmostEqual(np.sum(result), 1.0, places=10)
+            self.assertTrue(np.all(result >= 0))
+
+
+class TestConvolvePMFs(unittest.TestCase):
+    """Test suite for convolve_pmfs function."""
+
+    def test_basic_convolution_calculation(self):
+        """Test basic convolution calculation."""
+        # Each has 50% chance of 0 or 1
+        pmf1 = np.array([0.5, 0.5])
+        pmf2 = np.array([0.5, 0.5])
+
+        result = convolve_pmfs(pmf1, pmf2)
+
+        # Result should be: 25% chance of 0, 50% chance of 1, 25% chance of 2
+        expected = np.array([0.25, 0.5, 0.25])
+        np.testing.assert_array_almost_equal(result, expected)
+
+    def test_expected_value_additivity(self):
+        """Test that E[X+Y] = E[X] + E[Y]."""
+        pmf1 = np.array([0.2, 0.5, 0.3])
+        pmf2 = np.array([0.4, 0.4, 0.2])
+
+        result = convolve_pmfs(pmf1, pmf2)
+
+        ev1 = np.sum(pmf1 * np.arange(len(pmf1)))
+        ev2 = np.sum(pmf2 * np.arange(len(pmf2)))
+        ev_result = np.sum(result * np.arange(len(result)))
+
+        self.assertAlmostEqual(ev_result, ev1 + ev2, places=10)
+
+    def test_probability_conservation(self):
+        """Test that convolution preserves probability mass."""
+        np.random.seed(42)
+        for _ in range(5):
+            raw1 = np.random.rand(5)
+            raw2 = np.random.rand(5)
+            pmf1 = raw1 / raw1.sum()
+            pmf2 = raw2 / raw2.sum()
+
+            result = convolve_pmfs(pmf1, pmf2)
+            self.assertAlmostEqual(np.sum(result), 1.0, places=10)
+
+
+class TestComputeTransferArrivals(unittest.TestCase):
+    """Test suite for compute_transfer_arrivals function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.subspecialties = ["cardiology", "surgery", "medicine"]
+
+    def test_simple_transfer_calculation(self):
+        """Test basic transfer calculation: cardiology -> surgery."""
+        subspecialty_data = {
+            "cardiology": {
+                "pmf_inpatient_departures_within_window": np.array([0.0, 0.0, 1.0])
+            },  # Certain to have 2 departures
+            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+            "medicine": {
+                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+            },
+        }
+
+        # Cardiology transfers 100% to surgery
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", "surgery"],
+            }
+        )
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        result = compute_transfer_arrivals(
+            subspecialty_data, transfer_model, self.subspecialties
+        )
+
+        # Surgery should receive 2 arrivals with certainty
+        self.assertAlmostEqual(result["surgery"][2], 1.0, places=5)
+        # Medicine should have no arrivals
+        self.assertGreater(result["medicine"][0], 0.99)
+
+    def test_mixed_transfers_and_discharges(self):
+        """Test calculation when some patients transfer and some are discharged (None)."""
+        subspecialty_data = {
+            "cardiology": {
+                "pmf_inpatient_departures_within_window": np.array(
+                    [0.0, 0.0, 0.0, 0.0, 1.0]
+                )
+            },  # Certain to have 4 departures
+            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+            "medicine": {
+                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+            },
+        }
+
+        # Of 4 departures: 1 -> surgery, 1 -> medicine, 2 -> discharge (None)
+        # This means: 50% transfer, 50% discharge
+        # Of the 50% that transfer: 50% to surgery, 50% to medicine
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": [
+                    "cardiology",
+                    "cardiology",
+                    "cardiology",
+                    "cardiology",
+                ],
+                "next_subspecialty": ["surgery", "medicine", None, None],
+            }
+        )
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        result = compute_transfer_arrivals(
+            subspecialty_data, transfer_model, self.subspecialties
+        )
+
+        # Check cardiology stats
+        prob_transfer = transfer_model.get_transfer_prob("cardiology")
+        self.assertAlmostEqual(prob_transfer, 0.5)  # 2 out of 4 transfer
+
+        dest_dist = transfer_model.get_destination_distribution("cardiology")
+        self.assertAlmostEqual(
+            dest_dist["surgery"], 0.5
+        )  # Of transfers, 50% to surgery
+        self.assertAlmostEqual(
+            dest_dist["medicine"], 0.5
+        )  # Of transfers, 50% to medicine
+
+        # With 4 departures and 50% transfer probability:
+        # Expected arrivals to surgery: 4 * 0.5 * 0.5 = 1.0
+        # Expected arrivals to medicine: 4 * 0.5 * 0.5 = 1.0
+        surgery_arrivals = result["surgery"]
+        medicine_arrivals = result["medicine"]
+
+        # Expected value should be ~1 for each
+        ev_surgery = np.sum(surgery_arrivals * np.arange(len(surgery_arrivals)))
+        ev_medicine = np.sum(medicine_arrivals * np.arange(len(medicine_arrivals)))
+        self.assertAlmostEqual(ev_surgery, 1.0, places=5)
+        self.assertAlmostEqual(ev_medicine, 1.0, places=5)
+
+        # PMFs should sum to 1
+        self.assertAlmostEqual(np.sum(surgery_arrivals), 1.0)
+        self.assertAlmostEqual(np.sum(medicine_arrivals), 1.0)
+
+    def test_multiple_sources_aggregation(self):
+        """Test aggregation when multiple sources transfer to one destination."""
+        subspecialty_data = {
+            "cardiology": {
+                "pmf_inpatient_departures_within_window": np.array([0.0, 1.0])
+            },
+            "surgery": {"pmf_inpatient_departures_within_window": np.array([0.0, 1.0])},
+            "medicine": {
+                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+            },
+        }
+
+        # Both cardiology and surgery transfer to medicine
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "surgery"],
+                "next_subspecialty": ["medicine", "medicine"],
+            }
+        )
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        result = compute_transfer_arrivals(
+            subspecialty_data, transfer_model, self.subspecialties
+        )
+
+        # Medicine should receive 2 arrivals (convolution of two Bernoulli)
+        self.assertAlmostEqual(result["medicine"][2], 1.0, places=5)
+
+    def test_complex_transfer_network(self):
+        """Test realistic complex network with circular transfers."""
+        subspecialty_data = {
+            "cardiology": {
+                "pmf_inpatient_departures_within_window": np.array([0.5, 0.5])
+            },
+            "surgery": {"pmf_inpatient_departures_within_window": np.array([0.5, 0.5])},
+            "medicine": {
+                "pmf_inpatient_departures_within_window": np.array([0.5, 0.5])
+            },
+        }
+
+        # Network: cardiology -> surgery, surgery -> medicine, medicine -> cardiology
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "surgery", "medicine"],
+                "next_subspecialty": ["surgery", "medicine", "cardiology"],
+            }
+        )
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        result = compute_transfer_arrivals(
+            subspecialty_data, transfer_model, self.subspecialties
+        )
+
+        # All subspecialties should receive arrivals and sum to 1
+        for subspecialty in self.subspecialties:
+            self.assertAlmostEqual(np.sum(result[subspecialty]), 1.0)
+            self.assertTrue(np.all(result[subspecialty] >= 0))
+
+    def test_probability_validity(self):
+        """Test that arrival PMFs are valid probability distributions."""
+        np.random.seed(42)
+        subspecialty_data = {
+            subspecialty: {
+                "pmf_inpatient_departures_within_window": np.random.dirichlet(
+                    np.ones(4)
+                )
+            }
+            for subspecialty in self.subspecialties
+        }
+
+        # Create random transfer network
+        transfers = [
+            {
+                "current_subspecialty": np.random.choice(self.subspecialties),
+                "next_subspecialty": np.random.choice([None] + self.subspecialties),
+            }
+            for _ in range(10)
+        ]
+        X = pd.DataFrame(transfers)
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        result = compute_transfer_arrivals(
+            subspecialty_data, transfer_model, self.subspecialties
+        )
+
+        for subspecialty in self.subspecialties:
+            arrivals = result[subspecialty]
+            self.assertAlmostEqual(np.sum(arrivals), 1.0, places=10)
+            self.assertTrue(np.all(arrivals >= 0))
+
+    def test_error_handling(self):
+        """Test essential error conditions."""
+        # Missing departure PMF
+        subspecialty_data = {
+            "cardiology": {},
+            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+            "medicine": {
+                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+            },
+        }
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": ["surgery"],
+            }
+        )
+        transfer_model = TransferProbabilityEstimator()
+        transfer_model.fit(X, set(self.subspecialties))
+
+        with self.assertRaises(KeyError):
+            compute_transfer_arrivals(
+                subspecialty_data, transfer_model, self.subspecialties
+            )
+
+        # Unfitted transfer model
+        subspecialty_data_valid = {
+            spec: {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])}
+            for spec in self.subspecialties
+        }
+        unfitted_model = TransferProbabilityEstimator()
+
+        with self.assertRaises(ValueError):
+            compute_transfer_arrivals(
+                subspecialty_data_valid, unfitted_model, self.subspecialties
+            )
 
 
 if __name__ == "__main__":
