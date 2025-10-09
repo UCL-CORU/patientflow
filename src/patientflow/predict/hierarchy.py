@@ -588,13 +588,6 @@ class HospitalHierarchy:
         self.boards = {}  # board_id -> parent hospital_id
 
     def __repr__(self) -> str:
-        """String representation of the hierarchy.
-
-        Returns
-        -------
-        str
-            Formatted string showing counts of entities at each level
-        """
         lines = []
         lines.append("HospitalHierarchy:")
         lines.append(f"  Subspecialties: {len(self.subspecialties)}")

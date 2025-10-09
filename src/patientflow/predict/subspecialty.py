@@ -14,20 +14,10 @@ particular consolidation hierarchy. They can be used directly for single-
 specialty analyses or fed into any combination scheme (including hierarchical
 schemes) implemented elsewhere.
 
-Functions
----------
-build_subspecialty_data
-    Prepare subspecialty-level prediction inputs from trained models and snapshots
-compute_transfer_arrivals
-    Calculate arrival PMFs from internal transfers between subspecialties
-scale_pmf_by_probability
-    Scale a departure PMF by compound transfer probability
-convolve_pmfs
-    Convolve two probability mass functions for aggregation
-
 Notes
 -----
 This module integrates with the broader patientflow ecosystem by:
+
 1. Using trained classifiers and specialty models from the train module
 2. Processing patient snapshots from the prepare module
 3. Computing admission probabilities using the calculate module
@@ -102,17 +92,11 @@ def build_subspecialty_data(
     from current ED patients, departures from current inpatients, and the expected
     means of yet-to-arrive admissions.
 
-    The function combines five sources of demand:
-    1. Current ED patients (converted to probability mass function)
-    2. Current inpatients (converted to probability mass function for departures)
-    3. Yet-to-arrive ED patients (converted to Poisson parameters)
-    4. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
-    5. Yet-to-arrive elective patients (converted to Poisson parameters)
-
     Parameters
     ----------
     models : tuple
         Tuple of six trained models:
+
         - ed_classifier: TrainedClassifier for ED admission probability prediction
         - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
         - spec_model: SequenceToOutcomePredictor | ValueToOutcomePredictor | MultiSubgroupPredictor
@@ -121,7 +105,7 @@ def build_subspecialty_data(
           for ED yet-to-arrive predictions
         - non_ed_yta_model: DirectAdmissionPredictor for non-ED emergency predictions
         - elective_yta_model: DirectAdmissionPredictor for elective predictions
-    prediction_time : tuple[int, int]
+    prediction_time : tuple of (int, int)
         Hour and minute for inference time
     ed_snapshots : pandas.DataFrame
         DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
@@ -129,14 +113,14 @@ def build_subspecialty_data(
     inpatient_snapshots : pandas.DataFrame
         DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
         Each row represents a patient currently in a subspecialty ward.
-    specialties : list[str]
+    specialties : list of str
         List of subspecialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
     x1, y1, x2, y2 : float
         Parameters for the parametric admission-in-window curve. Used when
         ed_yta_model is parametric and for computing in-ED window probabilities.
-    cdf_cut_points : list[float], optional
+    cdf_cut_points : list of float, optional
         Ignored in this function; present for API compatibility. If provided,
         has no effect on output.
     use_admission_in_window_prob : bool, default=True
@@ -145,8 +129,9 @@ def build_subspecialty_data(
 
     Returns
     -------
-    dict[str, dict[str, Any]]
+    dict of str to dict
         Dictionary mapping subspecialty_id to prediction parameters:
+
         - 'pmf_ed_current_within_window': numpy.ndarray
           Probability mass function for current ED admissions within the prediction window
         - 'pmf_inpatient_departures_within_window': numpy.ndarray
@@ -165,6 +150,16 @@ def build_subspecialty_data(
     ValueError
         If required columns are missing, models are not fitted, or parameters
         don't match between models and requested parameters
+
+    Notes
+    -----
+    The function combines five sources of demand:
+
+    1. Current ED patients (converted to probability mass function)
+    2. Current inpatients (converted to probability mass function for departures)
+    3. Yet-to-arrive ED patients (converted to Poisson parameters)
+    4. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
+    5. Yet-to-arrive elective patients (converted to Poisson parameters)
 
     """
     (
@@ -617,32 +612,19 @@ def compute_transfer_arrivals(
     transfer_model: Any,
     subspecialties: List[str],
 ) -> Dict[str, np.ndarray]:
-    """
-    Compute arrival PMFs from internal transfers for each subspecialty.
+    """Compute arrival PMFs from internal transfers for each subspecialty.
 
     This function uses departure PMFs from subspecialty_data and transfer
     probabilities from transfer_model to calculate how many patients arrive
     at each subspecialty from transfers within other subspecialties.
-
-    The algorithm:
-    1. For each target subspecialty:
-       a. Initialize with zero arrivals (PMF = [1.0, 0.0])
-       b. For each potential source subspecialty:
-          - Get the departure PMF from the source
-          - Get transfer probabilities (prob_transfer, destination_dist)
-          - If this source sends patients to the target:
-            * Calculate compound_prob = prob_transfer × prob_destination
-            * Scale the departure PMF by compound_prob
-            * Convolve with accumulating arrival PMF
-       c. Store the final aggregated arrival PMF
 
     Parameters
     ----------
     subspecialty_data : dict
         Output from build_subspecialty_data, containing departure PMFs.
         Must have 'pmf_inpatient_departures_within_window' for each subspecialty.
-    transfer_model : TransferProbabilityPredictor
-        Trained transfer probability model with methods:
+    transfer_model : TransferProbabilityEstimator
+        Trained transfer probability estimator with methods:
         - get_transfer_prob(source) -> float
         - get_destination_distribution(source) -> dict
     subspecialties : list of str
@@ -676,12 +658,29 @@ def compute_transfer_arrivals(
 
     Notes
     -----
+    Algorithm:
+
+    For each target subspecialty, the function:
+
+    1. Initializes with zero arrivals (PMF = [1.0, 0.0])
+    2. Iterates over each potential source subspecialty
+    3. Gets the departure PMF from the source
+    4. Gets transfer probabilities from the transfer model
+    5. If the source sends patients to the target:
+
+       - Calculates compound_prob = prob_transfer × prob_destination
+       - Scales the departure PMF by compound_prob
+       - Convolves with the accumulating arrival PMF
+
+    6. Stores the final aggregated arrival PMF
+
     Assumptions:
+
     - Transfers from different source subspecialties are independent
     - Transfer probabilities are constant across patients
     - The departure PMF already accounts for the timing window
     - Self-transfers (source == target) are excluded
-    
+
     The function handles zero probabilities naturally without requiring a threshold
     parameter. Convolution operations are numerically stable even with small
     probabilities.
@@ -698,9 +697,10 @@ def compute_transfer_arrivals(
                 continue
 
             # Get departure PMF for source
-            if "pmf_inpatient_departures_within_window" not in subspecialty_data[
-                source_subspecialty
-            ]:
+            if (
+                "pmf_inpatient_departures_within_window"
+                not in subspecialty_data[source_subspecialty]
+            ):
                 raise KeyError(
                     f"Missing 'pmf_inpatient_departures_within_window' for "
                     f"subspecialty '{source_subspecialty}'"

@@ -4,8 +4,8 @@ This module contains various predictor model implementations, including sequence
 predictors and weighted Poisson predictors for modeling patient flow patterns.
 """
 
-from patientflow.predictors.transfer_predictor import TransferProbabilityPredictor
+from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
 
 __all__ = [
-    "TransferProbabilityPredictor",
+    "TransferProbabilityEstimator",
 ]
