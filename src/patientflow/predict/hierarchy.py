@@ -17,7 +17,7 @@ Functions
 ---------
 populate_hierarchy_from_dataframe
     Create HospitalHierarchy from pandas DataFrame with organizational structure
-populate_hierarchical_predictor_from_dataframe
+create_hierarchical_predictor
     Create complete HierarchicalPredictor from DataFrame and parameters
 """
 
@@ -900,7 +900,6 @@ def populate_hierarchy_from_dataframe(
 def create_hierarchical_predictor(
     specs_df: pd.DataFrame,
     hospital_id: str,
-    subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
     epsilon: float = 1e-7,
 ) -> HierarchicalPredictor:
     """Create a HierarchicalPredictor from a hospital structure DataFrame.
@@ -921,10 +920,6 @@ def create_hierarchical_predictor(
         Additional columns are ignored.
     hospital_id : str
         Hospital identifier to link all boards to a single hospital
-    subspecialty_data : dict[str, SubspecialtyPredictionInputs]
-        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass
-        prepared by build_subspecialty_data. Used only for validation here; pass this to
-        predictor.predict_all_levels(hospital_id, subspecialty_data) when running predictions.
     epsilon : float, default=1e-7
         Truncation threshold for probability distribution tails during
         convolution operations. Smaller values provide higher accuracy but
@@ -936,31 +931,20 @@ def create_hierarchical_predictor(
         Fully configured predictor with:
         - HospitalHierarchy populated from specs_df
         - DemandPredictor configured with specified epsilon
-        - Ready to use with the provided subspecialty_data for predictions
+        - Ready to use for making predictions
 
     Notes
     -----
-    This function is typically used together with build_subspecialty_data:
+    This function is typically used in a workflow like:
 
-    1. Use build_subspecialty_data() to prepare subspecialty inputs
-    2. Use create_hierarchical_predictor() to set up the predictor
-    3. Use predictor.predict_all_levels(hospital_id, subspecialty_data) to compute all predictions
+    1. Use create_hierarchical_predictor() to set up the predictor with hospital structure
+    2. Use build_subspecialty_data() to prepare prediction inputs from patient data
+    3. Use predictor.predict_all_levels(hospital_id, subspecialty_data) to compute predictions
 
     The function automatically handles duplicate relationships and missing
     values in the DataFrame by removing duplicates and dropping rows with
     missing values.
     """
-    # Validate that subspecialty_data keys exist in the provided specs_df
-    expected_subspecialties = set(
-        specs_df["sub_specialty"].dropna().astype(str).unique()
-    )
-    subspecialty_keys = set(map(str, subspecialty_data.keys()))
-    unknown_subs = subspecialty_keys - expected_subspecialties
-    if unknown_subs:
-        raise ValueError(
-            f"subspecialty_data contains unknown subspecialty ids not present in specs_df: {sorted(unknown_subs)}"
-        )
-
     hierarchy = populate_hierarchy_from_dataframe(specs_df, hospital_id=hospital_id)
     predictor = DemandPredictor(epsilon=epsilon)
     return HierarchicalPredictor(hierarchy, predictor)
