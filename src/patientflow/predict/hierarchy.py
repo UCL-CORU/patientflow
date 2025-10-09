@@ -105,20 +105,34 @@ class DemandPrediction:
             Formatted summary string
         """
         probs = self.probabilities
-        head_n = min(len(probs), max_probs)
-        head = ", ".join([f"{p:.{precision}g}" for p in probs[:head_n]])
-        tail_note = "" if head_n == len(probs) else f" … +{len(probs) - head_n} more"
+        
+        # Find where the probability mass is concentrated
+        if len(probs) <= max_probs:
+            start_idx = 0
+            end_idx = len(probs)
+        else:
+            mode_idx = int(np.argmax(probs))
+            half_window = max_probs // 2
+            start_idx = max(0, mode_idx - half_window)
+            end_idx = min(len(probs), start_idx + max_probs)
+            if end_idx - start_idx < max_probs:
+                start_idx = max(0, end_idx - max_probs)
+        
+        head = ", ".join([f"{p:.{precision}g}" for p in probs[start_idx:end_idx]])
+        remaining = len(probs) - end_idx
+        tail_note = f" … +{remaining} more" if remaining > 0 else ""
 
         pct_items = ", ".join(
             [f"P{p}={self.percentiles.get(p)}" for p in sorted(self.percentiles.keys())]
         )
 
         # Use fixed-width formatting for proper alignment
+        pmf_label = f"PMF[{start_idx}:{end_idx}]:"
         return (
             f"{self.entity_type}: {self.entity_id}\n"
             f"  {'Expectation:':<16} {self.expected_value:.{precision}f}\n"
             f"  {'Percentiles:':<16} {pct_items}\n"
-            f"  {'PMF[0:' + str(head_n) + ']:':<16} [{head}]{tail_note}"
+            f"  {pmf_label:<16} [{head}]{tail_note}"
         )
 
     def __str__(self) -> str:

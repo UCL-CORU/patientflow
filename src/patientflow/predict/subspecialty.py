@@ -122,26 +122,23 @@ class SubspecialtyPredictionInputs:
             # Format the displayed portion
             display_values = ", ".join(f"{v:.3f}" for v in arr[start_idx:end_idx])
             
-            # Build output with index information
-            if start_idx == 0 and end_idx == len(arr):
-                return f"[{display_values}]"
-            elif start_idx == 0:
+            # Show with index range
+            if start_idx == 0:
                 remaining = len(arr) - end_idx
-                return f"[{display_values}, ... +{remaining} more] (sum={arr.sum():.3f})"
-            elif end_idx == len(arr):
-                return f"[... {start_idx} before, {display_values}] (sum={arr.sum():.3f})"
+                suffix = f" … +{remaining} more" if remaining > 0 else ""
+                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix}"
             else:
-                before = start_idx
-                after = len(arr) - end_idx
-                return f"[... {before} before, {display_values}, +{after} more] (mode@{mode_idx}, sum={arr.sum():.3f})"
+                remaining = len(arr) - end_idx
+                suffix = f" … +{remaining} more" if remaining > 0 else ""
+                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (mode@{mode_idx})"
 
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
         inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window)
 
         return (
             f"SubspecialtyPredictionInputs(\n"
-            f"  PMF ED current:        {ed_pmf_str}\n"
-            f"  PMF inpatient depart:  {inpt_pmf_str}\n"
+            f"  ED current        {ed_pmf_str}\n"
+            f"  Inpatient depart  {inpt_pmf_str}\n"
             f"  λ ED yet-to-arrive:    {self.lambda_ed_yta_within_window:.3f}\n"
             f"  λ non-ED emergency:    {self.lambda_non_ed_yta_within_window:.3f}\n"
             f"  λ elective:            {self.lambda_elective_yta_within_window:.3f}\n"
