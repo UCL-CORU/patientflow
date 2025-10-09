@@ -109,15 +109,6 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         source_col: str = "current_subspecialty",
         destination_col: str = "next_subspecialty",
     ):
-        """Initialize the transfer probability estimator.
-
-        Parameters
-        ----------
-        source_col : str, default='current_subspecialty'
-            Name of the column containing the source subspecialty
-        destination_col : str, default='next_subspecialty'
-            Name of the column containing the destination subspecialty
-        """
         self.source_col = source_col
         self.destination_col = destination_col
         self.transfer_probabilities: Optional[Dict[str, Dict]] = None
