@@ -106,8 +106,6 @@ class SubspecialtyPredictionInputs:
     pmf_inpatient_departures_within_window: np.ndarray
 
     def __repr__(self) -> str:
-        """Return a clean, readable representation showing PMF values and lambdas."""
-
         def format_pmf(arr: np.ndarray, max_display: int = 10) -> str:
             """Format PMF array, automatically showing the most informative range."""
             if len(arr) <= max_display:
@@ -115,11 +113,12 @@ class SubspecialtyPredictionInputs:
                 return f"[{values}]"
 
             # Find where the probability mass is concentrated
-            mode_idx = int(np.argmax(arr))
+            expectation = np.sum(np.arange(len(arr)) * arr)
+            center_idx = int(np.round(expectation))
             
-            # Determine display window centered on mode
+            # Determine display window centered on expectation
             half_window = max_display // 2
-            start_idx = max(0, mode_idx - half_window)
+            start_idx = max(0, center_idx - half_window)
             end_idx = min(len(arr), start_idx + max_display)
             
             # Adjust if we're near the end
@@ -137,7 +136,7 @@ class SubspecialtyPredictionInputs:
             else:
                 remaining = len(arr) - end_idx
                 suffix = f" … +{remaining} more" if remaining > 0 else ""
-                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (mode@{mode_idx})"
+                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f})"
 
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
         transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
