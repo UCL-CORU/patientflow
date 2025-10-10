@@ -22,6 +22,7 @@ distributions for each subspecialty from transfers.
 """
 
 import pandas as pd
+import numpy as np
 from typing import Dict, Set, Optional
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -425,3 +426,78 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
 
         return self.transfer_probabilities.copy()
+
+    def get_transition_matrix(self) -> pd.DataFrame:
+        """Format transition probabilities as a matrix.
+
+        Creates a DataFrame with source subspecialties as rows and target
+        subspecialties as columns, plus a 'Discharge' column. Each cell
+        contains the probability of transitioning from the source (row) to
+        the target (column).
+
+        Returns
+        -------
+        pandas.DataFrame
+            Transition probability matrix where:
+            - Index: source subspecialties
+            - Columns: target subspecialties + 'Discharge'
+            - Values: transition probabilities (sum to 1.0 across each row)
+
+        Raises
+        ------
+        ValueError
+            If the predictor has not been fitted
+
+        Examples
+        --------
+        >>> estimator = TransferProbabilityEstimator()
+        >>> estimator.fit(X, subspecialties={'cardiology', 'surgery'})
+        >>> matrix = estimator.get_transition_matrix()
+        >>> print(matrix)
+                      cardiology  surgery  Discharge
+        cardiology          0.0      0.3        0.7
+        surgery             0.1      0.0        0.9
+
+        Notes
+        -----
+        Each row represents a source subspecialty and sums to 1.0. The
+        'Discharge' column contains the probability of being discharged from
+        that subspecialty. Other columns contain the probability of transferring
+        to the target subspecialty (unconditional probabilities, not conditional
+        on a transfer occurring).
+        """
+        if not self.is_fitted_:
+            raise ValueError(
+                "This TransferProbabilityEstimator instance is not fitted yet. "
+                "Call 'fit' with appropriate arguments before using this method."
+            )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
+        assert self.subspecialties is not None  # Guaranteed by is_fitted_
+
+        # Sort subspecialties for consistent ordering
+        sorted_subspecialties = sorted(self.subspecialties)
+
+        # Initialize matrix with zeros
+        matrix = pd.DataFrame(
+            0.0,
+            index=sorted_subspecialties,
+            columns=sorted_subspecialties + ["Discharge"],
+        )
+
+        # Fill in the matrix
+        for source in sorted_subspecialties:
+            prob_transfer = self.transfer_probabilities[source]["prob_transfer"]
+            destination_dist = self.transfer_probabilities[source][
+                "destination_distribution"
+            ]
+
+            # Probability of discharge (1 - prob_transfer)
+            matrix.loc[source, "Discharge"] = 1.0 - prob_transfer
+
+            # Probabilities of transferring to each destination
+            for destination, conditional_prob in destination_dist.items():
+                # Unconditional probability = prob_transfer * conditional_prob
+                matrix.loc[source, destination] = prob_transfer * conditional_prob
+
+        return matrix
