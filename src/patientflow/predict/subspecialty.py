@@ -129,14 +129,9 @@ class SubspecialtyPredictionInputs:
             display_values = ", ".join(f"{v:.3f}" for v in arr[start_idx:end_idx])
             
             # Show with index range
-            if start_idx == 0:
-                remaining = len(arr) - end_idx
-                suffix = f" … +{remaining} more" if remaining > 0 else ""
-                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix}"
-            else:
-                remaining = len(arr) - end_idx
-                suffix = f" … +{remaining} more" if remaining > 0 else ""
-                return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f})"
+            remaining = len(arr) - end_idx
+            suffix = f" … +{remaining} more" if remaining > 0 else ""
+            return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f})"
 
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
         transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
