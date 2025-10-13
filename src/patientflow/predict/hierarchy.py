@@ -985,8 +985,9 @@ class HierarchicalPredictor:
     levels of the hospital hierarchy. It orchestrates the bottom-up prediction
     process, starting from subspecialties and aggregating up to the hospital level.
 
-    The class maintains a cache of predictions for efficient retrieval and
-    provides methods to compute predictions for all levels at once.
+    The class maintains a cache of prediction bundles for efficient retrieval and
+    provides methods to compute predictions for all levels at once. Each bundle
+    tracks arrivals, departures, and net flow separately.
 
     Parameters
     ----------
@@ -1002,30 +1003,33 @@ class HierarchicalPredictor:
     predictor : DemandPredictor
         Core prediction engine
     cache : dict
-        Cache for storing computed predictions
+        Cache for storing computed prediction bundles (PredictionBundle objects)
 
     Notes
     -----
     Predictions are computed bottom-up: subspecialties -> reporting units ->
-    divisions -> boards -> hospital. Each level aggregates predictions from
-    its children using convolution.
+    divisions -> boards -> hospital. At each level, arrivals and departures
+    are aggregated separately using convolution, and net flows are computed.
     """
 
     def __init__(self, hierarchy: HospitalHierarchy, predictor: DemandPredictor):
         self.hierarchy = hierarchy
         self.predictor = predictor
-        self.cache: Dict[str, DemandPrediction] = {}
+        self.cache: Dict[str, PredictionBundle] = {}
 
     def predict_all_levels(
         self,
         subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
         hospital_id: Optional[str] = None,
-    ) -> Dict[str, DemandPrediction]:
+        flow_selection: Optional[FlowSelection] = None,
+    ) -> Dict[str, PredictionBundle]:
         """Compute predictions for all levels bottom-up.
 
         This method orchestrates the complete hierarchical prediction process,
         starting from subspecialties and aggregating predictions up through
         reporting units, divisions, boards, and finally to the hospital level.
+        
+        For each level, tracks arrivals, departures, and net flow separately.
 
         Parameters
         ----------
@@ -1036,12 +1040,16 @@ class HierarchicalPredictor:
             Unique identifier for the hospital. If not provided and the hierarchy
             contains exactly one hospital, that hospital will be used automatically.
             Required if the hierarchy contains multiple hospitals.
+        flow_selection : FlowSelection, optional
+            Configuration for which flows to include. If None, uses FlowSelection.default()
+            which includes all flows.
 
         Returns
         -------
-        dict[str, DemandPrediction]
-            Dictionary mapping entity_id to DemandPrediction for all levels:
-            subspecialties, reporting units, divisions, boards, and hospital
+        dict[str, PredictionBundle]
+            Dictionary mapping entity_id to PredictionBundle for all levels:
+            subspecialties, reporting units, divisions, boards, and hospital.
+            Each bundle contains arrivals, departures, and net flow predictions.
 
         Raises
         ------
@@ -1051,11 +1059,11 @@ class HierarchicalPredictor:
         Notes
         -----
         The prediction process follows this sequence:
-        1. Predict subspecialties using provided parameters
-        2. Aggregate subspecialties into reporting units
-        3. Aggregate reporting units into divisions
-        4. Aggregate divisions into boards
-        5. Aggregate boards into hospital
+        1. Predict subspecialties using provided parameters (returns bundles)
+        2. Aggregate subspecialty arrivals/departures into reporting unit bundles
+        3. Aggregate reporting unit arrivals/departures into division bundles
+        4. Aggregate division arrivals/departures into board bundles
+        5. Aggregate board arrivals/departures into hospital bundle
 
         All predictions are cached for efficient retrieval.
         """
@@ -1076,9 +1084,11 @@ class HierarchicalPredictor:
 
         # Level 1: Subspecialties
         for subspecialty_id, inputs in subspecialty_data.items():
-            pred = self.predictor.predict_subspecialty(subspecialty_id, inputs)
-            results[subspecialty_id] = pred
-            self.cache[subspecialty_id] = pred
+            bundle = self.predictor.predict_subspecialty(
+                subspecialty_id, inputs, flow_selection
+            )
+            results[subspecialty_id] = bundle
+            self.cache[subspecialty_id] = bundle
 
         # Level 2: Reporting units
         reporting_units_set = set(self.hierarchy.subspecialties.values())
@@ -1086,12 +1096,28 @@ class HierarchicalPredictor:
             subspecialties = self.hierarchy.get_subspecialties_for_reporting_unit(
                 reporting_unit_id
             )
-            subspecialty_preds = [results[sid] for sid in subspecialties]
-            pred = self.predictor.predict_reporting_unit(
-                reporting_unit_id, subspecialty_preds
+            subspecialty_bundles = [results[sid] for sid in subspecialties]
+            
+            # Aggregate arrivals and departures separately
+            arrivals_preds = [b.arrivals for b in subspecialty_bundles]
+            departures_preds = [b.departures for b in subspecialty_bundles]
+            
+            arrivals = self.predictor.predict_reporting_unit(
+                reporting_unit_id, arrivals_preds
             )
-            results[reporting_unit_id] = pred
-            self.cache[reporting_unit_id] = pred
+            departures = self.predictor.predict_reporting_unit(
+                reporting_unit_id, departures_preds
+            )
+            
+            bundle = PredictionBundle(
+                entity_id=reporting_unit_id,
+                entity_type="reporting_unit",
+                arrivals=arrivals,
+                departures=departures,
+                net_flow_expected=arrivals.expected_value - departures.expected_value,
+            )
+            results[reporting_unit_id] = bundle
+            self.cache[reporting_unit_id] = bundle
 
         # Level 3: Divisions
         divisions_set = set(self.hierarchy.reporting_units.values())
@@ -1099,30 +1125,69 @@ class HierarchicalPredictor:
             reporting_units_list = self.hierarchy.get_reporting_units_for_division(
                 division_id
             )
-            reporting_unit_preds = [results[rid] for rid in reporting_units_list]
-            pred = self.predictor.predict_division(division_id, reporting_unit_preds)
-            results[division_id] = pred
-            self.cache[division_id] = pred
+            ru_bundles = [results[rid] for rid in reporting_units_list]
+            
+            arrivals_preds = [b.arrivals for b in ru_bundles]
+            departures_preds = [b.departures for b in ru_bundles]
+            
+            arrivals = self.predictor.predict_division(division_id, arrivals_preds)
+            departures = self.predictor.predict_division(division_id, departures_preds)
+            
+            bundle = PredictionBundle(
+                entity_id=division_id,
+                entity_type="division",
+                arrivals=arrivals,
+                departures=departures,
+                net_flow_expected=arrivals.expected_value - departures.expected_value,
+            )
+            results[division_id] = bundle
+            self.cache[division_id] = bundle
 
         # Level 4: Boards
         boards_set = set(self.hierarchy.divisions.values())
         for board_id in boards_set:
             divisions_list = self.hierarchy.get_divisions_for_board(board_id)
-            division_preds = [results[did] for did in divisions_list]
-            pred = self.predictor.predict_board(board_id, division_preds)
-            results[board_id] = pred
-            self.cache[board_id] = pred
+            div_bundles = [results[did] for did in divisions_list]
+            
+            arrivals_preds = [b.arrivals for b in div_bundles]
+            departures_preds = [b.departures for b in div_bundles]
+            
+            arrivals = self.predictor.predict_board(board_id, arrivals_preds)
+            departures = self.predictor.predict_board(board_id, departures_preds)
+            
+            bundle = PredictionBundle(
+                entity_id=board_id,
+                entity_type="board",
+                arrivals=arrivals,
+                departures=departures,
+                net_flow_expected=arrivals.expected_value - departures.expected_value,
+            )
+            results[board_id] = bundle
+            self.cache[board_id] = bundle
 
         # Level 5: Hospital
         boards_list = self.hierarchy.get_boards_for_hospital(hospital_id)
-        board_preds = [results[bid] for bid in boards_list]
-        pred = self.predictor.predict_hospital(hospital_id, board_preds)
-        results[hospital_id] = pred
-        self.cache[hospital_id] = pred
+        board_bundles = [results[bid] for bid in boards_list]
+        
+        arrivals_preds = [b.arrivals for b in board_bundles]
+        departures_preds = [b.departures for b in board_bundles]
+        
+        arrivals = self.predictor.predict_hospital(hospital_id, arrivals_preds)
+        departures = self.predictor.predict_hospital(hospital_id, departures_preds)
+        
+        bundle = PredictionBundle(
+            entity_id=hospital_id,
+            entity_type="hospital",
+            arrivals=arrivals,
+            departures=departures,
+            net_flow_expected=arrivals.expected_value - departures.expected_value,
+        )
+        results[hospital_id] = bundle
+        self.cache[hospital_id] = bundle
 
         return results
 
-    def get_prediction(self, entity_id: str) -> Optional[DemandPrediction]:
+    def get_prediction(self, entity_id: str) -> Optional[PredictionBundle]:
         """Retrieve cached prediction for any entity.
 
         Parameters
@@ -1132,8 +1197,9 @@ class HierarchicalPredictor:
 
         Returns
         -------
-        DemandPrediction or None
-            Cached prediction if available, None otherwise
+        PredictionBundle or None
+            Cached prediction bundle if available, None otherwise.
+            Bundle contains arrivals, departures, and net flow predictions.
         """
         return self.cache.get(entity_id)
 
