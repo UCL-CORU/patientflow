@@ -7,6 +7,7 @@ import pandas as pd
 from patientflow.predict.subspecialty import (
     build_subspecialty_data,
     SubspecialtyPredictionInputs,
+    FlowInputs,
     scale_pmf_by_probability,
     convolve_pmfs,
     compute_transfer_arrivals,
@@ -345,25 +346,29 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.assertIn(spec, result)
             spec_data = result[spec]
             self.assertIsInstance(spec_data, SubspecialtyPredictionInputs)
-            # Check all attributes exist
-            self.assertTrue(hasattr(spec_data, "pmf_ed_current_within_window"))
-            self.assertTrue(
-                hasattr(spec_data, "pmf_inpatient_departures_within_window")
-            )
-            self.assertTrue(hasattr(spec_data, "lambda_ed_yta_within_window"))
-            self.assertTrue(hasattr(spec_data, "lambda_non_ed_yta_within_window"))
-            self.assertTrue(hasattr(spec_data, "lambda_elective_yta_within_window"))
-            self.assertTrue(hasattr(spec_data, "pmf_transfer_arrivals_within_window"))
+            # Check new structure attributes exist
+            self.assertTrue(hasattr(spec_data, "subspecialty_id"))
+            self.assertTrue(hasattr(spec_data, "prediction_window"))
+            self.assertTrue(hasattr(spec_data, "inflows"))
+            self.assertTrue(hasattr(spec_data, "outflows"))
+            # Check inflows
+            self.assertIn("ed_current", spec_data.inflows)
+            self.assertIn("ed_yta", spec_data.inflows)
+            self.assertIn("non_ed_yta", spec_data.inflows)
+            self.assertIn("elective_yta", spec_data.inflows)
+            self.assertIn("transfers_in", spec_data.inflows)
+            # Check outflows
+            self.assertIn("departures", spec_data.outflows)
             # Check values
-            ed_pmf = np.asarray(spec_data.pmf_ed_current_within_window)
-            inpatient_pmf = np.asarray(spec_data.pmf_inpatient_departures_within_window)
-            transfer_pmf = np.asarray(spec_data.pmf_transfer_arrivals_within_window)
+            ed_pmf = np.asarray(spec_data.inflows["ed_current"].distribution)
+            inpatient_pmf = np.asarray(spec_data.outflows["departures"].distribution)
+            transfer_pmf = np.asarray(spec_data.inflows["transfers_in"].distribution)
             self.assertGreater(len(ed_pmf), 0)
             self.assertGreater(len(inpatient_pmf), 0)
             self.assertGreater(len(transfer_pmf), 0)
-            self.assertIsInstance(spec_data.lambda_ed_yta_within_window, float)
-            self.assertIsInstance(spec_data.lambda_non_ed_yta_within_window, float)
-            self.assertIsInstance(spec_data.lambda_elective_yta_within_window, float)
+            self.assertIsInstance(spec_data.inflows["ed_yta"].distribution, float)
+            self.assertIsInstance(spec_data.inflows["non_ed_yta"].distribution, float)
+            self.assertIsInstance(spec_data.inflows["elective_yta"].distribution, float)
 
     def test_empirical_yta_integration(self):
         empirical_arrivals = _create_random_arrivals_with_departures(n=1000)
@@ -395,7 +400,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         self.assertIn("medical", result)
         self.assertGreater(
-            len(np.asarray(result["medical"].pmf_ed_current_within_window)), 0
+            len(np.asarray(result["medical"].inflows["ed_current"].distribution)), 0
         )
 
     def test_prediction_time_and_window_mismatch_errors(self):
@@ -632,11 +637,31 @@ class TestComputeTransferArrivals(unittest.TestCase):
         """Test basic transfer calculation: cardiology -> surgery."""
         subspecialty_data = {
             "cardiology": {
-                "pmf_inpatient_departures_within_window": np.array([0.0, 0.0, 1.0])
-            },  # Certain to have 2 departures
-            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 0.0, 1.0])  # 2 departures certain
+                    )
+                }
+            },
+            "surgery": {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
+            },
             "medicine": {
-                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
             },
         }
 
@@ -663,13 +688,31 @@ class TestComputeTransferArrivals(unittest.TestCase):
         """Test calculation when some patients transfer and some are discharged (None)."""
         subspecialty_data = {
             "cardiology": {
-                "pmf_inpatient_departures_within_window": np.array(
-                    [0.0, 0.0, 0.0, 0.0, 1.0]
-                )
-            },  # Certain to have 4 departures
-            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 0.0, 0.0, 0.0, 1.0])  # 4 departures certain
+                    )
+                }
+            },
+            "surgery": {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
+            },
             "medicine": {
-                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
             },
         }
 
@@ -726,11 +769,31 @@ class TestComputeTransferArrivals(unittest.TestCase):
         """Test aggregation when multiple sources transfer to one destination."""
         subspecialty_data = {
             "cardiology": {
-                "pmf_inpatient_departures_within_window": np.array([0.0, 1.0])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 1.0])
+                    )
+                }
             },
-            "surgery": {"pmf_inpatient_departures_within_window": np.array([0.0, 1.0])},
+            "surgery": {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 1.0])
+                    )
+                }
+            },
             "medicine": {
-                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
             },
         }
 
@@ -755,11 +818,31 @@ class TestComputeTransferArrivals(unittest.TestCase):
         """Test realistic complex network with circular transfers."""
         subspecialty_data = {
             "cardiology": {
-                "pmf_inpatient_departures_within_window": np.array([0.5, 0.5])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5])
+                    )
+                }
             },
-            "surgery": {"pmf_inpatient_departures_within_window": np.array([0.5, 0.5])},
+            "surgery": {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5])
+                    )
+                }
+            },
             "medicine": {
-                "pmf_inpatient_departures_within_window": np.array([0.5, 0.5])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5])
+                    )
+                }
             },
         }
 
@@ -787,9 +870,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
         np.random.seed(42)
         subspecialty_data = {
             subspecialty: {
-                "pmf_inpatient_departures_within_window": np.random.dirichlet(
-                    np.ones(4)
-                )
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.random.dirichlet(np.ones(4))
+                    )
+                }
             }
             for subspecialty in self.subspecialties
         }
@@ -820,9 +907,23 @@ class TestComputeTransferArrivals(unittest.TestCase):
         # Missing departure PMF
         subspecialty_data = {
             "cardiology": {},
-            "surgery": {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])},
+            "surgery": {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
+            },
             "medicine": {
-                "pmf_inpatient_departures_within_window": np.array([1.0, 0.0])
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
             },
         }
         X = pd.DataFrame(
@@ -841,7 +942,15 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
         # Unfitted transfer model
         subspecialty_data_valid = {
-            spec: {"pmf_inpatient_departures_within_window": np.array([1.0, 0.0])}
+            spec: {
+                "outflows": {
+                    "departures": FlowInputs(
+                        flow_id="departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0])
+                    )
+                }
+            }
             for spec in self.subspecialties
         }
         unfitted_model = TransferProbabilityEstimator()
