@@ -106,17 +106,17 @@ class SubspecialtyPredictionInputs:
     pmf_inpatient_departures_within_window: np.ndarray
 
     def __repr__(self) -> str:
-        def format_pmf(arr: np.ndarray, max_display: int = 10) -> str:
+        def format_pmf(arr: np.ndarray, max_display: int = 10, total_count: Optional[int] = None) -> str:
             """Format PMF array, automatically showing the most informative range."""
+            expectation = np.sum(np.arange(len(arr)) * arr)
+            total_str = f" of {total_count}" if total_count is not None else ""
+            
             if len(arr) <= max_display:
                 values = ", ".join(f"{v:.3f}" for v in arr)
-                return f"[{values}]"
+                return f"[{values}] (E={expectation:.1f}{total_str})"
 
-            # Find where the probability mass is concentrated
-            expectation = np.sum(np.arange(len(arr)) * arr)
-            center_idx = int(np.round(expectation))
-            
             # Determine display window centered on expectation
+            center_idx = int(np.round(expectation))
             half_window = max_display // 2
             start_idx = max(0, center_idx - half_window)
             end_idx = min(len(arr), start_idx + max_display)
@@ -131,20 +131,25 @@ class SubspecialtyPredictionInputs:
             # Show with index range
             remaining = len(arr) - end_idx
             suffix = f" … +{remaining} more" if remaining > 0 else ""
-            return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f})"
+            return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f}{total_str})"
 
-        ed_pmf_str = format_pmf(self.pmf_ed_current_within_window)
-        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
-        inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window)
+        # For bounded PMFs, the total count is len(arr) - 1 (PMF[k] for k=0 to n)
+        ed_total = len(self.pmf_ed_current_within_window) - 1
+        transfer_total = len(self.pmf_transfer_arrivals_within_window) - 1
+        inpt_total = len(self.pmf_inpatient_departures_within_window) - 1
+        
+        ed_pmf_str = format_pmf(self.pmf_ed_current_within_window, total_count=ed_total)
+        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window, total_count=transfer_total)
+        inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window, total_count=inpt_total)
 
         return (
             f"SubspecialtyPredictionInputs(\n"
-            f"  ED current arrivals   {ed_pmf_str}\n"
-            f"  λ ED yet-to-arrive:   {self.lambda_ed_yta_within_window:.3f}\n"
-            f"  λ non-ED emergency:   {self.lambda_non_ed_yta_within_window:.3f}\n"
-            f"  λ elective:           {self.lambda_elective_yta_within_window:.3f}\n"
-            f"  Transfer arrivals     {transfer_pmf_str}\n"
-            f"  Inpatient departures  {inpt_pmf_str}\n"
+            f"  Admissions from current ED              {ed_pmf_str}\n"
+            f"  λ ED yet-to-arrive admissions           {self.lambda_ed_yta_within_window:.3f}\n"
+            f"  λ Non-ED emergency admissions           {self.lambda_non_ed_yta_within_window:.3f}\n"
+            f"  λ Elective admissions                   {self.lambda_elective_yta_within_window:.3f}\n"
+            f"  Transfers from other subspecialties     {transfer_pmf_str}\n"
+            f"  Inpatient departures                    {inpt_pmf_str}\n"
             f")"
         )
 
