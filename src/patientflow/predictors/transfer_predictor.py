@@ -195,6 +195,17 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         # Convert to set if needed
         self.subspecialties = set(subspecialties)
 
+        # Validate that all destinations are in subspecialties
+        destinations = X[self.destination_col].dropna().unique()
+        unknown_destinations = set(destinations) - self.subspecialties
+        if unknown_destinations:
+            raise ValueError(
+                f"Found destination subspecialties in data that are not in the "
+                f"subspecialties set: {sorted(unknown_destinations)}. "
+                f"Please ensure all destination subspecialties are included in the "
+                f"subspecialties parameter."
+            )
+
         # Compute transfer probabilities
         self.transfer_probabilities = self._prepare_transfer_probabilities(
             self.subspecialties, X
@@ -496,8 +507,10 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             matrix.loc[source, "Discharge"] = 1.0 - prob_transfer
 
             # Probabilities of transferring to each destination
+            # Only include destinations that are in the subspecialties set
             for destination, conditional_prob in destination_dist.items():
-                # Unconditional probability = prob_transfer * conditional_prob
-                matrix.loc[source, destination] = prob_transfer * conditional_prob
+                if destination in self.subspecialties:
+                    # Unconditional probability = prob_transfer * conditional_prob
+                    matrix.loc[source, destination] = prob_transfer * conditional_prob
 
         return matrix
