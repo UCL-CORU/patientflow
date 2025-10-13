@@ -1,27 +1,15 @@
 """Demand preparation utilities for later consolidation.
 
-This module prepares per-subspecialty inputs that can be consumed by any
-downstream roll-up or forecasting workflow. It converts trained model
-outputs and current patient snapshots into:
-
-- A probability mass function (PMF) for admissions from current ED patients
-- A probability mass function (PMF) for departures from current inpatients
-- Poisson means for yet-to-arrive admissions (ED, non-ED emergency, elective)
-- A probability mass function (PMF) for transfer arrivals from other subspecialties
+This module prepares per-subspecialty demand inputs using a flexible 
+architecture. It converts trained model outputs and current patient snapshots
+into structured representations organised by direction (inflows/outflows).
+The flow-based structure allows flexible selection of which flows to include
+in predictions and easy extension to new flow types in the future.
 
 The outputs are independent per subspecialty and do not presuppose any
 particular consolidation hierarchy. They can be used directly for single-
 specialty analyses or fed into any combination scheme (including hierarchical
 schemes) implemented elsewhere.
-
-Notes
------
-This module integrates with the broader patientflow ecosystem by:
-
-1. Using trained classifiers and specialty models from the train module
-2. Processing patient snapshots from the prepare module
-3. Computing admission probabilities using the calculate module
-4. Modelling internal patient transfers using the transfer predictor
 
 """
 
@@ -64,6 +52,63 @@ from patientflow.model_artifacts import TrainedClassifier
 
 
 @dataclass(frozen=True)
+class FlowInputs:
+    """Represents a single source of patient flow.
+
+    This class encapsulates a flow of patients (either arriving or departing)
+    with its distribution type and parameters. It provides a uniform interface
+    for both probability mass functions and Poisson-distributed flows.
+
+    Attributes
+    ----------
+    flow_id : str
+        Unique identifier for this flow (e.g., "ed_current", "transfers_in")
+    flow_type : str
+        Type of distribution: "pmf" for probability mass function or "poisson" for Poisson
+    distribution : np.ndarray or float
+        For "pmf": numpy array where distribution[k] = P(k patients)
+        For "poisson": float representing the Poisson rate parameter (lambda)
+    display_name : str, optional
+        Human-readable name for display purposes. If not provided, flow_id will be
+        formatted automatically (underscores replaced with spaces, title cased).
+
+    Examples
+    --------
+    >>> # PMF flow (e.g., current ED patients)
+    >>> ed_flow = FlowInputs(
+    ...     flow_id="ed_current",
+    ...     flow_type="pmf",
+    ...     distribution=np.array([0.5, 0.3, 0.2]),
+    ...     display_name="Admissions from current ED"
+    ... )
+
+    >>> # Poisson flow (e.g., yet-to-arrive patients)
+    >>> yta_flow = FlowInputs(
+    ...     flow_id="ed_yta",
+    ...     flow_type="poisson",
+    ...     distribution=2.5,
+    ...     display_name="ED yet-to-arrive admissions"
+    ... )
+    """
+    flow_id: str
+    flow_type: str
+    distribution: Union[np.ndarray, float]
+    display_name: Optional[str] = None
+
+    def get_display_name(self) -> str:
+        """Get human-readable display name.
+
+        Returns
+        -------
+        str
+            Display name if provided, otherwise formatted flow_id.
+        """
+        if self.display_name:
+            return self.display_name
+        return self.flow_id.replace("_", " ").title()
+
+
+@dataclass(frozen=True)
 class SubspecialtyPredictionInputs:
     """Input parameters for subspecialty demand prediction.
 
@@ -71,43 +116,49 @@ class SubspecialtyPredictionInputs:
     needed to predict demand for a single subspecialty. This dataclass packages
     the outputs from build_subspecialty_data for use in hierarchical prediction.
 
+    The inputs are organized into inflows (patient arrivals) and outflows (patient
+    departures), with each flow represented as a FlowInputs object containing its
+    distribution type and parameters.
+
     Attributes
     ----------
-    pmf_ed_current_within_window : np.ndarray
-        Probability mass function for current ED admissions within the prediction window.
-        Array where pmf[k] represents P(k ED patients admitted to this subspecialty).
-    lambda_ed_yta_within_window : float
-        Poisson parameter (rate) for ED yet-to-arrive admissions within the prediction window.
-        Represents the expected number of new ED arrivals who will be admitted to this subspecialty.
-    lambda_non_ed_yta_within_window : float
-        Poisson parameter (rate) for non-ED emergency admissions within the prediction window.
-        Represents the expected number of direct emergency admissions to this subspecialty.
-    lambda_elective_yta_within_window : float
-        Poisson parameter (rate) for elective admissions within the prediction window.
-        Represents the expected number of planned/elective admissions to this subspecialty.
-    pmf_transfer_arrivals_within_window : np.ndarray
-        Probability mass function for transfer arrivals from other subspecialties within the prediction window.
-        Array where pmf[k] represents P(k patients transfer into this subspecialty from other subspecialties).
-    pmf_inpatient_departures_within_window : np.ndarray
-        Probability mass function for current inpatient departures within the prediction window.
-        Array where pmf[k] represents P(k current inpatients depart from this subspecialty).
+    subspecialty_id : str
+        Unique identifier for the subspecialty
+    prediction_window : Any
+        Time window over which predictions are made (typically a timedelta)
+    inflows : Dict[str, FlowInputs]
+        Dictionary mapping flow identifiers to FlowInputs objects for arrivals.
+        Standard keys include:
+
+        - "ed_current": Current ED patients who will be admitted (PMF)
+        - "ed_yta": Yet-to-arrive ED patients who will be admitted (Poisson)
+        - "non_ed_yta": Yet-to-arrive non-ED emergency admissions (Poisson)
+        - "elective_yta": Yet-to-arrive elective admissions (Poisson)
+        - "transfers_in": Patients transferring from other subspecialties (PMF)
+    outflows : Dict[str, FlowInputs]
+        Dictionary mapping flow identifiers to FlowInputs objects for departures.
+        Standard keys include:
+
+        - "departures": Current inpatients who will depart (PMF)
+
+        Future extensions may include "transfers_out", "deaths", etc.
 
     Notes
     -----
     This dataclass is immutable (frozen=True) to prevent accidental modification after creation.
-    All arrays and parameters should represent distributions/rates for the same prediction window.
+    All flows should represent distributions/rates for the same prediction window.
+
+    The dictionary-based structure allows flexible inclusion/exclusion of flow types
+    and easy extension to new flow types in the future.
     """
 
-    pmf_ed_current_within_window: np.ndarray
-    lambda_ed_yta_within_window: float
-    lambda_non_ed_yta_within_window: float
-    lambda_elective_yta_within_window: float
-    pmf_transfer_arrivals_within_window: np.ndarray
-    pmf_inpatient_departures_within_window: np.ndarray
+    subspecialty_id: str
+    prediction_window: Any
+    inflows: Dict[str, FlowInputs]
+    outflows: Dict[str, FlowInputs]
 
     def __repr__(self) -> str:
         def format_pmf(arr: np.ndarray, max_display: int = 10, total_count: Optional[int] = None) -> str:
-            """Format PMF array, automatically showing the most informative range."""
             expectation = np.sum(np.arange(len(arr)) * arr)
             total_str = f" of {total_count}" if total_count is not None else ""
             
@@ -130,26 +181,34 @@ class SubspecialtyPredictionInputs:
             
             # Show with index range
             return f"PMF[{start_idx}:{end_idx}]: [{display_values}] (E={expectation:.1f}{total_str})"
-
-        # For bounded PMFs, the total count is len(arr) - 1 (PMF[k] for k=0 to n)
-        # Note: transfer PMF length doesn't reflect actual inpatient count due to truncation during convolution
-        ed_total = len(self.pmf_ed_current_within_window) - 1
-        inpt_total = len(self.pmf_inpatient_departures_within_window) - 1
         
-        ed_pmf_str = format_pmf(self.pmf_ed_current_within_window, total_count=ed_total)
-        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
-        inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window, total_count=inpt_total)
-
-        return (
-            f"SubspecialtyPredictionInputs(\n"
-            f"  Admissions from current ED              {ed_pmf_str}\n"
-            f"  λ ED yet-to-arrive admissions           {self.lambda_ed_yta_within_window:.3f}\n"
-            f"  λ Non-ED emergency admissions           {self.lambda_non_ed_yta_within_window:.3f}\n"
-            f"  λ Elective admissions                   {self.lambda_elective_yta_within_window:.3f}\n"
-            f"  Transfers from other subspecialties     {transfer_pmf_str}\n"
-            f"  Inpatient departures                    {inpt_pmf_str}\n"
-            f")"
-        )
+        def format_flow(flow: FlowInputs) -> str:
+            if flow.flow_type == "pmf":
+                total_count = len(flow.distribution) - 1
+                return format_pmf(flow.distribution, total_count=total_count)
+            elif flow.flow_type == "poisson":
+                return f"λ = {flow.distribution:.3f}"
+            else:
+                return f"{flow.flow_type}: {flow.distribution}"
+        
+        # Build output dynamically
+        lines = [f"SubspecialtyPredictionInputs(subspecialty='{self.subspecialty_id}')"]
+        
+        # INFLOWS section
+        if self.inflows:
+            lines.append("  INFLOWS:")
+            for flow in self.inflows.values():
+                flow_str = format_flow(flow)
+                lines.append(f"    {flow.get_display_name():<40} {flow_str}")
+        
+        # OUTFLOWS section
+        if self.outflows:
+            lines.append("  OUTFLOWS:")
+            for flow in self.outflows.values():
+                flow_str = format_flow(flow)
+                lines.append(f"    {flow.get_display_name():<40} {flow_str}")
+        
+        return "\n".join(lines)
 
 
 def build_subspecialty_data(
@@ -559,27 +618,64 @@ def build_subspecialty_data(
 
         prediction_context = {spec: {"prediction_time": prediction_time}}
 
-        # Store computed data in temporary dictionary
+        # Build FlowInputs objects for inflows and outflows
+        # INFLOWS: All sources of patient arrivals to this subspecialty
+        inflows_dict = {
+            "ed_current": FlowInputs(
+                flow_id="ed_current",
+                flow_type="pmf",
+                distribution=np.array(agg_predicted_in_ed["agg_proba"]),
+                display_name="Admissions from current ED"
+            ),
+            "ed_yta": FlowInputs(
+                flow_id="ed_yta",
+                flow_type="poisson",
+                distribution=float(
+                    yet_to_arrive_model.predict_mean(
+                        prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
+                    )
+                ),
+                display_name="ED yet-to-arrive admissions"
+            ),
+            "non_ed_yta": FlowInputs(
+                flow_id="non_ed_yta",
+                flow_type="poisson",
+                distribution=float(
+                    non_ed_yta_model.predict_mean(prediction_context)
+                    if non_ed_yta_model is not None
+                    else 0.0
+                ),
+                display_name="Non-ED emergency admissions"
+            ),
+            "elective_yta": FlowInputs(
+                flow_id="elective_yta",
+                flow_type="poisson",
+                distribution=float(
+                    elective_yta_model.predict_mean(prediction_context)
+                    if elective_yta_model is not None
+                    else 0.0
+                ),
+                display_name="Elective admissions"
+            ),
+            # Note: "transfers_in" will be added later after compute_transfer_arrivals()
+        }
+        
+        # OUTFLOWS: All sources of patient departures from this subspecialty
+        outflows_dict = {
+            "departures": FlowInputs(
+                flow_id="departures",
+                flow_type="pmf",
+                distribution=np.array(
+                    agg_predicted_inpatient_departures["agg_proba"]
+                ),
+                display_name="Inpatient departures"
+            ),
+        }
+
+        # Store in temporary dictionary structure
         temp_subspecialty_data[spec] = {
-            "pmf_ed_current_within_window": np.array(agg_predicted_in_ed["agg_proba"]),
-            "pmf_inpatient_departures_within_window": np.array(
-                agg_predicted_inpatient_departures["agg_proba"]
-            ),
-            "lambda_ed_yta_within_window": float(
-                yet_to_arrive_model.predict_mean(
-                    prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-                )
-            ),
-            "lambda_non_ed_yta_within_window": float(
-                non_ed_yta_model.predict_mean(prediction_context)
-                if non_ed_yta_model is not None
-                else 0.0
-            ),
-            "lambda_elective_yta_within_window": float(
-                elective_yta_model.predict_mean(prediction_context)
-                if elective_yta_model is not None
-                else 0.0
-            ),
+            "inflows": inflows_dict,
+            "outflows": outflows_dict,
         }
 
     # Compute transfer arrivals using the departure PMFs from temporary data
@@ -587,26 +683,23 @@ def build_subspecialty_data(
         temp_subspecialty_data, transfer_model, specialties
     )
 
-    # Second pass: create final immutable dataclass objects with all data
+    # Second pass: Add transfer arrivals to inflows and create final immutable dataclass objects
     subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
     for spec in specialties:
+        # Add transfers_in to the inflows dictionary
+        temp_subspecialty_data[spec]["inflows"]["transfers_in"] = FlowInputs(
+            flow_id="transfers_in",
+            flow_type="pmf",
+            distribution=transfer_arrivals[spec],
+            display_name="Transfers from other subspecialties"
+        )
+        
+        # Create final immutable dataclass with complete inflows and outflows
         subspecialty_data[spec] = SubspecialtyPredictionInputs(
-            pmf_ed_current_within_window=temp_subspecialty_data[spec][
-                "pmf_ed_current_within_window"
-            ],
-            lambda_ed_yta_within_window=temp_subspecialty_data[spec][
-                "lambda_ed_yta_within_window"
-            ],
-            lambda_non_ed_yta_within_window=temp_subspecialty_data[spec][
-                "lambda_non_ed_yta_within_window"
-            ],
-            lambda_elective_yta_within_window=temp_subspecialty_data[spec][
-                "lambda_elective_yta_within_window"
-            ],
-            pmf_transfer_arrivals_within_window=transfer_arrivals[spec],
-            pmf_inpatient_departures_within_window=temp_subspecialty_data[spec][
-                "pmf_inpatient_departures_within_window"
-            ],
+            subspecialty_id=spec,
+            prediction_window=prediction_window,
+            inflows=temp_subspecialty_data[spec]["inflows"],
+            outflows=temp_subspecialty_data[spec]["outflows"],
         )
 
     return subspecialty_data
@@ -739,8 +832,9 @@ def compute_transfer_arrivals(
     Parameters
     ----------
     subspecialty_data : dict
-        Either a dict of dicts with 'pmf_inpatient_departures_within_window' keys,
-        or a dict of SubspecialtyPredictionInputs objects.
+        Either a dict of dicts with nested structure containing departure FlowInputs,
+        or a dict of SubspecialtyPredictionInputs objects. For dict format, expects:
+        {'subspecialty': {'outflows': {'departures': FlowInputs(...)}}}
     transfer_model : TransferProbabilityEstimator
         Trained transfer probability estimator with methods:
         - get_transfer_prob(source) -> float
@@ -759,7 +853,7 @@ def compute_transfer_arrivals(
     Raises
     ------
     KeyError
-        If subspecialty_data is missing required 'pmf_inpatient_departures_within_window'
+        If subspecialty_data is missing required departure flow information
     ValueError
         If transfer_model has not been fitted
 
@@ -817,14 +911,19 @@ def compute_transfer_arrivals(
             # Get departure PMF for source (handle both dict and dataclass)
             source_data = subspecialty_data[source_subspecialty]
             if isinstance(source_data, SubspecialtyPredictionInputs):
-                departure_pmf = source_data.pmf_inpatient_departures_within_window
-            elif isinstance(source_data, dict):
-                if "pmf_inpatient_departures_within_window" not in source_data:
+                # Access through new structure: outflows dict -> "departures" -> distribution
+                if "departures" not in source_data.outflows:
                     raise KeyError(
-                        f"Missing 'pmf_inpatient_departures_within_window' for "
-                        f"subspecialty '{source_subspecialty}'"
+                        f"Missing 'departures' outflow for subspecialty '{source_subspecialty}'"
                     )
-                departure_pmf = source_data["pmf_inpatient_departures_within_window"]
+                departure_pmf = source_data.outflows["departures"].distribution
+            elif isinstance(source_data, dict):
+                # Temporary data structure during build (dict with "inflows" and "outflows" keys)
+                if "outflows" not in source_data or "departures" not in source_data["outflows"]:
+                    raise KeyError(
+                        f"Missing 'departures' in 'outflows' for subspecialty '{source_subspecialty}'"
+                    )
+                departure_pmf = source_data["outflows"]["departures"].distribution
             else:
                 raise TypeError(
                     f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
