@@ -158,6 +158,17 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         with self.assertRaises(TypeError):
             predictor.fit(X, "not_a_collection")
 
+        # Test unknown destination subspecialty
+        X_unknown = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", "unknown_subspecialty"],
+            }
+        )
+        with self.assertRaises(ValueError) as context:
+            predictor.fit(X_unknown, self.subspecialties)
+        self.assertIn("unknown_subspecialty", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
