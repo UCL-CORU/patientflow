@@ -129,17 +129,15 @@ class SubspecialtyPredictionInputs:
             display_values = ", ".join(f"{v:.3f}" for v in arr[start_idx:end_idx])
             
             # Show with index range
-            remaining = len(arr) - end_idx
-            suffix = f" … +{remaining} more" if remaining > 0 else ""
-            return f"PMF[{start_idx}:{end_idx}]: [{display_values}]{suffix} (E={expectation:.1f}{total_str})"
+            return f"PMF[{start_idx}:{end_idx}]: [{display_values}] (E={expectation:.1f}{total_str})"
 
         # For bounded PMFs, the total count is len(arr) - 1 (PMF[k] for k=0 to n)
+        # Note: transfer PMF length doesn't reflect actual inpatient count due to truncation during convolution
         ed_total = len(self.pmf_ed_current_within_window) - 1
-        transfer_total = len(self.pmf_transfer_arrivals_within_window) - 1
         inpt_total = len(self.pmf_inpatient_departures_within_window) - 1
         
         ed_pmf_str = format_pmf(self.pmf_ed_current_within_window, total_count=ed_total)
-        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window, total_count=transfer_total)
+        transfer_pmf_str = format_pmf(self.pmf_transfer_arrivals_within_window)
         inpt_pmf_str = format_pmf(self.pmf_inpatient_departures_within_window, total_count=inpt_total)
 
         return (
