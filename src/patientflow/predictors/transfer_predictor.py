@@ -22,7 +22,6 @@ distributions for each subspecialty from transfers.
 """
 
 import pandas as pd
-import numpy as np
 from typing import Dict, Set, Optional
 from sklearn.base import BaseEstimator, TransformerMixin
 
