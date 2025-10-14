@@ -245,18 +245,27 @@ class PredictionBundle:
         Prediction for total patient departures
     net_flow_expected : float
         Expected net change in bed occupancy (arrivals - departures)
+    flow_selection : FlowSelection
+        Configuration specifying which flows were included in this prediction.
+        Tracks which inflows and outflows were aggregated into the arrivals
+        and departures distributions.
     
     Notes
     -----
     Net flow is computed as the difference in expected values. For more detailed
     analysis of net flow distribution (including variance and percentiles), the
     full arrival and departure distributions are available.
+    
+    The flow_selection attribute allows you to determine which flows contributed
+    to the aggregated predictions. To see individual flow contributions, access
+    the original SubspecialtyPredictionInputs.
     """
     entity_id: str
     entity_type: str
     arrivals: DemandPrediction
     departures: DemandPrediction
     net_flow_expected: float
+    flow_selection: FlowSelection
     
     def to_summary(self) -> Dict[str, Any]:
         """Return human-readable summary of predictions.
@@ -271,6 +280,7 @@ class PredictionBundle:
             - expected_net_flow: Mean net change
             - p95_arrivals: 95th percentile arrivals
             - p95_departures: 95th percentile departures
+            - flows_included: Number of inflows and outflows included
         """
         return {
             'entity': f"{self.entity_type}: {self.entity_id}",
@@ -279,6 +289,7 @@ class PredictionBundle:
             'expected_net_flow': self.net_flow_expected,
             'p95_arrivals': self.arrivals.percentiles[95],
             'p95_departures': self.departures.percentiles[95],
+            'flows_included': f"{len(self.flow_selection.inflow_keys)} inflows, {len(self.flow_selection.outflow_keys)} outflows",
         }
     
     def __str__(self) -> str:
@@ -476,6 +487,7 @@ class DemandPredictor:
             arrivals=arrivals,
             departures=departures,
             net_flow_expected=net_expected,
+            flow_selection=flow_selection,
         )
 
     def predict_reporting_unit(
@@ -1115,6 +1127,7 @@ class HierarchicalPredictor:
                 arrivals=arrivals,
                 departures=departures,
                 net_flow_expected=arrivals.expected_value - departures.expected_value,
+                flow_selection=subspecialty_bundles[0].flow_selection,  # Inherit from children
             )
             results[reporting_unit_id] = bundle
             self.cache[reporting_unit_id] = bundle
@@ -1139,6 +1152,7 @@ class HierarchicalPredictor:
                 arrivals=arrivals,
                 departures=departures,
                 net_flow_expected=arrivals.expected_value - departures.expected_value,
+                flow_selection=ru_bundles[0].flow_selection,  # Inherit from children
             )
             results[division_id] = bundle
             self.cache[division_id] = bundle
@@ -1161,6 +1175,7 @@ class HierarchicalPredictor:
                 arrivals=arrivals,
                 departures=departures,
                 net_flow_expected=arrivals.expected_value - departures.expected_value,
+                flow_selection=div_bundles[0].flow_selection,  # Inherit from children
             )
             results[board_id] = bundle
             self.cache[board_id] = bundle
@@ -1181,6 +1196,7 @@ class HierarchicalPredictor:
             arrivals=arrivals,
             departures=departures,
             net_flow_expected=arrivals.expected_value - departures.expected_value,
+            flow_selection=board_bundles[0].flow_selection,  # Inherit from children
         )
         results[hospital_id] = bundle
         self.cache[hospital_id] = bundle
