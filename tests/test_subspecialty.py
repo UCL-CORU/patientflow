@@ -261,7 +261,7 @@ def _create_transfer_model(specialties):
         else:
             dest = None  # Discharge
         transfers.append({"current_subspecialty": source, "next_subspecialty": dest})
-    
+
     X = pd.DataFrame(transfers)
     model = TransferProbabilityEstimator()
     model.fit(X, set(specialties))
@@ -641,7 +641,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 0.0, 1.0])  # 2 departures certain
+                        distribution=np.array([0.0, 0.0, 1.0]),  # 2 departures certain
                     )
                 }
             },
@@ -650,7 +650,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -659,7 +659,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -692,7 +692,9 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 0.0, 0.0, 0.0, 1.0])  # 4 departures certain
+                        distribution=np.array(
+                            [0.0, 0.0, 0.0, 0.0, 1.0]
+                        ),  # 4 departures certain
                     )
                 }
             },
@@ -701,7 +703,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -710,7 +712,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -773,7 +775,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 1.0])
+                        distribution=np.array([0.0, 1.0]),
                     )
                 }
             },
@@ -782,7 +784,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 1.0])
+                        distribution=np.array([0.0, 1.0]),
                     )
                 }
             },
@@ -791,7 +793,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -822,7 +824,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5])
+                        distribution=np.array([0.5, 0.5]),
                     )
                 }
             },
@@ -831,7 +833,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5])
+                        distribution=np.array([0.5, 0.5]),
                     )
                 }
             },
@@ -840,7 +842,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5])
+                        distribution=np.array([0.5, 0.5]),
                     )
                 }
             },
@@ -874,7 +876,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.random.dirichlet(np.ones(4))
+                        distribution=np.random.dirichlet(np.ones(4)),
                     )
                 }
             }
@@ -912,7 +914,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -921,7 +923,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             },
@@ -947,7 +949,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "departures": FlowInputs(
                         flow_id="departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0])
+                        distribution=np.array([1.0, 0.0]),
                     )
                 }
             }

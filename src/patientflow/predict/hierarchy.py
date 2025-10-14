@@ -113,7 +113,7 @@ class DemandPrediction:
             Formatted summary string
         """
         probs = self.probabilities
-        
+
         # Find where the probability mass is concentrated
         if len(probs) <= max_probs:
             start_idx = 0
@@ -125,7 +125,7 @@ class DemandPrediction:
             end_idx = min(len(probs), start_idx + max_probs)
             if end_idx - start_idx < max_probs:
                 start_idx = max(0, end_idx - max_probs)
-        
+
         head = ", ".join([f"{p:.{precision}g}" for p in probs[start_idx:end_idx]])
         remaining = len(probs) - end_idx
         tail_note = f" … +{remaining} more" if remaining > 0 else ""
@@ -150,12 +150,12 @@ class DemandPrediction:
 @dataclass
 class FlowSelection:
     """Configuration for which flows to include in predictions.
-    
+
     This class controls which patient flows (arrivals and departures) are included
     when making predictions. It allows users to customize predictions based on their
     specific use cases, such as excluding transfers or focusing only on certain types
     of admissions.
-    
+
     Attributes
     ----------
     inflow_keys : List[str]
@@ -165,87 +165,99 @@ class FlowSelection:
         List of outflow identifiers to include in predictions.
         Standard values: ["departures"]
         Future extensions may include: ["transfers_out", "deaths"]
-    
+
     Examples
     --------
     >>> # Include all flows (arrivals and departures)
     >>> selection = FlowSelection.default()
-    
+
     >>> # Only incoming flows (all arrivals, no departures)
     >>> selection = FlowSelection.incoming_flow()
-    
+
     >>> # Only outgoing flows (all departures, no arrivals)
     >>> selection = FlowSelection.outgoing_flow()
-    
+
     >>> # Custom selection
     >>> selection = FlowSelection.custom(
     ...     include_inflows=["ed_current", "ed_yta"],
     ...     include_outflows=["departures"]
     ... )
     """
+
     inflow_keys: List[str]
     outflow_keys: List[str]
-    
+
     @classmethod
-    def default(cls) -> 'FlowSelection':
+    def default(cls) -> "FlowSelection":
         """All flows included (default behavior).
-        
+
         Returns
         -------
         FlowSelection
             Configuration including all standard inflows and outflows
         """
         return cls(
-            inflow_keys=["ed_current", "ed_yta", "non_ed_yta", "elective_yta", "transfers_in"],
-            outflow_keys=["departures"]
+            inflow_keys=[
+                "ed_current",
+                "ed_yta",
+                "non_ed_yta",
+                "elective_yta",
+                "transfers_in",
+            ],
+            outflow_keys=["departures"],
         )
-    
+
     @classmethod
-    def incoming_flow(cls) -> 'FlowSelection':
+    def incoming_flow(cls) -> "FlowSelection":
         """Select incoming patient flows only (all arrivals, no departures).
-        
-        Includes all inflow types (ed_current, ed_yta, non_ed_yta, 
+
+        Includes all inflow types (ed_current, ed_yta, non_ed_yta,
         elective_yta, transfers_in) but excludes all outflows.
         Useful for analyzing arrival patterns independently of departures.
-        
+
         Returns
         -------
         FlowSelection
             Configuration with all inflows and no outflows
         """
         return cls(
-            inflow_keys=["ed_current", "ed_yta", "non_ed_yta", "elective_yta", "transfers_in"],
-            outflow_keys=[]
+            inflow_keys=[
+                "ed_current",
+                "ed_yta",
+                "non_ed_yta",
+                "elective_yta",
+                "transfers_in",
+            ],
+            outflow_keys=[],
         )
-    
+
     @classmethod
-    def outgoing_flow(cls) -> 'FlowSelection':
+    def outgoing_flow(cls) -> "FlowSelection":
         """Select outgoing patient flows only (all departures, no arrivals).
-        
+
         Includes all outflow types but excludes all inflows.
         Useful for analysing discharge patterns independently of arrivals.
-        
+
         Returns
         -------
         FlowSelection
             Configuration with no inflows and all outflows
         """
-        return cls(
-            inflow_keys=[],
-            outflow_keys=["departures"]
-        )
-    
+        return cls(inflow_keys=[], outflow_keys=["departures"])
+
     @classmethod
-    def custom(cls, include_inflows: List[str], include_outflows: List[str]) -> 'FlowSelection':
+    def custom(
+        cls, include_inflows: List[str], include_outflows: List[str]
+    ) -> "FlowSelection":
         """Custom flow selection.
-        
+
         Parameters
         ----------
         include_inflows : List[str]
             List of inflow identifiers to include
         include_outflows : List[str]
             List of outflow identifiers to include
-        
+
         Returns
         -------
         FlowSelection
@@ -257,11 +269,11 @@ class FlowSelection:
 @dataclass
 class PredictionBundle:
     """Complete prediction results for arrivals, departures, and net flow.
-    
+
     This dataclass bundles together predictions for patient arrivals, departures,
     and the net change in bed occupancy for a single organizational entity.
     It provides a comprehensive view of demand dynamics.
-    
+
     Attributes
     ----------
     entity_id : str
@@ -279,62 +291,85 @@ class PredictionBundle:
         Configuration specifying which flows were included in this prediction.
         Tracks which inflows and outflows were aggregated into the arrivals
         and departures distributions.
-    
+
     Notes
     -----
     Net flow is computed as the distribution of the difference between arrivals
     and departures. The PMF may include negative values, representing net decrease
     in bed demand.
-    
+
     The flow_selection attribute allows you to determine which flows contributed
     to the aggregated predictions. To see individual flow contributions, access
     the original SubspecialtyPredictionInputs.
     """
+
     entity_id: str
     entity_type: str
     arrivals: DemandPrediction
     departures: DemandPrediction
     net_flow: DemandPrediction
     flow_selection: FlowSelection
-    
+
     def to_summary(self) -> Dict[str, Any]:
         """Return human-readable summary of predictions.
-        
+
         Returns
         -------
         dict
             Dictionary containing key summary statistics:
             - entity: Entity identifier with type
-            - expected_arrivals: Mean arrivals
-            - expected_departures: Mean departures
-            - expected_net_flow: Mean net change
-            - p95_arrivals: 95th percentile arrivals
-            - p95_departures: 95th percentile departures
-            - p95_net_flow: 95th percentile net flow
+            - arrivals_pmf: PMF representation of arrivals
+            - departures_pmf: PMF representation of departures
+            - net_flow_pmf: PMF representation of net flow
             - flows_included: Number of inflows and outflows included
         """
+
+        def format_pmf(pred: DemandPrediction, max_display: int = 10) -> str:
+            """Format PMF similar to SubspecialtyPredictionInputs."""
+            arr = pred.probabilities
+            offset = pred.offset
+            expectation = pred.expected_value
+
+            if len(arr) <= max_display:
+                values = ", ".join(f"{v:.3f}" for v in arr)
+                return f"[{values}] (E={expectation:.1f})"
+
+            # Determine display window centered on expectation
+            center_idx = int(np.round(expectation - offset))
+            half_window = max_display // 2
+            start_idx = max(0, center_idx - half_window)
+            end_idx = min(len(arr), start_idx + max_display)
+
+            # Adjust if we're near the end
+            if end_idx - start_idx < max_display:
+                start_idx = max(0, end_idx - max_display)
+
+            # Format the displayed portion
+            display_values = ", ".join(f"{v:.3f}" for v in arr[start_idx:end_idx])
+
+            # Show with value range (accounting for offset)
+            start_val = start_idx + offset
+            end_val = end_idx + offset
+            return (
+                f"PMF[{start_val}:{end_val}]: [{display_values}] (E={expectation:.1f})"
+            )
+
         return {
-            'entity': f"{self.entity_type}: {self.entity_id}",
-            'expected_arrivals': self.arrivals.expected_value,
-            'expected_departures': self.departures.expected_value,
-            'expected_net_flow': self.net_flow.expected_value,
-            'p95_arrivals': self.arrivals.percentiles[95],
-            'p95_departures': self.departures.percentiles[95],
-            'p95_net_flow': self.net_flow.percentiles[95],
-            'flows_included': f"{len(self.flow_selection.inflow_keys)} inflows, {len(self.flow_selection.outflow_keys)} outflows",
+            "entity": f"{self.entity_type}: {self.entity_id}",
+            "arrivals_pmf": format_pmf(self.arrivals),
+            "departures_pmf": format_pmf(self.departures),
+            "net_flow_pmf": format_pmf(self.net_flow),
+            "flows_included": f"{len(self.flow_selection.inflow_keys)} inflows, {len(self.flow_selection.outflow_keys)} outflows",
         }
-    
+
     def __str__(self) -> str:
-        """String representation showing key statistics."""
         summary = self.to_summary()
         return (
             f"PredictionBundle({summary['entity']})\n"
-            f"  Expected arrivals:   {summary['expected_arrivals']:.2f}\n"
-            f"  Expected departures: {summary['expected_departures']:.2f}\n"
-            f"  Expected net flow:   {summary['expected_net_flow']:.2f}\n"
-            f"  P95 arrivals:        {summary['p95_arrivals']}\n"
-            f"  P95 departures:      {summary['p95_departures']}\n"
-            f"  P95 net flow:        {summary['p95_net_flow']}"
+            f"  {'Arrivals:':<12} {summary['arrivals_pmf']}\n"
+            f"  {'Departures:':<12} {summary['departures_pmf']}\n"
+            f"  {'Net flow:':<12} {summary['net_flow_pmf']}\n"
+            f"  {'Flows:':<12} {summary['flows_included']}"
         )
 
 
@@ -346,6 +381,7 @@ class DemandPredictor:
     to combine predictions from lower levels into higher levels.
 
     The prediction process involves:
+
     1. Generating Poisson distributions for yet-to-arrive patients
     2. Combining with current patient distributions using convolution
     3. Aggregating across organizational levels using multiple convolutions
@@ -382,11 +418,11 @@ class DemandPredictor:
         entity_type: str,
     ) -> DemandPrediction:
         """Combine multiple flows into a single distribution.
-        
+
         This method is flow-agnostic and works for any combination of PMF and
         Poisson flows. It convolves all flows together to produce a single
         probability distribution for the total.
-        
+
         Parameters
         ----------
         flow_inputs : List[FlowInputs]
@@ -396,12 +432,12 @@ class DemandPredictor:
             Unique identifier for the entity
         entity_type : str
             Type of entity (for labeling purposes)
-        
+
         Returns
         -------
         DemandPrediction
             Combined prediction for all flows
-        
+
         Notes
         -----
         Flows are combined through convolution, which represents the distribution
@@ -410,7 +446,7 @@ class DemandPredictor:
         """
         # Start with degenerate distribution at 0
         p_total = np.array([1.0])
-        
+
         for flow in flow_inputs:
             if flow.flow_type == "poisson":
                 # Generate Poisson PMF
@@ -423,11 +459,11 @@ class DemandPredictor:
                 raise ValueError(
                     f"Unknown flow type: {flow.flow_type}. Expected 'pmf' or 'poisson'."
                 )
-            
+
             # Convolve this flow with running total
             p_total = self._convolve(p_total, p_flow)
             p_total = self._truncate(p_total)
-        
+
         return self._create_prediction(entity_id, entity_type, p_total)
 
     def predict_subspecialty(
@@ -437,7 +473,7 @@ class DemandPredictor:
         flow_selection: Optional[FlowSelection] = None,
     ) -> PredictionBundle:
         """Predict subspecialty demand with flexible flow selection.
-        
+
         This method computes predictions for arrivals, departures, and net flow
         for a single subspecialty. Users can customize which flows to include
         via the flow_selection parameter.
@@ -457,24 +493,25 @@ class DemandPredictor:
         -------
         PredictionBundle
             Bundle containing arrivals, departures, and net flow predictions
-        
+
         Notes
         -----
         The method separately computes:
+
         1. Arrivals: Convolution of all selected inflow distributions
         2. Departures: Convolution of all selected outflow distributions
         3. Net flow: Difference of expected values (arrivals - departures)
-        
+
         Examples
         --------
         >>> # Default: all flows included
         >>> bundle = predictor.predict_subspecialty(spec_id, inputs)
-        
+
         >>> # Only incoming flows (arrivals, no departures)
         >>> bundle = predictor.predict_subspecialty(
         ...     spec_id, inputs, flow_selection=FlowSelection.incoming_flow()
         ... )
-        
+
         >>> # Custom selection
         >>> bundle = predictor.predict_subspecialty(
         ...     spec_id, inputs,
@@ -486,19 +523,17 @@ class DemandPredictor:
         """
         if flow_selection is None:
             flow_selection = FlowSelection.default()
-        
+
         # Compute arrivals from selected inflows
         selected_inflows = [
-            inputs.inflows[key] 
-            for key in flow_selection.inflow_keys 
+            inputs.inflows[key]
+            for key in flow_selection.inflow_keys
             if key in inputs.inflows
         ]
         arrivals = self.predict_flow_total(
-            selected_inflows, 
-            subspecialty_id, 
-            "arrivals"
+            selected_inflows, subspecialty_id, "arrivals"
         )
-        
+
         # Compute departures from selected outflows
         selected_outflows = [
             inputs.outflows[key]
@@ -506,18 +541,17 @@ class DemandPredictor:
             if key in inputs.outflows
         ]
         departures = self.predict_flow_total(
-            selected_outflows,
-            subspecialty_id,
-            "departures"
+            selected_outflows, subspecialty_id, "departures"
         )
-        
+
         # Compute net flow distribution
         p_net_flow, net_offset = self._compute_net_flow_pmf(
-            arrivals.probabilities, 
-            departures.probabilities
+            arrivals.probabilities, departures.probabilities
         )
-        net_flow = self._create_prediction(subspecialty_id, "net_flow", p_net_flow, net_offset)
-        
+        net_flow = self._create_prediction(
+            subspecialty_id, "net_flow", p_net_flow, net_offset
+        )
+
         return PredictionBundle(
             entity_id=subspecialty_id,
             entity_type="subspecialty",
@@ -789,7 +823,9 @@ class DemandPredictor:
         """
         return np.sum((np.arange(len(p)) + offset) * p)
 
-    def _percentiles(self, p: np.ndarray, percentile_list: List[int], offset: int = 0) -> Dict[int, int]:
+    def _percentiles(
+        self, p: np.ndarray, percentile_list: List[int], offset: int = 0
+    ) -> Dict[int, int]:
         """Calculate percentiles from probability distribution.
 
         This method computes specified percentiles from a discrete probability
@@ -871,12 +907,10 @@ class DemandPredictor:
         initial_offset = -max_departures
         p_truncated, left_cutoff = self._truncate_symmetric_with_offset(p_net)
         final_offset = initial_offset + left_cutoff
-        
+
         return p_truncated, final_offset
 
-    def _truncate_symmetric_with_offset(
-        self, p: np.ndarray
-    ) -> tuple[np.ndarray, int]:
+    def _truncate_symmetric_with_offset(self, p: np.ndarray) -> tuple[np.ndarray, int]:
         """Truncate a distribution from both ends and return offset.
 
         This method truncates a probability distribution that may have negative
@@ -920,7 +954,11 @@ class DemandPredictor:
         return p[left_cutoff:right_cutoff], left_cutoff
 
     def _create_prediction(
-        self, entity_id: str, entity_type: str, probabilities: np.ndarray, offset: int = 0
+        self,
+        entity_id: str,
+        entity_type: str,
+        probabilities: np.ndarray,
+        offset: int = 0,
     ) -> DemandPrediction:
         """Create a DemandPrediction object with computed statistics.
 
@@ -1183,7 +1221,7 @@ class HierarchicalPredictor:
         This method orchestrates the complete hierarchical prediction process,
         starting from subspecialties and aggregating predictions up through
         reporting units, divisions, boards, and finally to the hospital level.
-        
+
         For each level, tracks arrivals, departures, and net flow separately.
 
         Parameters
@@ -1252,18 +1290,18 @@ class HierarchicalPredictor:
                 reporting_unit_id
             )
             subspecialty_bundles = [results[sid] for sid in subspecialties]
-            
+
             # Aggregate arrivals and departures separately
             arrivals_preds = [b.arrivals for b in subspecialty_bundles]
             departures_preds = [b.departures for b in subspecialty_bundles]
-            
+
             arrivals = self.predictor.predict_reporting_unit(
                 reporting_unit_id, arrivals_preds
             )
             departures = self.predictor.predict_reporting_unit(
                 reporting_unit_id, departures_preds
             )
-            
+
             # Compute net flow distribution
             p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
                 arrivals.probabilities, departures.probabilities
@@ -1271,14 +1309,16 @@ class HierarchicalPredictor:
             net_flow = self.predictor._create_prediction(
                 reporting_unit_id, "net_flow", p_net_flow, net_offset
             )
-            
+
             bundle = PredictionBundle(
                 entity_id=reporting_unit_id,
                 entity_type="reporting_unit",
                 arrivals=arrivals,
                 departures=departures,
                 net_flow=net_flow,
-                flow_selection=subspecialty_bundles[0].flow_selection,  # Inherit from children
+                flow_selection=subspecialty_bundles[
+                    0
+                ].flow_selection,  # Inherit from children
             )
             results[reporting_unit_id] = bundle
             self.cache[reporting_unit_id] = bundle
@@ -1290,13 +1330,13 @@ class HierarchicalPredictor:
                 division_id
             )
             ru_bundles = [results[rid] for rid in reporting_units_list]
-            
+
             arrivals_preds = [b.arrivals for b in ru_bundles]
             departures_preds = [b.departures for b in ru_bundles]
-            
+
             arrivals = self.predictor.predict_division(division_id, arrivals_preds)
             departures = self.predictor.predict_division(division_id, departures_preds)
-            
+
             # Compute net flow distribution
             p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
                 arrivals.probabilities, departures.probabilities
@@ -1304,7 +1344,7 @@ class HierarchicalPredictor:
             net_flow = self.predictor._create_prediction(
                 division_id, "net_flow", p_net_flow, net_offset
             )
-            
+
             bundle = PredictionBundle(
                 entity_id=division_id,
                 entity_type="division",
@@ -1321,13 +1361,13 @@ class HierarchicalPredictor:
         for board_id in boards_set:
             divisions_list = self.hierarchy.get_divisions_for_board(board_id)
             div_bundles = [results[did] for did in divisions_list]
-            
+
             arrivals_preds = [b.arrivals for b in div_bundles]
             departures_preds = [b.departures for b in div_bundles]
-            
+
             arrivals = self.predictor.predict_board(board_id, arrivals_preds)
             departures = self.predictor.predict_board(board_id, departures_preds)
-            
+
             # Compute net flow distribution
             p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
                 arrivals.probabilities, departures.probabilities
@@ -1335,7 +1375,7 @@ class HierarchicalPredictor:
             net_flow = self.predictor._create_prediction(
                 board_id, "net_flow", p_net_flow, net_offset
             )
-            
+
             bundle = PredictionBundle(
                 entity_id=board_id,
                 entity_type="board",
@@ -1350,13 +1390,13 @@ class HierarchicalPredictor:
         # Level 5: Hospital
         boards_list = self.hierarchy.get_boards_for_hospital(hospital_id)
         board_bundles = [results[bid] for bid in boards_list]
-        
+
         arrivals_preds = [b.arrivals for b in board_bundles]
         departures_preds = [b.departures for b in board_bundles]
-        
+
         arrivals = self.predictor.predict_hospital(hospital_id, arrivals_preds)
         departures = self.predictor.predict_hospital(hospital_id, departures_preds)
-        
+
         # Compute net flow distribution
         p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
             arrivals.probabilities, departures.probabilities
@@ -1364,7 +1404,7 @@ class HierarchicalPredictor:
         net_flow = self.predictor._create_prediction(
             hospital_id, "net_flow", p_net_flow, net_offset
         )
-        
+
         bundle = PredictionBundle(
             entity_id=hospital_id,
             entity_type="hospital",
