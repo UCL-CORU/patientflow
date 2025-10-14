@@ -50,6 +50,9 @@ class DemandPrediction:
         Expected number of beds needed (mean of the distribution)
     percentiles : dict[int, int]
         Dictionary mapping percentile values (50, 75, 90, 95, 99) to bed counts
+    offset : int, optional
+        Offset for the support of the distribution. Index i corresponds to value (i + offset).
+        Default is 0 for non-negative distributions. For net flow, offset is typically negative.
 
     Attributes
     ----------
@@ -63,13 +66,17 @@ class DemandPrediction:
         Expected number of beds needed
     percentiles : dict[int, int]
         Percentile values for bed demand
+    offset : int
+        Offset for the support (index 0 corresponds to value = offset)
     max_beds : int
         Maximum number of beds in the probability distribution
 
     Notes
     -----
     The probabilities array represents P(X=k) where X is the number of beds needed
-    and k ranges from 0 to max_beds. The sum of all probabilities should equal 1.0.
+    and k ranges from offset to (offset + max_beds). The sum of all probabilities should equal 1.0.
+    For non-negative distributions (arrivals, departures), offset=0.
+    For net flow distributions, offset can be negative (e.g., -10 means support starts at -10).
     """
 
     entity_id: str
@@ -77,6 +84,7 @@ class DemandPrediction:
     probabilities: np.ndarray
     expected_value: float
     percentiles: Dict[int, int]
+    offset: int = 0
 
     @property
     def max_beds(self) -> int:
@@ -160,11 +168,14 @@ class FlowSelection:
     
     Examples
     --------
-    >>> # Include all flows
+    >>> # Include all flows (arrivals and departures)
     >>> selection = FlowSelection.default()
     
-    >>> # Exclude transfers
-    >>> selection = FlowSelection.admissions_only()
+    >>> # Only incoming flows (all arrivals, no departures)
+    >>> selection = FlowSelection.incoming_flow()
+    
+    >>> # Only outgoing flows (all departures, no arrivals)
+    >>> selection = FlowSelection.outgoing_flow()
     
     >>> # Custom selection
     >>> selection = FlowSelection.custom(
@@ -190,19 +201,37 @@ class FlowSelection:
         )
     
     @classmethod
-    def admissions_only(cls) -> 'FlowSelection':
-        """Only admission flows, excluding transfers.
+    def incoming_flow(cls) -> 'FlowSelection':
+        """Select incoming patient flows only (all arrivals, no departures).
         
-        This is useful for analyzing demand independent of internal transfers,
-        focusing only on new patients entering the system.
+        Includes all inflow types (ed_current, ed_yta, non_ed_yta, 
+        elective_yta, transfers_in) but excludes all outflows.
+        Useful for analyzing arrival patterns independently of departures.
         
         Returns
         -------
         FlowSelection
-            Configuration excluding transfer-related flows
+            Configuration with all inflows and no outflows
         """
         return cls(
-            inflow_keys=["ed_current", "ed_yta", "non_ed_yta", "elective_yta"],
+            inflow_keys=["ed_current", "ed_yta", "non_ed_yta", "elective_yta", "transfers_in"],
+            outflow_keys=[]
+        )
+    
+    @classmethod
+    def outgoing_flow(cls) -> 'FlowSelection':
+        """Select outgoing patient flows only (all departures, no arrivals).
+        
+        Includes all outflow types but excludes all inflows.
+        Useful for analysing discharge patterns independently of arrivals.
+        
+        Returns
+        -------
+        FlowSelection
+            Configuration with no inflows and all outflows
+        """
+        return cls(
+            inflow_keys=[],
             outflow_keys=["departures"]
         )
     
@@ -243,8 +272,9 @@ class PredictionBundle:
         Prediction for total patient arrivals
     departures : DemandPrediction
         Prediction for total patient departures
-    net_flow_expected : float
-        Expected net change in bed occupancy (arrivals - departures)
+    net_flow : DemandPrediction
+        Prediction for net change in bed occupancy (arrivals - departures).
+        This is the full probability distribution of the difference.
     flow_selection : FlowSelection
         Configuration specifying which flows were included in this prediction.
         Tracks which inflows and outflows were aggregated into the arrivals
@@ -252,9 +282,9 @@ class PredictionBundle:
     
     Notes
     -----
-    Net flow is computed as the difference in expected values. For more detailed
-    analysis of net flow distribution (including variance and percentiles), the
-    full arrival and departure distributions are available.
+    Net flow is computed as the distribution of the difference between arrivals
+    and departures. The PMF may include negative values, representing net decrease
+    in bed demand.
     
     The flow_selection attribute allows you to determine which flows contributed
     to the aggregated predictions. To see individual flow contributions, access
@@ -264,7 +294,7 @@ class PredictionBundle:
     entity_type: str
     arrivals: DemandPrediction
     departures: DemandPrediction
-    net_flow_expected: float
+    net_flow: DemandPrediction
     flow_selection: FlowSelection
     
     def to_summary(self) -> Dict[str, Any]:
@@ -280,15 +310,17 @@ class PredictionBundle:
             - expected_net_flow: Mean net change
             - p95_arrivals: 95th percentile arrivals
             - p95_departures: 95th percentile departures
+            - p95_net_flow: 95th percentile net flow
             - flows_included: Number of inflows and outflows included
         """
         return {
             'entity': f"{self.entity_type}: {self.entity_id}",
             'expected_arrivals': self.arrivals.expected_value,
             'expected_departures': self.departures.expected_value,
-            'expected_net_flow': self.net_flow_expected,
+            'expected_net_flow': self.net_flow.expected_value,
             'p95_arrivals': self.arrivals.percentiles[95],
             'p95_departures': self.departures.percentiles[95],
+            'p95_net_flow': self.net_flow.percentiles[95],
             'flows_included': f"{len(self.flow_selection.inflow_keys)} inflows, {len(self.flow_selection.outflow_keys)} outflows",
         }
     
@@ -301,7 +333,8 @@ class PredictionBundle:
             f"  Expected departures: {summary['expected_departures']:.2f}\n"
             f"  Expected net flow:   {summary['expected_net_flow']:.2f}\n"
             f"  P95 arrivals:        {summary['p95_arrivals']}\n"
-            f"  P95 departures:      {summary['p95_departures']}"
+            f"  P95 departures:      {summary['p95_departures']}\n"
+            f"  P95 net flow:        {summary['p95_net_flow']}"
         )
 
 
@@ -437,9 +470,9 @@ class DemandPredictor:
         >>> # Default: all flows included
         >>> bundle = predictor.predict_subspecialty(spec_id, inputs)
         
-        >>> # Exclude transfers
+        >>> # Only incoming flows (arrivals, no departures)
         >>> bundle = predictor.predict_subspecialty(
-        ...     spec_id, inputs, flow_selection=FlowSelection.admissions_only()
+        ...     spec_id, inputs, flow_selection=FlowSelection.incoming_flow()
         ... )
         
         >>> # Custom selection
@@ -478,15 +511,19 @@ class DemandPredictor:
             "departures"
         )
         
-        # Compute net flow as difference of expectations
-        net_expected = arrivals.expected_value - departures.expected_value
+        # Compute net flow distribution
+        p_net_flow, net_offset = self._compute_net_flow_pmf(
+            arrivals.probabilities, 
+            departures.probabilities
+        )
+        net_flow = self._create_prediction(subspecialty_id, "net_flow", p_net_flow, net_offset)
         
         return PredictionBundle(
             entity_id=subspecialty_id,
             entity_type="subspecialty",
             arrivals=arrivals,
             departures=departures,
-            net_flow_expected=net_expected,
+            net_flow=net_flow,
             flow_selection=flow_selection,
         )
 
@@ -732,7 +769,7 @@ class DemandPredictor:
         k = np.arange(max_k + 1)
         return poisson.pmf(k, lambda_param)
 
-    def _expected_value(self, p: np.ndarray) -> float:
+    def _expected_value(self, p: np.ndarray, offset: int = 0) -> float:
         """Calculate expected value of distribution.
 
         This method computes the expected value (mean) of a discrete probability
@@ -742,15 +779,17 @@ class DemandPredictor:
         ----------
         p : numpy.ndarray
             Probability mass function
+        offset : int, default=0
+            Offset for the support. Index i corresponds to value (i + offset).
 
         Returns
         -------
         float
             Expected value E[X] = sum(k * P(X=k))
         """
-        return np.sum(np.arange(len(p)) * p)
+        return np.sum((np.arange(len(p)) + offset) * p)
 
-    def _percentiles(self, p: np.ndarray, percentile_list: List[int]) -> Dict[int, int]:
+    def _percentiles(self, p: np.ndarray, percentile_list: List[int], offset: int = 0) -> Dict[int, int]:
         """Calculate percentiles from probability distribution.
 
         This method computes specified percentiles from a discrete probability
@@ -762,6 +801,8 @@ class DemandPredictor:
             Probability mass function
         percentile_list : list[int]
             List of percentiles to compute (e.g., [50, 75, 90, 95, 99])
+        offset : int, default=0
+            Offset for the support. Index i corresponds to value (i + offset).
 
         Returns
         -------
@@ -776,11 +817,110 @@ class DemandPredictor:
         result = {}
         for pct in percentile_list:
             idx = np.searchsorted(cumsum, pct / 100.0)
-            result[pct] = int(idx)
+            result[pct] = int(idx + offset)
         return result
 
+    def _compute_net_flow_pmf(
+        self, p_arrivals: np.ndarray, p_departures: np.ndarray
+    ) -> tuple[np.ndarray, int]:
+        """Compute PMF for net flow (arrivals - departures).
+
+        This method computes the probability distribution for the difference
+        between two independent random variables (arrivals and departures).
+
+        Parameters
+        ----------
+        p_arrivals : numpy.ndarray
+            Probability mass function for arrivals (support: 0 to max_arrivals)
+        p_departures : numpy.ndarray
+            Probability mass function for departures (support: 0 to max_departures)
+
+        Returns
+        -------
+        tuple[numpy.ndarray, int]
+            Tuple of (PMF, offset) where:
+            - PMF is the truncated probability mass function for net flow
+            - offset is the value corresponding to index 0 (typically negative)
+
+        Notes
+        -----
+        For each net flow value n in [-max_departures, max_arrivals]:
+            P(Net = n) = Σ P(Arrivals = a) × P(Departures = d) where a - d = n
+
+        The resulting PMF is truncated using the same epsilon threshold
+        to remove negligible tail probabilities from both ends.
+        The offset tracks where the support starts after truncation.
+        """
+        max_arrivals = len(p_arrivals) - 1
+        max_departures = len(p_departures) - 1
+
+        # Net flow ranges from -max_departures to +max_arrivals
+        # Array index k corresponds to net flow value (k - max_departures)
+        net_flow_size = max_arrivals + max_departures + 1
+        p_net = np.zeros(net_flow_size)
+
+        # Compute probability for each possible net flow value
+        for a in range(len(p_arrivals)):
+            for d in range(len(p_departures)):
+                net = a - d  # Net flow value
+                idx = net + max_departures  # Array index (shifted to handle negatives)
+                p_net[idx] += p_arrivals[a] * p_departures[d]
+
+        # Truncate from both ends to remove negligible probabilities
+        # Track the initial offset and how much we remove from the left
+        initial_offset = -max_departures
+        p_truncated, left_cutoff = self._truncate_symmetric_with_offset(p_net)
+        final_offset = initial_offset + left_cutoff
+        
+        return p_truncated, final_offset
+
+    def _truncate_symmetric_with_offset(
+        self, p: np.ndarray
+    ) -> tuple[np.ndarray, int]:
+        """Truncate a distribution from both ends and return offset.
+
+        This method truncates a probability distribution that may have negative
+        support (like net flow) by removing negligible probabilities from both tails.
+
+        Parameters
+        ----------
+        p : numpy.ndarray
+            Probability mass function to truncate
+
+        Returns
+        -------
+        tuple[numpy.ndarray, int]
+            Tuple of (truncated PMF, left_cutoff index)
+            The left_cutoff indicates how many elements were removed from the left.
+
+        Notes
+        -----
+        Truncation is applied to keep total removed probability < epsilon from each tail.
+        """
+        if len(p) == 0:
+            return p, 0
+
+        cumsum = np.cumsum(p)
+        total_prob = cumsum[-1]
+
+        if total_prob == 0:
+            return np.array([1.0]), 0  # Degenerate case
+
+        # Find where cumulative probability exceeds epsilon (from left)
+        left_cutoff = np.searchsorted(cumsum, self.epsilon)
+
+        # Find where remaining probability is less than epsilon (from right)
+        cumsum_reversed = np.cumsum(p[::-1])
+        right_cutoff = len(p) - np.searchsorted(cumsum_reversed, self.epsilon)
+
+        # Ensure we keep at least one element
+        left_cutoff = max(0, left_cutoff)
+        right_cutoff = min(len(p), max(right_cutoff, left_cutoff + 1))
+
+        return p[left_cutoff:right_cutoff], left_cutoff
+
     def _create_prediction(
-        self, entity_id: str, entity_type: str, probabilities: np.ndarray
+        self, entity_id: str, entity_type: str, probabilities: np.ndarray, offset: int = 0
     ) -> DemandPrediction:
         """Create a DemandPrediction object with computed statistics.
 
@@ -795,6 +935,8 @@ class DemandPredictor:
             Type of entity in the hierarchy
         probabilities : numpy.ndarray
             Probability mass function
+        offset : int, default=0
+            Offset for the support. Index i corresponds to value (i + offset).
 
         Returns
         -------
@@ -809,8 +951,9 @@ class DemandPredictor:
             entity_id=entity_id,
             entity_type=entity_type,
             probabilities=probabilities,
-            expected_value=self._expected_value(probabilities),
-            percentiles=self._percentiles(probabilities, [50, 75, 90, 95, 99]),
+            expected_value=self._expected_value(probabilities, offset),
+            percentiles=self._percentiles(probabilities, [50, 75, 90, 95, 99], offset),
+            offset=offset,
         )
 
 
@@ -1121,12 +1264,20 @@ class HierarchicalPredictor:
                 reporting_unit_id, departures_preds
             )
             
+            # Compute net flow distribution
+            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
+                arrivals.probabilities, departures.probabilities
+            )
+            net_flow = self.predictor._create_prediction(
+                reporting_unit_id, "net_flow", p_net_flow, net_offset
+            )
+            
             bundle = PredictionBundle(
                 entity_id=reporting_unit_id,
                 entity_type="reporting_unit",
                 arrivals=arrivals,
                 departures=departures,
-                net_flow_expected=arrivals.expected_value - departures.expected_value,
+                net_flow=net_flow,
                 flow_selection=subspecialty_bundles[0].flow_selection,  # Inherit from children
             )
             results[reporting_unit_id] = bundle
@@ -1146,12 +1297,20 @@ class HierarchicalPredictor:
             arrivals = self.predictor.predict_division(division_id, arrivals_preds)
             departures = self.predictor.predict_division(division_id, departures_preds)
             
+            # Compute net flow distribution
+            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
+                arrivals.probabilities, departures.probabilities
+            )
+            net_flow = self.predictor._create_prediction(
+                division_id, "net_flow", p_net_flow, net_offset
+            )
+            
             bundle = PredictionBundle(
                 entity_id=division_id,
                 entity_type="division",
                 arrivals=arrivals,
                 departures=departures,
-                net_flow_expected=arrivals.expected_value - departures.expected_value,
+                net_flow=net_flow,
                 flow_selection=ru_bundles[0].flow_selection,  # Inherit from children
             )
             results[division_id] = bundle
@@ -1169,12 +1328,20 @@ class HierarchicalPredictor:
             arrivals = self.predictor.predict_board(board_id, arrivals_preds)
             departures = self.predictor.predict_board(board_id, departures_preds)
             
+            # Compute net flow distribution
+            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
+                arrivals.probabilities, departures.probabilities
+            )
+            net_flow = self.predictor._create_prediction(
+                board_id, "net_flow", p_net_flow, net_offset
+            )
+            
             bundle = PredictionBundle(
                 entity_id=board_id,
                 entity_type="board",
                 arrivals=arrivals,
                 departures=departures,
-                net_flow_expected=arrivals.expected_value - departures.expected_value,
+                net_flow=net_flow,
                 flow_selection=div_bundles[0].flow_selection,  # Inherit from children
             )
             results[board_id] = bundle
@@ -1190,12 +1357,20 @@ class HierarchicalPredictor:
         arrivals = self.predictor.predict_hospital(hospital_id, arrivals_preds)
         departures = self.predictor.predict_hospital(hospital_id, departures_preds)
         
+        # Compute net flow distribution
+        p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
+            arrivals.probabilities, departures.probabilities
+        )
+        net_flow = self.predictor._create_prediction(
+            hospital_id, "net_flow", p_net_flow, net_offset
+        )
+        
         bundle = PredictionBundle(
             entity_id=hospital_id,
             entity_type="hospital",
             arrivals=arrivals,
             departures=departures,
-            net_flow_expected=arrivals.expected_value - departures.expected_value,
+            net_flow=net_flow,
             flow_selection=board_bundles[0].flow_selection,  # Inherit from children
         )
         results[hospital_id] = bundle
