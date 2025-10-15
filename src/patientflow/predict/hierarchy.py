@@ -332,7 +332,9 @@ class PredictionBundle:
 
             if len(arr) <= max_display:
                 values = ", ".join(f"{v:.3f}" for v in arr)
-                return f"[{values}] (E={expectation:.1f})"
+                start_val = offset
+                end_val = len(arr) + offset
+                return f"PMF[{start_val}:{end_val}]: [{values}] (E={expectation:.1f})"
 
             # Determine display window centered on expectation
             center_idx = int(np.round(expectation - offset))
@@ -380,13 +382,6 @@ class DemandPredictor:
     different hierarchical levels. It uses convolution of probability distributions
     to combine predictions from lower levels into higher levels.
 
-    The prediction process involves:
-
-    1. Generating Poisson distributions for yet-to-arrive patients
-    2. Combining with current patient distributions using convolution
-    3. Aggregating across organizational levels using multiple convolutions
-    4. Computing statistics (expected value, percentiles) for each level
-
     Parameters
     ----------
     epsilon : float, default=1e-7
@@ -402,6 +397,13 @@ class DemandPredictor:
 
     Notes
     -----
+    The prediction process involves:
+
+    1. Generating Poisson distributions for yet-to-arrive patients
+    2. Combining with current patient distributions using convolution
+    3. Aggregating across organizational levels using multiple convolutions
+    4. Computing statistics (expected value, percentiles) for each level
+
     The class uses discrete convolution to combine probability distributions.
     For computational efficiency, distributions are periodically truncated during
     multiple convolutions to prevent exponential growth in array sizes.
@@ -1465,6 +1467,7 @@ def populate_hierarchy_from_dataframe(
     Notes
     -----
     The function:
+
     1. Removes duplicate rows and rows with missing values
     2. Establishes subspecialty -> reporting_unit relationships
     3. Establishes reporting_unit -> division relationships
