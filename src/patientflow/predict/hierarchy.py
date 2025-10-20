@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
- 
+
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
 from patientflow.predict.distribution import Distribution
@@ -575,7 +575,11 @@ class DemandPredictor:
         # Ensure expected value matches arrivals - departures exactly for tests
         expected_diff = float(arrivals.expected_value - departures.expected_value)
         net_flow = self._create_prediction(
-            subspecialty_id, "net_flow", net_dist.probabilities, net_dist.offset, expected_override=expected_diff
+            subspecialty_id,
+            "net_flow",
+            net_dist.probabilities,
+            net_dist.offset,
+            expected_override=expected_diff,
         )
 
         return PredictionBundle(
@@ -768,15 +772,13 @@ class DemandPredictor:
             return p
         return p[:max_len]
 
-    
-
     def _variance(self, p: np.ndarray, offset: int = 0) -> float:
         """Calculate variance of a discrete distribution."""
         if len(p) == 0:
             return 0.0
         indices = np.arange(len(p)) + offset
         mean = float(np.sum(indices * p))
-        mean_sq = float(np.sum((indices ** 2) * p))
+        mean_sq = float(np.sum((indices**2) * p))
         return max(0.0, mean_sq - mean * mean)
 
     def _renormalize(self, p: np.ndarray) -> np.ndarray:
@@ -843,8 +845,6 @@ class DemandPredictor:
             idx = np.searchsorted(cumsum, pct / 100.0)
             result[pct] = int(idx + offset)
         return result
-
-    
 
     def _create_prediction(
         self,
