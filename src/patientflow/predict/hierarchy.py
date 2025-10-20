@@ -25,9 +25,10 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from scipy.stats import poisson
+ 
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
+from patientflow.predict.distribution import Distribution
 
 
 @dataclass
@@ -473,23 +474,17 @@ class DemandPredictor:
         total_std = float(np.sqrt(np.sum(variances))) if variances else 0.0
         cap_max = max(0, int(np.floor(total_mean + self.k_sigma * total_std)))
 
-        # Second pass: materialize flows, using the global cap for Poisson
-        prepared_flows: List[np.ndarray] = []
+        # Second pass: materialize flows via Distribution using the global cap for Poisson
+        dist_total = Distribution.from_pmf(np.array([1.0]))
         for flow_type, distribution_data in flow_specs:
             if flow_type == "poisson":
                 lam = float(distribution_data)
-                p_flow = self._poisson_pmf(lam, cap_max)
+                flow_dist = Distribution.from_poisson_with_cap(lam, cap_max)
             else:  # pmf
-                p_flow = distribution_data  # type: ignore[assignment]
-            prepared_flows.append(p_flow)
+                flow_dist = Distribution.from_pmf(distribution_data)  # type: ignore[arg-type]
+            dist_total = dist_total.convolve(flow_dist).clamp_nonnegative(cap_max)
 
-        # Start with degenerate distribution at 0; convolve and clamp to global cap
-        p_total = np.array([1.0])
-        for p_flow in prepared_flows:
-            p_total = self._convolve(p_total, p_flow)
-            p_total = self._clamp_nonnegative(p_total, cap_max)
-
-        return self._create_prediction(entity_id, entity_type, p_total)
+        return self._create_prediction(entity_id, entity_type, dist_total.probabilities)
 
     def predict_subspecialty(
         self,
@@ -573,14 +568,14 @@ class DemandPredictor:
         arrivals_p = self._renormalize(arrivals.probabilities)
         departures_p = self._renormalize(departures.probabilities)
 
-        # Compute net flow distribution
-        p_net_flow, net_offset = self._compute_net_flow_pmf(
-            arrivals_p, departures_p
+        # Compute net flow distribution using Distribution algebra
+        net_dist = Distribution.from_pmf(arrivals_p).net(
+            Distribution.from_pmf(departures_p), self.k_sigma
         )
         # Ensure expected value matches arrivals - departures exactly for tests
         expected_diff = float(arrivals.expected_value - departures.expected_value)
         net_flow = self._create_prediction(
-            subspecialty_id, "net_flow", p_net_flow, net_offset, expected_override=expected_diff
+            subspecialty_id, "net_flow", net_dist.probabilities, net_dist.offset, expected_override=expected_diff
         )
 
         return PredictionBundle(
@@ -773,38 +768,7 @@ class DemandPredictor:
             return p
         return p[:max_len]
 
-    def _calculate_poisson_max(self, lambda_param: float) -> int:
-        """Compute k-sigma cap for a Poisson distribution."""
-        if lambda_param <= 0:
-            return 0
-        return int(np.ceil(lambda_param + self.k_sigma * np.sqrt(lambda_param)))
-
-    def _poisson_pmf(self, lambda_param: float, max_k: int) -> np.ndarray:
-        """Generate Poisson PMF from 0 to max_k.
-
-        This method generates the probability mass function for a Poisson
-        distribution truncated at max_k.
-
-        Parameters
-        ----------
-        lambda_param : float
-            Poisson parameter (mean and variance)
-        max_k : int
-            Maximum value to include in the PMF
-
-        Returns
-        -------
-        numpy.ndarray
-            Probability mass function from 0 to max_k
-
-        Notes
-        -----
-        Returns [1.0] for lambda_param = 0 (degenerate distribution at 0).
-        """
-        if lambda_param == 0:
-            return np.array([1.0])
-        k = np.arange(max_k + 1)
-        return poisson.pmf(k, lambda_param)
+    
 
     def _variance(self, p: np.ndarray, offset: int = 0) -> float:
         """Calculate variance of a discrete distribution."""
@@ -880,90 +844,7 @@ class DemandPredictor:
             result[pct] = int(idx + offset)
         return result
 
-    def _compute_net_flow_pmf(
-        self, p_arrivals: np.ndarray, p_departures: np.ndarray
-    ) -> tuple[np.ndarray, int]:
-        """Compute PMF for net flow (arrivals - departures).
-
-        This method computes the probability distribution for the difference
-        between two independent random variables (arrivals and departures).
-
-        Parameters
-        ----------
-        p_arrivals : numpy.ndarray
-            Probability mass function for arrivals (support: 0 to max_arrivals)
-        p_departures : numpy.ndarray
-            Probability mass function for departures (support: 0 to max_departures)
-
-        Returns
-        -------
-        tuple[numpy.ndarray, int]
-            Tuple of (PMF, offset) where:
-            - PMF is the truncated probability mass function for net flow
-            - offset is the value corresponding to index 0 (typically negative)
-
-        Notes
-        -----
-        For each net flow value n in [-max_departures, max_arrivals]:
-            P(Net = n) = Σ P(Arrivals = a) × P(Departures = d) where a - d = n
-
-        Before computing net flow, arrivals and departures are renormalised
-        to sum to 1. The resulting net PMF is clamped to asymmetric bounds
-        derived from mean ± k_sigma·std intersected with feasible support.
-        The offset tracks where the support starts after clamping.
-        """
-        max_arrivals = len(p_arrivals) - 1
-        max_departures = len(p_departures) - 1
-
-        # Net flow ranges from -max_departures to +max_arrivals
-        # Array index k corresponds to net flow value (k - max_departures)
-        net_flow_size = max_arrivals + max_departures + 1
-        p_net = np.zeros(net_flow_size)
-
-        # Compute probability for each possible net flow value
-        for a in range(len(p_arrivals)):
-            for d in range(len(p_departures)):
-                net = a - d  # Net flow value
-                idx = net + max_departures  # Array index (shifted to handle negatives)
-                p_net[idx] += p_arrivals[a] * p_departures[d]
-
-        # Asymmetric k-sigma clamping with physical bounds
-        initial_offset = -max_departures
-
-        # Compute mean and variance for arrivals and departures
-        mean_a = self._expected_value(p_arrivals)
-        var_a = self._variance(p_arrivals)
-        mean_d = self._expected_value(p_departures)
-        var_d = self._variance(p_departures)
-
-        mean_net = mean_a - mean_d
-        std_net = float(np.sqrt(var_a + var_d))
-
-        # Physical bounds
-        physical_min = -max_departures
-        physical_max = max_arrivals
-
-        # Sigma bounds
-        left_bound = int(np.floor(mean_net - self.k_sigma * std_net))
-        right_bound = int(np.ceil(mean_net + self.k_sigma * std_net))
-
-        # Apply physical bounds
-        left_value = max(physical_min, left_bound)
-        right_value = min(physical_max, right_bound)
-
-        # Map to indices
-        start_idx = max(0, left_value - physical_min)
-        end_idx = min(len(p_net), right_value - physical_min + 1)
-
-        # Ensure at least one element remains
-        if start_idx >= end_idx:
-            start_idx = max(0, min(len(p_net) - 1, start_idx))
-            end_idx = start_idx + 1
-
-        p_truncated = p_net[start_idx:end_idx]
-        final_offset = initial_offset + start_idx
-
-        return p_truncated, final_offset
+    
 
     def _create_prediction(
         self,
@@ -1325,11 +1206,11 @@ class HierarchicalPredictor:
             arrivals_p = self.predictor._renormalize(arrivals.probabilities)
             departures_p = self.predictor._renormalize(departures.probabilities)
 
-            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
-                arrivals_p, departures_p
+            net_dist = Distribution.from_pmf(arrivals_p).net(
+                Distribution.from_pmf(departures_p), self.predictor.k_sigma
             )
             net_flow = self.predictor._create_prediction(
-                reporting_unit_id, "net_flow", p_net_flow, net_offset
+                reporting_unit_id, "net_flow", net_dist.probabilities, net_dist.offset
             )
 
             bundle = PredictionBundle(
@@ -1364,11 +1245,11 @@ class HierarchicalPredictor:
             arrivals_p = self.predictor._renormalize(arrivals.probabilities)
             departures_p = self.predictor._renormalize(departures.probabilities)
 
-            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
-                arrivals_p, departures_p
+            net_dist = Distribution.from_pmf(arrivals_p).net(
+                Distribution.from_pmf(departures_p), self.predictor.k_sigma
             )
             net_flow = self.predictor._create_prediction(
-                division_id, "net_flow", p_net_flow, net_offset
+                division_id, "net_flow", net_dist.probabilities, net_dist.offset
             )
 
             bundle = PredictionBundle(
@@ -1399,11 +1280,11 @@ class HierarchicalPredictor:
             arrivals_p = self.predictor._renormalize(arrivals.probabilities)
             departures_p = self.predictor._renormalize(departures.probabilities)
 
-            p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
-                arrivals_p, departures_p
+            net_dist = Distribution.from_pmf(arrivals_p).net(
+                Distribution.from_pmf(departures_p), self.predictor.k_sigma
             )
             net_flow = self.predictor._create_prediction(
-                board_id, "net_flow", p_net_flow, net_offset
+                board_id, "net_flow", net_dist.probabilities, net_dist.offset
             )
 
             bundle = PredictionBundle(
@@ -1432,11 +1313,11 @@ class HierarchicalPredictor:
         arrivals_p = self.predictor._renormalize(arrivals.probabilities)
         departures_p = self.predictor._renormalize(departures.probabilities)
 
-        p_net_flow, net_offset = self.predictor._compute_net_flow_pmf(
-            arrivals_p, departures_p
+        net_dist = Distribution.from_pmf(arrivals_p).net(
+            Distribution.from_pmf(departures_p), self.predictor.k_sigma
         )
         net_flow = self.predictor._create_prediction(
-            hospital_id, "net_flow", p_net_flow, net_offset
+            hospital_id, "net_flow", net_dist.probabilities, net_dist.offset
         )
 
         bundle = PredictionBundle(
