@@ -169,6 +169,173 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             predictor.fit(X_unknown, self.subspecialties)
         self.assertIn("unknown_subspecialty", str(context.exception))
 
+    def test_cohort_functionality_basic(self):
+        """Test basic cohort functionality with separate models for each cohort."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology", "surgery", "surgery"],
+                "next_subspecialty": ["surgery", None, None, "cardiology"],
+                "admission_type": ["elective", "elective", "emergency", "emergency"],
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.subspecialties)
+
+        # Check that cohorts are properly identified
+        cohorts = predictor.get_available_cohorts()
+        self.assertEqual(cohorts, {"elective", "emergency"})
+
+        # Check elective cohort: cardiology 1/2 transfers, surgery 0/0 transfers
+        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "elective"), 0.5)
+        self.assertAlmostEqual(predictor.get_transfer_prob("surgery", "elective"), 0.0)
+
+        # Check emergency cohort: cardiology 0/0 transfers, surgery 1/2 transfers
+        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "emergency"), 0.0)
+        self.assertAlmostEqual(predictor.get_transfer_prob("surgery", "emergency"), 0.5)
+
+    def test_cohort_functionality_no_cohorts(self):
+        """Test that predictor works without cohorts (backward compatibility)."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", None],
+            }
+        )
+        predictor = TransferProbabilityEstimator()  # No cohort_col
+        predictor.fit(X, self.subspecialties)
+
+        # Should create "all" cohort automatically
+        cohorts = predictor.get_available_cohorts()
+        self.assertEqual(cohorts, {"all"})
+
+        # Should work without specifying cohort
+        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
+
+    def test_cohort_functionality_single_cohort_auto_select(self):
+        """Test automatic cohort selection when only one cohort exists."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", None],
+                "admission_type": ["elective", "elective"],  # Only one cohort
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.subspecialties)
+
+        # Should automatically use the single cohort
+        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
+        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "elective"), 0.5)
+
+    def test_cohort_functionality_multiple_cohorts_require_specification(self):
+        """Test that multiple cohorts require explicit specification."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", None],
+                "admission_type": ["elective", "emergency"],
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.subspecialties)
+
+        # Should raise error when no cohort specified with multiple cohorts
+        with self.assertRaises(ValueError) as context:
+            predictor.get_transfer_prob("cardiology")
+        self.assertIn("Multiple cohorts available", str(context.exception))
+
+    def test_cohort_functionality_error_handling(self):
+        """Test cohort-related error conditions."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+                "admission_type": ["elective"],
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.subspecialties)
+
+        # Test invalid cohort
+        with self.assertRaises(ValueError) as context:
+            predictor.get_transfer_prob("cardiology", "invalid_cohort")
+        self.assertIn("Cohort 'invalid_cohort' not found", str(context.exception))
+
+        # Test missing cohort column
+        X_no_cohort = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+            }
+        )
+        predictor_with_cohort = TransferProbabilityEstimator(cohort_col="admission_type")
+        with self.assertRaises(ValueError) as context:
+            predictor_with_cohort.fit(X_no_cohort, self.subspecialties)
+        self.assertIn("missing required columns", str(context.exception))
+
+    def test_cohort_functionality_validation(self):
+        """Test cohort values validation."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+                "admission_type": ["elective"],
+            }
+        )
+        
+        # Test with valid cohort_values
+        predictor = TransferProbabilityEstimator(
+            cohort_col="admission_type", 
+            cohort_values=["elective", "emergency"]
+        )
+        predictor.fit(X, self.subspecialties)  # Should not raise
+
+        # Test with invalid cohort in data
+        X_invalid = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+                "admission_type": ["invalid_type"],
+            }
+        )
+        predictor_with_validation = TransferProbabilityEstimator(
+            cohort_col="admission_type", 
+            cohort_values=["elective", "emergency"]
+        )
+        with self.assertRaises(ValueError) as context:
+            predictor_with_validation.fit(X_invalid, self.subspecialties)
+        self.assertIn("Found cohort values in data that are not in the cohort_values parameter", str(context.exception))
+
+    def test_cohort_functionality_transition_matrix(self):
+        """Test transition matrix generation for cohorts."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology", "surgery"],
+                "next_subspecialty": ["surgery", None, "cardiology"],
+                "admission_type": ["elective", "elective", "emergency"],
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.subspecialties)
+
+        # Test elective cohort matrix
+        matrix_elective = predictor.get_transition_matrix("elective")
+        self.assertIn("Discharge", matrix_elective.columns)
+        self.assertIn("cardiology", matrix_elective.index)
+        self.assertIn("surgery", matrix_elective.index)
+        
+        # Check that rows sum to 1.0
+        for idx in matrix_elective.index:
+            self.assertAlmostEqual(matrix_elective.loc[idx].sum(), 1.0, places=10)
+
+        # Test emergency cohort matrix
+        matrix_emergency = predictor.get_transition_matrix("emergency")
+        self.assertIn("Discharge", matrix_emergency.columns)
+        
+        # Check that rows sum to 1.0
+        for idx in matrix_emergency.index:
+            self.assertAlmostEqual(matrix_emergency.loc[idx].sum(), 1.0, places=10)
+
 
 if __name__ == "__main__":
     unittest.main()
