@@ -6,6 +6,7 @@ from patientflow.predict.hierarchy import (
     DemandPredictor,
     DemandPrediction,
 )
+from patientflow.predict.distribution import Distribution
 from patientflow.predict.subspecialty import (
     SubspecialtyPredictionInputs,
     FlowInputs,
@@ -87,14 +88,16 @@ class TestDemandPredictor:
         p_arrivals = np.array([0.0, 0.0, 0.0, 1.0])
         p_departures = np.array([0.0, 0.0, 1.0])
 
-        p_net, offset = predictor._compute_net_flow_pmf(p_arrivals, p_departures)
+        net = Distribution.from_pmf(p_arrivals).net(
+            Distribution.from_pmf(p_departures), predictor.k_sigma
+        )
 
         # Should have a single peak at net flow = 1
-        assert np.isclose(p_net.sum(), 1.0, atol=1e-6)
-        mode_idx = np.argmax(p_net)
-        mode_value = mode_idx + offset
+        assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
+        mode_idx = np.argmax(net.probabilities)
+        mode_value = mode_idx + net.offset
         assert mode_value == 1
-        assert np.isclose(p_net[mode_idx], 1.0)
+        assert np.isclose(net.probabilities[mode_idx], 1.0)
 
     def test_net_flow_pmf_negative_result(self):
         """Test net flow PMF when result is negative."""
@@ -104,11 +107,13 @@ class TestDemandPredictor:
         p_arrivals = np.array([0.0, 1.0])
         p_departures = np.array([0.0, 0.0, 0.0, 1.0])
 
-        p_net, offset = predictor._compute_net_flow_pmf(p_arrivals, p_departures)
+        net = Distribution.from_pmf(p_arrivals).net(
+            Distribution.from_pmf(p_departures), predictor.k_sigma
+        )
 
-        assert np.isclose(p_net.sum(), 1.0, atol=1e-6)
-        mode_idx = np.argmax(p_net)
-        mode_value = mode_idx + offset
+        assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
+        mode_idx = np.argmax(net.probabilities)
+        mode_value = mode_idx + net.offset
         assert mode_value == -2
 
     def test_net_flow_pmf_stochastic(self):
@@ -119,13 +124,15 @@ class TestDemandPredictor:
         p_arrivals = np.array([0.3, 0.5, 0.2])  # E[A] = 0.9
         p_departures = np.array([0.2, 0.6, 0.2])  # E[D] = 1.0
 
-        p_net, offset = predictor._compute_net_flow_pmf(p_arrivals, p_departures)
+        net = Distribution.from_pmf(p_arrivals).net(
+            Distribution.from_pmf(p_departures), predictor.k_sigma
+        )
 
         # Should sum to 1
-        assert np.isclose(p_net.sum(), 1.0, atol=1e-6)
+        assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
 
         # Expected value should be approximately E[A] - E[D] = -0.1
-        expected = predictor._expected_value(p_net, offset)
+        expected = net.expected()
         assert np.isclose(expected, -0.1, atol=1e-10)
 
     def test_predict_subspecialty(self):
