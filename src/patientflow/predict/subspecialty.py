@@ -44,6 +44,7 @@ from patientflow.aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )
+from patientflow.predict.distribution import Distribution
 from patientflow.calculate.admission_in_prediction_window import (
     calculate_probability,
     calculate_admission_probability_from_survival_curve,
@@ -215,7 +216,7 @@ class SubspecialtyPredictionInputs:
         return "\n".join(lines)
 
 
-def build_subspecialty_data(
+def _validate_models_and_data(
     models: Tuple[
         TrainedClassifier,
         TrainedClassifier,
@@ -233,63 +234,10 @@ def build_subspecialty_data(
     prediction_time: Tuple[int, int],
     ed_snapshots: pd.DataFrame,
     inpatient_snapshots: pd.DataFrame,
-    specialties: List[str],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
-    cdf_cut_points: Optional[List[float]] = None,
-    use_admission_in_window_prob: bool = True,
-) -> Dict[str, SubspecialtyPredictionInputs]:
-    """Build per-subspecialty inputs for downstream roll-up.
-
-    This function processes current patient snapshots through trained models and
-    computes, for each subspecialty, the probability distribution of admissions
-    from current ED patients, departures from current inpatients, the expected
-    means of yet-to-arrive admissions, and transfer arrival distributions.
-
-    Parameters
-    ----------
-    models : tuple
-        Tuple of seven trained models:
-
-        - ed_classifier: TrainedClassifier for ED admission probability prediction
-        - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
-        - spec_model: SequenceToOutcomePredictor | ValueToOutcomePredictor | MultiSubgroupPredictor
-          for specialty assignment probabilities
-        - ed_yta_model: ParametricIncomingAdmissionPredictor | EmpiricalIncomingAdmissionPredictor
-          for ED yet-to-arrive predictions
-        - non_ed_yta_model: DirectAdmissionPredictor for non-ED emergency predictions
-        - elective_yta_model: DirectAdmissionPredictor for elective predictions
-        - transfer_model: TransferProbabilityEstimator for internal transfer predictions
-    prediction_time : tuple of (int, int)
-        Hour and minute for inference time
-    ed_snapshots : pandas.DataFrame
-        DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in the ED.
-    inpatient_snapshots : pandas.DataFrame
-        DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in a subspecialty ward.
-    specialties : list of str
-        List of subspecialties to prepare inputs for
-    prediction_window : datetime.timedelta
-        Time window over which to predict admissions
-    x1, y1, x2, y2 : float
-        Parameters for the parametric admission-in-window curve. Used when
-        ed_yta_model is parametric and for computing in-ED window probabilities.
-    cdf_cut_points : list of float, optional
-        Ignored in this function; present for API compatibility. If provided,
-        has no effect on output.
-    use_admission_in_window_prob : bool, default=True
-        Whether to weight current ED admissions by their probability of being
-        admitted within the prediction window.
-
-    Returns
-    -------
-    dict of str to SubspecialtyPredictionInputs
-        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass.
-        See SubspecialtyPredictionInputs for field details.
+    specialties: List[str],
+) -> None:
+    """Validate all models and input data.
 
     Raises
     ------
@@ -298,18 +246,6 @@ def build_subspecialty_data(
     ValueError
         If required columns are missing, models are not fitted, or parameters
         don't match between models and requested parameters
-
-    Notes
-    -----
-    The function combines six sources of demand:
-
-    1. Current ED patients (converted to probability mass function)
-    2. Current inpatients (converted to probability mass function for departures)
-    3. Yet-to-arrive ED patients (converted to Poisson parameters)
-    4. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
-    5. Yet-to-arrive elective patients (converted to Poisson parameters)
-    6. Transfer arrivals from other subspecialties (converted to probability mass function)
-
     """
     (
         ed_classifier,
@@ -452,11 +388,9 @@ def build_subspecialty_data(
     special_params = spec_model.special_params
 
     if special_params:
-        special_category_func = special_params["special_category_func"]
         special_category_dict = special_params["special_category_dict"]
-        special_func_map = special_params["special_func_map"]
     else:
-        special_category_func = special_category_dict = special_func_map = None
+        special_category_dict = None
 
     if special_category_dict is not None and not set(specialties) == set(
         special_category_dict.keys()
@@ -471,6 +405,49 @@ def build_subspecialty_data(
             raise ValueError(
                 "Requested specialties do not match the specialty dictionary defined in special_params"
             )
+
+
+def _prepare_base_probabilities(
+    models: Tuple[
+        TrainedClassifier,
+        TrainedClassifier,
+        Union[
+            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        ],
+        Union[
+            ParametricIncomingAdmissionPredictor,
+            EmpiricalIncomingAdmissionPredictor,
+        ],
+        DirectAdmissionPredictor,
+        DirectAdmissionPredictor,
+        TransferProbabilityEstimator,
+    ],
+    ed_snapshots: pd.DataFrame,
+    inpatient_snapshots: pd.DataFrame,
+    prediction_window,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    use_admission_in_window_prob: bool,
+) -> Dict[str, Any]:
+    """Prepare base probability calculations for all patients.
+
+    Returns
+    -------
+    dict
+        Dictionary containing prepared probabilities and other computed values
+    """
+    (
+        ed_classifier,
+        inpatient_classifier,
+        spec_model,
+        yet_to_arrive_model,
+        non_ed_yta_model,
+        elective_yta_model,
+        transfer_model,
+    ) = models
+
     # Use calibrated pipeline if available for ED classifier
     ed_pipeline = (
         ed_classifier.calibrated_pipeline
@@ -519,15 +496,20 @@ def build_subspecialty_data(
             ed_snapshots
         )
     else:
+        special_params = spec_model.special_params
+        if special_params:
+            special_category_func = special_params["special_category_func"]
+            special_category_dict = special_params["special_category_dict"]
+        else:
+            special_category_func = special_category_dict = None
+
         ed_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
-            specialties,
+            [],  # specialties will be determined from the model
             spec_model,
             ed_snapshots,
             special_category_func=special_category_func,
             special_category_dict=special_category_dict,
         )
-
-    # No specialty probability calculation needed for inpatients (no weighting required)
 
     # Probability of being admitted within window (per row) for ED patients
     if use_admission_in_window_prob:
@@ -550,7 +532,12 @@ def build_subspecialty_data(
     else:
         prob_admission_in_window = pd.Series(1.0, index=ed_snapshots.index)
 
-    # No window filtering needed for inpatients (no weighting required)
+    # Prepare subgroup masks if using MultiSubgroupPredictor
+    special_params = spec_model.special_params
+    if special_params:
+        special_func_map = special_params["special_func_map"]
+    else:
+        special_func_map = None
 
     if special_func_map is None:
         special_func_map = {"default": lambda row: True}
@@ -566,120 +553,288 @@ def build_subspecialty_data(
         for name, func in special_func_map.items()
     }
 
-    # No subgroup processing needed for inpatients (no weighting required)
+    return {
+        "ed_snapshots": ed_snapshots,
+        "inpatient_snapshots": inpatient_snapshots,
+        "prob_admission_after_ed": prob_admission_after_ed,
+        "prob_departure_after_inpatient": prob_departure_after_inpatient,
+        "prob_admission_in_window": prob_admission_in_window,
+        "specialty_to_subgroups": specialty_to_subgroups,
+        "ed_masks_by_func": ed_masks_by_func,
+        "special_func_map": special_func_map,
+    }
+
+
+def _process_ed_patients_for_specialty(
+    spec: str,
+    ed_snapshots: pd.DataFrame,
+    specialty_to_subgroups: Dict[str, List[str]],
+    ed_masks_by_func: Dict[str, pd.Series],
+    prob_admission_after_ed: pd.Series,
+    prob_admission_in_window: pd.Series,
+) -> Dict[str, Any]:
+    """Process ED patients for a specific specialty.
+
+    Returns
+    -------
+    dict
+        Dictionary containing processed ED data for the specialty
+    """
+    if specialty_to_subgroups and spec in specialty_to_subgroups:
+        func_keys = specialty_to_subgroups[spec]
+    else:
+        func_keys = ["default"]
+
+    # Process ED patients
+    ed_combined_mask = pd.Series(False, index=ed_snapshots.index)
+    for key in func_keys:
+        ed_combined_mask = ed_combined_mask | ed_masks_by_func.get(
+            key, pd.Series(False, index=ed_snapshots.index)
+        )
+
+    ed_non_zero_indices = ed_snapshots[ed_combined_mask].index
+    filtered_prob_admission_after_ed = prob_admission_after_ed.loc[ed_non_zero_indices]
+
+    filtered_prob_admission_to_specialty = (
+        ed_snapshots["specialty_prob"]
+        .loc[ed_non_zero_indices]
+        .apply(lambda d: d.get(spec, 0.0) if isinstance(d, dict) else 0.0)
+    )
+    filtered_prob_admission_in_window = prob_admission_in_window.loc[
+        ed_non_zero_indices
+    ]
+    filtered_weights = (
+        filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
+    )
+
+    agg_predicted_in_ed = pred_proba_to_agg_predicted(
+        filtered_prob_admission_after_ed, weights=filtered_weights
+    )
+
+    return {
+        "agg_predicted_in_ed": agg_predicted_in_ed,
+    }
+
+
+def _process_inpatients_for_specialty(
+    spec: str,
+    inpatient_snapshots: pd.DataFrame,
+    prob_departure_after_inpatient: pd.Series,
+) -> Dict[str, Any]:
+    """Process inpatients for a specific specialty.
+
+    Returns
+    -------
+    dict
+        Dictionary containing processed inpatient data for the specialty
+    """
+    # Process inpatients (no weighting required)
+    inpatient_mask = inpatient_snapshots["current_subspecialty"] == spec
+    inpatient_indices = inpatient_snapshots[inpatient_mask].index
+
+    if len(inpatient_indices) > 0:
+        filtered_prob_departure_after_inpatient = prob_departure_after_inpatient.loc[
+            inpatient_indices
+        ]
+        agg_predicted_inpatient_departures = pred_proba_to_agg_predicted(
+            filtered_prob_departure_after_inpatient
+        )
+    else:
+        # No inpatients in this specialty, create zero PMF
+        agg_predicted_inpatient_departures = {"agg_proba": np.array([1.0, 0.0])}
+
+    return {
+        "agg_predicted_inpatient_departures": agg_predicted_inpatient_departures,
+    }
+
+
+def _create_flow_inputs(
+    spec: str,
+    agg_predicted_in_ed: Dict[str, np.ndarray],
+    agg_predicted_inpatient_departures: Dict[str, np.ndarray],
+    yet_to_arrive_model: Union[
+        ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor
+    ],
+    non_ed_yta_model: DirectAdmissionPredictor,
+    elective_yta_model: DirectAdmissionPredictor,
+    prediction_time: Tuple[int, int],
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+) -> Dict[str, Dict[str, FlowInputs]]:
+    """Create FlowInputs objects for inflows and outflows.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'inflows' and 'outflows' keys containing FlowInputs objects
+    """
+    prediction_context = {spec: {"prediction_time": prediction_time}}
+
+    # Build FlowInputs objects for inflows and outflows
+    # INFLOWS: All sources of patient arrivals to this subspecialty
+    inflows_dict = {
+        "ed_current": FlowInputs(
+            flow_id="ed_current",
+            flow_type="pmf",
+            distribution=np.array(agg_predicted_in_ed["agg_proba"]),
+            display_name="Admissions from current ED",
+        ),
+        "ed_yta": FlowInputs(
+            flow_id="ed_yta",
+            flow_type="poisson",
+            distribution=float(
+                yet_to_arrive_model.predict_mean(
+                    prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
+                )
+            ),
+            display_name="ED yet-to-arrive admissions",
+        ),
+        "non_ed_yta": FlowInputs(
+            flow_id="non_ed_yta",
+            flow_type="poisson",
+            distribution=float(
+                non_ed_yta_model.predict_mean(prediction_context)
+                if non_ed_yta_model is not None
+                else 0.0
+            ),
+            display_name="Non-ED emergency admissions",
+        ),
+        "elective_yta": FlowInputs(
+            flow_id="elective_yta",
+            flow_type="poisson",
+            distribution=float(
+                elective_yta_model.predict_mean(prediction_context)
+                if elective_yta_model is not None
+                else 0.0
+            ),
+            display_name="Elective admissions",
+        ),
+        # Note: "transfers_in" will be added later after compute_transfer_arrivals()
+    }
+
+    # OUTFLOWS: All sources of patient departures from this subspecialty
+    outflows_dict = {
+        "departures": FlowInputs(
+            flow_id="departures",
+            flow_type="pmf",
+            distribution=np.array(agg_predicted_inpatient_departures["agg_proba"]),
+            display_name="Inpatient departures",
+        ),
+    }
+
+    return {
+        "inflows": inflows_dict,
+        "outflows": outflows_dict,
+    }
+
+
+def _build_legacy_flows(
+    models: Tuple[
+        TrainedClassifier,
+        TrainedClassifier,
+        Union[
+            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        ],
+        Union[
+            ParametricIncomingAdmissionPredictor,
+            EmpiricalIncomingAdmissionPredictor,
+        ],
+        DirectAdmissionPredictor,
+        DirectAdmissionPredictor,
+        TransferProbabilityEstimator,
+    ],
+    prediction_time: Tuple[int, int],
+    ed_snapshots: pd.DataFrame,
+    inpatient_snapshots: pd.DataFrame,
+    specialties: List[str],
+    prediction_window,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    base_probs: Dict[str, Any],
+) -> Dict[str, Dict[str, Any]]:
+    """Build flows for all specialties using legacy processing logic.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping specialty to temporary flow data
+    """
+    (
+        ed_classifier,
+        inpatient_classifier,
+        spec_model,
+        yet_to_arrive_model,
+        non_ed_yta_model,
+        elective_yta_model,
+        transfer_model,
+    ) = models
+
+    # Extract prepared data
+    ed_snapshots = base_probs["ed_snapshots"]
+    inpatient_snapshots = base_probs["inpatient_snapshots"]
+    prob_admission_after_ed = base_probs["prob_admission_after_ed"]
+    prob_departure_after_inpatient = base_probs["prob_departure_after_inpatient"]
+    prob_admission_in_window = base_probs["prob_admission_in_window"]
+    specialty_to_subgroups = base_probs["specialty_to_subgroups"]
+    ed_masks_by_func = base_probs["ed_masks_by_func"]
 
     # First pass: gather computed data in temporary structure
     temp_subspecialty_data: Dict[str, Dict[str, Any]] = {}
 
     for spec in specialties:
-        if specialty_to_subgroups and spec in specialty_to_subgroups:
-            func_keys = specialty_to_subgroups[spec]
-        else:
-            func_keys = ["default"]
-
         # Process ED patients
-        ed_combined_mask = pd.Series(False, index=ed_snapshots.index)
-        for key in func_keys:
-            ed_combined_mask = ed_combined_mask | ed_masks_by_func.get(
-                key, pd.Series(False, index=ed_snapshots.index)
-            )
-
-        ed_non_zero_indices = ed_snapshots[ed_combined_mask].index
-        filtered_prob_admission_after_ed = prob_admission_after_ed.loc[
-            ed_non_zero_indices
-        ]
-
-        filtered_prob_admission_to_specialty = (
-            ed_snapshots["specialty_prob"]
-            .loc[ed_non_zero_indices]
-            .apply(lambda d: d.get(spec, 0.0) if isinstance(d, dict) else 0.0)
-        )
-        filtered_prob_admission_in_window = prob_admission_in_window.loc[
-            ed_non_zero_indices
-        ]
-        filtered_weights = (
-            filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
+        ed_data = _process_ed_patients_for_specialty(
+            spec,
+            ed_snapshots,
+            specialty_to_subgroups,
+            ed_masks_by_func,
+            prob_admission_after_ed,
+            prob_admission_in_window,
         )
 
-        agg_predicted_in_ed = pred_proba_to_agg_predicted(
-            filtered_prob_admission_after_ed, weights=filtered_weights
+        # Process inpatients
+        inpatient_data = _process_inpatients_for_specialty(
+            spec, inpatient_snapshots, prob_departure_after_inpatient
         )
 
-        # Process inpatients (no weighting required)
-        inpatient_mask = inpatient_snapshots["current_subspecialty"] == spec
-        inpatient_indices = inpatient_snapshots[inpatient_mask].index
-
-        if len(inpatient_indices) > 0:
-            filtered_prob_departure_after_inpatient = (
-                prob_departure_after_inpatient.loc[inpatient_indices]
-            )
-            agg_predicted_inpatient_departures = pred_proba_to_agg_predicted(
-                filtered_prob_departure_after_inpatient
-            )
-        else:
-            # No inpatients in this specialty, create zero PMF
-            agg_predicted_inpatient_departures = {"agg_proba": np.array([1.0, 0.0])}
-
-        prediction_context = {spec: {"prediction_time": prediction_time}}
-
-        # Build FlowInputs objects for inflows and outflows
-        # INFLOWS: All sources of patient arrivals to this subspecialty
-        inflows_dict = {
-            "ed_current": FlowInputs(
-                flow_id="ed_current",
-                flow_type="pmf",
-                distribution=np.array(agg_predicted_in_ed["agg_proba"]),
-                display_name="Admissions from current ED",
-            ),
-            "ed_yta": FlowInputs(
-                flow_id="ed_yta",
-                flow_type="poisson",
-                distribution=float(
-                    yet_to_arrive_model.predict_mean(
-                        prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-                    )
-                ),
-                display_name="ED yet-to-arrive admissions",
-            ),
-            "non_ed_yta": FlowInputs(
-                flow_id="non_ed_yta",
-                flow_type="poisson",
-                distribution=float(
-                    non_ed_yta_model.predict_mean(prediction_context)
-                    if non_ed_yta_model is not None
-                    else 0.0
-                ),
-                display_name="Non-ED emergency admissions",
-            ),
-            "elective_yta": FlowInputs(
-                flow_id="elective_yta",
-                flow_type="poisson",
-                distribution=float(
-                    elective_yta_model.predict_mean(prediction_context)
-                    if elective_yta_model is not None
-                    else 0.0
-                ),
-                display_name="Elective admissions",
-            ),
-            # Note: "transfers_in" will be added later after compute_transfer_arrivals()
-        }
-
-        # OUTFLOWS: All sources of patient departures from this subspecialty
-        outflows_dict = {
-            "departures": FlowInputs(
-                flow_id="departures",
-                flow_type="pmf",
-                distribution=np.array(agg_predicted_inpatient_departures["agg_proba"]),
-                display_name="Inpatient departures",
-            ),
-        }
+        # Create flow inputs
+        flow_data = _create_flow_inputs(
+            spec,
+            ed_data["agg_predicted_in_ed"],
+            inpatient_data["agg_predicted_inpatient_departures"],
+            yet_to_arrive_model,
+            non_ed_yta_model,
+            elective_yta_model,
+            prediction_time,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
 
         # Store in temporary dictionary structure
-        temp_subspecialty_data[spec] = {
-            "inflows": inflows_dict,
-            "outflows": outflows_dict,
-        }
+        temp_subspecialty_data[spec] = flow_data
 
+    return temp_subspecialty_data
+
+
+def _finalise_subspecialty_data(
+    temp_subspecialty_data: Dict[str, Dict[str, Any]],
+    transfer_model: TransferProbabilityEstimator,
+    specialties: List[str],
+    prediction_window,
+) -> Dict[str, SubspecialtyPredictionInputs]:
+    """Add transfers and create final SubspecialtyPredictionInputs objects.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs
+    """
     # Compute transfer arrivals using the departure PMFs from temporary data
     transfer_arrivals = compute_transfer_arrivals(
         temp_subspecialty_data, transfer_model, specialties
@@ -707,117 +862,144 @@ def build_subspecialty_data(
     return subspecialty_data
 
 
-def scale_pmf_by_probability(pmf: np.ndarray, compound_prob: float) -> np.ndarray:
-    """Scale a departure PMF by compound probability for transfer destination.
+def build_subspecialty_data(
+    models: Tuple[
+        TrainedClassifier,
+        TrainedClassifier,
+        Union[
+            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        ],
+        Union[
+            ParametricIncomingAdmissionPredictor,
+            EmpiricalIncomingAdmissionPredictor,
+        ],
+        DirectAdmissionPredictor,
+        DirectAdmissionPredictor,
+        TransferProbabilityEstimator,
+    ],
+    prediction_time: Tuple[int, int],
+    ed_snapshots: pd.DataFrame,
+    inpatient_snapshots: pd.DataFrame,
+    specialties: List[str],
+    prediction_window,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    cdf_cut_points: Optional[List[float]] = None,
+    use_admission_in_window_prob: bool = True,
+) -> Dict[str, SubspecialtyPredictionInputs]:
+    """Build per-subspecialty inputs for downstream roll-up.
 
-    This function creates a mixture distribution representing: "given these
-    departures, how many actually transfer to our destination?" It accounts
-    for the fact that most departures don't go to any specific destination.
-
-    The scaling works as follows:
-    - P(0 transfers) = P(0 departed) + P(n>0 departed but none went to destination)
-    - P(k transfers, k>0) = compound_prob × P(k departed)
-
-    This is effectively a Binomial thinning of each possible departure count.
-
-    Parameters
-    ----------
-    pmf : numpy.ndarray
-        Probability mass function for number of departures. pmf[k] = P(k departures)
-    compound_prob : float
-        Combined probability: prob_transfer × prob_destination.
-        Represents P(departure goes to this specific destination)
-
-    Returns
-    -------
-    numpy.ndarray
-        Scaled PMF representing the distribution of transfers to the destination
-
-    Examples
-    --------
-    >>> # 50% chance of 0 departures, 50% chance of 2 departures
-    >>> pmf = np.array([0.5, 0.0, 0.5])
-    >>> # 20% of departures go to our destination
-    >>> scaled = scale_pmf_by_probability(pmf, 0.2)
-    >>> # Most weight on 0 (no departures OR departures went elsewhere)
-    >>> # Some weight on 1 or 2 transfers
-
-    Notes
-    -----
-    For compound_prob = 0.0, returns [1.0, 0.0, ...] (no transfers possible).
-    For compound_prob = 1.0, returns the original pmf (all departures transfer here).
-    """
-    if compound_prob == 0.0:
-        # No transfers to this destination
-        return np.array([1.0, 0.0])
-
-    if compound_prob == 1.0:
-        # All departures go to this destination
-        return pmf.copy()
-
-    n_max = len(pmf) - 1
-    scaled_pmf = np.zeros(n_max + 1)
-
-    # P(0 transfers to destination) includes:
-    # 1. P(0 departures) - these definitely don't transfer
-    # 2. P(k>0 departures) * P(none go to destination)
-    #    = P(k departures) * (1 - compound_prob)^k
-    scaled_pmf[0] = pmf[0]  # Start with P(0 departures)
-
-    for k in range(1, n_max + 1):
-        if pmf[k] > 0:
-            # P(none of k departures go to destination)
-            prob_none_transfer = (1 - compound_prob) ** k
-            scaled_pmf[0] += pmf[k] * prob_none_transfer
-
-            # P(exactly j of k departures go to destination)
-            # Using binomial: C(k,j) * p^j * (1-p)^(k-j)
-            from scipy.stats import binom
-
-            for j in range(1, k + 1):
-                prob_j_transfers = binom.pmf(j, k, compound_prob)
-                scaled_pmf[j] += pmf[k] * prob_j_transfers
-
-    return scaled_pmf
-
-
-def convolve_pmfs(pmf1: np.ndarray, pmf2: np.ndarray) -> np.ndarray:
-    """Convolve two probability mass functions.
-
-    Convolution of PMFs gives the distribution of the sum of two independent
-    random variables. This is used to aggregate arrivals from multiple source
-    subspecialties.
-
-    Mathematically: P(total = k) = sum over all i,j where i+j=k of P1(i) × P2(j)
+    This function processes current patient snapshots through trained models and
+    computes, for each subspecialty, the probability distribution of admissions
+    from current ED patients, departures from current inpatients, the expected
+    means of yet-to-arrive admissions, and transfer arrival distributions.
 
     Parameters
     ----------
-    pmf1 : numpy.ndarray
-        First probability mass function
-    pmf2 : numpy.ndarray
-        Second probability mass function
+    models : tuple
+        Tuple of seven trained models:
+
+        - ed_classifier: TrainedClassifier for ED admission probability prediction
+        - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
+        - spec_model: SequenceToOutcomePredictor | ValueToOutcomePredictor | MultiSubgroupPredictor
+          for specialty assignment probabilities
+        - ed_yta_model: ParametricIncomingAdmissionPredictor | EmpiricalIncomingAdmissionPredictor
+          for ED yet-to-arrive predictions
+        - non_ed_yta_model: DirectAdmissionPredictor for non-ED emergency predictions
+        - elective_yta_model: DirectAdmissionPredictor for elective predictions
+        - transfer_model: TransferProbabilityEstimator for internal transfer predictions
+    prediction_time : tuple of (int, int)
+        Hour and minute for inference time
+    ed_snapshots : pandas.DataFrame
+        DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
+        Each row represents a patient currently in the ED.
+    inpatient_snapshots : pandas.DataFrame
+        DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
+        Each row represents a patient currently in a subspecialty ward.
+    specialties : list of str
+        List of subspecialties to prepare inputs for
+    prediction_window : datetime.timedelta
+        Time window over which to predict admissions
+    x1, y1, x2, y2 : float
+        Parameters for the parametric admission-in-window curve. Used when
+        ed_yta_model is parametric and for computing in-ED window probabilities.
+    cdf_cut_points : list of float, optional
+        Ignored in this function; present for API compatibility. If provided,
+        has no effect on output.
+    use_admission_in_window_prob : bool, default=True
+        Whether to weight current ED admissions by their probability of being
+        admitted within the prediction window.
 
     Returns
     -------
-    numpy.ndarray
-        Convolved PMF representing the distribution of the sum
+    dict of str to SubspecialtyPredictionInputs
+        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass.
+        See SubspecialtyPredictionInputs for field details.
 
-    Examples
-    --------
-    >>> # Two independent sources, each with 50% chance of 0 or 1 arrival
-    >>> pmf1 = np.array([0.5, 0.5])
-    >>> pmf2 = np.array([0.5, 0.5])
-    >>> result = convolve_pmfs(pmf1, pmf2)
-    >>> # Result: 25% chance of 0, 50% chance of 1, 25% chance of 2
-    >>> np.allclose(result, [0.25, 0.5, 0.25])
-    True
+    Raises
+    ------
+    TypeError
+        If any model is not of the expected type
+    ValueError
+        If required columns are missing, models are not fitted, or parameters
+        don't match between models and requested parameters
 
     Notes
     -----
-    This function uses numpy.convolve which implements discrete convolution
-    efficiently using FFT for large arrays.
+    The function combines six sources of demand:
+
+    1. Current ED patients (converted to probability mass function)
+    2. Current inpatients (converted to probability mass function for departures)
+    3. Yet-to-arrive ED patients (converted to Poisson parameters)
+    4. Yet-to-arrive non-ED emergency patients (converted to Poisson parameters)
+    5. Yet-to-arrive elective patients (converted to Poisson parameters)
+    6. Transfer arrivals from other subspecialties (converted to probability mass function)
+
     """
-    return np.convolve(pmf1, pmf2)
+    # 1. Validate inputs
+    _validate_models_and_data(
+        models,
+        prediction_time,
+        ed_snapshots,
+        inpatient_snapshots,
+        prediction_window,
+        specialties,
+    )
+
+    # 2. Prepare base probabilities
+    base_probs = _prepare_base_probabilities(
+        models,
+        ed_snapshots,
+        inpatient_snapshots,
+        prediction_window,
+        x1,
+        y1,
+        x2,
+        y2,
+        use_admission_in_window_prob,
+    )
+
+    # 3. Build flows using legacy processing logic
+    temp_subspecialty_data = _build_legacy_flows(
+        models,
+        prediction_time,
+        ed_snapshots,
+        inpatient_snapshots,
+        specialties,
+        prediction_window,
+        x1,
+        y1,
+        x2,
+        y2,
+        base_probs,
+    )
+
+    # 4. Finalize with transfers
+    return _finalise_subspecialty_data(
+        temp_subspecialty_data, models[6], specialties, prediction_window
+    )
 
 
 def compute_transfer_arrivals(
@@ -885,8 +1067,8 @@ def compute_transfer_arrivals(
     5. If the source sends patients to the target:
 
        - Calculates compound_prob = prob_transfer × prob_destination
-       - Scales the departure PMF by compound_prob
-       - Convolves with the accumulating arrival PMF
+       - Scales the departure PMF by compound_prob using Distribution.thin()
+       - Convolves with the accumulating arrival PMF using Distribution.convolve()
 
     6. Stores the final aggregated arrival PMF
 
@@ -905,7 +1087,7 @@ def compute_transfer_arrivals(
 
     for target_subspecialty in subspecialties:
         # Initialize with zero arrivals: P(0 arrivals) = 1.0
-        arrival_pmf = np.array([1.0, 0.0])
+        arrival_dist = Distribution.from_pmf(np.array([1.0, 0.0]))
 
         for source_subspecialty in subspecialties:
             # Skip self-transfers
@@ -961,13 +1143,14 @@ def compute_transfer_arrivals(
             # Calculate compound probability
             compound_prob = prob_transfer * prob_this_dest
 
-            # Scale the departure PMF by compound probability
-            scaled_pmf = scale_pmf_by_probability(departure_pmf, compound_prob)
+            # Create Distribution from departure PMF and apply thinning
+            departure_dist = Distribution.from_pmf(departure_pmf)
+            scaled_dist = departure_dist.thin(compound_prob)
 
-            # Accumulate by convolving with existing arrival PMF
-            arrival_pmf = convolve_pmfs(arrival_pmf, scaled_pmf)
+            # Accumulate by convolving with existing arrival distribution
+            arrival_dist = arrival_dist.convolve(scaled_dist)
 
         # Store the final arrival PMF for this target
-        predicted_arrivals[target_subspecialty] = arrival_pmf
+        predicted_arrivals[target_subspecialty] = arrival_dist.probabilities
 
     return predicted_arrivals
