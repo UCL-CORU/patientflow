@@ -8,8 +8,6 @@ from patientflow.predict.subspecialty import (
     build_subspecialty_data,
     SubspecialtyPredictionInputs,
     FlowInputs,
-    scale_pmf_by_probability,
-    convolve_pmfs,
     compute_transfer_arrivals,
 )
 from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
@@ -534,96 +532,6 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             y2=self.y2,
         )
         self.assertIn("paediatric", result)
-
-
-class TestScalePMFByProbability(unittest.TestCase):
-    """Test suite for scale_pmf_by_probability function."""
-
-    def test_edge_cases(self):
-        """Test edge cases: zero and unit probability."""
-        pmf = np.array([0.5, 0.3, 0.2])
-
-        # Zero probability should return [1.0, 0.0]
-        result_zero = scale_pmf_by_probability(pmf, 0.0)
-        np.testing.assert_array_almost_equal(result_zero, np.array([1.0, 0.0]))
-
-        # Unit probability should return original PMF
-        result_one = scale_pmf_by_probability(pmf, 1.0)
-        np.testing.assert_array_almost_equal(result_one, pmf)
-
-    def test_binomial_thinning_calculation(self):
-        """Test the binomial thinning calculation with a simple case."""
-        # 50% chance of 0 departures, 50% chance of 2 departures
-        pmf = np.array([0.5, 0.0, 0.5])
-        compound_prob = 0.5
-
-        result = scale_pmf_by_probability(pmf, compound_prob)
-
-        # P(0 transfers) = P(0 departures) + P(2 depart, none transfer)
-        #                = 0.5 + 0.5 * (1-0.5)^2 = 0.5 + 0.125 = 0.625
-        self.assertAlmostEqual(result[0], 0.625)
-        self.assertAlmostEqual(np.sum(result), 1.0)
-
-    def test_expected_value_scaling(self):
-        """Test that expected value scales linearly with compound probability."""
-        pmf = np.array([0.0, 0.0, 1.0])  # Certain to have 2 departures
-
-        for compound_prob in [0.1, 0.5, 0.9]:
-            result = scale_pmf_by_probability(pmf, compound_prob)
-            expected_transfers = np.sum(result * np.arange(len(result)))
-            self.assertAlmostEqual(expected_transfers, 2 * compound_prob, places=6)
-
-    def test_probability_conservation(self):
-        """Test that probabilities sum to 1.0 for various inputs."""
-        np.random.seed(42)
-        raw_pmf = np.random.rand(10)
-        pmf = raw_pmf / raw_pmf.sum()
-
-        for compound_prob in [0.0, 0.25, 0.5, 0.75, 1.0]:
-            result = scale_pmf_by_probability(pmf, compound_prob)
-            self.assertAlmostEqual(np.sum(result), 1.0, places=10)
-            self.assertTrue(np.all(result >= 0))
-
-
-class TestConvolvePMFs(unittest.TestCase):
-    """Test suite for convolve_pmfs function."""
-
-    def test_basic_convolution_calculation(self):
-        """Test basic convolution calculation."""
-        # Each has 50% chance of 0 or 1
-        pmf1 = np.array([0.5, 0.5])
-        pmf2 = np.array([0.5, 0.5])
-
-        result = convolve_pmfs(pmf1, pmf2)
-
-        # Result should be: 25% chance of 0, 50% chance of 1, 25% chance of 2
-        expected = np.array([0.25, 0.5, 0.25])
-        np.testing.assert_array_almost_equal(result, expected)
-
-    def test_expected_value_additivity(self):
-        """Test that E[X+Y] = E[X] + E[Y]."""
-        pmf1 = np.array([0.2, 0.5, 0.3])
-        pmf2 = np.array([0.4, 0.4, 0.2])
-
-        result = convolve_pmfs(pmf1, pmf2)
-
-        ev1 = np.sum(pmf1 * np.arange(len(pmf1)))
-        ev2 = np.sum(pmf2 * np.arange(len(pmf2)))
-        ev_result = np.sum(result * np.arange(len(result)))
-
-        self.assertAlmostEqual(ev_result, ev1 + ev2, places=10)
-
-    def test_probability_conservation(self):
-        """Test that convolution preserves probability mass."""
-        np.random.seed(42)
-        for _ in range(5):
-            raw1 = np.random.rand(5)
-            raw2 = np.random.rand(5)
-            pmf1 = raw1 / raw1.sum()
-            pmf2 = raw2 / raw2.sum()
-
-            result = convolve_pmfs(pmf1, pmf2)
-            self.assertAlmostEqual(np.sum(result), 1.0, places=10)
 
 
 class TestComputeTransferArrivals(unittest.TestCase):
