@@ -49,47 +49,12 @@ from patientflow.calculate.admission_in_prediction_window import (
     calculate_admission_probability_from_survival_curve,
 )
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.predict.routing import IdentityCohortRouter, FlowSpec
 
 
 @dataclass(frozen=True)
 class FlowInputs:
-    """Represents a single source of patient flow.
-
-    This class encapsulates a flow of patients (either arriving or departing)
-    with its distribution type and parameters. It provides a uniform interface
-    for both probability mass functions and Poisson-distributed flows.
-
-    Attributes
-    ----------
-    flow_id : str
-        Unique identifier for this flow (e.g., "ed_current", "transfers_in")
-    flow_type : str
-        Type of distribution: "pmf" for probability mass function or "poisson" for Poisson
-    distribution : np.ndarray or float
-        For "pmf": numpy array where distribution[k] = P(k patients)
-        For "poisson": float representing the Poisson rate parameter (lambda)
-    display_name : str, optional
-        Human-readable name for display purposes. If not provided, flow_id will be
-        formatted automatically (underscores replaced with spaces, title cased).
-
-    Examples
-    --------
-    >>> # PMF flow (e.g., current ED patients)
-    >>> ed_flow = FlowInputs(
-    ...     flow_id="ed_current",
-    ...     flow_type="pmf",
-    ...     distribution=np.array([0.5, 0.3, 0.2]),
-    ...     display_name="Admissions from current ED"
-    ... )
-
-    >>> # Poisson flow (e.g., yet-to-arrive patients)
-    >>> yta_flow = FlowInputs(
-    ...     flow_id="ed_yta",
-    ...     flow_type="poisson",
-    ...     distribution=2.5,
-    ...     display_name="ED yet-to-arrive admissions"
-    ... )
-    """
+    """Deprecated. Use FlowSpec in patientflow.predict.routing instead."""
 
     flow_id: str
     flow_type: str
@@ -97,16 +62,7 @@ class FlowInputs:
     display_name: Optional[str] = None
 
     def get_display_name(self) -> str:
-        """Get human-readable display name.
-
-        Returns
-        -------
-        str
-            Display name if provided, otherwise formatted flow_id.
-        """
-        if self.display_name:
-            return self.display_name
-        return self.flow_id.replace("_", " ").title()
+        return self.display_name or self.flow_id.replace("_", " ").title()
 
 
 @dataclass(frozen=True)
@@ -625,13 +581,13 @@ def build_subspecialty_data(
         # Build FlowInputs objects for inflows and outflows
         # INFLOWS: All sources of patient arrivals to this subspecialty
         inflows_dict = {
-            "ed_current": FlowInputs(
+            "ed_current": FlowSpec(
                 flow_id="ed_current",
                 flow_type="pmf",
                 distribution=np.array(agg_predicted_in_ed["agg_proba"]),
                 display_name="Admissions from current ED",
             ),
-            "ed_yta": FlowInputs(
+            "ed_yta": FlowSpec(
                 flow_id="ed_yta",
                 flow_type="poisson",
                 distribution=float(
@@ -641,7 +597,7 @@ def build_subspecialty_data(
                 ),
                 display_name="ED yet-to-arrive admissions",
             ),
-            "non_ed_yta": FlowInputs(
+            "non_ed_yta": FlowSpec(
                 flow_id="non_ed_yta",
                 flow_type="poisson",
                 distribution=float(
@@ -651,7 +607,7 @@ def build_subspecialty_data(
                 ),
                 display_name="Non-ED emergency admissions",
             ),
-            "elective_yta": FlowInputs(
+            "elective_yta": FlowSpec(
                 flow_id="elective_yta",
                 flow_type="poisson",
                 distribution=float(
@@ -666,7 +622,7 @@ def build_subspecialty_data(
 
         # OUTFLOWS: All sources of patient departures from this subspecialty
         outflows_dict = {
-            "departures": FlowInputs(
+            "departures": FlowSpec(
                 flow_id="departures",
                 flow_type="pmf",
                 distribution=np.array(agg_predicted_inpatient_departures["agg_proba"]),
@@ -674,10 +630,22 @@ def build_subspecialty_data(
             ),
         }
 
+        # Route flows through identity cohort router (no behavioral change)
+        _router = IdentityCohortRouter()
+        inflows_routed = {}
+        for k, f in inflows_dict.items():
+            routed = _router.route_flow(k, f, metadata={"subspecialty": spec})
+            inflows_routed[k] = routed.get("overall", f)
+
+        outflows_routed = {}
+        for k, f in outflows_dict.items():
+            routed = _router.route_flow(k, f, metadata={"subspecialty": spec})
+            outflows_routed[k] = routed.get("overall", f)
+
         # Store in temporary dictionary structure
         temp_subspecialty_data[spec] = {
-            "inflows": inflows_dict,
-            "outflows": outflows_dict,
+            "inflows": inflows_routed,
+            "outflows": outflows_routed,
         }
 
     # Compute transfer arrivals using the departure PMFs from temporary data
@@ -688,12 +656,18 @@ def build_subspecialty_data(
     # Second pass: Add transfer arrivals to inflows and create final immutable dataclass objects
     subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
     for spec in specialties:
-        # Add transfers_in to the inflows dictionary
-        temp_subspecialty_data[spec]["inflows"]["transfers_in"] = FlowInputs(
+        # Add transfers_in to the inflows dictionary (route via identity router)
+        transfer_flow = FlowSpec(
             flow_id="transfers_in",
             flow_type="pmf",
             distribution=transfer_arrivals[spec],
             display_name="Transfers from other subspecialties",
+        )
+        routed_transfer = IdentityCohortRouter().route_flow(
+            "transfers_in", transfer_flow, metadata={"subspecialty": spec}
+        )
+        temp_subspecialty_data[spec]["inflows"]["transfers_in"] = routed_transfer.get(
+            "overall", transfer_flow
         )
 
         # Create final immutable dataclass with complete inflows and outflows
