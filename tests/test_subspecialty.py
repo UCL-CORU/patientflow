@@ -50,6 +50,7 @@ def _create_random_df(n=1000, include_consults=False):
     )
     sex = np.random.choice(["M", "F"], size=n)
     is_admitted = np.random.choice([0, 1], size=n)
+    admission_type = np.random.choice(["elective", "emergency"], size=n)
 
     df = pd.DataFrame(
         {
@@ -59,6 +60,7 @@ def _create_random_df(n=1000, include_consults=False):
             "arrival_method": arrival_method,
             "sex": sex,
             "is_admitted": is_admitted,
+            "admission_type": admission_type,
         }
     )
 
@@ -354,16 +356,22 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.assertIn("ed_yta", spec_data.inflows)
             self.assertIn("non_ed_yta", spec_data.inflows)
             self.assertIn("elective_yta", spec_data.inflows)
-            self.assertIn("transfers_in", spec_data.inflows)
+            self.assertIn("elective_transfers", spec_data.inflows)
+            self.assertIn("emergency_transfers", spec_data.inflows)
             # Check outflows
-            self.assertIn("departures", spec_data.outflows)
+            self.assertIn("elective_departures", spec_data.outflows)
+            self.assertIn("emergency_departures", spec_data.outflows)
             # Check values
             ed_pmf = np.asarray(spec_data.inflows["ed_current"].distribution)
-            inpatient_pmf = np.asarray(spec_data.outflows["departures"].distribution)
-            transfer_pmf = np.asarray(spec_data.inflows["transfers_in"].distribution)
+            elective_departure_pmf = np.asarray(spec_data.outflows["elective_departures"].distribution)
+            emergency_departure_pmf = np.asarray(spec_data.outflows["emergency_departures"].distribution)
+            elective_transfer_pmf = np.asarray(spec_data.inflows["elective_transfers"].distribution)
+            emergency_transfer_pmf = np.asarray(spec_data.inflows["emergency_transfers"].distribution)
             self.assertGreater(len(ed_pmf), 0)
-            self.assertGreater(len(inpatient_pmf), 0)
-            self.assertGreater(len(transfer_pmf), 0)
+            self.assertGreater(len(elective_departure_pmf), 0)
+            self.assertGreater(len(emergency_departure_pmf), 0)
+            self.assertGreater(len(elective_transfer_pmf), 0)
+            self.assertGreater(len(emergency_transfer_pmf), 0)
             self.assertIsInstance(spec_data.inflows["ed_yta"].distribution, float)
             self.assertIsInstance(spec_data.inflows["non_ed_yta"].distribution, float)
             self.assertIsInstance(spec_data.inflows["elective_yta"].distribution, float)
@@ -546,17 +554,27 @@ class TestComputeTransferArrivals(unittest.TestCase):
         subspecialty_data = {
             "cardiology": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 0.0, 1.0]),  # 2 departures certain
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 0.0, 1.0]),  # 2 emergency departures certain
                     )
                 }
             },
             "surgery": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -564,8 +582,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
             },
             "medicine": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -573,43 +596,57 @@ class TestComputeTransferArrivals(unittest.TestCase):
             },
         }
 
-        # Cardiology transfers 100% to surgery
+        # Cardiology transfers 100% to surgery (emergency patients)
         X = pd.DataFrame(
             {
                 "current_subspecialty": ["cardiology", "cardiology"],
                 "next_subspecialty": ["surgery", "surgery"],
+                "admission_type": ["emergency", "emergency"],
             }
         )
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         result = compute_transfer_arrivals(
             subspecialty_data, transfer_model, self.subspecialties
         )
 
-        # Surgery should receive 2 arrivals with certainty
-        self.assertAlmostEqual(result["surgery"][2], 1.0, places=5)
-        # Medicine should have no arrivals
-        self.assertGreater(result["medicine"][0], 0.99)
+        # Surgery should receive 2 emergency arrivals with certainty
+        self.assertAlmostEqual(result["emergency"]["surgery"][2], 1.0, places=5)
+        # Medicine should have no emergency arrivals
+        self.assertGreater(result["emergency"]["medicine"][0], 0.99)
+        # No elective transfers in this test
+        self.assertGreater(result["elective"]["surgery"][0], 0.99)
+        self.assertGreater(result["elective"]["medicine"][0], 0.99)
 
     def test_mixed_transfers_and_discharges(self):
         """Test calculation when some patients transfer and some are discharged (None)."""
         subspecialty_data = {
             "cardiology": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array(
                             [0.0, 0.0, 0.0, 0.0, 1.0]
-                        ),  # 4 departures certain
+                        ),  # 4 emergency departures certain
                     )
                 }
             },
             "surgery": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -617,8 +654,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
             },
             "medicine": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -638,20 +680,21 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "cardiology",
                 ],
                 "next_subspecialty": ["surgery", "medicine", None, None],
+                "admission_type": ["emergency", "emergency", "emergency", "emergency"],
             }
         )
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         result = compute_transfer_arrivals(
             subspecialty_data, transfer_model, self.subspecialties
         )
 
-        # Check cardiology stats
-        prob_transfer = transfer_model.get_transfer_prob("cardiology")
+        # Check cardiology stats for emergency patients
+        prob_transfer = transfer_model.get_transfer_prob("cardiology", "emergency")
         self.assertAlmostEqual(prob_transfer, 0.5)  # 2 out of 4 transfer
 
-        dest_dist = transfer_model.get_destination_distribution("cardiology")
+        dest_dist = transfer_model.get_destination_distribution("cardiology", "emergency")
         self.assertAlmostEqual(
             dest_dist["surgery"], 0.5
         )  # Of transfers, 50% to surgery
@@ -659,11 +702,11 @@ class TestComputeTransferArrivals(unittest.TestCase):
             dest_dist["medicine"], 0.5
         )  # Of transfers, 50% to medicine
 
-        # With 4 departures and 50% transfer probability:
+        # With 4 emergency departures and 50% transfer probability:
         # Expected arrivals to surgery: 4 * 0.5 * 0.5 = 1.0
         # Expected arrivals to medicine: 4 * 0.5 * 0.5 = 1.0
-        surgery_arrivals = result["surgery"]
-        medicine_arrivals = result["medicine"]
+        surgery_arrivals = result["emergency"]["surgery"]
+        medicine_arrivals = result["emergency"]["medicine"]
 
         # Expected value should be ~1 for each
         ev_surgery = np.sum(surgery_arrivals * np.arange(len(surgery_arrivals)))
@@ -680,26 +723,41 @@ class TestComputeTransferArrivals(unittest.TestCase):
         subspecialty_data = {
             "cardiology": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 1.0]),
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 1.0]),  # 1 emergency departure
                     )
                 }
             },
             "surgery": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 1.0]),
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.0, 1.0]),  # 1 emergency departure
                     )
                 }
             },
             "medicine": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -707,73 +765,93 @@ class TestComputeTransferArrivals(unittest.TestCase):
             },
         }
 
-        # Both cardiology and surgery transfer to medicine
+        # Both cardiology and surgery transfer to medicine (emergency patients)
         X = pd.DataFrame(
             {
                 "current_subspecialty": ["cardiology", "surgery"],
                 "next_subspecialty": ["medicine", "medicine"],
+                "admission_type": ["emergency", "emergency"],
             }
         )
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         result = compute_transfer_arrivals(
             subspecialty_data, transfer_model, self.subspecialties
         )
 
-        # Medicine should receive 2 arrivals (convolution of two Bernoulli)
-        self.assertAlmostEqual(result["medicine"][2], 1.0, places=5)
+        # Medicine should receive 2 emergency arrivals (convolution of two Bernoulli)
+        self.assertAlmostEqual(result["emergency"]["medicine"][2], 1.0, places=5)
 
     def test_complex_transfer_network(self):
         """Test realistic complex network with circular transfers."""
         subspecialty_data = {
             "cardiology": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
                     )
                 }
             },
             "surgery": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
                     )
                 }
             },
             "medicine": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),
+                        distribution=np.array([1.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
+                        flow_type="pmf",
+                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
                     )
                 }
             },
         }
 
-        # Network: cardiology -> surgery, surgery -> medicine, medicine -> cardiology
+        # Network: cardiology -> surgery, surgery -> medicine, medicine -> cardiology (emergency patients)
         X = pd.DataFrame(
             {
                 "current_subspecialty": ["cardiology", "surgery", "medicine"],
                 "next_subspecialty": ["surgery", "medicine", "cardiology"],
+                "admission_type": ["emergency", "emergency", "emergency"],
             }
         )
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         result = compute_transfer_arrivals(
             subspecialty_data, transfer_model, self.subspecialties
         )
 
-        # All subspecialties should receive arrivals and sum to 1
+        # All subspecialties should receive emergency arrivals and sum to 1
         for subspecialty in self.subspecialties:
-            self.assertAlmostEqual(np.sum(result[subspecialty]), 1.0)
-            self.assertTrue(np.all(result[subspecialty] >= 0))
+            self.assertAlmostEqual(np.sum(result["emergency"][subspecialty]), 1.0)
+            self.assertTrue(np.all(result["emergency"][subspecialty] >= 0))
+            # No elective transfers in this test
+            self.assertAlmostEqual(np.sum(result["elective"][subspecialty]), 1.0)
+            self.assertTrue(np.all(result["elective"][subspecialty] >= 0))
 
     def test_probability_validity(self):
         """Test that arrival PMFs are valid probability distributions."""
@@ -781,8 +859,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
         subspecialty_data = {
             subspecialty: {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0, 0.0, 0.0]),  # No elective departures
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.random.dirichlet(np.ones(4)),
                     )
@@ -791,16 +874,17 @@ class TestComputeTransferArrivals(unittest.TestCase):
             for subspecialty in self.subspecialties
         }
 
-        # Create random transfer network
+        # Create random transfer network for emergency patients
         transfers = [
             {
                 "current_subspecialty": np.random.choice(self.subspecialties),
                 "next_subspecialty": np.random.choice([None] + self.subspecialties),
+                "admission_type": "emergency",
             }
             for _ in range(10)
         ]
         X = pd.DataFrame(transfers)
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         result = compute_transfer_arrivals(
@@ -808,19 +892,29 @@ class TestComputeTransferArrivals(unittest.TestCase):
         )
 
         for subspecialty in self.subspecialties:
-            arrivals = result[subspecialty]
-            self.assertAlmostEqual(np.sum(arrivals), 1.0, places=10)
-            self.assertTrue(np.all(arrivals >= 0))
+            # Check emergency arrivals
+            emergency_arrivals = result["emergency"][subspecialty]
+            self.assertAlmostEqual(np.sum(emergency_arrivals), 1.0, places=10)
+            self.assertTrue(np.all(emergency_arrivals >= 0))
+            # Check elective arrivals (should be zero in this test)
+            elective_arrivals = result["elective"][subspecialty]
+            self.assertAlmostEqual(np.sum(elective_arrivals), 1.0, places=10)
+            self.assertTrue(np.all(elective_arrivals >= 0))
 
     def test_error_handling(self):
         """Test essential error conditions."""
         # Missing departure PMF
         subspecialty_data = {
-            "cardiology": {},
+            "cardiology": {},  # Missing outflows entirely
             "surgery": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -828,8 +922,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
             },
             "medicine": {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -840,9 +939,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
             {
                 "current_subspecialty": ["cardiology"],
                 "next_subspecialty": ["surgery"],
+                "admission_type": ["emergency"],
             }
         )
-        transfer_model = TransferProbabilityEstimator()
+        transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.subspecialties))
 
         with self.assertRaises(KeyError):
@@ -854,8 +954,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
         subspecialty_data_valid = {
             spec: {
                 "outflows": {
-                    "departures": FlowInputs(
-                        flow_id="departures",
+                    "elective_departures": FlowInputs(
+                        flow_id="elective_departures",
+                        flow_type="pmf",
+                        distribution=np.array([1.0, 0.0]),
+                    ),
+                    "emergency_departures": FlowInputs(
+                        flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
                     )
@@ -863,7 +968,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
             for spec in self.subspecialties
         }
-        unfitted_model = TransferProbabilityEstimator()
+        unfitted_model = TransferProbabilityEstimator(cohort_col="admission_type")
 
         with self.assertRaises(ValueError):
             compute_transfer_arrivals(
