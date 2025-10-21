@@ -30,8 +30,9 @@ cohort. When cohort_col is None, all data is used together to train a single mod
 """
 
 import pandas as pd
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, Callable, Union
 from sklearn.base import BaseEstimator, TransformerMixin
+from patientflow.predictors.subgroup_definitions import create_subgroup_functions
 
 
 class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
@@ -60,6 +61,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     cohort_values : list, optional
         List of expected cohort values for validation. If provided, the fit method
         will validate that only these values appear in the cohort_col.
+    subgroup_functions : dict, optional
+        Dictionary mapping subgroup names to functions that identify patients in each subgroup.
+        If None, uses the standard 5 subgroup functions (paediatric, adult_male_young, etc.).
 
     Attributes
     ----------
@@ -91,6 +95,12 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 'source_subspecialty': {
                     'prob_transfer': float,
                     'destination_distribution': dict
+                },
+                'subgroup_name': {
+                    'source_subspecialty': {
+                        'prob_transfer': float,
+                        'destination_distribution': dict
+                    }
                 }
             }
         }
@@ -98,6 +108,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         Set of all subspecialties in the system
     cohorts : set or None
         Set of all cohorts in the system, or None if not using cohorts
+    subgroups : set or None
+        Set of all subgroups in the system, or None if not using subgroups
     is_fitted_ : bool
         Whether the predictor has been fitted
 
@@ -142,14 +154,17 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         destination_col: str = "next_subspecialty",
         cohort_col: Optional[str] = None,
         cohort_values: Optional[list] = None,
+        subgroup_functions: Optional[Dict[str, Callable[[Union[pd.Series, dict]], bool]]] = None,
     ):
         self.source_col = source_col
         self.destination_col = destination_col
         self.cohort_col = cohort_col
         self.cohort_values = cohort_values
-        self.transfer_probabilities: Optional[Dict[str, Dict[str, Dict]]] = None
+        self.subgroup_functions = subgroup_functions or create_subgroup_functions()
+        self.transfer_probabilities: Optional[Dict[str, Dict[str, Dict[str, Dict]]]] = None
         self.subspecialties: Optional[Set[str]] = None
         self.cohorts: Optional[Set[str]] = None
+        self.subgroups: Optional[Set[str]] = None
         self.is_fitted_ = False
 
     def __repr__(self) -> str:
@@ -278,17 +293,55 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             self.transfer_probabilities = {}
             for cohort in self.cohorts:
                 cohort_data = X[X[self.cohort_col] == cohort]
-                self.transfer_probabilities[cohort] = (
-                    self._prepare_transfer_probabilities(
-                        self.subspecialties, cohort_data
-                    )
+                
+                # Train global model for this cohort (all data) - store directly at cohort level
+                self.transfer_probabilities[cohort] = self._prepare_transfer_probabilities(
+                    self.subspecialties, cohort_data
                 )
+                
+                # Train subgroup models for this cohort
+                for subgroup_name, subgroup_func in self.subgroup_functions.items():
+                    subgroup_data = cohort_data[cohort_data.apply(subgroup_func, axis=1)]
+                    if len(subgroup_data) > 0:  # Only train if subgroup has data
+                        self.transfer_probabilities[cohort][subgroup_name] = (
+                            self._prepare_transfer_probabilities(
+                                self.subspecialties, subgroup_data
+                            )
+                        )
+            
+            # Extract all subgroups that were actually trained
+            self.subgroups = set()
+            for cohort_data in self.transfer_probabilities.values():
+                # The global model is stored directly at cohort level, subgroups are nested
+                for key, value in cohort_data.items():
+                    if isinstance(value, dict) and any('prob_transfer' in str(v) for v in value.values() if isinstance(v, dict)):
+                        # This is a subgroup (contains subspecialty data)
+                        self.subgroups.add(key)
         else:
             # No cohort processing - use all data
             self.cohorts = None
             self.transfer_probabilities = {
                 "all": self._prepare_transfer_probabilities(self.subspecialties, X)
             }
+            
+            # Train subgroup models for all data
+            for subgroup_name, subgroup_func in self.subgroup_functions.items():
+                subgroup_data = X[X.apply(subgroup_func, axis=1)]
+                if len(subgroup_data) > 0:  # Only train if subgroup has data
+                    self.transfer_probabilities["all"][subgroup_name] = (
+                        self._prepare_transfer_probabilities(
+                            self.subspecialties, subgroup_data
+                        )
+                    )
+            
+            # Extract all subgroups that were actually trained
+            self.subgroups = set()
+            for cohort_data in self.transfer_probabilities.values():
+                # The global model is stored directly at cohort level, subgroups are nested
+                for key, value in cohort_data.items():
+                    if isinstance(value, dict) and any('prob_transfer' in str(v) for v in value.values() if isinstance(v, dict)):
+                        # This is a subgroup (contains subspecialty data)
+                        self.subgroups.add(key)
 
         self.is_fitted_ = True
         return self
@@ -368,7 +421,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         return transfer_probabilities
 
     def get_transfer_prob(
-        self, source_subspecialty: str, cohort: Optional[str] = None
+        self, source_subspecialty: str, cohort: Optional[str] = None, subgroup: Optional[str] = None
     ) -> float:
         """Get the probability that a departure from a subspecialty is a transfer.
 
@@ -419,17 +472,36 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
             )
 
-        cohort_probabilities = self.transfer_probabilities[cohort]
-        if source_subspecialty not in cohort_probabilities:
-            raise KeyError(
-                f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                f"Available subspecialties: {sorted(cohort_probabilities.keys())}"
-            )
+        # Determine which subgroup to use
+        cohort_data = self.transfer_probabilities[cohort]
+        
+        if subgroup is None:
+            # Use global model (stored directly at cohort level)
+            if source_subspecialty not in cohort_data:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
+                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                )
+            return cohort_data[source_subspecialty]["prob_transfer"]
+        else:
+            # Use specific subgroup
+            if subgroup not in cohort_data:
+                raise ValueError(
+                    f"Subgroup '{subgroup}' not found in cohort '{cohort}'. "
+                    f"Available subgroups: {sorted([k for k in cohort_data.keys() if isinstance(cohort_data[k], dict) and any('prob_transfer' in str(v) for v in cohort_data[k].values() if isinstance(v, dict))])}"
+                )
 
-        return cohort_probabilities[source_subspecialty]["prob_transfer"]
+            subgroup_probabilities = cohort_data[subgroup]
+            if source_subspecialty not in subgroup_probabilities:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                )
+
+            return subgroup_probabilities[source_subspecialty]["prob_transfer"]
 
     def get_destination_distribution(
-        self, source_subspecialty: str, cohort: Optional[str] = None
+        self, source_subspecialty: str, cohort: Optional[str] = None, subgroup: Optional[str] = None
     ) -> Dict[str, float]:
         """Get the distribution of destinations given that a transfer occurs.
 
@@ -485,17 +557,36 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
             )
 
-        cohort_probabilities = self.transfer_probabilities[cohort]
-        if source_subspecialty not in cohort_probabilities:
-            raise KeyError(
-                f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                f"Available subspecialties: {sorted(cohort_probabilities.keys())}"
-            )
+        # Determine which subgroup to use
+        cohort_data = self.transfer_probabilities[cohort]
+        
+        if subgroup is None:
+            # Use global model (stored directly at cohort level)
+            if source_subspecialty not in cohort_data:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
+                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                )
+            return cohort_data[source_subspecialty]["destination_distribution"]
+        else:
+            # Use specific subgroup
+            if subgroup not in cohort_data:
+                raise ValueError(
+                    f"Subgroup '{subgroup}' not found in cohort '{cohort}'. "
+                    f"Available subgroups: {sorted([k for k in cohort_data.keys() if isinstance(cohort_data[k], dict) and any('prob_transfer' in str(v) for v in cohort_data[k].values() if isinstance(v, dict))])}"
+                )
 
-        return cohort_probabilities[source_subspecialty]["destination_distribution"]
+            subgroup_probabilities = cohort_data[subgroup]
+            if source_subspecialty not in subgroup_probabilities:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                )
+
+            return subgroup_probabilities[source_subspecialty]["destination_distribution"]
 
     def predict(
-        self, source_subspecialty: str, cohort: Optional[str] = None
+        self, source_subspecialty: str, cohort: Optional[str] = None, subgroup: Optional[str] = None
     ) -> Dict[str, float]:
         """Get full transfer statistics for a source subspecialty.
 
@@ -549,14 +640,33 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
             )
 
-        cohort_probabilities = self.transfer_probabilities[cohort]
-        if source_subspecialty not in cohort_probabilities:
-            raise KeyError(
-                f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                f"Available subspecialties: {sorted(cohort_probabilities.keys())}"
-            )
+        # Determine which subgroup to use
+        cohort_data = self.transfer_probabilities[cohort]
+        
+        if subgroup is None:
+            # Use global model (stored directly at cohort level)
+            if source_subspecialty not in cohort_data:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
+                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                )
+            return cohort_data[source_subspecialty].copy()
+        else:
+            # Use specific subgroup
+            if subgroup not in cohort_data:
+                raise ValueError(
+                    f"Subgroup '{subgroup}' not found in cohort '{cohort}'. "
+                    f"Available subgroups: {sorted([k for k in cohort_data.keys() if isinstance(cohort_data[k], dict) and any('prob_transfer' in str(v) for v in cohort_data[k].values() if isinstance(v, dict))])}"
+                )
 
-        return cohort_probabilities[source_subspecialty].copy()
+            subgroup_probabilities = cohort_data[subgroup]
+            if source_subspecialty not in subgroup_probabilities:
+                raise KeyError(
+                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                )
+
+            return subgroup_probabilities[source_subspecialty].copy()
 
     def get_all_transfer_probabilities(
         self, cohort: Optional[str] = None
@@ -681,12 +791,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             columns=sorted_subspecialties + ["Discharge"],
         )
 
-        # Fill in the matrix using the specified cohort's probabilities
-        cohort_probabilities = self.transfer_probabilities[cohort]
+        # Fill in the matrix using the specified cohort's global probabilities
+        cohort_data = self.transfer_probabilities[cohort]
+        # Global model is stored directly at cohort level
         for source in sorted_subspecialties:
-            if source in cohort_probabilities:
-                prob_transfer = cohort_probabilities[source]["prob_transfer"]
-                destination_dist = cohort_probabilities[source][
+            if source in cohort_data:
+                prob_transfer = cohort_data[source]["prob_transfer"]
+                destination_dist = cohort_data[source][
                     "destination_distribution"
                 ]
 
@@ -760,3 +871,100 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             )
 
         return self.transfer_probabilities[cohort].copy()
+
+    def get_available_subgroups(self, cohort: Optional[str] = None) -> Set[str]:
+        """Get the subgroups this model was trained on.
+
+        Parameters
+        ----------
+        cohort : str, optional
+            Name of the cohort to get subgroups for. If None, returns all
+            subgroups across all cohorts.
+
+        Returns
+        -------
+        set of str
+            Set of subgroup names that were used during training
+
+        Raises
+        ------
+        ValueError
+            If the predictor has not been fitted or cohort not found
+        """
+        if not self.is_fitted_:
+            raise ValueError(
+                "This TransferProbabilityEstimator instance is not fitted yet. "
+                "Call 'fit' with appropriate arguments before using this method."
+            )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
+
+        if cohort is None:
+            # Return all subgroups across all cohorts
+            all_subgroups = set()
+            for cohort_data in self.transfer_probabilities.values():
+                # The global model is stored directly at cohort level, subgroups are nested
+                for key, value in cohort_data.items():
+                    if isinstance(value, dict) and any('prob_transfer' in str(v) for v in value.values() if isinstance(v, dict)):
+                        # This is a subgroup (contains subspecialty data)
+                        all_subgroups.add(key)
+            return all_subgroups
+
+        if cohort not in self.transfer_probabilities:
+            raise ValueError(
+                f"Cohort '{cohort}' not found in trained model. "
+                f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
+            )
+
+        # Return subgroups for the specific cohort
+        cohort_data = self.transfer_probabilities[cohort]
+        cohort_subgroups = set()
+        for key, value in cohort_data.items():
+            if isinstance(value, dict) and any('prob_transfer' in str(v) for v in value.values() if isinstance(v, dict)):
+                # This is a subgroup (contains subspecialty data)
+                cohort_subgroups.add(key)
+        return cohort_subgroups
+
+    def get_subgroup_transfer_probabilities(self, cohort: str, subgroup: str) -> Dict[str, Dict]:
+        """Get all transfer probabilities for a specific cohort and subgroup.
+
+        Parameters
+        ----------
+        cohort : str
+            Name of the cohort to get probabilities for
+        subgroup : str
+            Name of the subgroup to get probabilities for
+
+        Returns
+        -------
+        dict
+            Dictionary containing transfer probabilities for all subspecialties
+            in the specified cohort and subgroup
+
+        Raises
+        ------
+        ValueError
+            If the predictor has not been fitted or cohort/subgroup not found
+        """
+        if not self.is_fitted_:
+            raise ValueError(
+                "This TransferProbabilityEstimator instance is not fitted yet. "
+                "Call 'fit' with appropriate arguments before using this method."
+            )
+
+        assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
+
+        if cohort not in self.transfer_probabilities:
+            raise ValueError(
+                f"Cohort '{cohort}' not found in trained model. "
+                f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
+            )
+
+        cohort_data = self.transfer_probabilities[cohort]
+        if subgroup not in cohort_data:
+            raise ValueError(
+                f"Subgroup '{subgroup}' not found in cohort '{cohort}'. "
+                f"Available subgroups: {sorted(cohort_data.keys())}"
+            )
+
+        return cohort_data[subgroup].copy()
