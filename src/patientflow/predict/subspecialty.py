@@ -136,12 +136,14 @@ class SubspecialtyPredictionInputs:
         - "ed_yta": Yet-to-arrive ED patients who will be admitted (Poisson)
         - "non_ed_yta": Yet-to-arrive non-ED emergency admissions (Poisson)
         - "elective_yta": Yet-to-arrive elective admissions (Poisson)
-        - "transfers_in": Patients transferring from other subspecialties (PMF)
+        - "elective_transfers": Elective patients transferring from other subspecialties (PMF)
+        - "emergency_transfers": Emergency patients transferring from other subspecialties (PMF)
     outflows : Dict[str, FlowInputs]
         Dictionary mapping flow identifiers to FlowInputs objects for departures.
         Standard keys include:
 
-        - "departures": Current inpatients who will depart (PMF)
+        - "elective_departures": Current elective inpatients who will depart (PMF)
+        - "emergency_departures": Current emergency inpatients who will depart (PMF)
 
         Future extensions may include "transfers_out", "deaths", etc.
 
@@ -485,10 +487,18 @@ def _prepare_base_probabilities(
         "elapsed_los"
     ].dt.total_seconds()
 
+    # Split inpatient snapshots into elective and emergency
+    elective_snapshots = inpatient_snapshots_temp[inpatient_snapshots_temp["admission_type"] == "elective"]
+    emergency_snapshots = inpatient_snapshots_temp[inpatient_snapshots_temp["admission_type"] == "emergency"]
+
     # Departure probability for current inpatients (per row)
-    prob_departure_after_inpatient = model_input_to_pred_proba(
-        inpatient_snapshots_temp, inpatient_pipeline
-    )
+    prob_departure_after_elective = model_input_to_pred_proba(
+        elective_snapshots, inpatient_pipeline
+    ) if not elective_snapshots.empty else pd.Series(dtype=float)
+    
+    prob_departure_after_emergency = model_input_to_pred_proba(
+        emergency_snapshots, inpatient_pipeline
+    ) if not emergency_snapshots.empty else pd.Series(dtype=float)
 
     # Specialty probabilities per row for ED patients
     if hasattr(spec_model, "predict_dataframe"):
@@ -557,7 +567,8 @@ def _prepare_base_probabilities(
         "ed_snapshots": ed_snapshots,
         "inpatient_snapshots": inpatient_snapshots,
         "prob_admission_after_ed": prob_admission_after_ed,
-        "prob_departure_after_inpatient": prob_departure_after_inpatient,
+        "prob_departure_after_elective": prob_departure_after_elective,
+        "prob_departure_after_emergency": prob_departure_after_emergency,
         "prob_admission_in_window": prob_admission_in_window,
         "specialty_to_subgroups": specialty_to_subgroups,
         "ed_masks_by_func": ed_masks_by_func,
@@ -616,42 +627,54 @@ def _process_ed_patients_for_specialty(
     }
 
 
-def _process_inpatients_for_specialty(
+def _process_inpatients_for_specialty_by_admission_type(
     spec: str,
     inpatient_snapshots: pd.DataFrame,
-    prob_departure_after_inpatient: pd.Series,
+    prob_departure_series: pd.Series,
+    admission_type: str,
 ) -> Dict[str, Any]:
-    """Process inpatients for a specific specialty.
+    """Process inpatients for a specific specialty and admission type.
+
+    Parameters
+    ----------
+    spec : str
+        The subspecialty to process
+    inpatient_snapshots : pd.DataFrame
+        DataFrame containing inpatient snapshot data
+    prob_departure_series : pd.Series
+        Series containing departure probabilities for the admission type
+    admission_type : str
+        The admission type to process ("elective" or "emergency")
 
     Returns
     -------
     dict
-        Dictionary containing processed inpatient data for the specialty
+        Dictionary containing processed inpatient data for the specialty and admission type
     """
-    # Process inpatients (no weighting required)
-    inpatient_mask = inpatient_snapshots["current_subspecialty"] == spec
-    inpatient_indices = inpatient_snapshots[inpatient_mask].index
+    # Process inpatients for the specific admission type (no weighting required)
+    admission_type_mask = (
+        (inpatient_snapshots["current_subspecialty"] == spec) &
+        (inpatient_snapshots["admission_type"] == admission_type)
+    )
+    admission_type_indices = inpatient_snapshots[admission_type_mask].index
 
-    if len(inpatient_indices) > 0:
-        filtered_prob_departure_after_inpatient = prob_departure_after_inpatient.loc[
-            inpatient_indices
-        ]
-        agg_predicted_inpatient_departures = pred_proba_to_agg_predicted(
-            filtered_prob_departure_after_inpatient
-        )
+    if len(admission_type_indices) > 0:
+        filtered_prob_departure = prob_departure_series.loc[admission_type_indices]
+        agg_predicted_departures = pred_proba_to_agg_predicted(filtered_prob_departure)
     else:
-        # No inpatients in this specialty, create zero PMF
-        agg_predicted_inpatient_departures = {"agg_proba": np.array([1.0, 0.0])}
+        # No inpatients of this type in this specialty, create zero PMF
+        agg_predicted_departures = {"agg_proba": np.array([1.0, 0.0])}
 
     return {
-        "agg_predicted_inpatient_departures": agg_predicted_inpatient_departures,
+        f"agg_predicted_{admission_type}_departures": agg_predicted_departures,
     }
 
 
 def _create_flow_inputs(
     spec: str,
     agg_predicted_in_ed: Dict[str, np.ndarray],
-    agg_predicted_inpatient_departures: Dict[str, np.ndarray],
+    agg_predicted_elective_departures: Dict[str, np.ndarray],
+    agg_predicted_emergency_departures: Dict[str, np.ndarray],
     yet_to_arrive_model: Union[
         ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor
     ],
@@ -716,11 +739,17 @@ def _create_flow_inputs(
 
     # OUTFLOWS: All sources of patient departures from this subspecialty
     outflows_dict = {
-        "departures": FlowInputs(
-            flow_id="departures",
+        "emergency_departures": FlowInputs(
+            flow_id="emergency_departures",
             flow_type="pmf",
-            distribution=np.array(agg_predicted_inpatient_departures["agg_proba"]),
-            display_name="Inpatient departures",
+            distribution=np.array(agg_predicted_emergency_departures["agg_proba"]),
+            display_name="Emergency inpatient departures",
+        ),
+        "elective_departures": FlowInputs(
+            flow_id="elective_departures",
+            flow_type="pmf",
+            distribution=np.array(agg_predicted_elective_departures["agg_proba"]),
+            display_name="Elective inpatient departures",
         ),
     }
 
@@ -777,7 +806,8 @@ def _build_legacy_flows(
     ed_snapshots = base_probs["ed_snapshots"]
     inpatient_snapshots = base_probs["inpatient_snapshots"]
     prob_admission_after_ed = base_probs["prob_admission_after_ed"]
-    prob_departure_after_inpatient = base_probs["prob_departure_after_inpatient"]
+    prob_departure_after_elective = base_probs["prob_departure_after_elective"]
+    prob_departure_after_emergency = base_probs["prob_departure_after_emergency"]
     prob_admission_in_window = base_probs["prob_admission_in_window"]
     specialty_to_subgroups = base_probs["specialty_to_subgroups"]
     ed_masks_by_func = base_probs["ed_masks_by_func"]
@@ -797,15 +827,19 @@ def _build_legacy_flows(
         )
 
         # Process inpatients
-        inpatient_data = _process_inpatients_for_specialty(
-            spec, inpatient_snapshots, prob_departure_after_inpatient
+        elective_data = _process_inpatients_for_specialty_by_admission_type(
+            spec, inpatient_snapshots, prob_departure_after_elective, "elective"
+        )
+        emergency_data = _process_inpatients_for_specialty_by_admission_type(
+            spec, inpatient_snapshots, prob_departure_after_emergency, "emergency"
         )
 
         # Create flow inputs
         flow_data = _create_flow_inputs(
             spec,
             ed_data["agg_predicted_in_ed"],
-            inpatient_data["agg_predicted_inpatient_departures"],
+            elective_data["agg_predicted_elective_departures"],
+            emergency_data["agg_predicted_emergency_departures"],
             yet_to_arrive_model,
             non_ed_yta_model,
             elective_yta_model,
@@ -843,12 +877,19 @@ def _finalise_subspecialty_data(
     # Second pass: Add transfer arrivals to inflows and create final immutable dataclass objects
     subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
     for spec in specialties:
-        # Add transfers_in to the inflows dictionary
-        temp_subspecialty_data[spec]["inflows"]["transfers_in"] = FlowInputs(
-            flow_id="transfers_in",
+        # Add elective and emergency transfers to the inflows dictionary
+        temp_subspecialty_data[spec]["inflows"]["elective_transfers"] = FlowInputs(
+            flow_id="elective_transfers",
             flow_type="pmf",
-            distribution=transfer_arrivals[spec],
-            display_name="Transfers from other subspecialties",
+            distribution=transfer_arrivals["elective"][spec],
+            display_name="Elective transfers from other subspecialties",
+        )
+
+        temp_subspecialty_data[spec]["inflows"]["emergency_transfers"] = FlowInputs(
+            flow_id="emergency_transfers",
+            flow_type="pmf",
+            distribution=transfer_arrivals["emergency"][spec],
+            display_name="Emergency transfers from other subspecialties",
         )
 
         # Create final immutable dataclass with complete inflows and outflows
@@ -1031,9 +1072,14 @@ def compute_transfer_arrivals(
     Returns
     -------
     dict
-        Mapping of subspecialty_id to PMF of arrivals from transfers.
+        Nested dictionary mapping admission_type to subspecialty_id to PMF of arrivals from transfers.
         {
-            'subspecialty_name': numpy.ndarray (PMF of transfer arrivals)
+            'elective': {
+                'subspecialty_name': numpy.ndarray (PMF of elective transfer arrivals)
+            },
+            'emergency': {
+                'subspecialty_name': numpy.ndarray (PMF of emergency transfer arrivals)
+            }
         }
 
     Raises
@@ -1051,8 +1097,9 @@ def compute_transfer_arrivals(
     ...     transfer_model,
     ...     subspecialties=['cardiology', 'surgery', 'medicine']
     ... )
-    >>> # Access arrival PMF for a specific subspecialty
-    >>> cardiology_arrivals = transfer_arrivals['cardiology']
+    >>> # Access arrival PMF for a specific subspecialty and admission type
+    >>> cardiology_elective_arrivals = transfer_arrivals['elective']['cardiology']
+    >>> cardiology_emergency_arrivals = transfer_arrivals['emergency']['cardiology']
 
     Notes
     -----
@@ -1083,74 +1130,75 @@ def compute_transfer_arrivals(
     parameter. Convolution operations are numerically stable even with small
     probabilities.
     """
-    predicted_arrivals = {}
+    predicted_arrivals = {"elective": {}, "emergency": {}}
 
-    for target_subspecialty in subspecialties:
-        # Initialize with zero arrivals: P(0 arrivals) = 1.0
-        arrival_dist = Distribution.from_pmf(np.array([1.0, 0.0]))
+    for admission_type in ["elective", "emergency"]:
+        for target_subspecialty in subspecialties:
+            # Initialize with zero arrivals: P(0 arrivals) = 1.0
+            arrival_dist = Distribution.from_pmf(np.array([1.0, 0.0]))
 
-        for source_subspecialty in subspecialties:
-            # Skip self-transfers
-            if source_subspecialty == target_subspecialty:
-                continue
+            for source_subspecialty in subspecialties:
+                # Skip self-transfers
+                if source_subspecialty == target_subspecialty:
+                    continue 
 
-            # Get departure PMF for source (handle both dict and dataclass)
-            source_data = subspecialty_data[source_subspecialty]
-            if isinstance(source_data, SubspecialtyPredictionInputs):
-                # Access through new structure: outflows dict -> "departures" -> distribution
-                if "departures" not in source_data.outflows:
-                    raise KeyError(
-                        f"Missing 'departures' outflow for subspecialty '{source_subspecialty}'"
+                # Get departure PMF for source (handle both dict and dataclass)
+                source_data = subspecialty_data[source_subspecialty]
+                if isinstance(source_data, SubspecialtyPredictionInputs):
+                    # Access through new structure: outflows dict -> "departures" -> distribution
+                    if f"{admission_type}_departures" not in source_data.outflows:
+                        raise KeyError(
+                            f"Missing '{admission_type}_departures' outflow for subspecialty '{source_subspecialty}'"
+                        )
+                    departure_pmf = source_data.outflows[f"{admission_type}_departures"].distribution
+                elif isinstance(source_data, dict):
+                    # Temporary data structure during build (dict with "inflows" and "outflows" keys)
+                    if (
+                        "outflows" not in source_data
+                        or f"{admission_type}_departures" not in source_data["outflows"]
+                    ):
+                        raise KeyError(
+                            f"Missing '{admission_type}_departures' in 'outflows' for subspecialty '{source_subspecialty}'"
+                        )
+                    departure_pmf = source_data["outflows"][f"{admission_type}_departures"].distribution
+                else:
+                    raise TypeError(
+                        f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
+                        f"got {type(source_data)}"
                     )
-                departure_pmf = source_data.outflows["departures"].distribution
-            elif isinstance(source_data, dict):
-                # Temporary data structure during build (dict with "inflows" and "outflows" keys)
-                if (
-                    "outflows" not in source_data
-                    or "departures" not in source_data["outflows"]
-                ):
-                    raise KeyError(
-                        f"Missing 'departures' in 'outflows' for subspecialty '{source_subspecialty}'"
+
+                # Get transfer probabilities from model
+                try:
+                    prob_transfer = transfer_model.get_transfer_prob(source_subspecialty, admission_type)
+                    dest_dist = transfer_model.get_destination_distribution(
+                        source_subspecialty, admission_type
                     )
-                departure_pmf = source_data["outflows"]["departures"].distribution
-            else:
-                raise TypeError(
-                    f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
-                    f"got {type(source_data)}"
-                )
+                except (ValueError, KeyError) as e:
+                    raise ValueError(
+                        f"Error getting transfer probabilities for '{source_subspecialty}' and admission type '{admission_type}': {e}"
+                    )
 
-            # Get transfer probabilities from model
-            try:
-                prob_transfer = transfer_model.get_transfer_prob(source_subspecialty)
-                dest_dist = transfer_model.get_destination_distribution(
-                    source_subspecialty
-                )
-            except (ValueError, KeyError) as e:
-                raise ValueError(
-                    f"Error getting transfer probabilities for '{source_subspecialty}': {e}"
-                )
+                # Skip if no transfers from this source
+                if prob_transfer == 0:
+                    continue
 
-            # Skip if no transfers from this source
-            if prob_transfer == 0:
-                continue
+                # Check if this source sends to our target
+                if target_subspecialty not in dest_dist:
+                    continue
 
-            # Check if this source sends to our target
-            if target_subspecialty not in dest_dist:
-                continue
+                prob_this_dest = dest_dist[target_subspecialty]
 
-            prob_this_dest = dest_dist[target_subspecialty]
+                # Calculate compound probability
+                compound_prob = prob_transfer * prob_this_dest
 
-            # Calculate compound probability
-            compound_prob = prob_transfer * prob_this_dest
+                # Create Distribution from departure PMF and apply thinning
+                departure_dist = Distribution.from_pmf(departure_pmf)
+                scaled_dist = departure_dist.thin(compound_prob)
 
-            # Create Distribution from departure PMF and apply thinning
-            departure_dist = Distribution.from_pmf(departure_pmf)
-            scaled_dist = departure_dist.thin(compound_prob)
+                # Accumulate by convolving with existing arrival distribution
+                arrival_dist = arrival_dist.convolve(scaled_dist)
 
-            # Accumulate by convolving with existing arrival distribution
-            arrival_dist = arrival_dist.convolve(scaled_dist)
-
-        # Store the final arrival PMF for this target
-        predicted_arrivals[target_subspecialty] = arrival_dist.probabilities
+            # Store the final arrival PMF for this target
+            predicted_arrivals[admission_type][target_subspecialty] = arrival_dist.probabilities
 
     return predicted_arrivals
