@@ -1173,7 +1173,16 @@ def compute_transfer_arrivals(
                     dest_dist = transfer_model.get_destination_distribution(
                         source_subspecialty, admission_type
                     )
-                except (ValueError, KeyError) as e:
+                except ValueError as e:
+                    # Handle case where cohort doesn't exist in transfer model
+                    if "not found in trained model" in str(e):
+                        # Skip this admission type if not trained for it
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Error getting transfer probabilities for '{source_subspecialty}' and admission type '{admission_type}': {e}"
+                        )
+                except KeyError as e:
                     raise ValueError(
                         f"Error getting transfer probabilities for '{source_subspecialty}' and admission type '{admission_type}': {e}"
                     )
