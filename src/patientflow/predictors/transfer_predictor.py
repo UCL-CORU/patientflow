@@ -165,6 +165,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         self.subspecialties: Optional[Set[str]] = None
         self.cohorts: Optional[Set[str]] = None
         self.subgroups: Optional[Set[str]] = None
+        self.patient_counts: Optional[Dict[str, Dict[str, int]]] = None
         self.is_fitted_ = False
 
     def __repr__(self) -> str:
@@ -185,24 +186,83 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             len(self.subspecialties) if self.subspecialties is not None else 0
         )
         n_cohorts = len(self.cohorts) if self.cohorts is not None else 0
+        n_subgroups = len(self.subgroups) if self.subgroups is not None else 0
+        
         n_with_transfers = 0
+        cohort_subspecialty_counts = {}
+        subspecialties_with_transfers = set()
+        
         if self.transfer_probabilities is not None:
-            n_with_transfers = sum(
-                1
-                for cohort_stats in self.transfer_probabilities.values()
-                for stats in cohort_stats.values()
-                if stats["prob_transfer"] > 0
-            )
+            # Process each cohort separately to get cohort-specific counts
+            for cohort_name, cohort_data in self.transfer_probabilities.items():
+                cohort_subspecialty_counts[cohort_name] = {}
+                for key, value in cohort_data.items():
+                    # Check if this is subspecialty data (has prob_transfer at top level)
+                    if isinstance(value, dict) and "prob_transfer" in value:
+                        if value["prob_transfer"] > 0:
+                            subspecialties_with_transfers.add(key)  # Track unique subspecialties with transfers
+                    # Check if this is subgroup data (contains nested subspecialty data)
+                    elif isinstance(value, dict) and any(
+                        isinstance(v, dict) and "prob_transfer" in v 
+                        for v in value.values()
+                    ):
+                        # Count subspecialties in this subgroup for this specific cohort
+                        # Only count subspecialties that have actual data (prob_transfer > 0)
+                        subgroup_total_subspecialties = sum(
+                            1 for v in value.values()
+                            if isinstance(v, dict) and "prob_transfer" in v and v["prob_transfer"] > 0
+                        )
+                        cohort_subspecialty_counts[cohort_name][key] = subgroup_total_subspecialties
+            
+            # Set final count of unique subspecialties with transfers
+            n_with_transfers = len(subspecialties_with_transfers)
+        
+        # Collect patient counts for subgroups by cohort
+        cohort_subgroup_counts = {}
+        if self.patient_counts is not None:
+            for cohort_name, cohort_counts in self.patient_counts.items():
+                cohort_subgroup_counts[cohort_name] = cohort_counts.copy()
 
-        cohort_info = (
-            f",\n    cohort_col='{self.cohort_col}',\n    n_cohorts={n_cohorts}"
-            if self.cohort_col
-            else ""
+        # Build single-line core info (source, destination, cohort)
+        core_info = (
+            f"    source_col='{self.source_col}', destination_col='{self.destination_col}'"
         )
+        if self.cohort_col:
+            core_info += f", cohort_col='{self.cohort_col}', n_cohorts={n_cohorts}"
+        
+        # Build subgroup info lines (each cohort on its own line)
+        subgroup_info = ""
+        if n_subgroups > 0:
+            if cohort_subgroup_counts and cohort_subspecialty_counts:
+                lines = [f"    n_subgroups={n_subgroups}"]
+                for cohort_name in sorted(cohort_subgroup_counts.keys()):
+                    entries = []
+                    for subgroup_name in sorted(cohort_subgroup_counts[cohort_name].keys()):
+                        patient_count = cohort_subgroup_counts[cohort_name][subgroup_name]
+                        subspec_count = cohort_subspecialty_counts.get(cohort_name, {}).get(subgroup_name, 0)
+                        entries.append(f"{subgroup_name}={subspec_count}/{patient_count}")
+                    lines.append(
+                        f"    {cohort_name} (subspecialties/snapshots): " + "; ".join(entries)
+                    )
+                subgroup_info = "\n" + "\n".join(lines)
+            else:
+                lines = [f"    n_subgroups={n_subgroups}"]
+                subgroup_details = []
+                for cohort_name, cohort_spec_counts in cohort_subspecialty_counts.items():
+                    for subgroup_name in sorted(cohort_spec_counts.keys()):
+                        subspec_count = cohort_spec_counts[subgroup_name]
+                        subgroup_details.append(f"{subgroup_name}={subspec_count}")
+                if subgroup_details:
+                    lines.append("    " + "; ".join(subgroup_details))
+                subgroup_info = "\n" + "\n".join(lines)
+        
+        # Avoid backslash in f-string expression by precomputing the optional newline
+        subgroup_info_line = (subgroup_info + "\n") if subgroup_info else ""
+        
         return (
             f"{class_name}(\n"
-            f"    source_col='{self.source_col}',\n"
-            f"    destination_col='{self.destination_col}'{cohort_info},\n"
+            f"{core_info}\n"
+            f"{subgroup_info_line}"
             f"    fitted=True,\n"
             f"    n_subspecialties={n_subspecialties},\n"
             f"    n_with_transfers={n_with_transfers}\n"
@@ -291,6 +351,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
             # Compute transfer probabilities for each cohort
             self.transfer_probabilities = {}
+            self.patient_counts = {}
             for cohort in self.cohorts:
                 cohort_data = X[X[self.cohort_col] == cohort]
                 
@@ -300,6 +361,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 )
                 
                 # Train subgroup models for this cohort
+                self.patient_counts[cohort] = {}
                 for subgroup_name, subgroup_func in self.subgroup_functions.items():
                     subgroup_data = cohort_data[cohort_data.apply(subgroup_func, axis=1)]
                     if len(subgroup_data) > 0:  # Only train if subgroup has data
@@ -308,6 +370,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                                 self.subspecialties, subgroup_data
                             )
                         )
+                        # Store patient count for this subgroup
+                        self.patient_counts[cohort][subgroup_name] = len(subgroup_data)
             
             # Extract all subgroups that were actually trained
             self.subgroups = set()
@@ -323,6 +387,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             self.transfer_probabilities = {
                 "all": self._prepare_transfer_probabilities(self.subspecialties, X)
             }
+            self.patient_counts = {"all": {}}
             
             # Train subgroup models for all data
             for subgroup_name, subgroup_func in self.subgroup_functions.items():
@@ -333,6 +398,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                             self.subspecialties, subgroup_data
                         )
                     )
+                    # Store patient count for this subgroup
+                    self.patient_counts["all"][subgroup_name] = len(subgroup_data)
             
             # Extract all subgroups that were actually trained
             self.subgroups = set()
