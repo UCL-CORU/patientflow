@@ -74,7 +74,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     transfer_probabilities : dict
         Nested dictionary containing transfer statistics. Structure depends on
         whether cohorts are used:
-        
+
         If cohort_col is None:
         {
             'all': {
@@ -84,7 +84,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 }
             }
         }
-        
+
         If cohort_col is specified:
         {
             'cohort_name': {
@@ -155,7 +155,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     def __repr__(self) -> str:
         class_name = self.__class__.__name__
         if not self.is_fitted_:
-            cohort_info = f",\n    cohort_col='{self.cohort_col}'" if self.cohort_col else ""
+            cohort_info = (
+                f",\n    cohort_col='{self.cohort_col}'" if self.cohort_col else ""
+            )
             return (
                 f"{class_name}(\n"
                 f"    source_col='{self.source_col}',\n"
@@ -177,7 +179,11 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 if stats["prob_transfer"] > 0
             )
 
-        cohort_info = f",\n    cohort_col='{self.cohort_col}',\n    n_cohorts={n_cohorts}" if self.cohort_col else ""
+        cohort_info = (
+            f",\n    cohort_col='{self.cohort_col}',\n    n_cohorts={n_cohorts}"
+            if self.cohort_col
+            else ""
+        )
         return (
             f"{class_name}(\n"
             f"    source_col='{self.source_col}',\n"
@@ -226,7 +232,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         required_columns = {self.source_col, self.destination_col}
         if self.cohort_col is not None:
             required_columns.add(self.cohort_col)
-            
+
         if not required_columns.issubset(X.columns):
             missing = required_columns - set(X.columns)
             raise ValueError(
@@ -257,7 +263,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         if self.cohort_col is not None:
             # Extract cohorts from data
             self.cohorts = set(X[self.cohort_col].dropna().unique())
-            
+
             # Validate cohort values if provided
             if self.cohort_values is not None:
                 unknown_cohorts = self.cohorts - set(self.cohort_values)
@@ -267,20 +273,22 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                         f"cohort_values parameter: {sorted(unknown_cohorts)}. "
                         f"Expected cohorts: {sorted(self.cohort_values)}"
                     )
-            
+
             # Compute transfer probabilities for each cohort
             self.transfer_probabilities = {}
             for cohort in self.cohorts:
                 cohort_data = X[X[self.cohort_col] == cohort]
-                self.transfer_probabilities[cohort] = self._prepare_transfer_probabilities(
-                    self.subspecialties, cohort_data
+                self.transfer_probabilities[cohort] = (
+                    self._prepare_transfer_probabilities(
+                        self.subspecialties, cohort_data
+                    )
                 )
         else:
             # No cohort processing - use all data
             self.cohorts = None
-            self.transfer_probabilities = {"all": self._prepare_transfer_probabilities(
-                self.subspecialties, X
-            )}
+            self.transfer_probabilities = {
+                "all": self._prepare_transfer_probabilities(self.subspecialties, X)
+            }
 
         self.is_fitted_ = True
         return self
@@ -359,7 +367,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         return transfer_probabilities
 
-    def get_transfer_prob(self, source_subspecialty: str, cohort: Optional[str] = None) -> float:
+    def get_transfer_prob(
+        self, source_subspecialty: str, cohort: Optional[str] = None
+    ) -> float:
         """Get the probability that a departure from a subspecialty is a transfer.
 
         Parameters
@@ -402,7 +412,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     f"Multiple cohorts available: {sorted(self.transfer_probabilities.keys())}. "
                     f"Please specify the cohort parameter."
                 )
-        
+
         if cohort not in self.transfer_probabilities:
             raise ValueError(
                 f"Cohort '{cohort}' not found in trained model. "
@@ -468,7 +478,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     f"Multiple cohorts available: {sorted(self.transfer_probabilities.keys())}. "
                     f"Please specify the cohort parameter."
                 )
-        
+
         if cohort not in self.transfer_probabilities:
             raise ValueError(
                 f"Cohort '{cohort}' not found in trained model. "
@@ -484,7 +494,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         return cohort_probabilities[source_subspecialty]["destination_distribution"]
 
-    def predict(self, source_subspecialty: str, cohort: Optional[str] = None) -> Dict[str, float]:
+    def predict(
+        self, source_subspecialty: str, cohort: Optional[str] = None
+    ) -> Dict[str, float]:
         """Get full transfer statistics for a source subspecialty.
 
         This is a convenience method that returns both the transfer probability
@@ -530,7 +542,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     f"Multiple cohorts available: {sorted(self.transfer_probabilities.keys())}. "
                     f"Please specify the cohort parameter."
                 )
-        
+
         if cohort not in self.transfer_probabilities:
             raise ValueError(
                 f"Cohort '{cohort}' not found in trained model. "
@@ -546,7 +558,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         return cohort_probabilities[source_subspecialty].copy()
 
-    def get_all_transfer_probabilities(self, cohort: Optional[str] = None) -> Dict[str, Dict]:
+    def get_all_transfer_probabilities(
+        self, cohort: Optional[str] = None
+    ) -> Dict[str, Dict]:
         """Get the complete transfer probabilities dictionary.
 
         Parameters
@@ -577,13 +591,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         if cohort is None:
             return self.transfer_probabilities.copy()
-        
+
         if cohort not in self.transfer_probabilities:
             raise ValueError(
                 f"Cohort '{cohort}' not found in trained model. "
                 f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
             )
-        
+
         return {cohort: self.transfer_probabilities[cohort].copy()}
 
     def get_transition_matrix(self, cohort: Optional[str] = None) -> pd.DataFrame:
@@ -650,7 +664,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     f"Multiple cohorts available: {sorted(self.transfer_probabilities.keys())}. "
                     f"Please specify the cohort parameter."
                 )
-        
+
         if cohort not in self.transfer_probabilities:
             raise ValueError(
                 f"Cohort '{cohort}' not found in trained model. "
@@ -672,7 +686,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         for source in sorted_subspecialties:
             if source in cohort_probabilities:
                 prob_transfer = cohort_probabilities[source]["prob_transfer"]
-                destination_dist = cohort_probabilities[source]["destination_distribution"]
+                destination_dist = cohort_probabilities[source][
+                    "destination_distribution"
+                ]
 
                 # Probability of discharge (1 - prob_transfer)
                 matrix.loc[source, "Discharge"] = 1.0 - prob_transfer
@@ -682,7 +698,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 for destination, conditional_prob in destination_dist.items():
                     if destination in self.subspecialties:
                         # Unconditional probability = prob_transfer * conditional_prob
-                        matrix.loc[source, destination] = prob_transfer * conditional_prob
+                        matrix.loc[source, destination] = (
+                            prob_transfer * conditional_prob
+                        )
 
         return matrix
 

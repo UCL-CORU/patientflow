@@ -173,7 +173,12 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         """Test basic cohort functionality with separate models for each cohort."""
         X = pd.DataFrame(
             {
-                "current_subspecialty": ["cardiology", "cardiology", "surgery", "surgery"],
+                "current_subspecialty": [
+                    "cardiology",
+                    "cardiology",
+                    "surgery",
+                    "surgery",
+                ],
                 "next_subspecialty": ["surgery", None, None, "cardiology"],
                 "admission_type": ["elective", "elective", "emergency", "emergency"],
             }
@@ -186,11 +191,15 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         self.assertEqual(cohorts, {"elective", "emergency"})
 
         # Check elective cohort: cardiology 1/2 transfers, surgery 0/0 transfers
-        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "elective"), 0.5)
+        self.assertAlmostEqual(
+            predictor.get_transfer_prob("cardiology", "elective"), 0.5
+        )
         self.assertAlmostEqual(predictor.get_transfer_prob("surgery", "elective"), 0.0)
 
         # Check emergency cohort: cardiology 0/0 transfers, surgery 1/2 transfers
-        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "emergency"), 0.0)
+        self.assertAlmostEqual(
+            predictor.get_transfer_prob("cardiology", "emergency"), 0.0
+        )
         self.assertAlmostEqual(predictor.get_transfer_prob("surgery", "emergency"), 0.5)
 
     def test_cohort_functionality_no_cohorts(self):
@@ -225,7 +234,9 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
 
         # Should automatically use the single cohort
         self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
-        self.assertAlmostEqual(predictor.get_transfer_prob("cardiology", "elective"), 0.5)
+        self.assertAlmostEqual(
+            predictor.get_transfer_prob("cardiology", "elective"), 0.5
+        )
 
     def test_cohort_functionality_multiple_cohorts_require_specification(self):
         """Test that multiple cohorts require explicit specification."""
@@ -268,7 +279,9 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
                 "next_subspecialty": [None],
             }
         )
-        predictor_with_cohort = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor_with_cohort = TransferProbabilityEstimator(
+            cohort_col="admission_type"
+        )
         with self.assertRaises(ValueError) as context:
             predictor_with_cohort.fit(X_no_cohort, self.subspecialties)
         self.assertIn("missing required columns", str(context.exception))
@@ -282,11 +295,10 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
                 "admission_type": ["elective"],
             }
         )
-        
+
         # Test with valid cohort_values
         predictor = TransferProbabilityEstimator(
-            cohort_col="admission_type", 
-            cohort_values=["elective", "emergency"]
+            cohort_col="admission_type", cohort_values=["elective", "emergency"]
         )
         predictor.fit(X, self.subspecialties)  # Should not raise
 
@@ -299,12 +311,14 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor_with_validation = TransferProbabilityEstimator(
-            cohort_col="admission_type", 
-            cohort_values=["elective", "emergency"]
+            cohort_col="admission_type", cohort_values=["elective", "emergency"]
         )
         with self.assertRaises(ValueError) as context:
             predictor_with_validation.fit(X_invalid, self.subspecialties)
-        self.assertIn("Found cohort values in data that are not in the cohort_values parameter", str(context.exception))
+        self.assertIn(
+            "Found cohort values in data that are not in the cohort_values parameter",
+            str(context.exception),
+        )
 
     def test_cohort_functionality_transition_matrix(self):
         """Test transition matrix generation for cohorts."""
@@ -323,7 +337,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         self.assertIn("Discharge", matrix_elective.columns)
         self.assertIn("cardiology", matrix_elective.index)
         self.assertIn("surgery", matrix_elective.index)
-        
+
         # Check that rows sum to 1.0
         for idx in matrix_elective.index:
             self.assertAlmostEqual(matrix_elective.loc[idx].sum(), 1.0, places=10)
@@ -331,7 +345,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         # Test emergency cohort matrix
         matrix_emergency = predictor.get_transition_matrix("emergency")
         self.assertIn("Discharge", matrix_emergency.columns)
-        
+
         # Check that rows sum to 1.0
         for idx in matrix_emergency.index:
             self.assertAlmostEqual(matrix_emergency.loc[idx].sum(), 1.0, places=10)
