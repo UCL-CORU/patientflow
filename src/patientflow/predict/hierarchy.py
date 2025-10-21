@@ -8,6 +8,7 @@ The main components are:
 
 - DemandPrediction: A dataclass representing prediction results with probabilities,
   expected values, and percentiles
+- FlowSelection: Configuration for selecting which patient flows to include in predictions
 - DemandPredictor: Core prediction engine using convolution of probability distributions
 - HospitalHierarchy: Represents organizational structure of a hospital
 - HierarchicalPredictor: High-level interface for making predictions across all levels
@@ -29,6 +30,12 @@ from dataclasses import dataclass
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
 from patientflow.predict.distribution import Distribution
+
+
+# Constants for magic numbers
+DEFAULT_PERCENTILES = [50, 75, 90, 95, 99]
+DEFAULT_PRECISION = 3
+DEFAULT_MAX_PROBS = 10
 
 
 @dataclass
@@ -98,7 +105,9 @@ class DemandPrediction:
         """
         return len(self.probabilities) - 1
 
-    def to_pretty(self, max_probs: int = 10, precision: int = 3) -> str:
+    def to_pretty(
+        self, max_probs: int = DEFAULT_MAX_PROBS, precision: int = DEFAULT_PRECISION
+    ) -> str:
         """Return a concise, human-friendly string representation.
 
         Parameters
@@ -152,119 +161,95 @@ class DemandPrediction:
 class FlowSelection:
     """Configuration for which flows to include in predictions.
 
-    This class controls which patient flows (arrivals and departures) are included
-    when making predictions. It allows users to customize predictions based on their
-    specific use cases, such as excluding transfers or focusing only on certain types
-    of admissions.
+    This defines booleans to include each flow family and a
+    single cohort selector ("all", "elective", "emergency").
 
-    Attributes
-    ----------
-    inflow_keys : List[str]
-        List of inflow identifiers to include in predictions.
-        Standard values: ["ed_current", "ed_yta", "non_ed_yta", "elective_yta", "transfers_in"]
-    outflow_keys : List[str]
-        List of outflow identifiers to include in predictions.
-        Standard values: ["departures"]
-        Future extensions may include: ["transfers_out", "deaths"]
-
-    Examples
+    Families
     --------
-    >>> # Include all flows (arrivals and departures)
-    >>> selection = FlowSelection.default()
+    Inflows families:
+    - include_ed_current: current ED cohort admissions (emergency only)
+    - include_ed_yta: yet-to-arrive ED admissions (emergency only)
+    - include_non_ed_yta: yet-to-arrive non-ED emergency admissions (emergency only)
+    - include_elective_yta: yet-to-arrive elective admissions (elective only)
+    - include_transfers_in: internal transfers into subspecialty (both cohorts)
 
-    >>> # Only incoming flows (all arrivals, no departures)
-    >>> selection = FlowSelection.incoming_flow()
+    Outflows families:
+    - include_departures: inpatient departures (both cohorts)
 
-    >>> # Only outgoing flows (all departures, no arrivals)
-    >>> selection = FlowSelection.outgoing_flow()
-
-    >>> # Custom selection
-    >>> selection = FlowSelection.custom(
-    ...     include_inflows=["ed_current", "ed_yta"],
-    ...     include_outflows=["departures"]
-    ... )
+    Cohort
+    ------
+    - cohort: one of {"all", "elective", "emergency"}
     """
 
-    inflow_keys: List[str]
-    outflow_keys: List[str]
+    include_ed_current: bool = True
+    include_ed_yta: bool = True
+    include_non_ed_yta: bool = True
+    include_elective_yta: bool = True
+    include_transfers_in: bool = True
+    include_departures: bool = True
+    cohort: str = "all"
 
     @classmethod
     def default(cls) -> "FlowSelection":
-        """All flows included (default behavior).
+        return cls()
 
-        Returns
-        -------
-        FlowSelection
-            Configuration including all standard inflows and outflows
-        """
+    @classmethod
+    def incoming_only(cls) -> "FlowSelection":
+        return cls(include_departures=False)
+
+    @classmethod
+    def outgoing_only(cls) -> "FlowSelection":
         return cls(
-            inflow_keys=[
-                "ed_current",
-                "ed_yta",
-                "non_ed_yta",
-                "elective_yta",
-                "transfers_in",
-            ],
-            outflow_keys=["departures"],
+            include_ed_current=False,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=True,
         )
 
     @classmethod
-    def incoming_flow(cls) -> "FlowSelection":
-        """Select incoming patient flows only (all arrivals, no departures).
-
-        Includes all inflow types (ed_current, ed_yta, non_ed_yta,
-        elective_yta, transfers_in) but excludes all outflows.
-        Useful for analyzing arrival patterns independently of departures.
-
-        Returns
-        -------
-        FlowSelection
-            Configuration with all inflows and no outflows
-        """
-        return cls(
-            inflow_keys=[
-                "ed_current",
-                "ed_yta",
-                "non_ed_yta",
-                "elective_yta",
-                "transfers_in",
-            ],
-            outflow_keys=[],
-        )
+    def elective_only(cls) -> "FlowSelection":
+        return cls(cohort="elective")
 
     @classmethod
-    def outgoing_flow(cls) -> "FlowSelection":
-        """Select outgoing patient flows only (all departures, no arrivals).
-
-        Includes all outflow types but excludes all inflows.
-        Useful for analysing discharge patterns independently of arrivals.
-
-        Returns
-        -------
-        FlowSelection
-            Configuration with no inflows and all outflows
-        """
-        return cls(inflow_keys=[], outflow_keys=["departures"])
+    def emergency_only(cls) -> "FlowSelection":
+        return cls(cohort="emergency")
 
     @classmethod
     def custom(
-        cls, include_inflows: List[str], include_outflows: List[str]
+        cls,
+        *,
+        include_ed_current: bool = True,
+        include_ed_yta: bool = True,
+        include_non_ed_yta: bool = True,
+        include_elective_yta: bool = True,
+        include_transfers_in: bool = True,
+        include_departures: bool = True,
+        cohort: str = "all",
     ) -> "FlowSelection":
-        """Custom flow selection.
+        return cls(
+            include_ed_current=include_ed_current,
+            include_ed_yta=include_ed_yta,
+            include_non_ed_yta=include_non_ed_yta,
+            include_elective_yta=include_elective_yta,
+            include_transfers_in=include_transfers_in,
+            include_departures=include_departures,
+            cohort=cohort,
+        )
 
-        Parameters
-        ----------
-        include_inflows : List[str]
-            List of inflow identifiers to include
-        include_outflows : List[str]
-            List of outflow identifiers to include
+    def validate(self) -> None:
+        """Validate the flow selection configuration.
 
-        Returns
-        -------
-        FlowSelection
-            Custom configuration with specified flows
+        Raises
+        ------
+        ValueError
+            If cohort is not one of the expected values
         """
-        return cls(inflow_keys=include_inflows, outflow_keys=include_outflows)
+        if self.cohort not in {"all", "elective", "emergency"}:
+            raise ValueError(
+                f"Invalid cohort '{self.cohort}'. Must be one of: 'all', 'elective', 'emergency'"
+            )
 
 
 @dataclass
@@ -289,9 +274,9 @@ class PredictionBundle:
         Prediction for net change in bed occupancy (arrivals - departures).
         This is the full probability distribution of the difference.
     flow_selection : FlowSelection
-        Configuration specifying which flows were included in this prediction.
-        Tracks which inflows and outflows were aggregated into the arrivals
-        and departures distributions.
+        Selection specifying which flow families and cohort were included in this
+        prediction. Tracks which inflows and outflows were aggregated into the
+        arrivals and departures distributions.
 
     Notes
     -----
@@ -322,10 +307,12 @@ class PredictionBundle:
             - arrivals_pmf: PMF representation of arrivals
             - departures_pmf: PMF representation of departures
             - net_flow_pmf: PMF representation of net flow
-            - flows_included: Number of inflows and outflows included
+            - flows_included: Number of inflow families and outflow families included
         """
 
-        def format_pmf(pred: DemandPrediction, max_display: int = 10) -> str:
+        def format_pmf(
+            pred: DemandPrediction, max_display: int = DEFAULT_MAX_PROBS
+        ) -> str:
             """Format PMF similar to SubspecialtyPredictionInputs."""
             arr = pred.probabilities
             offset = pred.offset
@@ -362,7 +349,15 @@ class PredictionBundle:
             "arrivals_pmf": format_pmf(self.arrivals),
             "departures_pmf": format_pmf(self.departures),
             "net_flow_pmf": format_pmf(self.net_flow),
-            "flows_included": f"{len(self.flow_selection.inflow_keys)} inflows, {len(self.flow_selection.outflow_keys)} outflows",
+            "flows_included": (
+                f"selection cohort={self.flow_selection.cohort} "
+                f"inflows(ed_current={self.flow_selection.include_ed_current}, "
+                f"ed_yta={self.flow_selection.include_ed_yta}, "
+                f"non_ed_yta={self.flow_selection.include_non_ed_yta}, "
+                f"elective_yta={self.flow_selection.include_elective_yta}, "
+                f"transfers_in={self.flow_selection.include_transfers_in}) "
+                f"outflows(departures={self.flow_selection.include_departures})"
+            ),
         }
 
     def __str__(self) -> str:
@@ -410,6 +405,12 @@ class DemandPredictor:
     The class uses discrete convolution to combine probability distributions.
     Supports are clamped deterministically using k-sigma caps to prevent
     exponential growth in array sizes.
+    
+    Flow Selection
+    --------------
+    The predictor supports flexible flow selection via FlowSelection objects,
+    allowing users to specify which patient flows (inflows/outflows) and
+    cohorts (elective/emergency/all) to include in predictions.
     """
 
     def __init__(self, k_sigma: float = 4.0):
@@ -506,7 +507,7 @@ class DemandPredictor:
             Dataclass containing all prediction inputs for this subspecialty.
             See SubspecialtyPredictionInputs for field details.
         flow_selection : FlowSelection, optional
-            Configuration specifying which flows to include. If None, uses
+            Selection specifying which flows to include. If None, uses
             FlowSelection.default() which includes all flows.
 
         Returns
@@ -529,36 +530,89 @@ class DemandPredictor:
 
         >>> # Only incoming flows (arrivals, no departures)
         >>> bundle = predictor.predict_subspecialty(
-        ...     spec_id, inputs, flow_selection=FlowSelection.incoming_flow()
+        ...     spec_id, inputs, flow_selection=FlowSelection.incoming_only()
         ... )
 
         >>> # Custom selection
         >>> bundle = predictor.predict_subspecialty(
         ...     spec_id, inputs,
         ...     flow_selection=FlowSelection.custom(
-        ...         include_inflows=["ed_current", "ed_yta"],
-        ...         include_outflows=["departures"]
+        ...         include_ed_current=True,
+        ...         include_ed_yta=True,
+        ...         include_non_ed_yta=False,
+        ...         include_elective_yta=False,
+        ...         include_transfers_in=False,
+        ...         include_departures=True,
+        ...         cohort="emergency",
         ...     )
         ... )
         """
         if flow_selection is None:
             flow_selection = FlowSelection.default()
 
-        # Compute arrivals from selected inflows
-        selected_inflows = [
-            inputs.inflows[key]
-            for key in flow_selection.inflow_keys
-            if key in inputs.inflows
-        ]
+        # Validate flow selection configuration
+        flow_selection.validate()
+
+        # Build inflows from families and cohort
+        inflow_keys: List[str] = []
+        if flow_selection.include_ed_current:
+            inflow_keys.append("ed_current")
+        if flow_selection.include_ed_yta:
+            inflow_keys.append("ed_yta")
+        if flow_selection.include_non_ed_yta:
+            inflow_keys.append("non_ed_yta")
+        if flow_selection.include_elective_yta:
+            inflow_keys.append("elective_yta")
+        if flow_selection.include_transfers_in:
+            # include both then cohort-filter
+            inflow_keys.extend(["elective_transfers", "emergency_transfers"])
+
+        def inflow_allowed(key: str) -> bool:
+            if flow_selection.cohort == "all":
+                return True
+            if flow_selection.cohort == "elective":
+                return key.startswith("elective_") or key == "elective_yta"
+            if flow_selection.cohort == "emergency":
+                return key in {"ed_current", "ed_yta", "non_ed_yta"} or key.startswith(
+                    "emergency_"
+                )
+            return True
+
+        # Validate that required inflow keys exist
+        missing_inflow_keys = [k for k in inflow_keys if k not in inputs.inflows]
+        if missing_inflow_keys:
+            raise KeyError(
+                f"Missing inflow keys in SubspecialtyPredictionInputs: {missing_inflow_keys}"
+            )
+
+        selected_inflows = [inputs.inflows[k] for k in inflow_keys if inflow_allowed(k)]
         arrivals = self.predict_flow_total(
             selected_inflows, subspecialty_id, "arrivals"
         )
 
-        # Compute departures from selected outflows
+        # Build outflows from families and cohort
+        outflow_keys: List[str] = []
+        if flow_selection.include_departures:
+            outflow_keys.extend(["elective_departures", "emergency_departures"])
+
+        def outflow_allowed(key: str) -> bool:
+            if flow_selection.cohort == "all":
+                return True
+            if flow_selection.cohort == "elective":
+                return key.startswith("elective_")
+            if flow_selection.cohort == "emergency":
+                return key.startswith("emergency_")
+            return True
+
+        # Validate that required outflow keys exist
+        missing_outflow_keys = [k for k in outflow_keys if k not in inputs.outflows]
+        if missing_outflow_keys:
+            raise KeyError(
+                f"Missing outflow keys in SubspecialtyPredictionInputs: {missing_outflow_keys}"
+            )
+
         selected_outflows = [
-            inputs.outflows[key]
-            for key in flow_selection.outflow_keys
-            if key in inputs.outflows
+            inputs.outflows[k] for k in outflow_keys if outflow_allowed(k)
         ]
         departures = self.predict_flow_total(
             selected_outflows, subspecialty_id, "departures"
@@ -846,6 +900,36 @@ class DemandPredictor:
             result[pct] = int(idx + offset)
         return result
 
+    def _compute_net_flow(
+        self, arrivals: DemandPrediction, departures: DemandPrediction, entity_id: str
+    ) -> DemandPrediction:
+        """Compute net flow distribution from arrivals and departures.
+
+        Parameters
+        ----------
+        arrivals : DemandPrediction
+            Arrivals prediction
+        departures : DemandPrediction
+            Departures prediction
+        entity_id : str
+            Entity identifier for the net flow prediction
+
+        Returns
+        -------
+        DemandPrediction
+            Net flow prediction (arrivals - departures)
+        """
+        # Renormalize arrivals and departures before net-flow
+        arrivals_p = self._renormalize(arrivals.probabilities)
+        departures_p = self._renormalize(departures.probabilities)
+
+        net_dist = Distribution.from_pmf(arrivals_p).net(
+            Distribution.from_pmf(departures_p), self.k_sigma
+        )
+        return self._create_prediction(
+            entity_id, "net_flow", net_dist.probabilities, net_dist.offset
+        )
+
     def _create_prediction(
         self,
         entity_id: str,
@@ -889,7 +973,7 @@ class DemandPredictor:
             entity_type=entity_type,
             probabilities=probabilities,
             expected_value=expected_value,
-            percentiles=self._percentiles(probabilities, [50, 75, 90, 95, 99], offset),
+            percentiles=self._percentiles(probabilities, DEFAULT_PERCENTILES, offset),
             offset=offset,
         )
 
@@ -1133,8 +1217,8 @@ class HierarchicalPredictor:
             contains exactly one hospital, that hospital will be used automatically.
             Required if the hierarchy contains multiple hospitals.
         flow_selection : FlowSelection, optional
-            Configuration for which flows to include. If None, uses FlowSelection.default()
-            which includes all flows.
+            Selection for which flow families and cohort to include. If None, uses
+            FlowSelection.default() which includes all flows (cohort="all").
 
         Returns
         -------
@@ -1202,15 +1286,8 @@ class HierarchicalPredictor:
             )
 
             # Compute net flow distribution
-            # Renormalize arrivals and departures before net-flow
-            arrivals_p = self.predictor._renormalize(arrivals.probabilities)
-            departures_p = self.predictor._renormalize(departures.probabilities)
-
-            net_dist = Distribution.from_pmf(arrivals_p).net(
-                Distribution.from_pmf(departures_p), self.predictor.k_sigma
-            )
-            net_flow = self.predictor._create_prediction(
-                reporting_unit_id, "net_flow", net_dist.probabilities, net_dist.offset
+            net_flow = self.predictor._compute_net_flow(
+                arrivals, departures, reporting_unit_id
             )
 
             bundle = PredictionBundle(
@@ -1241,15 +1318,8 @@ class HierarchicalPredictor:
             departures = self.predictor.predict_division(division_id, departures_preds)
 
             # Compute net flow distribution
-            # Renormalize arrivals and departures before net-flow
-            arrivals_p = self.predictor._renormalize(arrivals.probabilities)
-            departures_p = self.predictor._renormalize(departures.probabilities)
-
-            net_dist = Distribution.from_pmf(arrivals_p).net(
-                Distribution.from_pmf(departures_p), self.predictor.k_sigma
-            )
-            net_flow = self.predictor._create_prediction(
-                division_id, "net_flow", net_dist.probabilities, net_dist.offset
+            net_flow = self.predictor._compute_net_flow(
+                arrivals, departures, division_id
             )
 
             bundle = PredictionBundle(
@@ -1276,16 +1346,7 @@ class HierarchicalPredictor:
             departures = self.predictor.predict_board(board_id, departures_preds)
 
             # Compute net flow distribution
-            # Renormalize arrivals and departures before net-flow
-            arrivals_p = self.predictor._renormalize(arrivals.probabilities)
-            departures_p = self.predictor._renormalize(departures.probabilities)
-
-            net_dist = Distribution.from_pmf(arrivals_p).net(
-                Distribution.from_pmf(departures_p), self.predictor.k_sigma
-            )
-            net_flow = self.predictor._create_prediction(
-                board_id, "net_flow", net_dist.probabilities, net_dist.offset
-            )
+            net_flow = self.predictor._compute_net_flow(arrivals, departures, board_id)
 
             bundle = PredictionBundle(
                 entity_id=board_id,
@@ -1309,16 +1370,7 @@ class HierarchicalPredictor:
         departures = self.predictor.predict_hospital(hospital_id, departures_preds)
 
         # Compute net flow distribution
-        # Renormalize arrivals and departures before net-flow
-        arrivals_p = self.predictor._renormalize(arrivals.probabilities)
-        departures_p = self.predictor._renormalize(departures.probabilities)
-
-        net_dist = Distribution.from_pmf(arrivals_p).net(
-            Distribution.from_pmf(departures_p), self.predictor.k_sigma
-        )
-        net_flow = self.predictor._create_prediction(
-            hospital_id, "net_flow", net_dist.probabilities, net_dist.offset
-        )
+        net_flow = self.predictor._compute_net_flow(arrivals, departures, hospital_id)
 
         bundle = PredictionBundle(
             entity_id=hospital_id,

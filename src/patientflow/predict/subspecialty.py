@@ -488,17 +488,25 @@ def _prepare_base_probabilities(
     ].dt.total_seconds()
 
     # Split inpatient snapshots into elective and emergency
-    elective_snapshots = inpatient_snapshots_temp[inpatient_snapshots_temp["admission_type"] == "elective"]
-    emergency_snapshots = inpatient_snapshots_temp[inpatient_snapshots_temp["admission_type"] == "emergency"]
+    elective_snapshots = inpatient_snapshots_temp[
+        inpatient_snapshots_temp["admission_type"] == "elective"
+    ]
+    emergency_snapshots = inpatient_snapshots_temp[
+        inpatient_snapshots_temp["admission_type"] == "emergency"
+    ]
 
     # Departure probability for current inpatients (per row)
-    prob_departure_after_elective = model_input_to_pred_proba(
-        elective_snapshots, inpatient_pipeline
-    ) if not elective_snapshots.empty else pd.Series(dtype=float)
-    
-    prob_departure_after_emergency = model_input_to_pred_proba(
-        emergency_snapshots, inpatient_pipeline
-    ) if not emergency_snapshots.empty else pd.Series(dtype=float)
+    prob_departure_after_elective = (
+        model_input_to_pred_proba(elective_snapshots, inpatient_pipeline)
+        if not elective_snapshots.empty
+        else pd.Series(dtype=float)
+    )
+
+    prob_departure_after_emergency = (
+        model_input_to_pred_proba(emergency_snapshots, inpatient_pipeline)
+        if not emergency_snapshots.empty
+        else pd.Series(dtype=float)
+    )
 
     # Specialty probabilities per row for ED patients
     if hasattr(spec_model, "predict_dataframe"):
@@ -652,9 +660,8 @@ def _process_inpatients_for_specialty_by_admission_type(
         Dictionary containing processed inpatient data for the specialty and admission type
     """
     # Process inpatients for the specific admission type (no weighting required)
-    admission_type_mask = (
-        (inpatient_snapshots["current_subspecialty"] == spec) &
-        (inpatient_snapshots["admission_type"] == admission_type)
+    admission_type_mask = (inpatient_snapshots["current_subspecialty"] == spec) & (
+        inpatient_snapshots["admission_type"] == admission_type
     )
     admission_type_indices = inpatient_snapshots[admission_type_mask].index
 
@@ -1130,7 +1137,10 @@ def compute_transfer_arrivals(
     parameter. Convolution operations are numerically stable even with small
     probabilities.
     """
-    predicted_arrivals = {"elective": {}, "emergency": {}}
+    predicted_arrivals: Dict[str, Dict[str, np.ndarray]] = {
+        "elective": {},
+        "emergency": {},
+    }
 
     for admission_type in ["elective", "emergency"]:
         for target_subspecialty in subspecialties:
@@ -1140,7 +1150,7 @@ def compute_transfer_arrivals(
             for source_subspecialty in subspecialties:
                 # Skip self-transfers
                 if source_subspecialty == target_subspecialty:
-                    continue 
+                    continue
 
                 # Get departure PMF for source (handle both dict and dataclass)
                 source_data = subspecialty_data[source_subspecialty]
@@ -1150,7 +1160,9 @@ def compute_transfer_arrivals(
                         raise KeyError(
                             f"Missing '{admission_type}_departures' outflow for subspecialty '{source_subspecialty}'"
                         )
-                    departure_pmf = source_data.outflows[f"{admission_type}_departures"].distribution
+                    departure_pmf = source_data.outflows[
+                        f"{admission_type}_departures"
+                    ].distribution
                 elif isinstance(source_data, dict):
                     # Temporary data structure during build (dict with "inflows" and "outflows" keys)
                     if (
@@ -1160,7 +1172,9 @@ def compute_transfer_arrivals(
                         raise KeyError(
                             f"Missing '{admission_type}_departures' in 'outflows' for subspecialty '{source_subspecialty}'"
                         )
-                    departure_pmf = source_data["outflows"][f"{admission_type}_departures"].distribution
+                    departure_pmf = source_data["outflows"][
+                        f"{admission_type}_departures"
+                    ].distribution
                 else:
                     raise TypeError(
                         f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
@@ -1169,7 +1183,9 @@ def compute_transfer_arrivals(
 
                 # Get transfer probabilities from model
                 try:
-                    prob_transfer = transfer_model.get_transfer_prob(source_subspecialty, admission_type)
+                    prob_transfer = transfer_model.get_transfer_prob(
+                        source_subspecialty, admission_type
+                    )
                     dest_dist = transfer_model.get_destination_distribution(
                         source_subspecialty, admission_type
                     )
@@ -1208,6 +1224,8 @@ def compute_transfer_arrivals(
                 arrival_dist = arrival_dist.convolve(scaled_dist)
 
             # Store the final arrival PMF for this target
-            predicted_arrivals[admission_type][target_subspecialty] = arrival_dist.probabilities
+            predicted_arrivals[admission_type][target_subspecialty] = (
+                arrival_dist.probabilities
+            )
 
     return predicted_arrivals

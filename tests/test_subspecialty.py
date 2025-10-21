@@ -363,10 +363,18 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.assertIn("emergency_departures", spec_data.outflows)
             # Check values
             ed_pmf = np.asarray(spec_data.inflows["ed_current"].distribution)
-            elective_departure_pmf = np.asarray(spec_data.outflows["elective_departures"].distribution)
-            emergency_departure_pmf = np.asarray(spec_data.outflows["emergency_departures"].distribution)
-            elective_transfer_pmf = np.asarray(spec_data.inflows["elective_transfers"].distribution)
-            emergency_transfer_pmf = np.asarray(spec_data.inflows["emergency_transfers"].distribution)
+            elective_departure_pmf = np.asarray(
+                spec_data.outflows["elective_departures"].distribution
+            )
+            emergency_departure_pmf = np.asarray(
+                spec_data.outflows["emergency_departures"].distribution
+            )
+            elective_transfer_pmf = np.asarray(
+                spec_data.inflows["elective_transfers"].distribution
+            )
+            emergency_transfer_pmf = np.asarray(
+                spec_data.inflows["emergency_transfers"].distribution
+            )
             self.assertGreater(len(ed_pmf), 0)
             self.assertGreater(len(elective_departure_pmf), 0)
             self.assertGreater(len(emergency_departure_pmf), 0)
@@ -562,8 +570,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "emergency_departures": FlowInputs(
                         flow_id="emergency_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.0, 0.0, 1.0]),  # 2 emergency departures certain
-                    )
+                        distribution=np.array(
+                            [0.0, 0.0, 1.0]
+                        ),  # 2 emergency departures certain
+                    ),
                 }
             },
             "surgery": {
@@ -577,7 +587,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
             "medicine": {
@@ -591,7 +601,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
         }
@@ -635,7 +645,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         distribution=np.array(
                             [0.0, 0.0, 0.0, 0.0, 1.0]
                         ),  # 4 emergency departures certain
-                    )
+                    ),
                 }
             },
             "surgery": {
@@ -649,7 +659,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
             "medicine": {
@@ -663,7 +673,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
         }
@@ -694,7 +704,9 @@ class TestComputeTransferArrivals(unittest.TestCase):
         prob_transfer = transfer_model.get_transfer_prob("cardiology", "emergency")
         self.assertAlmostEqual(prob_transfer, 0.5)  # 2 out of 4 transfer
 
-        dest_dist = transfer_model.get_destination_distribution("cardiology", "emergency")
+        dest_dist = transfer_model.get_destination_distribution(
+            "cardiology", "emergency"
+        )
         self.assertAlmostEqual(
             dest_dist["surgery"], 0.5
         )  # Of transfers, 50% to surgery
@@ -732,7 +744,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([0.0, 1.0]),  # 1 emergency departure
-                    )
+                    ),
                 }
             },
             "surgery": {
@@ -746,7 +758,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([0.0, 1.0]),  # 1 emergency departure
-                    )
+                    ),
                 }
             },
             "medicine": {
@@ -760,7 +772,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
         }
@@ -796,8 +808,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "emergency_departures": FlowInputs(
                         flow_id="emergency_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
-                    )
+                        distribution=np.array(
+                            [0.5, 0.5]
+                        ),  # 50% chance of 1 emergency departure
+                    ),
                 }
             },
             "surgery": {
@@ -810,8 +824,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "emergency_departures": FlowInputs(
                         flow_id="emergency_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
-                    )
+                        distribution=np.array(
+                            [0.5, 0.5]
+                        ),  # 50% chance of 1 emergency departure
+                    ),
                 }
             },
             "medicine": {
@@ -824,8 +840,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "emergency_departures": FlowInputs(
                         flow_id="emergency_departures",
                         flow_type="pmf",
-                        distribution=np.array([0.5, 0.5]),  # 50% chance of 1 emergency departure
-                    )
+                        distribution=np.array(
+                            [0.5, 0.5]
+                        ),  # 50% chance of 1 emergency departure
+                    ),
                 }
             },
         }
@@ -862,13 +880,15 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     "elective_departures": FlowInputs(
                         flow_id="elective_departures",
                         flow_type="pmf",
-                        distribution=np.array([1.0, 0.0, 0.0, 0.0]),  # No elective departures
+                        distribution=np.array(
+                            [1.0, 0.0, 0.0, 0.0]
+                        ),  # No elective departures
                     ),
                     "emergency_departures": FlowInputs(
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.random.dirichlet(np.ones(4)),
-                    )
+                    ),
                 }
             }
             for subspecialty in self.subspecialties
@@ -917,7 +937,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
             "medicine": {
@@ -931,7 +951,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             },
         }
@@ -963,7 +983,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
                         flow_id="emergency_departures",
                         flow_type="pmf",
                         distribution=np.array([1.0, 0.0]),
-                    )
+                    ),
                 }
             }
             for spec in self.subspecialties
