@@ -326,18 +326,26 @@ class TestFlowSelection:
         selection = FlowSelection.emergency_only()
 
         assert selection.cohort == "emergency"
-        # All other settings should be defaults
+        # Should include emergency flows and exclude elective flows
         assert selection.include_ed_current is True
-        assert selection.include_departures is True
+        assert selection.include_ed_yta is True
+        assert selection.include_non_ed_yta is True
+        assert selection.include_elective_yta is False
+        assert selection.include_transfers_in is True  # Will be filtered by cohort
+        assert selection.include_departures is True  # Will be filtered by cohort
 
     def test_elective_only_flow_selection(self):
         """Test elective-only flow selection."""
         selection = FlowSelection.elective_only()
 
         assert selection.cohort == "elective"
-        # All other settings should be defaults
-        assert selection.include_ed_current is True
-        assert selection.include_departures is True
+        # Should exclude emergency flows and include only elective flows
+        assert selection.include_ed_current is False
+        assert selection.include_ed_yta is False
+        assert selection.include_non_ed_yta is False
+        assert selection.include_elective_yta is True
+        assert selection.include_transfers_in is True  # Will be filtered by cohort
+        assert selection.include_departures is True  # Will be filtered by cohort
 
     def test_incoming_only_flow_selection(self):
         """Test incoming-only flow selection."""

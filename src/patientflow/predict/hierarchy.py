@@ -210,11 +210,27 @@ class FlowSelection:
 
     @classmethod
     def elective_only(cls) -> "FlowSelection":
-        return cls(cohort="elective")
+        return cls(
+            include_ed_current=False,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=True,
+            include_transfers_in=True,  # Will be filtered by cohort
+            include_departures=True,  # Will be filtered by cohort
+            cohort="elective",
+        )
 
     @classmethod
     def emergency_only(cls) -> "FlowSelection":
-        return cls(cohort="emergency")
+        return cls(
+            include_ed_current=True,
+            include_ed_yta=True,
+            include_non_ed_yta=True,
+            include_elective_yta=False,
+            include_transfers_in=True,  # Will be filtered by cohort
+            include_departures=True,  # Will be filtered by cohort
+            cohort="emergency",
+        )
 
     @classmethod
     def custom(
@@ -405,7 +421,7 @@ class DemandPredictor:
     The class uses discrete convolution to combine probability distributions.
     Supports are clamped deterministically using k-sigma caps to prevent
     exponential growth in array sizes.
-    
+
     Flow Selection
     --------------
     The predictor supports flexible flow selection via FlowSelection objects,
