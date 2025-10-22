@@ -12,7 +12,7 @@ from patientflow.predictors.legacy_compatibility import get_age
 
 def create_subgroup_functions() -> Dict[str, Callable[[Union[pd.Series, dict]], bool]]:
     """Create the 5 standard subgroup identification functions."""
-    
+
     def is_paediatric(row):
         return get_age(row) < 18
 
