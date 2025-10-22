@@ -135,6 +135,73 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
 
         self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
 
+    def test_visit_col_deduplication(self):
+        """Test that visit_col parameter deduplicates data correctly."""
+        # Create data with duplicate transitions for the same visit
+        X = pd.DataFrame(
+            {
+                "visit_id": ["visit_1", "visit_1", "visit_2", "visit_2", "visit_3"],
+                "current_subspecialty": [
+                    "cardiology",
+                    "cardiology",
+                    "surgery",
+                    "surgery",
+                    "medicine",
+                ],
+                "next_subspecialty": [
+                    "surgery",
+                    "surgery",
+                    None,
+                    None,
+                    None,
+                ],  # Duplicate for visit_1 and visit_2
+            }
+        )
+
+        # Test with visit_col - should deduplicate to 3 unique transitions
+        predictor_with_visit = TransferProbabilityEstimator(visit_col="visit_id")
+        predictor_with_visit.fit(X, self.subspecialties)
+
+        # Should have 1 transfer out of 3 total (visit_1, visit_2, visit_3)
+        # After deduplication: visit_1->surgery, visit_2->None, visit_3->None
+        # So cardiology has 1 transfer out of 1 departure = 100%
+        self.assertAlmostEqual(
+            predictor_with_visit.get_transfer_prob("cardiology"), 1.0
+        )
+        self.assertAlmostEqual(predictor_with_visit.get_transfer_prob("surgery"), 0.0)
+        self.assertAlmostEqual(predictor_with_visit.get_transfer_prob("medicine"), 0.0)
+
+        # Test without visit_col - should use all 5 rows (including duplicates)
+        predictor_without_visit = TransferProbabilityEstimator()
+        predictor_without_visit.fit(X, self.subspecialties)
+
+        # Should have 2 transfers out of 2 cardiology departures = 100%
+        # Should have 0 transfers out of 2 surgery departures = 0%
+        self.assertAlmostEqual(
+            predictor_without_visit.get_transfer_prob("cardiology"), 1.0
+        )
+        self.assertAlmostEqual(
+            predictor_without_visit.get_transfer_prob("surgery"), 0.0
+        )
+        self.assertAlmostEqual(
+            predictor_without_visit.get_transfer_prob("medicine"), 0.0
+        )
+
+    def test_visit_col_missing_column_error(self):
+        """Test error when visit_col is specified but column is missing."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"],
+                "next_subspecialty": [None],
+            }
+        )
+        predictor = TransferProbabilityEstimator(visit_col="visit_id")
+
+        with self.assertRaises(ValueError) as context:
+            predictor.fit(X, self.subspecialties)
+        self.assertIn("missing required columns", str(context.exception))
+        self.assertIn("visit_id", str(context.exception))
+
     def test_error_handling(self):
         """Test essential error conditions."""
         predictor = TransferProbabilityEstimator()
