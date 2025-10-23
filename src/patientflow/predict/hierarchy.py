@@ -290,8 +290,11 @@ class Hierarchy:
         ]
         return cls(levels)
     
-    def add_entity(self, entity_id: str, entity_type: EntityType, parent_id: Optional[str] = None):
+    def add_entity(self, entity_id: str, entity_type: EntityType):
         """Add an entity to the hierarchy with type-prefixed unique ID.
+        
+        This method is used in Pass 1 to create entities without relationships.
+        Relationships are established separately in Pass 2.
         
         Parameters
         ----------
@@ -299,47 +302,14 @@ class Hierarchy:
             Original identifier for the entity (will be prefixed with entity type)
         entity_type : EntityType
             Type of the entity
-        parent_id : str, optional
-            Parent entity identifier. Required for all entities except top-level ones.
-            Should be the original entity name (will be converted to prefixed ID internally).
         """
         if entity_type not in self.levels:
             raise ValueError(f"Unknown entity type: {entity_type}")
         
-        level = self.levels[entity_type]
-        
         # Create unique ID by prefixing with entity type
         unique_id = f"{entity_type.name}:{entity_id}"
         
-        # Convert parent_id to prefixed format if provided
-        prefixed_parent_id = None
-        if parent_id is not None:
-            # Find the parent's entity type to create prefixed parent ID
-            parent_entity_type = self._find_entity_type_by_name(parent_id)
-            if parent_entity_type is not None:
-                # Check if the found parent type matches the expected parent type
-                if parent_entity_type == level.parent_type:
-                    prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
-                else:
-                    # If the found parent type doesn't match, assume it's already prefixed or will be created later
-                    prefixed_parent_id = parent_id
-            else:
-                # If parent not found, assume it's already prefixed or will be created later
-                prefixed_parent_id = parent_id
-        
-        # Validate parent relationship
-        if level.parent_type is None:
-            if prefixed_parent_id is not None:
-                raise ValueError(f"Top-level entity {entity_id} cannot have a parent")
-        else:
-            # For non-top-level entities, parent_id is optional during initial creation
-            # but will be validated when parent_id is provided
-            if prefixed_parent_id is not None and prefixed_parent_id in self.entity_types:
-                parent_type = self.entity_types[prefixed_parent_id]
-                if parent_type != level.parent_type:
-                    raise ValueError(f"Parent {parent_id} is of type {parent_type}, expected {level.parent_type}")
-        
-        self.relationships[unique_id] = prefixed_parent_id
+        # Store entity with its type
         self.entity_types[unique_id] = entity_type
     
     def _find_entity_type_by_name(self, entity_name: str) -> Optional[EntityType]:
@@ -1512,8 +1482,10 @@ class HierarchicalPredictor:
         # Level 1: Bottom level (e.g., subspecialties)
         for entity_id, inputs in bottom_level_data.items():
             bundle = self.predictor.predict_subspecialty(entity_id, inputs, flow_selection)
-            results[entity_id] = bundle
-            self.cache[entity_id] = bundle
+            # Use prefixed entity ID as key to avoid collisions
+            prefixed_entity_id = f"{bottom_type.name}:{entity_id}"
+            results[prefixed_entity_id] = bundle
+            self.cache[prefixed_entity_id] = bundle
         
         # Process each level from bottom to top
         for level_type in levels[1:]:
@@ -1521,14 +1493,24 @@ class HierarchicalPredictor:
             
             for entity_id in entities_at_level:
                 children = self.hierarchy.get_children(entity_id)
-                child_bundles = [results[child_id] for child_id in children]
+                # Convert child IDs to prefixed format for lookup
+                child_bundles = []
+                for child_id in children:
+                    # Find the child's entity type to create prefixed ID
+                    child_entity_type = self.hierarchy.get_entity_type(child_id)
+                    if child_entity_type is not None:
+                        prefixed_child_id = f"{child_entity_type.name}:{child_id}"
+                        if prefixed_child_id in results:
+                            child_bundles.append(results[prefixed_child_id])
                 
                 # Create bundle using generic method
                 bundle = self.predictor._create_bundle_from_children(
                     entity_id, level_type.name, child_bundles
                 )
-                results[entity_id] = bundle
-                self.cache[entity_id] = bundle
+                # Use prefixed entity ID as key to avoid collisions
+                prefixed_entity_id = f"{level_type.name}:{entity_id}"
+                results[prefixed_entity_id] = bundle
+                self.cache[prefixed_entity_id] = bundle
         
         return results
 
@@ -1621,7 +1603,7 @@ def populate_hierarchy_from_dataframe(
     # Create entity type lookup
     entity_type_lookup = {et.name: et for et in levels}
     
-    # Process each level from bottom to top
+    # PASS 1: Create all entities without relationships
     for i, entity_type in enumerate(levels):
         entity_type_name = entity_type.name
         
@@ -1637,44 +1619,68 @@ def populate_hierarchy_from_dataframe(
             # This happens for entity types that are created separately (like hospital)
             continue
         
-        if i == 0:
-            # Bottom level: create entities without parents first
-            for _, row in df[[entity_column]].drop_duplicates().iterrows():
-                entity_id = row[entity_column]
-                hierarchy.add_entity(entity_id, entity_type)
+        # Create all entities of this type without parents
+        for _, row in df[[entity_column]].drop_duplicates().iterrows():
+            entity_id = row[entity_column]
+            hierarchy.add_entity(entity_id, entity_type)
+    
+    # PASS 2: Establish parent-child relationships
+    for i, entity_type in enumerate(levels):
+        entity_type_name = entity_type.name
+        
+        # Find the column that maps to this entity type
+        entity_column = None
+        for col, et_name in column_mapping.items():
+            if et_name == entity_type_name:
+                entity_column = col
+                break
+        
+        if entity_column is None:
             continue
         
-        # For higher levels, establish parent-child relationships
-        # The parent type is the NEXT level (i+1), not the previous level
-        if i < len(levels) - 1:
-            parent_type = levels[i + 1]
-            parent_type_name = parent_type.name
+        # Skip top level (no parents)
+        if i == len(levels) - 1:
+            continue
+        
+        # Find the parent column for this level
+        parent_type = levels[i + 1]
+        parent_type_name = parent_type.name
+        
+        parent_column = None
+        for col, et_name in column_mapping.items():
+            if et_name == parent_type_name:
+                parent_column = col
+                break
+        
+        if parent_column is None:
+            continue
+        
+        # Establish parent-child relationships with error checking
+        df_subset = df[[entity_column, parent_column]].drop_duplicates().sort_values([parent_column, entity_column])
+        for _, row in df_subset.iterrows():
+            entity_id = row[entity_column]
+            parent_id = row[parent_column]
             
-            # Find the parent column
-            parent_column = None
-            for col, et_name in column_mapping.items():
-                if et_name == parent_type_name:
-                    parent_column = col
-                    break
+            # Check if parent exists before trying to link
+            parent_entity_type = hierarchy.get_entity_type(parent_id)
+            if parent_entity_type is None:
+                raise ValueError(f"Parent entity '{parent_id}' not found for child '{entity_id}' of type '{entity_type_name}'")
             
-            if parent_column is None:
-                # If no parent column found, this might be the top level
-                # Create entities without parents for now
-                for _, row in df[[entity_column]].drop_duplicates().iterrows():
-                    entity_id = row[entity_column]
-                    hierarchy.add_entity(entity_id, entity_type)
+            # Allow same entity name at different levels (entity collision scenario)
+            if parent_entity_type != parent_type:
+                # Check if there's a parent with the correct type
+                correct_parent_prefixed = f"{parent_type.name}:{parent_id}"
+                if correct_parent_prefixed in hierarchy.entity_types:
+                    # Use the correct parent
+                    parent_prefixed = correct_parent_prefixed
+                else:
+                    raise ValueError(f"Parent entity '{parent_id}' has type '{parent_entity_type.name}' but expected type '{parent_type.name}' for child '{entity_id}'")
             else:
-                # Create parent-child relationships
-                # For each unique entity at this level, find its parent
-                for _, row in df[[entity_column, parent_column]].drop_duplicates().iterrows():
-                    entity_id = row[entity_column]
-                    parent_id = row[parent_column]
-                    hierarchy.add_entity(entity_id, entity_type, parent_id)
-        else:
-            # Top level: create entities without parents
-            for _, row in df[[entity_column]].drop_duplicates().iterrows():
-                entity_id = row[entity_column]
-                hierarchy.add_entity(entity_id, entity_type)
+                parent_prefixed = f"{parent_type.name}:{parent_id}"
+            
+            # Update the relationship
+            child_prefixed = f"{entity_type.name}:{entity_id}"
+            hierarchy.relationships[child_prefixed] = parent_prefixed
     
     # Link all entities to the top-level entity
     top_level_type = hierarchy.get_top_level_type()
