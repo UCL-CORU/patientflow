@@ -10,6 +10,7 @@ from patientflow.predict.hierarchy import (
     FlowSelection,
     Hierarchy,
     EntityType,
+    PredictionBundle,
     create_hierarchical_predictor,
     DEFAULT_PERCENTILES,
     DEFAULT_PRECISION,
@@ -1052,3 +1053,69 @@ class TestHierarchyCollisionFix:
             parent = predictor.hierarchy.get_parent(child)
             if parent:
                 assert ":" not in parent  # Should not contain prefixed format
+
+
+class TestHierarchicalPredictor:
+    """Test the HierarchicalPredictor class."""
+
+    def test_entity_type_name_usage_in_hierarchical_prediction(self):
+        """Test that hierarchical prediction correctly uses EntityType.name instead of .value."""
+        # Test the specific bug fix: EntityType.name vs EntityType.value
+        predictor = DemandPredictor()
+        
+        # Create some mock predictions to test the hierarchical level prediction
+        mock_prediction1 = DemandPrediction(
+            entity_id="test1",
+            entity_type="subspecialty", 
+            probabilities=np.array([0.1, 0.2, 0.4, 0.2, 0.1]),
+            expected_value=2.0,
+            percentiles={50: 2, 75: 3, 90: 3, 95: 3, 99: 4},
+            offset=0
+        )
+        
+        mock_prediction2 = DemandPrediction(
+            entity_id="test2",
+            entity_type="subspecialty",
+            probabilities=np.array([0.2, 0.3, 0.3, 0.2]),
+            expected_value=1.5,
+            percentiles={50: 1, 75: 2, 90: 2, 95: 3, 99: 3},
+            offset=0
+        )
+        
+        # Test that predict_hierarchical_level works with EntityType.name
+        # This should not raise "EntityType object has no attribute 'value'"
+        result = predictor.predict_hierarchical_level(
+            entity_id="test_entity",
+            entity_type=EntityType("reporting_unit"),  # This will use .name internally
+            child_predictions=[mock_prediction1, mock_prediction2]
+        )
+        
+        # Verify the result is a DemandPrediction
+        assert isinstance(result, DemandPrediction)
+        assert result.entity_id == "test_entity"
+        assert result.entity_type == "reporting_unit"
+        assert hasattr(result, 'probabilities')
+        assert hasattr(result, 'expected_value')
+
+    def test_create_bundle_from_children_with_empty_list(self):
+        """Test that _create_bundle_from_children handles empty child_bundles list."""
+        predictor = DemandPredictor()
+        
+        # Test with empty child_bundles list - should not raise IndexError
+        bundle = predictor._create_bundle_from_children(
+            entity_id="test_entity",
+            entity_type="reporting_unit",
+            child_bundles=[]  # Empty list
+        )
+        
+        # Verify the result is a PredictionBundle
+        assert isinstance(bundle, PredictionBundle)
+        assert bundle.entity_id == "test_entity"
+        assert bundle.entity_type == "reporting_unit"
+        assert hasattr(bundle, 'arrivals')
+        assert hasattr(bundle, 'departures')
+        assert hasattr(bundle, 'net_flow')
+        assert hasattr(bundle, 'flow_selection')
+        
+        # Should use default FlowSelection when no children
+        assert bundle.flow_selection is not None

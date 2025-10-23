@@ -1127,7 +1127,7 @@ class DemandPredictor:
         """
         distributions = [p.probabilities for p in child_predictions]
         p_total = self._convolve_multiple(distributions)
-        return self._create_prediction(entity_id, entity_type.value, p_total)
+        return self._create_prediction(entity_id, entity_type.name, p_total)
 
     def _create_bundle_from_children(
         self,
@@ -1162,13 +1162,16 @@ class DemandPredictor:
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
         
+        # Use flow_selection from first child if available, otherwise use default
+        flow_selection = child_bundles[0].flow_selection if child_bundles else FlowSelection.default()
+        
         return PredictionBundle(
             entity_id=entity_id,
             entity_type=entity_type,
             arrivals=arrivals,
             departures=departures,
             net_flow=net_flow,
-            flow_selection=child_bundles[0].flow_selection,
+            flow_selection=flow_selection,
         )
 
     def _convolve_multiple(self, distributions: List[np.ndarray]) -> np.ndarray:
@@ -1522,7 +1525,7 @@ class HierarchicalPredictor:
                 
                 # Create bundle using generic method
                 bundle = self.predictor._create_bundle_from_children(
-                    entity_id, level_type.value, child_bundles
+                    entity_id, level_type.name, child_bundles
                 )
                 results[entity_id] = bundle
                 self.cache[entity_id] = bundle
