@@ -1,0 +1,19 @@
+# Example hierarchy configuration file
+# This demonstrates how to configure a custom hospital hierarchy
+
+levels:
+  - entity_type: subspecialty
+    parent_type: reporting_unit
+    level_order: 0
+  - entity_type: reporting_unit
+    parent_type: division
+    level_order: 1
+  - entity_type: division
+    parent_type: board
+    level_order: 2
+  - entity_type: board
+    parent_type: hospital
+    level_order: 3
+  - entity_type: hospital
+    parent_type: null
+    level_order: 4
