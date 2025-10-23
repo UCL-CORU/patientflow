@@ -291,36 +291,112 @@ class Hierarchy:
         return cls(levels)
     
     def add_entity(self, entity_id: str, entity_type: EntityType, parent_id: Optional[str] = None):
-        """Add an entity to the hierarchy.
+        """Add an entity to the hierarchy with type-prefixed unique ID.
         
         Parameters
         ----------
         entity_id : str
-            Unique identifier for the entity
+            Original identifier for the entity (will be prefixed with entity type)
         entity_type : EntityType
             Type of the entity
         parent_id : str, optional
             Parent entity identifier. Required for all entities except top-level ones.
+            Should be the original entity name (will be converted to prefixed ID internally).
         """
         if entity_type not in self.levels:
             raise ValueError(f"Unknown entity type: {entity_type}")
         
         level = self.levels[entity_type]
         
+        # Create unique ID by prefixing with entity type
+        unique_id = f"{entity_type.name}:{entity_id}"
+        
+        # Convert parent_id to prefixed format if provided
+        prefixed_parent_id = None
+        if parent_id is not None:
+            # Find the parent's entity type to create prefixed parent ID
+            parent_entity_type = self._find_entity_type_by_name(parent_id)
+            if parent_entity_type is not None:
+                # Check if the found parent type matches the expected parent type
+                if parent_entity_type == level.parent_type:
+                    prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
+                else:
+                    # If the found parent type doesn't match, assume it's already prefixed or will be created later
+                    prefixed_parent_id = parent_id
+            else:
+                # If parent not found, assume it's already prefixed or will be created later
+                prefixed_parent_id = parent_id
+        
         # Validate parent relationship
         if level.parent_type is None:
-            if parent_id is not None:
+            if prefixed_parent_id is not None:
                 raise ValueError(f"Top-level entity {entity_id} cannot have a parent")
         else:
             # For non-top-level entities, parent_id is optional during initial creation
             # but will be validated when parent_id is provided
-            if parent_id is not None and parent_id in self.entity_types:
-                parent_type = self.entity_types[parent_id]
+            if prefixed_parent_id is not None and prefixed_parent_id in self.entity_types:
+                parent_type = self.entity_types[prefixed_parent_id]
                 if parent_type != level.parent_type:
                     raise ValueError(f"Parent {parent_id} is of type {parent_type}, expected {level.parent_type}")
         
-        self.relationships[entity_id] = parent_id
-        self.entity_types[entity_id] = entity_type
+        self.relationships[unique_id] = prefixed_parent_id
+        self.entity_types[unique_id] = entity_type
+    
+    def _find_entity_type_by_name(self, entity_name: str) -> Optional[EntityType]:
+        """Find the entity type for a given entity name by searching through existing entities.
+        
+        Parameters
+        ----------
+        entity_name : str
+            Original entity name to search for
+            
+        Returns
+        -------
+        Optional[EntityType]
+            Entity type if found, None otherwise
+        """
+        for unique_id, entity_type in self.entity_types.items():
+            # Extract original name from prefixed ID
+            if ":" in unique_id:
+                original_name = unique_id.split(":", 1)[1]
+                if original_name == entity_name:
+                    return entity_type
+        return None
+    
+    def _get_original_name(self, unique_id: str) -> str:
+        """Extract original entity name from prefixed ID.
+        
+        Parameters
+        ----------
+        unique_id : str
+            Prefixed entity ID (e.g., "subspecialty:Cardiology")
+            
+        Returns
+        -------
+        str
+            Original entity name (e.g., "Cardiology")
+        """
+        if ":" in unique_id:
+            return unique_id.split(":", 1)[1]
+        return unique_id
+    
+    def _get_prefixed_id(self, entity_name: str, entity_type: EntityType) -> Optional[str]:
+        """Get prefixed ID for an entity name and type.
+        
+        Parameters
+        ----------
+        entity_name : str
+            Original entity name
+        entity_type : EntityType
+            Entity type
+            
+        Returns
+        -------
+        Optional[str]
+            Prefixed ID if entity exists, None otherwise
+        """
+        prefixed_id = f"{entity_type.name}:{entity_name}"
+        return prefixed_id if prefixed_id in self.entity_types else None
     
     def get_children(self, parent_id: str) -> List[str]:
         """Get all direct children of a parent entity.
@@ -328,14 +404,27 @@ class Hierarchy:
         Parameters
         ----------
         parent_id : str
-            Parent entity identifier
+            Parent entity identifier (original name or prefixed ID)
             
         Returns
         -------
         List[str]
-            List of child entity identifiers
+            List of child entity identifiers (original names)
         """
-        return [child_id for child_id, pid in self.relationships.items() if pid == parent_id]
+        # Convert parent_id to prefixed format if needed
+        prefixed_parent_id = parent_id
+        if ":" not in parent_id:
+            # Try to find the prefixed version
+            parent_entity_type = self._find_entity_type_by_name(parent_id)
+            if parent_entity_type is not None:
+                prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
+        
+        children = []
+        for child_id, pid in self.relationships.items():
+            if pid == prefixed_parent_id:
+                # Return original entity name
+                children.append(self._get_original_name(child_id))
+        return children
     
     def get_parent(self, entity_id: str) -> Optional[str]:
         """Get the parent of an entity.
@@ -343,14 +432,25 @@ class Hierarchy:
         Parameters
         ----------
         entity_id : str
-            Entity identifier
+            Entity identifier (original name or prefixed ID)
             
         Returns
         -------
         Optional[str]
-            Parent entity identifier, or None if entity is top-level
+            Parent entity identifier (original name), or None if entity is top-level
         """
-        return self.relationships.get(entity_id)
+        # Convert entity_id to prefixed format if needed
+        prefixed_entity_id = entity_id
+        if ":" not in entity_id:
+            # Try to find the prefixed version
+            entity_entity_type = self._find_entity_type_by_name(entity_id)
+            if entity_entity_type is not None:
+                prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
+        
+        parent_id = self.relationships.get(prefixed_entity_id)
+        if parent_id is not None:
+            return self._get_original_name(parent_id)
+        return None
     
     def get_entity_type(self, entity_id: str) -> Optional[EntityType]:
         """Get the type of an entity.
@@ -358,14 +458,22 @@ class Hierarchy:
         Parameters
         ----------
         entity_id : str
-            Entity identifier
+            Entity identifier (original name or prefixed ID)
             
         Returns
         -------
         Optional[EntityType]
             Entity type, or None if entity not found
         """
-        return self.entity_types.get(entity_id)
+        # Convert entity_id to prefixed format if needed
+        prefixed_entity_id = entity_id
+        if ":" not in entity_id:
+            # Try to find the prefixed version
+            entity_entity_type = self._find_entity_type_by_name(entity_id)
+            if entity_entity_type is not None:
+                prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
+        
+        return self.entity_types.get(prefixed_entity_id)
     
     def get_entities_by_type(self, entity_type: EntityType) -> List[str]:
         """Get all entities of a specific type.
@@ -378,9 +486,14 @@ class Hierarchy:
         Returns
         -------
         List[str]
-            List of entity identifiers of the specified type
+            List of entity identifiers (original names) of the specified type
         """
-        return [entity_id for entity_id, et in self.entity_types.items() if et == entity_type]
+        entities = []
+        for entity_id, et in self.entity_types.items():
+            if et == entity_type:
+                # Return original entity name
+                entities.append(self._get_original_name(entity_id))
+        return entities
     
     def get_all_entities(self) -> List[str]:
         """Get all entity identifiers in the hierarchy.
@@ -388,9 +501,9 @@ class Hierarchy:
         Returns
         -------
         List[str]
-            List of all entity identifiers
+            List of all entity identifiers (original names)
         """
-        return list(self.entity_types.keys())
+        return [self._get_original_name(entity_id) for entity_id in self.entity_types.keys()]
     
     def get_levels_ordered(self) -> List[EntityType]:
         """Get all entity types ordered from bottom to top level.
@@ -411,6 +524,40 @@ class Hierarchy:
             List of entity type names
         """
         return [et.name for et in self.levels.keys()]
+    
+    def get_entity_info(self, entity_name: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about an entity.
+        
+        Parameters
+        ----------
+        entity_name : str
+            Original entity name
+            
+        Returns
+        -------
+        Optional[Dict[str, Any]]
+            Dictionary containing entity information:
+            - entity_id: original name
+            - entity_type: EntityType
+            - parent: parent entity name (if any)
+            - children: list of child entity names
+            - prefixed_id: internal prefixed ID
+        """
+        entity_type = self._find_entity_type_by_name(entity_name)
+        if entity_type is None:
+            return None
+        
+        prefixed_id = f"{entity_type.name}:{entity_name}"
+        parent = self.get_parent(entity_name)
+        children = self.get_children(entity_name)
+        
+        return {
+            "entity_id": entity_name,
+            "entity_type": entity_type,
+            "parent": parent,
+            "children": children,
+            "prefixed_id": prefixed_id
+        }
     
     def get_bottom_level_type(self) -> EntityType:
         """Get the entity type at the bottom level of the hierarchy.
@@ -1410,7 +1557,7 @@ class HierarchicalPredictor:
 
 def populate_hierarchy_from_dataframe(
     hierarchy: Hierarchy,
-    heirarchy.df: pd.DataFrame,
+    hierarchy_df: pd.DataFrame,
     column_mapping: Dict[str, str],
     top_level_id: str
 ) -> None:
@@ -1424,7 +1571,7 @@ def populate_hierarchy_from_dataframe(
     ----------
     hierarchy : Hierarchy
         Hierarchy instance to populate
-    heirarchy.df : pandas.DataFrame
+    hierarchy_df : pandas.DataFrame
         DataFrame containing organizational structure
     column_mapping : Dict[str, str]
         Mapping from DataFrame column names to entity type names.
@@ -1451,7 +1598,7 @@ def populate_hierarchy_from_dataframe(
     """
     # Validate that all required columns exist
     required_columns = list(column_mapping.keys())
-    missing_columns = [col for col in required_columns if col not in heirarchy.df.columns]
+    missing_columns = [col for col in required_columns if col not in hierarchy_df.columns]
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
     
@@ -1463,7 +1610,7 @@ def populate_hierarchy_from_dataframe(
         raise ValueError(f"Invalid entity types in mapping: {invalid_mappings}")
     
     # Remove duplicates and any rows with missing values
-    df = heirarchy.df.dropna().drop_duplicates()
+    df = hierarchy_df.dropna().drop_duplicates()
     
     # Get hierarchy levels in order from bottom to top
     levels = hierarchy.get_levels_ordered()
@@ -1537,8 +1684,13 @@ def populate_hierarchy_from_dataframe(
         # If multiple top-level entities exist, link them to the specified one
         for entity_id in top_level_entities:
             if entity_id != top_level_id:
-                # Update the entity to have the specified top-level as parent
-                hierarchy.relationships[entity_id] = top_level_id
+                # Get prefixed IDs for both entities
+                entity_prefixed = hierarchy._get_prefixed_id(entity_id, top_level_type)
+                top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, top_level_type)
+                
+                if entity_prefixed and top_level_prefixed:
+                    # Update the entity to have the specified top-level as parent
+                    hierarchy.relationships[entity_prefixed] = top_level_prefixed
     
     # Link subspecialties to their reporting units
     # This is a special case because subspecialties are created without parents
@@ -1546,17 +1698,27 @@ def populate_hierarchy_from_dataframe(
     for _, row in df.drop_duplicates().iterrows():
         subspecialty_id = row['sub_specialty']
         reporting_unit_id = row['reporting_unit']
-        hierarchy.relationships[subspecialty_id] = reporting_unit_id
+        
+        # Get prefixed IDs for both entities
+        subspecialty_prefixed = hierarchy._get_prefixed_id(subspecialty_id, EntityType("subspecialty"))
+        reporting_unit_prefixed = hierarchy._get_prefixed_id(reporting_unit_id, EntityType("reporting_unit"))
+        
+        if subspecialty_prefixed and reporting_unit_prefixed:
+            hierarchy.relationships[subspecialty_prefixed] = reporting_unit_prefixed
     
     # Link boards to the top-level entity
     # This is another special case because boards need to be linked to the hospital
     for _, row in df.drop_duplicates().iterrows():
         board_id = row['board']
-        hierarchy.relationships[board_id] = top_level_id
+        board_prefixed = hierarchy._get_prefixed_id(board_id, EntityType("board"))
+        top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, hierarchy.get_top_level_type())
+        
+        if board_prefixed and top_level_prefixed:
+            hierarchy.relationships[board_prefixed] = top_level_prefixed
 
 
 def create_hierarchical_predictor(
-    heirarchy.df: pd.DataFrame,
+    hierarchy_df: pd.DataFrame,
     column_mapping: Dict[str, str],
     top_level_id: str,
     k_sigma: float = 4.0,
@@ -1570,7 +1732,7 @@ def create_hierarchical_predictor(
 
     Parameters
     ----------
-    heirarchy.df : pandas.DataFrame
+    hierarchy_df : pandas.DataFrame
         DataFrame containing organizational structure
     column_mapping : Dict[str, str]
         Mapping from DataFrame column names to entity type names.
@@ -1588,7 +1750,7 @@ def create_hierarchical_predictor(
     -------
     HierarchicalPredictor
         Fully configured predictor with:
-        - Hierarchy populated from heirarchy.df using column_mapping
+        - Hierarchy populated from hierarchy_df using column_mapping
         - DemandPredictor configured with specified k_sigma
         - Ready to use for making predictions
 
@@ -1611,7 +1773,7 @@ def create_hierarchical_predictor(
         hierarchy = Hierarchy.create_default_hospital()
     
     # Populate from DataFrame with explicit column mapping
-    populate_hierarchy_from_dataframe(hierarchy, heirarchy.df, column_mapping, top_level_id)
+    populate_hierarchy_from_dataframe(hierarchy, hierarchy_df, column_mapping, top_level_id)
     
     # Create predictor
     predictor = DemandPredictor(k_sigma=k_sigma)
