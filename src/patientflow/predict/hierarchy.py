@@ -804,11 +804,16 @@ class DemandPredictor:
         distributions are hard-clipped to mean + k_sigma * std for non-negative
         support. Net-flow uses asymmetric caps around the mean with the same
         k_sigma multiplier and physical bounds.
+    truncate_only_bottom : bool, default=False
+        If True, only apply truncation at the bottom level (subspecialties).
+        If False, apply truncation at all hierarchical levels (default behavior).
 
     Attributes
     ----------
     k_sigma : float
         Number of standard deviations used to cap supports
+    truncate_only_bottom : bool
+        Whether to truncate only at bottom level or all levels
     cache : dict
         Cache for storing computed predictions (currently unused)
 
@@ -832,8 +837,9 @@ class DemandPredictor:
     cohorts (elective/emergency/all) to include in predictions.
     """
 
-    def __init__(self, k_sigma: float = 4.0):
+    def __init__(self, k_sigma: float = 4.0, truncate_only_bottom: bool = False):
         self.k_sigma = k_sigma
+        self.truncate_only_bottom = truncate_only_bottom
         self.cache: Dict[str, DemandPrediction] = {}
 
     def predict_flow_total(
@@ -902,7 +908,10 @@ class DemandPredictor:
                 flow_dist = Distribution.from_poisson_with_cap(lam, cap_max)
             else:  # pmf
                 flow_dist = Distribution.from_pmf(distribution_data)  # type: ignore[arg-type]
-            dist_total = dist_total.convolve(flow_dist).clamp_nonnegative(cap_max)
+            dist_total = dist_total.convolve(flow_dist)
+            # Only apply truncation if not in truncate_only_bottom mode
+            if not self.truncate_only_bottom:
+                dist_total = dist_total.clamp_nonnegative(cap_max)
 
         return self._create_prediction(entity_id, entity_type, dist_total.probabilities)
 
@@ -1145,11 +1154,11 @@ class DemandPredictor:
         )
 
     def _convolve_multiple(self, distributions: List[np.ndarray]) -> np.ndarray:
-        """Convolve multiple distributions with k-sigma clamping.
+        """Convolve multiple distributions with optional k-sigma clamping.
 
         This method efficiently convolves multiple probability distributions by
-        sorting them by expected value and applying a deterministic cap to prevent
-        computational overflow.
+        sorting them by expected value and optionally applying a deterministic cap 
+        to prevent computational overflow.
 
         Parameters
         ----------
@@ -1164,7 +1173,8 @@ class DemandPredictor:
         Notes
         -----
         Distributions are sorted by expected value for computational efficiency.
-        After each convolution, the result is clamped to a global k-sigma cap.
+        If truncate_only_bottom is True, no truncation is applied at higher levels.
+        If truncate_only_bottom is False, truncation is applied after each convolution.
         """
         if not distributions:
             return np.array([1.0])
@@ -1186,9 +1196,15 @@ class DemandPredictor:
         result = distributions[0]
         for dist in distributions[1:]:
             result = self._convolve(result, dist)
-            result = self._clamp_nonnegative(result, cap_max)
+            # Only apply truncation if not in truncate_only_bottom mode
+            if not self.truncate_only_bottom:
+                result = self._clamp_nonnegative(result, cap_max)
 
-        return self._clamp_nonnegative(result, cap_max)
+        # Apply final truncation only if not in truncate_only_bottom mode
+        if not self.truncate_only_bottom:
+            return self._clamp_nonnegative(result, cap_max)
+        else:
+            return result
 
     def _convolve(self, p: np.ndarray, q: np.ndarray) -> np.ndarray:
         """Discrete convolution of two probability distributions.
@@ -1732,6 +1748,7 @@ def create_hierarchical_predictor(
     top_level_id: str,
     k_sigma: float = 4.0,
     hierarchy_config_path: Optional[str] = None,
+    truncate_only_bottom: bool = False,
 ) -> HierarchicalPredictor:
     """Create a HierarchicalPredictor with explicit column mapping.
 
@@ -1754,6 +1771,9 @@ def create_hierarchical_predictor(
     hierarchy_config_path : str, optional
         Path to YAML file containing custom hierarchy configuration.
         If None, uses default hospital hierarchy.
+    truncate_only_bottom : bool, default=False
+        If True, only apply truncation at the bottom level (subspecialties).
+        If False, apply truncation at all hierarchical levels (default behavior).
 
     Returns
     -------
@@ -1785,5 +1805,5 @@ def create_hierarchical_predictor(
     populate_hierarchy_from_dataframe(hierarchy, hierarchy_df, column_mapping, top_level_id)
     
     # Create predictor
-    predictor = DemandPredictor(k_sigma=k_sigma)
+    predictor = DemandPredictor(k_sigma=k_sigma, truncate_only_bottom=truncate_only_bottom)
     return HierarchicalPredictor(hierarchy, predictor)

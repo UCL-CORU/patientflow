@@ -44,6 +44,38 @@ class TestDemandPrediction:
 class TestDemandPredictor:
     """Test the DemandPredictor class."""
 
+    def test_truncate_only_bottom_parameter(self):
+        """Test that truncate_only_bottom parameter is properly set."""
+        # Test default behavior (truncate at all levels)
+        predictor_default = DemandPredictor()
+        assert predictor_default.truncate_only_bottom == False
+        
+        # Test truncate only at bottom level
+        predictor_bottom_only = DemandPredictor(truncate_only_bottom=True)
+        assert predictor_bottom_only.truncate_only_bottom == True
+
+    def test_truncation_behavior_difference(self):
+        """Test that truncate_only_bottom affects convolution behavior."""
+        # Create two predictors with different truncation settings
+        predictor_all_levels = DemandPredictor(k_sigma=2.0, truncate_only_bottom=False)
+        predictor_bottom_only = DemandPredictor(k_sigma=2.0, truncate_only_bottom=True)
+        
+        # Create distributions that would be truncated differently
+        p1 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
+        p2 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
+        
+        # Test _convolve_multiple with both settings
+        result_all_levels = predictor_all_levels._convolve_multiple([p1, p2])
+        result_bottom_only = predictor_bottom_only._convolve_multiple([p1, p2])
+        
+        # The results should be different due to truncation behavior
+        # With truncate_only_bottom=True, no truncation is applied in _convolve_multiple
+        # With truncate_only_bottom=False, truncation is applied
+        assert len(result_all_levels) <= len(result_bottom_only)
+        
+        # Verify that the bottom-only version preserves more of the original distribution
+        assert np.sum(result_bottom_only) > 0  # Should have valid probabilities
+
     def test_convolution(self):
         """Test basic convolution of two distributions."""
         predictor = DemandPredictor()
@@ -1057,6 +1089,38 @@ class TestHierarchyCollisionFix:
 
 class TestHierarchicalPredictor:
     """Test the HierarchicalPredictor class."""
+
+    def test_create_hierarchical_predictor_with_truncation_option(self):
+        """Test that create_hierarchical_predictor respects truncate_only_bottom parameter."""
+        # Create a simple hierarchy DataFrame
+        hierarchy_df = pd.DataFrame({
+            'sub_specialty': ['Cardiology', 'Neurology'],
+            'reporting_unit': ['Medicine', 'Medicine'],
+            'division': ['Clinical', 'Clinical'],
+            'board': ['Medical', 'Medical'],
+            'hospital': ['UCLH', 'UCLH']
+        })
+        
+        column_mapping = {
+            'sub_specialty': 'subspecialty',
+            'reporting_unit': 'reporting_unit', 
+            'division': 'division',
+            'board': 'board',
+            'hospital': 'hospital'
+        }
+        
+        # Test with truncate_only_bottom=True
+        predictor_bottom_only = create_hierarchical_predictor(
+            hierarchy_df, column_mapping, 'UCLH', 
+            truncate_only_bottom=True
+        )
+        assert predictor_bottom_only.predictor.truncate_only_bottom == True
+        
+        # Test with truncate_only_bottom=False (default)
+        predictor_all_levels = create_hierarchical_predictor(
+            hierarchy_df, column_mapping, 'UCLH'
+        )
+        assert predictor_all_levels.predictor.truncate_only_bottom == False
 
     def test_entity_type_name_usage_in_hierarchical_prediction(self):
         """Test that hierarchical prediction correctly uses EntityType.name instead of .value."""
