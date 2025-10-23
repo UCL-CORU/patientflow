@@ -368,13 +368,16 @@ class Hierarchy:
         prefixed_id = f"{entity_type.name}:{entity_name}"
         return prefixed_id if prefixed_id in self.entity_types else None
     
-    def get_children(self, parent_id: str) -> List[str]:
+    def get_children(self, parent_id: str, parent_type: Optional[EntityType] = None) -> List[str]:
         """Get all direct children of a parent entity.
         
         Parameters
         ----------
         parent_id : str
             Parent entity identifier (original name or prefixed ID)
+        parent_type : EntityType, optional
+            Entity type of the parent. If not provided, will try to find it automatically.
+            This is useful when there are multiple entities with the same name at different levels.
             
         Returns
         -------
@@ -384,10 +387,14 @@ class Hierarchy:
         # Convert parent_id to prefixed format if needed
         prefixed_parent_id = parent_id
         if ":" not in parent_id:
-            # Try to find the prefixed version
-            parent_entity_type = self._find_entity_type_by_name(parent_id)
-            if parent_entity_type is not None:
-                prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
+            if parent_type is not None:
+                # Use the specified parent type
+                prefixed_parent_id = f"{parent_type.name}:{parent_id}"
+            else:
+                # Try to find the prefixed version (may not work with entity collisions)
+                parent_entity_type = self._find_entity_type_by_name(parent_id)
+                if parent_entity_type is not None:
+                    prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
         
         children = []
         for child_id, pid in self.relationships.items():
@@ -396,13 +403,16 @@ class Hierarchy:
                 children.append(self._get_original_name(child_id))
         return children
     
-    def get_parent(self, entity_id: str) -> Optional[str]:
+    def get_parent(self, entity_id: str, entity_type: Optional[EntityType] = None) -> Optional[str]:
         """Get the parent of an entity.
         
         Parameters
         ----------
         entity_id : str
             Entity identifier (original name or prefixed ID)
+        entity_type : EntityType, optional
+            Entity type of the entity. If not provided, will try to find it automatically.
+            This is useful when there are multiple entities with the same name at different levels.
             
         Returns
         -------
@@ -412,23 +422,30 @@ class Hierarchy:
         # Convert entity_id to prefixed format if needed
         prefixed_entity_id = entity_id
         if ":" not in entity_id:
-            # Try to find the prefixed version
-            entity_entity_type = self._find_entity_type_by_name(entity_id)
-            if entity_entity_type is not None:
-                prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
+            if entity_type is not None:
+                # Use the specified entity type
+                prefixed_entity_id = f"{entity_type.name}:{entity_id}"
+            else:
+                # Try to find the prefixed version (may not work with entity collisions)
+                entity_entity_type = self._find_entity_type_by_name(entity_id)
+                if entity_entity_type is not None:
+                    prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
         
         parent_id = self.relationships.get(prefixed_entity_id)
         if parent_id is not None:
             return self._get_original_name(parent_id)
         return None
     
-    def get_entity_type(self, entity_id: str) -> Optional[EntityType]:
+    def get_entity_type(self, entity_id: str, entity_type: Optional[EntityType] = None) -> Optional[EntityType]:
         """Get the type of an entity.
         
         Parameters
         ----------
         entity_id : str
             Entity identifier (original name or prefixed ID)
+        entity_type : EntityType, optional
+            Entity type of the entity. If not provided, will try to find it automatically.
+            This is useful when there are multiple entities with the same name at different levels.
             
         Returns
         -------
@@ -438,10 +455,14 @@ class Hierarchy:
         # Convert entity_id to prefixed format if needed
         prefixed_entity_id = entity_id
         if ":" not in entity_id:
-            # Try to find the prefixed version
-            entity_entity_type = self._find_entity_type_by_name(entity_id)
-            if entity_entity_type is not None:
-                prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
+            if entity_type is not None:
+                # Use the specified entity type
+                prefixed_entity_id = f"{entity_type.name}:{entity_id}"
+            else:
+                # Try to find the prefixed version (may not work with entity collisions)
+                entity_entity_type = self._find_entity_type_by_name(entity_id)
+                if entity_entity_type is not None:
+                    prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
         
         return self.entity_types.get(prefixed_entity_id)
     
@@ -495,13 +516,16 @@ class Hierarchy:
         """
         return [et.name for et in self.levels.keys()]
     
-    def get_entity_info(self, entity_name: str) -> Optional[Dict[str, Any]]:
+    def get_entity_info(self, entity_name: str, entity_type: Optional[EntityType] = None) -> Optional[Dict[str, Any]]:
         """Get detailed information about an entity.
         
         Parameters
         ----------
         entity_name : str
             Original entity name
+        entity_type : EntityType, optional
+            Entity type of the entity. If not provided, will try to find it automatically.
+            This is useful when there are multiple entities with the same name at different levels.
             
         Returns
         -------
@@ -513,13 +537,14 @@ class Hierarchy:
             - children: list of child entity names
             - prefixed_id: internal prefixed ID
         """
-        entity_type = self._find_entity_type_by_name(entity_name)
         if entity_type is None:
-            return None
+            entity_type = self._find_entity_type_by_name(entity_name)
+            if entity_type is None:
+                return None
         
         prefixed_id = f"{entity_type.name}:{entity_name}"
-        parent = self.get_parent(entity_name)
-        children = self.get_children(entity_name)
+        parent = self.get_parent(entity_name, entity_type)
+        children = self.get_children(entity_name, entity_type)
         
         return {
             "entity_id": entity_name,
@@ -1508,7 +1533,8 @@ class HierarchicalPredictor:
             entities_at_level = self.hierarchy.get_entities_by_type(level_type)
             
             for entity_id in entities_at_level:
-                children = self.hierarchy.get_children(entity_id)
+                # Use the entity type to avoid entity name collisions
+                children = self.hierarchy.get_children(entity_id, level_type)
                 # Convert child IDs to prefixed format for lookup
                 child_bundles = []
                 for child_id in children:
