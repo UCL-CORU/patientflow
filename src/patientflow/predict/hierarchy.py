@@ -1717,29 +1717,20 @@ def populate_hierarchy_from_dataframe(
                     # Update the entity to have the specified top-level as parent
                     hierarchy.relationships[entity_prefixed] = top_level_prefixed
     
-    # Link subspecialties to their reporting units
-    # This is a special case because subspecialties are created without parents
-    # but we need to link them to their reporting units
-    for _, row in df.drop_duplicates().iterrows():
-        subspecialty_id = row['sub_specialty']
-        reporting_unit_id = row['reporting_unit']
-        
-        # Get prefixed IDs for both entities
-        subspecialty_prefixed = hierarchy._get_prefixed_id(subspecialty_id, EntityType("subspecialty"))
-        reporting_unit_prefixed = hierarchy._get_prefixed_id(reporting_unit_id, EntityType("reporting_unit"))
-        
-        if subspecialty_prefixed and reporting_unit_prefixed:
-            hierarchy.relationships[subspecialty_prefixed] = reporting_unit_prefixed
+    # Link all entities that don't have parents to the top-level entity
+    # This ensures the hierarchy is properly connected
+    for entity_id, entity_type in hierarchy.entity_types.items():
+        # Skip the top-level entity itself
+        if entity_type == top_level_type:
+            continue
+            
+        # Check if this entity already has a parent
+        if entity_id not in hierarchy.relationships:
+            # Link to the top-level entity
+            top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, top_level_type)
+            if top_level_prefixed:
+                hierarchy.relationships[entity_id] = top_level_prefixed
     
-    # Link boards to the top-level entity
-    # This is another special case because boards need to be linked to the hospital
-    for _, row in df.drop_duplicates().iterrows():
-        board_id = row['board']
-        board_prefixed = hierarchy._get_prefixed_id(board_id, EntityType("board"))
-        top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, hierarchy.get_top_level_type())
-        
-        if board_prefixed and top_level_prefixed:
-            hierarchy.relationships[board_prefixed] = top_level_prefixed
 
 
 def create_hierarchical_predictor(
