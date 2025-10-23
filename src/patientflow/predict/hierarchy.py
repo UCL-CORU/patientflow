@@ -1,8 +1,7 @@
 """Hierarchical demand prediction for hospital bed capacity management.
 
 This module provides classes and functions for predicting hospital bed demand at multiple
-hierarchical levels (subspecialty, reporting unit, division, board, hospital) using
-probability distributions and convolution operations.
+hierarchical levels using probability distributions and convolution operations.
 
 The main components are:
 
@@ -10,22 +9,24 @@ The main components are:
   expected values, and percentiles
 - FlowSelection: Configuration for selecting which patient flows to include in predictions
 - DemandPredictor: Core prediction engine using convolution of probability distributions
-- HospitalHierarchy: Represents organizational structure of a hospital
+- Hierarchy: Generic hierarchical structure that can represent any organizational hierarchy
 - HierarchicalPredictor: High-level interface for making predictions across all levels
-- Utility functions for populating hierarchy from DataFrames
+- Utility functions for populating hierarchy from DataFrames and YAML configuration
 
 Functions
 ---------
 populate_hierarchy_from_dataframe
-    Create HospitalHierarchy from pandas DataFrame with organizational structure
+    Populate Hierarchy from pandas DataFrame with organizational structure
 create_hierarchical_predictor
     Create complete HierarchicalPredictor from DataFrame and parameters
 """
 
 import numpy as np
 import pandas as pd
+import yaml
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
+from enum import Enum
 
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
@@ -36,6 +37,44 @@ from patientflow.predict.distribution import Distribution
 DEFAULT_PERCENTILES = [50, 75, 90, 95, 99]
 DEFAULT_PRECISION = 3
 DEFAULT_MAX_PROBS = 10
+
+
+class EntityType:
+    """Represents an entity type in the hierarchy.
+    
+    This class is used to represent entity types dynamically based on the
+    hierarchy configuration.
+    """
+    
+    def __init__(self, name: str):
+        self.name = name
+    
+    def __str__(self) -> str:
+        return self.name
+    
+    def __repr__(self) -> str:
+        return f"EntityType('{self.name}')"
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, EntityType):
+            return self.name == other.name
+        return False
+    
+    def __hash__(self) -> int:
+        return hash(self.name)
+    
+    @classmethod
+    def from_string(cls, value: str) -> "EntityType":
+        """Create EntityType from string."""
+        return cls(value)
+
+
+@dataclass
+class HierarchyLevel:
+    """Represents a level in the hierarchy with its configuration."""
+    entity_type: EntityType
+    parent_type: Optional[EntityType]
+    level_order: int  # 0 = bottom level, higher numbers = higher levels
 
 
 @dataclass
@@ -154,7 +193,254 @@ class DemandPrediction:
         )
 
     def __str__(self) -> str:
-        return self.to_pretty()
+        return self.to_pretty(        )
+
+
+class Hierarchy:
+    """Generic hierarchical structure that can represent any organizational hierarchy.
+    
+    This class eliminates the need for specific methods for each entity type by using
+    a generic approach that works with any hierarchical structure.
+    
+    Attributes
+    ----------
+    levels : Dict[EntityType, HierarchyLevel]
+        Configuration of each level in the hierarchy
+    relationships : Dict[str, str]
+        Mapping from child_id to parent_id for all entities
+    entity_types : Dict[str, EntityType]
+        Mapping from entity_id to its EntityType
+    """
+    
+    def __init__(self, levels: List[HierarchyLevel]):
+
+        self.levels = {level.entity_type: level for level in levels}
+        self.relationships: Dict[str, str] = {}  # child_id -> parent_id
+        self.entity_types: Dict[str, EntityType] = {}  # entity_id -> EntityType
+        
+        # Validate that levels form a proper hierarchy
+        self._validate_levels()
+    
+    def _validate_levels(self):
+        """Validate that the hierarchy levels are properly configured."""
+        # Check that there's exactly one top level (no parent)
+        top_levels = [level for level in self.levels.values() if level.parent_type is None]
+        if len(top_levels) != 1:
+            raise ValueError("Hierarchy must have exactly one top level")
+        
+        # Check that all parent types exist
+        for level in self.levels.values():
+            if level.parent_type is not None and level.parent_type not in self.levels:
+                raise ValueError(f"Parent type {level.parent_type} not found in levels")
+    
+    @classmethod
+    def from_yaml(cls, config_path: str) -> "Hierarchy":
+        """Create hierarchy from YAML configuration file.
+        
+        Parameters
+        ----------
+        config_path : str
+            Path to YAML configuration file
+            
+        Returns
+        -------
+        Hierarchy
+            Configured hierarchy instance
+        """
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        levels = []
+        for level_config in config["levels"]:
+            entity_type = EntityType.from_string(level_config["entity_type"])
+            parent_type = None
+            if level_config.get("parent_type"):
+                parent_type = EntityType.from_string(level_config["parent_type"])
+            
+            level = HierarchyLevel(
+                entity_type,
+                parent_type,
+                level_config["level_order"]
+            )
+            levels.append(level)
+        
+        return cls(levels)
+    
+    @classmethod
+    def create_default_hospital(cls) -> "Hierarchy":
+        """Create default hospital hierarchy.
+        
+        Returns
+        -------
+        Hierarchy
+            Default hospital hierarchy with standard levels
+        """
+        subspecialty = EntityType("subspecialty")
+        reporting_unit = EntityType("reporting_unit")
+        division = EntityType("division")
+        board = EntityType("board")
+        hospital = EntityType("hospital")
+        
+        levels = [
+            HierarchyLevel(subspecialty, reporting_unit, 0),
+            HierarchyLevel(reporting_unit, division, 1),
+            HierarchyLevel(division, board, 2),
+            HierarchyLevel(board, hospital, 3),
+            HierarchyLevel(hospital, None, 4),
+        ]
+        return cls(levels)
+    
+    def add_entity(self, entity_id: str, entity_type: EntityType, parent_id: Optional[str] = None):
+        """Add an entity to the hierarchy.
+        
+        Parameters
+        ----------
+        entity_id : str
+            Unique identifier for the entity
+        entity_type : EntityType
+            Type of the entity
+        parent_id : str, optional
+            Parent entity identifier. Required for all entities except top-level ones.
+        """
+        if entity_type not in self.levels:
+            raise ValueError(f"Unknown entity type: {entity_type}")
+        
+        level = self.levels[entity_type]
+        
+        # Validate parent relationship
+        if level.parent_type is None:
+            if parent_id is not None:
+                raise ValueError(f"Top-level entity {entity_id} cannot have a parent")
+        else:
+            # For non-top-level entities, parent_id is optional during initial creation
+            # but will be validated when parent_id is provided
+            if parent_id is not None and parent_id in self.entity_types:
+                parent_type = self.entity_types[parent_id]
+                if parent_type != level.parent_type:
+                    raise ValueError(f"Parent {parent_id} is of type {parent_type}, expected {level.parent_type}")
+        
+        self.relationships[entity_id] = parent_id
+        self.entity_types[entity_id] = entity_type
+    
+    def get_children(self, parent_id: str) -> List[str]:
+        """Get all direct children of a parent entity.
+        
+        Parameters
+        ----------
+        parent_id : str
+            Parent entity identifier
+            
+        Returns
+        -------
+        List[str]
+            List of child entity identifiers
+        """
+        return [child_id for child_id, pid in self.relationships.items() if pid == parent_id]
+    
+    def get_parent(self, entity_id: str) -> Optional[str]:
+        """Get the parent of an entity.
+        
+        Parameters
+        ----------
+        entity_id : str
+            Entity identifier
+            
+        Returns
+        -------
+        Optional[str]
+            Parent entity identifier, or None if entity is top-level
+        """
+        return self.relationships.get(entity_id)
+    
+    def get_entity_type(self, entity_id: str) -> Optional[EntityType]:
+        """Get the type of an entity.
+        
+        Parameters
+        ----------
+        entity_id : str
+            Entity identifier
+            
+        Returns
+        -------
+        Optional[EntityType]
+            Entity type, or None if entity not found
+        """
+        return self.entity_types.get(entity_id)
+    
+    def get_entities_by_type(self, entity_type: EntityType) -> List[str]:
+        """Get all entities of a specific type.
+        
+        Parameters
+        ----------
+        entity_type : EntityType
+            Type of entities to retrieve
+            
+        Returns
+        -------
+        List[str]
+            List of entity identifiers of the specified type
+        """
+        return [entity_id for entity_id, et in self.entity_types.items() if et == entity_type]
+    
+    def get_all_entities(self) -> List[str]:
+        """Get all entity identifiers in the hierarchy.
+        
+        Returns
+        -------
+        List[str]
+            List of all entity identifiers
+        """
+        return list(self.entity_types.keys())
+    
+    def get_levels_ordered(self) -> List[EntityType]:
+        """Get all entity types ordered from bottom to top level.
+        
+        Returns
+        -------
+        List[EntityType]
+            Entity types ordered from bottom to top
+        """
+        return sorted(self.levels.keys(), key=lambda et: self.levels[et].level_order)
+    
+    def get_entity_type_names(self) -> List[str]:
+        """Get all entity type names in the hierarchy.
+        
+        Returns
+        -------
+        List[str]
+            List of entity type names
+        """
+        return [et.name for et in self.levels.keys()]
+    
+    def get_bottom_level_type(self) -> EntityType:
+        """Get the entity type at the bottom level of the hierarchy.
+        
+        Returns
+        -------
+        EntityType
+            Bottom level entity type
+        """
+        bottom_level = min(self.levels.values(), key=lambda level: level.level_order)
+        return bottom_level.entity_type
+    
+    def get_top_level_type(self) -> EntityType:
+        """Get the entity type at the top level of the hierarchy.
+        
+        Returns
+        -------
+        EntityType
+            Top level entity type
+        """
+        top_level = max(self.levels.values(), key=lambda level: level.level_order)
+        return top_level.entity_type
+    
+    def __repr__(self) -> str:
+        lines = []
+        lines.append("Hierarchy:")
+        for entity_type in self.get_levels_ordered():
+            count = len(self.get_entities_by_type(entity_type))
+            lines.append(f"  {entity_type.name}: {count}")
+        return "\n".join(lines)
 
 
 @dataclass
@@ -661,25 +947,30 @@ class DemandPredictor:
             flow_selection=flow_selection,
         )
 
-    def predict_reporting_unit(
-        self, reporting_unit_id: str, subspecialty_predictions: List[DemandPrediction]
+    def predict_hierarchical_level(
+        self, 
+        entity_id: str, 
+        entity_type: EntityType, 
+        child_predictions: List[DemandPrediction]
     ) -> DemandPrediction:
-        """Predict demand for a reporting unit from its subspecialties.
+        """Generic method for hierarchical prediction at any level.
 
-        This method aggregates demand predictions from all subspecialties within
-        a reporting unit by convolving their probability distributions.
+        This method aggregates demand predictions from child entities by convolving
+        their probability distributions. It works for any hierarchical level.
 
         Parameters
         ----------
-        reporting_unit_id : str
-            Unique identifier for the reporting unit
-        subspecialty_predictions : list[DemandPrediction]
-            List of demand predictions from subspecialties belonging to this reporting unit
+        entity_id : str
+            Unique identifier for the entity
+        entity_type : EntityType
+            Type of entity being predicted
+        child_predictions : list[DemandPrediction]
+            List of demand predictions from child entities
 
         Returns
         -------
         DemandPrediction
-            Aggregated prediction for the reporting unit
+            Aggregated prediction for the entity
 
         Notes
         -----
@@ -687,81 +978,51 @@ class DemandPredictor:
         sorting them by expected value and clamping supports using a global
         k-sigma cap to prevent computational overflow.
         """
-        distributions = [p.probabilities for p in subspecialty_predictions]
+        distributions = [p.probabilities for p in child_predictions]
         p_total = self._convolve_multiple(distributions)
-        return self._create_prediction(reporting_unit_id, "reporting_unit", p_total)
+        return self._create_prediction(entity_id, entity_type.value, p_total)
 
-    def predict_division(
-        self, division_id: str, reporting_unit_predictions: List[DemandPrediction]
-    ) -> DemandPrediction:
-        """Predict demand for a division from its reporting units.
-
-        This method aggregates demand predictions from all reporting units within
-        a division by convolving their probability distributions.
-
+    def _create_bundle_from_children(
+        self,
+        entity_id: str,
+        entity_type: str,
+        child_bundles: List[PredictionBundle],
+    ) -> PredictionBundle:
+        """Create a PredictionBundle by aggregating child bundles.
+        
         Parameters
         ----------
-        division_id : str
-            Unique identifier for the division
-        reporting_unit_predictions : list[DemandPrediction]
-            List of demand predictions from reporting units belonging to this division
-
+        entity_id : str
+            Unique identifier for the entity
+        entity_type : str
+            Type of entity being predicted
+        child_bundles : list[PredictionBundle]
+            List of prediction bundles from child entities
+            
         Returns
         -------
-        DemandPrediction
-            Aggregated prediction for the division
+        PredictionBundle
+            Bundle containing arrivals, departures, and net flow predictions
         """
-        distributions = [p.probabilities for p in reporting_unit_predictions]
-        p_total = self._convolve_multiple(distributions)
-        return self._create_prediction(division_id, "division", p_total)
-
-    def predict_board(
-        self, board_id: str, division_predictions: List[DemandPrediction]
-    ) -> DemandPrediction:
-        """Predict demand for a board from its divisions.
-
-        This method aggregates demand predictions from all divisions within
-        a board by convolving their probability distributions.
-
-        Parameters
-        ----------
-        board_id : str
-            Unique identifier for the board
-        division_predictions : list[DemandPrediction]
-            List of demand predictions from divisions belonging to this board
-
-        Returns
-        -------
-        DemandPrediction
-            Aggregated prediction for the board
-        """
-        distributions = [p.probabilities for p in division_predictions]
-        p_total = self._convolve_multiple(distributions)
-        return self._create_prediction(board_id, "board", p_total)
-
-    def predict_hospital(
-        self, hospital_id: str, board_predictions: List[DemandPrediction]
-    ) -> DemandPrediction:
-        """Predict demand for entire hospital from its boards.
-
-        This method aggregates demand predictions from all boards within
-        a hospital by convolving their probability distributions.
-
-        Parameters
-        ----------
-        hospital_id : str
-            Unique identifier for the hospital
-        board_predictions : list[DemandPrediction]
-            List of demand predictions from boards belonging to this hospital
-
-        Returns
-        -------
-        DemandPrediction
-            Aggregated prediction for the entire hospital
-        """
-        distributions = [p.probabilities for p in board_predictions]
-        p_total = self._convolve_multiple(distributions)
-        return self._create_prediction(hospital_id, "hospital", p_total)
+        arrivals_preds = [b.arrivals for b in child_bundles]
+        departures_preds = [b.departures for b in child_bundles]
+        
+        arrivals = self.predict_hierarchical_level(
+            entity_id, EntityType(entity_type), arrivals_preds
+        )
+        departures = self.predict_hierarchical_level(
+            entity_id, EntityType(entity_type), departures_preds
+        )
+        net_flow = self._compute_net_flow(arrivals, departures, entity_id)
+        
+        return PredictionBundle(
+            entity_id=entity_id,
+            entity_type=entity_type,
+            arrivals=arrivals,
+            departures=departures,
+            net_flow=net_flow,
+            flow_selection=child_bundles[0].flow_selection,
+        )
 
     def _convolve_multiple(self, distributions: List[np.ndarray]) -> np.ndarray:
         """Convolve multiple distributions with k-sigma clamping.
@@ -994,188 +1255,12 @@ class DemandPredictor:
         )
 
 
-class HospitalHierarchy:
-    """Represents the organizational hierarchy of a hospital.
-
-    This class maintains the hierarchical structure of a hospital organization,
-    mapping entities at each level to their parent entities. The hierarchy typically
-    follows the structure: Hospital -> Board -> Division -> Reporting Unit -> Subspecialty.
-
-    The class provides methods to build the hierarchy and query relationships
-    between entities at different levels.
-
-    Attributes
-    ----------
-    subspecialties : dict[str, str]
-        Mapping from subspecialty_id to parent reporting_unit_id
-    reporting_units : dict[str, str]
-        Mapping from reporting_unit_id to parent division_id
-    divisions : dict[str, str]
-        Mapping from division_id to parent board_id
-    boards : dict[str, str]
-        Mapping from board_id to parent hospital_id
-
-    Notes
-    -----
-    The hierarchy is built bottom-up, starting with subspecialties and working
-    up to the hospital level. Each entity is mapped to its immediate parent.
-    """
-
-    def __init__(self):
-        self.subspecialties = {}  # subspecialty_id -> parent reporting_unit_id
-        self.reporting_units = {}  # reporting_unit_id -> parent division_id
-        self.divisions = {}  # division_id -> parent board_id
-        self.boards = {}  # board_id -> parent hospital_id
-
-    def __repr__(self) -> str:
-        lines = []
-        lines.append("HospitalHierarchy:")
-        lines.append(f"  Subspecialties: {len(self.subspecialties)}")
-        lines.append(f"  Reporting Units: {len(set(self.subspecialties.values()))}")
-        lines.append(f"  Divisions: {len(set(self.reporting_units.values()))}")
-        lines.append(f"  Boards: {len(set(self.divisions.values()))}")
-        lines.append(f"  Hospitals: {len(set(self.boards.values()))}")
-        return "\n".join(lines)
-
-    def add_subspecialty(self, subspecialty_id: str, reporting_unit_id: str):
-        """Add a subspecialty to the hierarchy.
-
-        Parameters
-        ----------
-        subspecialty_id : str
-            Unique identifier for the subspecialty
-        reporting_unit_id : str
-            Parent reporting unit identifier
-        """
-        self.subspecialties[subspecialty_id] = reporting_unit_id
-
-    def add_reporting_unit(self, reporting_unit_id: str, division_id: str):
-        """Add a reporting unit to the hierarchy.
-
-        Parameters
-        ----------
-        reporting_unit_id : str
-            Unique identifier for the reporting unit
-        division_id : str
-            Parent division identifier
-        """
-        self.reporting_units[reporting_unit_id] = division_id
-
-    def add_division(self, division_id: str, board_id: str):
-        """Add a division to the hierarchy.
-
-        Parameters
-        ----------
-        division_id : str
-            Unique identifier for the division
-        board_id : str
-            Parent board identifier
-        """
-        self.divisions[division_id] = board_id
-
-    def add_board(self, board_id: str, hospital_id: str):
-        """Add a board to the hierarchy.
-
-        Parameters
-        ----------
-        board_id : str
-            Unique identifier for the board
-        hospital_id : str
-            Parent hospital identifier
-        """
-        self.boards[board_id] = hospital_id
-
-    def get_subspecialties_for_reporting_unit(
-        self, reporting_unit_id: str
-    ) -> List[str]:
-        """Get all subspecialties belonging to a reporting unit.
-
-        Parameters
-        ----------
-        reporting_unit_id : str
-            Reporting unit identifier
-
-        Returns
-        -------
-        list[str]
-            List of subspecialty identifiers belonging to the reporting unit
-        """
-        return [
-            sid for sid, rid in self.subspecialties.items() if rid == reporting_unit_id
-        ]
-
-    def get_reporting_units_for_division(self, division_id: str) -> List[str]:
-        """Get all reporting units belonging to a division.
-
-        Parameters
-        ----------
-        division_id : str
-            Division identifier
-
-        Returns
-        -------
-        list[str]
-            List of reporting unit identifiers belonging to the division
-        """
-        return [rid for rid, did in self.reporting_units.items() if did == division_id]
-
-    def get_divisions_for_board(self, board_id: str) -> List[str]:
-        """Get all divisions belonging to a board.
-
-        Parameters
-        ----------
-        board_id : str
-            Board identifier
-
-        Returns
-        -------
-        list[str]
-            List of division identifiers belonging to the board
-        """
-        return [did for did, bid in self.divisions.items() if bid == board_id]
-
-    def get_boards_for_hospital(self, hospital_id: str) -> List[str]:
-        """Get all boards belonging to a hospital.
-
-        Parameters
-        ----------
-        hospital_id : str
-            Hospital identifier
-
-        Returns
-        -------
-        list[str]
-            List of board identifiers belonging to the hospital
-        """
-        return [bid for bid, hid in self.boards.items() if hid == hospital_id]
-
-    def get_all_subspecialties(self) -> List[str]:
-        """Get all subspecialty identifiers in the hierarchy.
-
-        Returns
-        -------
-        list[str]
-            List of all subspecialty identifiers
-        """
-        return list(self.subspecialties.keys())
-
-    def get_all_hospitals(self) -> List[str]:
-        """Get all hospital identifiers in the hierarchy.
-
-        Returns
-        -------
-        list[str]
-            List of all hospital identifiers
-        """
-        return list(set(self.boards.values()))
-
-
 class HierarchicalPredictor:
     """High-level interface for hierarchical predictions with caching.
 
     This class provides a convenient interface for making predictions across all
-    levels of the hospital hierarchy. It orchestrates the bottom-up prediction
-    process, starting from subspecialties and aggregating up to the hospital level.
+    levels of the hierarchy. It orchestrates the bottom-up prediction
+    process, starting from the bottom level and aggregating up to the top level.
 
     The class maintains a cache of prediction bundles for efficient retrieval and
     provides methods to compute predictions for all levels at once. Each bundle
@@ -1183,15 +1268,15 @@ class HierarchicalPredictor:
 
     Parameters
     ----------
-    hierarchy : HospitalHierarchy
-        Organizational structure of the hospital
+    hierarchy : Hierarchy
+        Organizational structure
     predictor : DemandPredictor
         Core prediction engine for demand calculations
 
     Attributes
     ----------
-    hierarchy : HospitalHierarchy
-        Hospital organizational structure
+    hierarchy : Hierarchy
+        Organizational structure
     predictor : DemandPredictor
         Core prediction engine
     cache : dict
@@ -1199,39 +1284,39 @@ class HierarchicalPredictor:
 
     Notes
     -----
-    Predictions are computed bottom-up: subspecialties -> reporting units ->
-    divisions -> boards -> hospital. At each level, arrivals and departures
-    are aggregated separately using convolution, and net flows are computed.
+    Predictions are computed bottom-up using the generic hierarchy structure.
+    At each level, arrivals and departures are aggregated separately using 
+    convolution, and net flows are computed.
     """
 
-    def __init__(self, hierarchy: HospitalHierarchy, predictor: DemandPredictor):
+    def __init__(self, hierarchy: Hierarchy, predictor: DemandPredictor):
         self.hierarchy = hierarchy
         self.predictor = predictor
         self.cache: Dict[str, PredictionBundle] = {}
 
     def predict_all_levels(
         self,
-        subspecialty_data: Dict[str, SubspecialtyPredictionInputs],
-        hospital_id: Optional[str] = None,
+        bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
+        top_level_id: Optional[str] = None,
         flow_selection: Optional[FlowSelection] = None,
     ) -> Dict[str, PredictionBundle]:
-        """Compute predictions for all levels bottom-up.
+        """Compute predictions for all levels using the generic hierarchy.
 
         This method orchestrates the complete hierarchical prediction process,
-        starting from subspecialties and aggregating predictions up through
-        reporting units, divisions, boards, and finally to the hospital level.
+        starting from the bottom level and aggregating predictions up through
+        all levels to the top level.
 
         For each level, tracks arrivals, departures, and net flow separately.
 
         Parameters
         ----------
-        subspecialty_data : dict[str, SubspecialtyPredictionInputs]
-            Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass
-            containing all prediction parameters for that subspecialty
-        hospital_id : str, optional
-            Unique identifier for the hospital. If not provided and the hierarchy
-            contains exactly one hospital, that hospital will be used automatically.
-            Required if the hierarchy contains multiple hospitals.
+        bottom_level_data : dict[str, SubspecialtyPredictionInputs]
+            Dictionary mapping entity_id to SubspecialtyPredictionInputs dataclass
+            containing all prediction parameters for bottom-level entities
+        top_level_id : str, optional
+            Unique identifier for the top-level entity. If not provided and the hierarchy
+            contains exactly one top-level entity, that entity will be used automatically.
+            Required if the hierarchy contains multiple top-level entities.
         flow_selection : FlowSelection, optional
             Selection for which flow families and cohort to include. If None, uses
             FlowSelection.default() which includes all flows (cohort="all").
@@ -1239,166 +1324,62 @@ class HierarchicalPredictor:
         Returns
         -------
         dict[str, PredictionBundle]
-            Dictionary mapping entity_id to PredictionBundle for all levels:
-            subspecialties, reporting units, divisions, boards, and hospital.
+            Dictionary mapping entity_id to PredictionBundle for all levels.
             Each bundle contains arrivals, departures, and net flow predictions.
 
         Raises
         ------
         ValueError
-            If hospital_id is not provided and the hierarchy contains multiple hospitals
+            If top_level_id is not provided and the hierarchy contains multiple top-level entities
 
         Notes
         -----
         The prediction process follows this sequence:
-        1. Predict subspecialties using provided parameters (returns bundles)
-        2. Aggregate subspecialty arrivals/departures into reporting unit bundles
-        3. Aggregate reporting unit arrivals/departures into division bundles
-        4. Aggregate division arrivals/departures into board bundles
-        5. Aggregate board arrivals/departures into hospital bundle
-
-        All predictions are cached for efficient retrieval.
+        1. Predict bottom-level entities using provided parameters (returns bundles)
+        2. For each level from bottom to top, aggregate child bundles into parent bundles
+        3. All predictions are cached for efficient retrieval.
         """
-        # Determine hospital_id if not provided
-        if hospital_id is None:
-            hospitals = self.hierarchy.get_all_hospitals()
-            if len(hospitals) == 0:
-                raise ValueError("No hospitals found in hierarchy")
-            elif len(hospitals) == 1:
-                hospital_id = hospitals[0]
+        # Determine top_level_id if not provided
+        if top_level_id is None:
+            top_level_type = self.hierarchy.get_top_level_type()
+            top_level_entities = self.hierarchy.get_entities_by_type(top_level_type)
+            if len(top_level_entities) == 0:
+                raise ValueError("No top-level entities found in hierarchy")
+            elif len(top_level_entities) == 1:
+                top_level_id = top_level_entities[0]
             else:
                 raise ValueError(
-                    f"Multiple hospitals found in hierarchy: {hospitals}. "
-                    "Please specify hospital_id parameter."
+                    f"Multiple top-level entities found in hierarchy: {top_level_entities}. "
+                    "Please specify top_level_id parameter."
                 )
 
         results = {}
-
-        # Level 1: Subspecialties
-        for subspecialty_id, inputs in subspecialty_data.items():
-            bundle = self.predictor.predict_subspecialty(
-                subspecialty_id, inputs, flow_selection
-            )
-            results[subspecialty_id] = bundle
-            self.cache[subspecialty_id] = bundle
-
-        # Level 2: Reporting units
-        reporting_units_set = set(self.hierarchy.subspecialties.values())
-        for reporting_unit_id in reporting_units_set:
-            subspecialties = self.hierarchy.get_subspecialties_for_reporting_unit(
-                reporting_unit_id
-            )
-            subspecialty_bundles = [results[sid] for sid in subspecialties]
-
-            # Aggregate arrivals and departures separately
-            arrivals_preds = [b.arrivals for b in subspecialty_bundles]
-            departures_preds = [b.departures for b in subspecialty_bundles]
-
-            arrivals = self.predictor.predict_reporting_unit(
-                reporting_unit_id, arrivals_preds
-            )
-            departures = self.predictor.predict_reporting_unit(
-                reporting_unit_id, departures_preds
-            )
-
-            # Compute net flow distribution
-            net_flow = self.predictor._compute_net_flow(
-                arrivals, departures, reporting_unit_id
-            )
-
-            bundle = PredictionBundle(
-                entity_id=reporting_unit_id,
-                entity_type="reporting_unit",
-                arrivals=arrivals,
-                departures=departures,
-                net_flow=net_flow,
-                flow_selection=subspecialty_bundles[
-                    0
-                ].flow_selection,  # Inherit from children
-            )
-            results[reporting_unit_id] = bundle
-            self.cache[reporting_unit_id] = bundle
-
-        # Level 3: Divisions
-        divisions_set = set(self.hierarchy.reporting_units.values())
-        for division_id in divisions_set:
-            reporting_units_list = self.hierarchy.get_reporting_units_for_division(
-                division_id
-            )
-            ru_bundles = [results[rid] for rid in reporting_units_list]
-
-            arrivals_preds = [b.arrivals for b in ru_bundles]
-            departures_preds = [b.departures for b in ru_bundles]
-
-            arrivals = self.predictor.predict_division(division_id, arrivals_preds)
-            departures = self.predictor.predict_division(division_id, departures_preds)
-
-            # Compute net flow distribution
-            net_flow = self.predictor._compute_net_flow(
-                arrivals, departures, division_id
-            )
-
-            bundle = PredictionBundle(
-                entity_id=division_id,
-                entity_type="division",
-                arrivals=arrivals,
-                departures=departures,
-                net_flow=net_flow,
-                flow_selection=ru_bundles[0].flow_selection,  # Inherit from children
-            )
-            results[division_id] = bundle
-            self.cache[division_id] = bundle
-
-        # Level 4: Boards
-        boards_set = set(self.hierarchy.divisions.values())
-        for board_id in boards_set:
-            divisions_list = self.hierarchy.get_divisions_for_board(board_id)
-            div_bundles = [results[did] for did in divisions_list]
-
-            arrivals_preds = [b.arrivals for b in div_bundles]
-            departures_preds = [b.departures for b in div_bundles]
-
-            arrivals = self.predictor.predict_board(board_id, arrivals_preds)
-            departures = self.predictor.predict_board(board_id, departures_preds)
-
-            # Compute net flow distribution
-            net_flow = self.predictor._compute_net_flow(arrivals, departures, board_id)
-
-            bundle = PredictionBundle(
-                entity_id=board_id,
-                entity_type="board",
-                arrivals=arrivals,
-                departures=departures,
-                net_flow=net_flow,
-                flow_selection=div_bundles[0].flow_selection,  # Inherit from children
-            )
-            results[board_id] = bundle
-            self.cache[board_id] = bundle
-
-        # Level 5: Hospital
-        boards_list = self.hierarchy.get_boards_for_hospital(hospital_id)
-        board_bundles = [results[bid] for bid in boards_list]
-
-        arrivals_preds = [b.arrivals for b in board_bundles]
-        departures_preds = [b.departures for b in board_bundles]
-
-        arrivals = self.predictor.predict_hospital(hospital_id, arrivals_preds)
-        departures = self.predictor.predict_hospital(hospital_id, departures_preds)
-
-        # Compute net flow distribution
-        net_flow = self.predictor._compute_net_flow(arrivals, departures, hospital_id)
-
-        bundle = PredictionBundle(
-            entity_id=hospital_id,
-            entity_type="hospital",
-            arrivals=arrivals,
-            departures=departures,
-            net_flow=net_flow,
-            flow_selection=board_bundles[0].flow_selection,  # Inherit from children
-        )
-        results[hospital_id] = bundle
-        self.cache[hospital_id] = bundle
-
+        
+        # Get levels ordered from bottom to top
+        levels = self.hierarchy.get_levels_ordered()
+        bottom_type = levels[0]
+        
+        # Level 1: Bottom level (e.g., subspecialties)
+        for entity_id, inputs in bottom_level_data.items():
+            bundle = self.predictor.predict_subspecialty(entity_id, inputs, flow_selection)
+            results[entity_id] = bundle
+            self.cache[entity_id] = bundle
+        
+        # Process each level from bottom to top
+        for level_type in levels[1:]:
+            entities_at_level = self.hierarchy.get_entities_by_type(level_type)
+            
+            for entity_id in entities_at_level:
+                children = self.hierarchy.get_children(entity_id)
+                child_bundles = [results[child_id] for child_id in children]
+                
+                # Create bundle using generic method
+                bundle = self.predictor._create_bundle_from_children(
+                    entity_id, level_type.value, child_bundles
+                )
+                results[entity_id] = bundle
+                self.cache[entity_id] = bundle
+        
         return results
 
     def get_prediction(self, entity_id: str) -> Optional[PredictionBundle]:
@@ -1419,101 +1400,186 @@ class HierarchicalPredictor:
 
 
 def populate_hierarchy_from_dataframe(
-    df: pd.DataFrame, hospital_id: Optional[str] = None
-) -> HospitalHierarchy:
-    """Populate HospitalHierarchy from a pandas DataFrame.
+    hierarchy: Hierarchy,
+    df: pd.DataFrame,
+    column_mapping: Dict[str, str],
+    top_level_id: str
+) -> None:
+    """Populate hierarchy from a pandas DataFrame with explicit column mapping.
 
-    This function extracts the organizational hierarchy from a DataFrame containing
-    the hospital structure. It builds the hierarchy by establishing parent-child
-    relationships between entities at different levels.
+    This function extracts the organizational hierarchy from a DataFrame using
+    an explicit mapping of DataFrame columns to entity type names. It works
+    with any hierarchy structure defined in the YAML configuration.
 
     Parameters
     ----------
+    hierarchy : Hierarchy
+        Hierarchy instance to populate
     df : pandas.DataFrame
-        DataFrame containing hospital organizational structure. Must have columns:
-        - 'board': Board identifier
-        - 'division': Division identifier
-        - 'reporting_unit': Reporting unit identifier
-        - 'sub_specialty': Subspecialty identifier
-        Additional columns are ignored.
-    hospital_id : str, optional
-        Hospital identifier to link all boards to a single hospital.
-        If None, boards are not linked to a hospital.
+        DataFrame containing organizational structure
+    column_mapping : Dict[str, str]
+        Mapping from DataFrame column names to entity type names.
+        Example: {'employee_id': 'employee', 'team_id': 'team', 'dept_id': 'department'}
+    top_level_id : str
+        Identifier for the top-level entity in the hierarchy
 
-    Returns
-    -------
-    HospitalHierarchy
-        Populated hierarchy with all relationships established
+    Raises
+    ------
+    ValueError
+        If required columns are missing or entity types don't match hierarchy
 
     Notes
     -----
     The function:
 
-    1. Removes duplicate rows and rows with missing values
-    2. Establishes subspecialty -> reporting_unit relationships
-    3. Establishes reporting_unit -> division relationships
-    4. Establishes division -> board relationships
-    5. Optionally establishes board -> hospital relationships
+    1. Validates that all required columns exist in the DataFrame
+    2. Validates that all mapped entity types exist in the hierarchy
+    3. Removes duplicate rows and rows with missing values
+    4. Establishes parent-child relationships based on the hierarchy structure
+    5. Links all entities to the specified top-level entity
 
     Duplicate relationships are automatically handled.
     """
-    hierarchy = HospitalHierarchy()
-
+    # Validate that all required columns exist
+    required_columns = list(column_mapping.keys())
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
+    
+    # Validate that all mapped entity types exist in the hierarchy
+    hierarchy_entity_types = set(hierarchy.get_entity_type_names())
+    mapped_entity_types = set(column_mapping.values())
+    invalid_mappings = mapped_entity_types - hierarchy_entity_types
+    if invalid_mappings:
+        raise ValueError(f"Invalid entity types in mapping: {invalid_mappings}")
+    
     # Remove duplicates and any rows with missing values
     df = df.dropna().drop_duplicates()
-
-    # Add all subspecialties to reporting units
-    for _, row in df[["sub_specialty", "reporting_unit"]].drop_duplicates().iterrows():
-        hierarchy.add_subspecialty(row["sub_specialty"], row["reporting_unit"])
-
-    # Add all reporting units to divisions
-    for _, row in df[["reporting_unit", "division"]].drop_duplicates().iterrows():
-        hierarchy.add_reporting_unit(row["reporting_unit"], row["division"])
-
-    # Add all divisions to boards
-    for _, row in df[["division", "board"]].drop_duplicates().iterrows():
-        hierarchy.add_division(row["division"], row["board"])
-
-    # Add boards to hospital if hospital_id provided
-    if hospital_id:
-        unique_boards = df["board"].dropna().unique()
-        for board in unique_boards:
-            hierarchy.add_board(board, hospital_id)
-
-    return hierarchy
+    
+    # Get hierarchy levels in order from bottom to top
+    levels = hierarchy.get_levels_ordered()
+    
+    # Create entity type lookup
+    entity_type_lookup = {et.name: et for et in levels}
+    
+    # Process each level from bottom to top
+    for i, entity_type in enumerate(levels):
+        entity_type_name = entity_type.name
+        
+        # Find the column that maps to this entity type
+        entity_column = None
+        for col, et_name in column_mapping.items():
+            if et_name == entity_type_name:
+                entity_column = col
+                break
+        
+        if entity_column is None:
+            # If no column mapping found, skip this entity type
+            # This happens for entity types that are created separately (like hospital)
+            continue
+        
+        if i == 0:
+            # Bottom level: create entities without parents first
+            for _, row in df[[entity_column]].drop_duplicates().iterrows():
+                entity_id = row[entity_column]
+                hierarchy.add_entity(entity_id, entity_type)
+            continue
+        
+        # For higher levels, establish parent-child relationships
+        # The parent type is the NEXT level (i+1), not the previous level
+        if i < len(levels) - 1:
+            parent_type = levels[i + 1]
+            parent_type_name = parent_type.name
+            
+            # Find the parent column
+            parent_column = None
+            for col, et_name in column_mapping.items():
+                if et_name == parent_type_name:
+                    parent_column = col
+                    break
+            
+            if parent_column is None:
+                # If no parent column found, this might be the top level
+                # Create entities without parents for now
+                for _, row in df[[entity_column]].drop_duplicates().iterrows():
+                    entity_id = row[entity_column]
+                    hierarchy.add_entity(entity_id, entity_type)
+            else:
+                # Create parent-child relationships
+                # For each unique entity at this level, find its parent
+                for _, row in df[[entity_column, parent_column]].drop_duplicates().iterrows():
+                    entity_id = row[entity_column]
+                    parent_id = row[parent_column]
+                    hierarchy.add_entity(entity_id, entity_type, parent_id)
+        else:
+            # Top level: create entities without parents
+            for _, row in df[[entity_column]].drop_duplicates().iterrows():
+                entity_id = row[entity_column]
+                hierarchy.add_entity(entity_id, entity_type)
+    
+    # Link all entities to the top-level entity
+    top_level_type = hierarchy.get_top_level_type()
+    top_level_entities = hierarchy.get_entities_by_type(top_level_type)
+    
+    if not top_level_entities:
+        # Create the top-level entity if it doesn't exist
+        hierarchy.add_entity(top_level_id, top_level_type)
+    else:
+        # If multiple top-level entities exist, link them to the specified one
+        for entity_id in top_level_entities:
+            if entity_id != top_level_id:
+                # Update the entity to have the specified top-level as parent
+                hierarchy.relationships[entity_id] = top_level_id
+    
+    # Link subspecialties to their reporting units
+    # This is a special case because subspecialties are created without parents
+    # but we need to link them to their reporting units
+    for _, row in df.drop_duplicates().iterrows():
+        subspecialty_id = row['sub_specialty']
+        reporting_unit_id = row['reporting_unit']
+        hierarchy.relationships[subspecialty_id] = reporting_unit_id
+    
+    # Link boards to the top-level entity
+    # This is another special case because boards need to be linked to the hospital
+    for _, row in df.drop_duplicates().iterrows():
+        board_id = row['board']
+        hierarchy.relationships[board_id] = top_level_id
 
 
 def create_hierarchical_predictor(
     specs_df: pd.DataFrame,
-    hospital_id: str,
+    column_mapping: Dict[str, str],
+    top_level_id: str,
     k_sigma: float = 4.0,
+    hierarchy_config_path: Optional[str] = None,
 ) -> HierarchicalPredictor:
-    """Create a HierarchicalPredictor from a hospital structure DataFrame.
+    """Create a HierarchicalPredictor with explicit column mapping.
 
     This convenience function creates a fully configured HierarchicalPredictor
-    by extracting the hospital organizational structure from a DataFrame and
-    setting up the prediction engine with the specified k-sigma cap.
+    by extracting the organizational structure from a DataFrame using explicit
+    column mapping and setting up the prediction engine.
 
     Parameters
     ----------
     specs_df : pandas.DataFrame
-        DataFrame containing hospital organizational structure. Must include
-        at least these columns:
-        - 'board': Board identifier
-        - 'division': Division identifier
-        - 'reporting_unit': Reporting unit identifier
-        - 'sub_specialty': Subspecialty identifier
-        Additional columns are ignored.
-    hospital_id : str
-        Hospital identifier to link all boards to a single hospital
+        DataFrame containing organizational structure
+    column_mapping : Dict[str, str]
+        Mapping from DataFrame column names to entity type names.
+        Example: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit', 
+                 'division': 'division', 'board': 'board'}
+    top_level_id : str
+        Identifier for the top-level entity in the hierarchy
     k_sigma : float, default=4.0
         Cap width in standard deviations used to clamp distributions.
+    hierarchy_config_path : str, optional
+        Path to YAML file containing custom hierarchy configuration.
+        If None, uses default hospital hierarchy.
 
     Returns
     -------
     HierarchicalPredictor
         Fully configured predictor with:
-        - HospitalHierarchy populated from specs_df
+        - Hierarchy populated from specs_df using column_mapping
         - DemandPredictor configured with specified k_sigma
         - Ready to use for making predictions
 
@@ -1521,15 +1587,23 @@ def create_hierarchical_predictor(
     -----
     This function is typically used in a workflow like:
 
-    1. Use create_hierarchical_predictor() to set up the predictor with hospital structure
+    1. Use create_hierarchical_predictor() to set up the predictor with organizational structure
     2. Use build_subspecialty_data() to prepare prediction inputs from patient data
     3. Use predictor.predict_all_levels(subspecialty_data) to compute predictions
-       (hospital_id is automatically inferred if there's only one hospital)
 
     The function automatically handles duplicate relationships and missing
     values in the DataFrame by removing duplicates and dropping rows with
     missing values.
     """
-    hierarchy = populate_hierarchy_from_dataframe(specs_df, hospital_id=hospital_id)
+    # Create hierarchy
+    if hierarchy_config_path:
+        hierarchy = Hierarchy.from_yaml(hierarchy_config_path)
+    else:
+        hierarchy = Hierarchy.create_default_hospital()
+    
+    # Populate from DataFrame with explicit column mapping
+    populate_hierarchy_from_dataframe(hierarchy, specs_df, column_mapping, top_level_id)
+    
+    # Create predictor
     predictor = DemandPredictor(k_sigma=k_sigma)
     return HierarchicalPredictor(hierarchy, predictor)
