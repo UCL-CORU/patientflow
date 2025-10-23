@@ -1397,11 +1397,20 @@ class HierarchicalPredictor:
             Bundle contains arrivals, departures, and net flow predictions.
         """
         return self.cache.get(entity_id)
+    
+    def __repr__(self) -> str:
+        """String representation of the hierarchical predictor."""
+        lines = []
+        lines.append("HierarchicalPredictor:")
+        lines.append(f"  Hierarchy: {self.hierarchy}")
+        lines.append(f"  DemandPredictor: k_sigma={self.predictor.k_sigma}")
+        lines.append(f"  Cache size: {len(self.cache)}")
+        return "\n".join(lines)
 
 
 def populate_hierarchy_from_dataframe(
     hierarchy: Hierarchy,
-    df: pd.DataFrame,
+    heirarchy.df: pd.DataFrame,
     column_mapping: Dict[str, str],
     top_level_id: str
 ) -> None:
@@ -1415,7 +1424,7 @@ def populate_hierarchy_from_dataframe(
     ----------
     hierarchy : Hierarchy
         Hierarchy instance to populate
-    df : pandas.DataFrame
+    heirarchy.df : pandas.DataFrame
         DataFrame containing organizational structure
     column_mapping : Dict[str, str]
         Mapping from DataFrame column names to entity type names.
@@ -1442,7 +1451,7 @@ def populate_hierarchy_from_dataframe(
     """
     # Validate that all required columns exist
     required_columns = list(column_mapping.keys())
-    missing_columns = [col for col in required_columns if col not in df.columns]
+    missing_columns = [col for col in required_columns if col not in heirarchy.df.columns]
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
     
@@ -1454,7 +1463,7 @@ def populate_hierarchy_from_dataframe(
         raise ValueError(f"Invalid entity types in mapping: {invalid_mappings}")
     
     # Remove duplicates and any rows with missing values
-    df = df.dropna().drop_duplicates()
+    df = heirarchy.df.dropna().drop_duplicates()
     
     # Get hierarchy levels in order from bottom to top
     levels = hierarchy.get_levels_ordered()
@@ -1547,7 +1556,7 @@ def populate_hierarchy_from_dataframe(
 
 
 def create_hierarchical_predictor(
-    specs_df: pd.DataFrame,
+    heirarchy.df: pd.DataFrame,
     column_mapping: Dict[str, str],
     top_level_id: str,
     k_sigma: float = 4.0,
@@ -1561,7 +1570,7 @@ def create_hierarchical_predictor(
 
     Parameters
     ----------
-    specs_df : pandas.DataFrame
+    heirarchy.df : pandas.DataFrame
         DataFrame containing organizational structure
     column_mapping : Dict[str, str]
         Mapping from DataFrame column names to entity type names.
@@ -1579,7 +1588,7 @@ def create_hierarchical_predictor(
     -------
     HierarchicalPredictor
         Fully configured predictor with:
-        - Hierarchy populated from specs_df using column_mapping
+        - Hierarchy populated from heirarchy.df using column_mapping
         - DemandPredictor configured with specified k_sigma
         - Ready to use for making predictions
 
@@ -1602,7 +1611,7 @@ def create_hierarchical_predictor(
         hierarchy = Hierarchy.create_default_hospital()
     
     # Populate from DataFrame with explicit column mapping
-    populate_hierarchy_from_dataframe(hierarchy, specs_df, column_mapping, top_level_id)
+    populate_hierarchy_from_dataframe(hierarchy, heirarchy.df, column_mapping, top_level_id)
     
     # Create predictor
     predictor = DemandPredictor(k_sigma=k_sigma)
