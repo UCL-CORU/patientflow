@@ -26,7 +26,6 @@ import pandas as pd
 import yaml
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from enum import Enum
 
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
@@ -41,28 +40,28 @@ DEFAULT_MAX_PROBS = 10
 
 class EntityType:
     """Represents an entity type in the hierarchy.
-    
+
     This class is used to represent entity types dynamically based on the
     hierarchy configuration.
     """
-    
+
     def __init__(self, name: str):
         self.name = name
-    
+
     def __str__(self) -> str:
         return self.name
-    
+
     def __repr__(self) -> str:
         return f"EntityType('{self.name}')"
-    
+
     def __eq__(self, other) -> bool:
         if isinstance(other, EntityType):
             return self.name == other.name
         return False
-    
+
     def __hash__(self) -> int:
         return hash(self.name)
-    
+
     @classmethod
     def from_string(cls, value: str) -> "EntityType":
         """Create EntityType from string."""
@@ -72,6 +71,7 @@ class EntityType:
 @dataclass
 class HierarchyLevel:
     """Represents a level in the hierarchy with its configuration."""
+
     entity_type: EntityType
     parent_type: Optional[EntityType]
     level_order: int  # 0 = bottom level, higher numbers = higher levels
@@ -193,15 +193,15 @@ class DemandPrediction:
         )
 
     def __str__(self) -> str:
-        return self.to_pretty(        )
+        return self.to_pretty()
 
 
 class Hierarchy:
     """Generic hierarchical structure that can represent any organizational hierarchy.
-    
+
     This class eliminates the need for specific methods for each entity type by using
     a generic approach that works with any hierarchical structure.
-    
+
     Attributes
     ----------
     levels : Dict[EntityType, HierarchyLevel]
@@ -211,65 +211,64 @@ class Hierarchy:
     entity_types : Dict[str, EntityType]
         Mapping from entity_id to its EntityType
     """
-    
-    def __init__(self, levels: List[HierarchyLevel]):
 
+    def __init__(self, levels: List[HierarchyLevel]):
         self.levels = {level.entity_type: level for level in levels}
         self.relationships: Dict[str, str] = {}  # child_id -> parent_id
         self.entity_types: Dict[str, EntityType] = {}  # entity_id -> EntityType
-        
+
         # Validate that levels form a proper hierarchy
         self._validate_levels()
-    
+
     def _validate_levels(self):
         """Validate that the hierarchy levels are properly configured."""
         # Check that there's exactly one top level (no parent)
-        top_levels = [level for level in self.levels.values() if level.parent_type is None]
+        top_levels = [
+            level for level in self.levels.values() if level.parent_type is None
+        ]
         if len(top_levels) != 1:
             raise ValueError("Hierarchy must have exactly one top level")
-        
+
         # Check that all parent types exist
         for level in self.levels.values():
             if level.parent_type is not None and level.parent_type not in self.levels:
                 raise ValueError(f"Parent type {level.parent_type} not found in levels")
-    
+
     @classmethod
     def from_yaml(cls, config_path: str) -> "Hierarchy":
         """Create hierarchy from YAML configuration file.
-        
+
         Parameters
         ----------
         config_path : str
             Path to YAML configuration file
-            
+
         Returns
         -------
         Hierarchy
             Configured hierarchy instance
         """
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        
+
         levels = []
         for level_config in config["levels"]:
             entity_type = EntityType.from_string(level_config["entity_type"])
             parent_type = None
             if level_config.get("parent_type"):
                 parent_type = EntityType.from_string(level_config["parent_type"])
-            
+
             level = HierarchyLevel(
-                entity_type,
-                parent_type,
-                level_config["level_order"]
+                entity_type, parent_type, level_config["level_order"]
             )
             levels.append(level)
-        
+
         return cls(levels)
-    
+
     @classmethod
     def create_default_hospital(cls) -> "Hierarchy":
         """Create default hospital hierarchy.
-        
+
         Returns
         -------
         Hierarchy
@@ -280,7 +279,7 @@ class Hierarchy:
         division = EntityType("division")
         board = EntityType("board")
         hospital = EntityType("hospital")
-        
+
         levels = [
             HierarchyLevel(subspecialty, reporting_unit, 0),
             HierarchyLevel(reporting_unit, division, 1),
@@ -289,13 +288,13 @@ class Hierarchy:
             HierarchyLevel(hospital, None, 4),
         ]
         return cls(levels)
-    
+
     def add_entity(self, entity_id: str, entity_type: EntityType):
         """Add an entity to the hierarchy with type-prefixed unique ID.
-        
+
         This method is used in Pass 1 to create entities without relationships.
         Relationships are established separately in Pass 2.
-        
+
         Parameters
         ----------
         entity_id : str
@@ -305,21 +304,21 @@ class Hierarchy:
         """
         if entity_type not in self.levels:
             raise ValueError(f"Unknown entity type: {entity_type}")
-        
+
         # Create unique ID by prefixing with entity type
         unique_id = f"{entity_type.name}:{entity_id}"
-        
+
         # Store entity with its type
         self.entity_types[unique_id] = entity_type
-    
+
     def _find_entity_type_by_name(self, entity_name: str) -> Optional[EntityType]:
         """Find the entity type for a given entity name by searching through existing entities.
-        
+
         Parameters
         ----------
         entity_name : str
             Original entity name to search for
-            
+
         Returns
         -------
         Optional[EntityType]
@@ -332,15 +331,15 @@ class Hierarchy:
                 if original_name == entity_name:
                     return entity_type
         return None
-    
+
     def _get_original_name(self, unique_id: str) -> str:
         """Extract original entity name from prefixed ID.
-        
+
         Parameters
         ----------
         unique_id : str
             Prefixed entity ID (e.g., "subspecialty:Cardiology")
-            
+
         Returns
         -------
         str
@@ -349,17 +348,19 @@ class Hierarchy:
         if ":" in unique_id:
             return unique_id.split(":", 1)[1]
         return unique_id
-    
-    def _get_prefixed_id(self, entity_name: str, entity_type: EntityType) -> Optional[str]:
+
+    def _get_prefixed_id(
+        self, entity_name: str, entity_type: EntityType
+    ) -> Optional[str]:
         """Get prefixed ID for an entity name and type.
-        
+
         Parameters
         ----------
         entity_name : str
             Original entity name
         entity_type : EntityType
             Entity type
-            
+
         Returns
         -------
         Optional[str]
@@ -367,10 +368,12 @@ class Hierarchy:
         """
         prefixed_id = f"{entity_type.name}:{entity_name}"
         return prefixed_id if prefixed_id in self.entity_types else None
-    
-    def get_children(self, parent_id: str, parent_type: Optional[EntityType] = None) -> List[str]:
+
+    def get_children(
+        self, parent_id: str, parent_type: Optional[EntityType] = None
+    ) -> List[str]:
         """Get all direct children of a parent entity.
-        
+
         Parameters
         ----------
         parent_id : str
@@ -378,7 +381,7 @@ class Hierarchy:
         parent_type : EntityType, optional
             Entity type of the parent. If not provided, will try to find it automatically.
             This is useful when there are multiple entities with the same name at different levels.
-            
+
         Returns
         -------
         List[str]
@@ -395,17 +398,19 @@ class Hierarchy:
                 parent_entity_type = self._find_entity_type_by_name(parent_id)
                 if parent_entity_type is not None:
                     prefixed_parent_id = f"{parent_entity_type.name}:{parent_id}"
-        
+
         children = []
         for child_id, pid in self.relationships.items():
             if pid == prefixed_parent_id:
                 # Return original entity name
                 children.append(self._get_original_name(child_id))
         return children
-    
-    def get_parent(self, entity_id: str, entity_type: Optional[EntityType] = None) -> Optional[str]:
+
+    def get_parent(
+        self, entity_id: str, entity_type: Optional[EntityType] = None
+    ) -> Optional[str]:
         """Get the parent of an entity.
-        
+
         Parameters
         ----------
         entity_id : str
@@ -413,7 +418,7 @@ class Hierarchy:
         entity_type : EntityType, optional
             Entity type of the entity. If not provided, will try to find it automatically.
             This is useful when there are multiple entities with the same name at different levels.
-            
+
         Returns
         -------
         Optional[str]
@@ -430,15 +435,17 @@ class Hierarchy:
                 entity_entity_type = self._find_entity_type_by_name(entity_id)
                 if entity_entity_type is not None:
                     prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
-        
+
         parent_id = self.relationships.get(prefixed_entity_id)
         if parent_id is not None:
             return self._get_original_name(parent_id)
         return None
-    
-    def get_entity_type(self, entity_id: str, entity_type: Optional[EntityType] = None) -> Optional[EntityType]:
+
+    def get_entity_type(
+        self, entity_id: str, entity_type: Optional[EntityType] = None
+    ) -> Optional[EntityType]:
         """Get the type of an entity.
-        
+
         Parameters
         ----------
         entity_id : str
@@ -446,7 +453,7 @@ class Hierarchy:
         entity_type : EntityType, optional
             Entity type of the entity. If not provided, will try to find it automatically.
             This is useful when there are multiple entities with the same name at different levels.
-            
+
         Returns
         -------
         Optional[EntityType]
@@ -463,17 +470,17 @@ class Hierarchy:
                 entity_entity_type = self._find_entity_type_by_name(entity_id)
                 if entity_entity_type is not None:
                     prefixed_entity_id = f"{entity_entity_type.name}:{entity_id}"
-        
+
         return self.entity_types.get(prefixed_entity_id)
-    
+
     def get_entities_by_type(self, entity_type: EntityType) -> List[str]:
         """Get all entities of a specific type.
-        
+
         Parameters
         ----------
         entity_type : EntityType
             Type of entities to retrieve
-            
+
         Returns
         -------
         List[str]
@@ -485,40 +492,44 @@ class Hierarchy:
                 # Return original entity name
                 entities.append(self._get_original_name(entity_id))
         return entities
-    
+
     def get_all_entities(self) -> List[str]:
         """Get all entity identifiers in the hierarchy.
-        
+
         Returns
         -------
         List[str]
             List of all entity identifiers (original names)
         """
-        return [self._get_original_name(entity_id) for entity_id in self.entity_types.keys()]
-    
+        return [
+            self._get_original_name(entity_id) for entity_id in self.entity_types.keys()
+        ]
+
     def get_levels_ordered(self) -> List[EntityType]:
         """Get all entity types ordered from bottom to top level.
-        
+
         Returns
         -------
         List[EntityType]
             Entity types ordered from bottom to top
         """
         return sorted(self.levels.keys(), key=lambda et: self.levels[et].level_order)
-    
+
     def get_entity_type_names(self) -> List[str]:
         """Get all entity type names in the hierarchy.
-        
+
         Returns
         -------
         List[str]
             List of entity type names
         """
         return [et.name for et in self.levels.keys()]
-    
-    def get_entity_info(self, entity_name: str, entity_type: Optional[EntityType] = None) -> Optional[Dict[str, Any]]:
+
+    def get_entity_info(
+        self, entity_name: str, entity_type: Optional[EntityType] = None
+    ) -> Optional[Dict[str, Any]]:
         """Get detailed information about an entity.
-        
+
         Parameters
         ----------
         entity_name : str
@@ -526,7 +537,7 @@ class Hierarchy:
         entity_type : EntityType, optional
             Entity type of the entity. If not provided, will try to find it automatically.
             This is useful when there are multiple entities with the same name at different levels.
-            
+
         Returns
         -------
         Optional[Dict[str, Any]]
@@ -541,22 +552,22 @@ class Hierarchy:
             entity_type = self._find_entity_type_by_name(entity_name)
             if entity_type is None:
                 return None
-        
+
         prefixed_id = f"{entity_type.name}:{entity_name}"
         parent = self.get_parent(entity_name, entity_type)
         children = self.get_children(entity_name, entity_type)
-        
+
         return {
             "entity_id": entity_name,
             "entity_type": entity_type,
             "parent": parent,
             "children": children,
-            "prefixed_id": prefixed_id
+            "prefixed_id": prefixed_id,
         }
-    
+
     def get_bottom_level_type(self) -> EntityType:
         """Get the entity type at the bottom level of the hierarchy.
-        
+
         Returns
         -------
         EntityType
@@ -564,10 +575,10 @@ class Hierarchy:
         """
         bottom_level = min(self.levels.values(), key=lambda level: level.level_order)
         return bottom_level.entity_type
-    
+
     def get_top_level_type(self) -> EntityType:
         """Get the entity type at the top level of the hierarchy.
-        
+
         Returns
         -------
         EntityType
@@ -575,7 +586,7 @@ class Hierarchy:
         """
         top_level = max(self.levels.values(), key=lambda level: level.level_order)
         return top_level.entity_type
-    
+
     def __repr__(self) -> str:
         lines = []
         lines.append("Hierarchy:")
@@ -826,8 +837,10 @@ class DemandPredictor:
     ----------
     k_sigma : float, default=4.0
         Cap width measured in standard deviations. Final (and intermediate)
-        distributions are hard-clipped to mean + k_sigma * std for non-negative
-        support. Net-flow uses asymmetric caps around the mean with the same
+        distributions are hard-clipped using an adaptive approach that prevents
+        over-truncation for small lambda values. For lambda < 0.1, uses 2x k_sigma;
+        for lambda < 1.0, uses 1.5x k_sigma; otherwise uses the original k_sigma.
+        Net-flow uses asymmetric caps around the mean with the same adaptive
         k_sigma multiplier and physical bounds.
     truncate_only_bottom : bool, default=False
         If True, only apply truncation at the bottom level (subspecialties).
@@ -852,8 +865,8 @@ class DemandPredictor:
     4. Computing statistics (expected value, percentiles) for each level
 
     The class uses discrete convolution to combine probability distributions.
-    Supports are clamped deterministically using k-sigma caps to prevent
-    exponential growth in array sizes.
+    Supports are clamped using adaptive k-sigma caps to prevent exponential
+    growth in array sizes while avoiding over-truncation for small lambda values.
 
     Flow Selection
     --------------
@@ -866,6 +879,42 @@ class DemandPredictor:
         self.k_sigma = k_sigma
         self.truncate_only_bottom = truncate_only_bottom
         self.cache: Dict[str, DemandPrediction] = {}
+
+    def adaptive_cap(self, lam: float, k_sigma: float) -> int:
+        """Calculate adaptive cap to prevent over-truncation for small lambda values.
+
+        This method uses higher k_sigma multipliers for small lambda values to avoid
+        over-truncation that could occur with the standard k-sigma approach.
+
+        Parameters
+        ----------
+        lam : float
+            Lambda parameter (mean) of the distribution
+        k_sigma : float
+            Base k_sigma value for cap calculation
+
+        Returns
+        -------
+        int
+            Adaptive cap value calculated as:
+            - For lam < 0.1: lam + (2.0 * k_sigma) * sqrt(lam)
+            - For lam < 1.0: lam + (1.5 * k_sigma) * sqrt(lam)
+            - For lam >= 1.0: lam + k_sigma * sqrt(lam)
+
+        Notes
+        -----
+        The adaptive approach prevents over-truncation by using higher k_sigma
+        multipliers for small lambda values, ensuring that distributions with
+        low means retain sufficient probability mass.
+        """
+        if lam < 0.1:
+            effective_k_sigma = k_sigma * 2.0  # Double for very small λ
+        elif lam < 1.0:
+            effective_k_sigma = k_sigma * 1.5  # 50% more for small λ
+        else:
+            effective_k_sigma = k_sigma
+
+        return max(0, int(np.floor(lam + effective_k_sigma * np.sqrt(lam))))
 
     def predict_flow_total(
         self,
@@ -897,8 +946,9 @@ class DemandPredictor:
         Notes
         -----
         Flows are combined through convolution, which represents the distribution
-        of the sum of independent random variables. Supports are clamped using a
-        k-sigma cap to maintain computational efficiency.
+        of the sum of independent random variables. Supports are clamped using an
+        adaptive k-sigma cap to maintain computational efficiency while preventing
+        over-truncation for small lambda values.
         """
         # First pass: compute per-flow means and variances only
         means: List[float] = []
@@ -922,8 +972,7 @@ class DemandPredictor:
 
         # Global cap for the total non-negative support from combined mean/std
         total_mean = float(np.sum(means)) if means else 0.0
-        total_std = float(np.sqrt(np.sum(variances))) if variances else 0.0
-        cap_max = max(0, int(np.floor(total_mean + self.k_sigma * total_std)))
+        cap_max = self.adaptive_cap(total_mean, self.k_sigma)
 
         # Second pass: materialize flows via Distribution using the global cap for Poisson
         dist_total = Distribution.from_pmf(np.array([1.0]))
@@ -1099,10 +1148,10 @@ class DemandPredictor:
         )
 
     def predict_hierarchical_level(
-        self, 
-        entity_id: str, 
-        entity_type: EntityType, 
-        child_predictions: List[DemandPrediction]
+        self,
+        entity_id: str,
+        entity_type: EntityType,
+        child_predictions: List[DemandPrediction],
     ) -> DemandPrediction:
         """Generic method for hierarchical prediction at any level.
 
@@ -1140,7 +1189,7 @@ class DemandPredictor:
         child_bundles: List[PredictionBundle],
     ) -> PredictionBundle:
         """Create a PredictionBundle by aggregating child bundles.
-        
+
         Parameters
         ----------
         entity_id : str
@@ -1149,7 +1198,7 @@ class DemandPredictor:
             Type of entity being predicted
         child_bundles : list[PredictionBundle]
             List of prediction bundles from child entities
-            
+
         Returns
         -------
         PredictionBundle
@@ -1157,7 +1206,7 @@ class DemandPredictor:
         """
         arrivals_preds = [b.arrivals for b in child_bundles]
         departures_preds = [b.departures for b in child_bundles]
-        
+
         arrivals = self.predict_hierarchical_level(
             entity_id, EntityType(entity_type), arrivals_preds
         )
@@ -1165,10 +1214,14 @@ class DemandPredictor:
             entity_id, EntityType(entity_type), departures_preds
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
-        
+
         # Use flow_selection from first child if available, otherwise use default
-        flow_selection = child_bundles[0].flow_selection if child_bundles else FlowSelection.default()
-        
+        flow_selection = (
+            child_bundles[0].flow_selection
+            if child_bundles
+            else FlowSelection.default()
+        )
+
         return PredictionBundle(
             entity_id=entity_id,
             entity_type=entity_type,
@@ -1179,11 +1232,11 @@ class DemandPredictor:
         )
 
     def _convolve_multiple(self, distributions: List[np.ndarray]) -> np.ndarray:
-        """Convolve multiple distributions with optional k-sigma clamping.
+        """Convolve multiple distributions with adaptive k-sigma clamping.
 
         This method efficiently convolves multiple probability distributions by
-        sorting them by expected value and optionally applying a deterministic cap 
-        to prevent computational overflow.
+        sorting them by expected value and applying adaptive deterministic caps
+        to prevent computational overflow while avoiding over-truncation.
 
         Parameters
         ----------
@@ -1199,7 +1252,8 @@ class DemandPredictor:
         -----
         Distributions are sorted by expected value for computational efficiency.
         If truncate_only_bottom is True, no truncation is applied at higher levels.
-        If truncate_only_bottom is False, truncation is applied after each convolution.
+        If truncate_only_bottom is False, adaptive truncation is applied after each convolution.
+        The adaptive approach uses higher k_sigma multipliers for small lambda values.
         """
         if not distributions:
             return np.array([1.0])
@@ -1209,12 +1263,10 @@ class DemandPredictor:
         # Sort by expected value for efficiency
         distributions = sorted(distributions, key=lambda p: self._expected_value(p))
 
-        # Compute global cap from provided distributions
+        # Compute global cap from provided distributions using adaptive approach
         means = [self._expected_value(p) for p in distributions]
-        variances = [self._variance(p) for p in distributions]
         total_mean = float(np.sum(means))
-        total_std = float(np.sqrt(np.sum(variances)))
-        sigma_cap = int(np.floor(total_mean + self.k_sigma * total_std))
+        sigma_cap = self.adaptive_cap(total_mean, self.k_sigma)
         physical_cap = int(np.sum([len(p) - 1 for p in distributions]))
         cap_max = max(0, min(sigma_cap, physical_cap))
 
@@ -1446,7 +1498,7 @@ class HierarchicalPredictor:
     Notes
     -----
     Predictions are computed bottom-up using the generic hierarchy structure.
-    At each level, arrivals and departures are aggregated separately using 
+    At each level, arrivals and departures are aggregated separately using
     convolution, and net flows are computed.
     """
 
@@ -1515,23 +1567,25 @@ class HierarchicalPredictor:
                 )
 
         results = {}
-        
+
         # Get levels ordered from bottom to top
         levels = self.hierarchy.get_levels_ordered()
         bottom_type = levels[0]
-        
+
         # Level 1: Bottom level (e.g., subspecialties)
         for entity_id, inputs in bottom_level_data.items():
-            bundle = self.predictor.predict_subspecialty(entity_id, inputs, flow_selection)
+            bundle = self.predictor.predict_subspecialty(
+                entity_id, inputs, flow_selection
+            )
             # Use prefixed entity ID as key to avoid collisions
             prefixed_entity_id = f"{bottom_type.name}:{entity_id}"
             results[prefixed_entity_id] = bundle
             self.cache[prefixed_entity_id] = bundle
-        
+
         # Process each level from bottom to top
         for level_type in levels[1:]:
             entities_at_level = self.hierarchy.get_entities_by_type(level_type)
-            
+
             for entity_id in entities_at_level:
                 # Use the entity type to avoid entity name collisions
                 children = self.hierarchy.get_children(entity_id, level_type)
@@ -1544,7 +1598,7 @@ class HierarchicalPredictor:
                         prefixed_child_id = f"{child_entity_type.name}:{child_id}"
                         if prefixed_child_id in results:
                             child_bundles.append(results[prefixed_child_id])
-                
+
                 # Create bundle using generic method
                 bundle = self.predictor._create_bundle_from_children(
                     entity_id, level_type.name, child_bundles
@@ -1553,7 +1607,7 @@ class HierarchicalPredictor:
                 prefixed_entity_id = f"{level_type.name}:{entity_id}"
                 results[prefixed_entity_id] = bundle
                 self.cache[prefixed_entity_id] = bundle
-        
+
         return results
 
     def get_prediction(self, entity_id: str) -> Optional[PredictionBundle]:
@@ -1571,9 +1625,8 @@ class HierarchicalPredictor:
             Bundle contains arrivals, departures, and net flow predictions.
         """
         return self.cache.get(entity_id)
-    
+
     def __repr__(self) -> str:
-        """String representation of the hierarchical predictor."""
         lines = []
         lines.append("HierarchicalPredictor:")
         lines.append(f"  Hierarchy: {self.hierarchy}")
@@ -1586,7 +1639,7 @@ def populate_hierarchy_from_dataframe(
     hierarchy: Hierarchy,
     hierarchy_df: pd.DataFrame,
     column_mapping: Dict[str, str],
-    top_level_id: str
+    top_level_id: str,
 ) -> None:
     """Populate hierarchy from a pandas DataFrame with explicit column mapping.
 
@@ -1625,89 +1678,94 @@ def populate_hierarchy_from_dataframe(
     """
     # Validate that all required columns exist
     required_columns = list(column_mapping.keys())
-    missing_columns = [col for col in required_columns if col not in hierarchy_df.columns]
+    missing_columns = [
+        col for col in required_columns if col not in hierarchy_df.columns
+    ]
     if missing_columns:
         raise ValueError(f"Missing required columns: {missing_columns}")
-    
+
     # Validate that all mapped entity types exist in the hierarchy
     hierarchy_entity_types = set(hierarchy.get_entity_type_names())
     mapped_entity_types = set(column_mapping.values())
     invalid_mappings = mapped_entity_types - hierarchy_entity_types
     if invalid_mappings:
         raise ValueError(f"Invalid entity types in mapping: {invalid_mappings}")
-    
+
     # Remove duplicates and any rows with missing values
     df = hierarchy_df.dropna().drop_duplicates()
-    
+
     # Get hierarchy levels in order from bottom to top
     levels = hierarchy.get_levels_ordered()
-    
-    # Create entity type lookup
-    entity_type_lookup = {et.name: et for et in levels}
-    
+
     # PASS 1: Create all entities without relationships
     for i, entity_type in enumerate(levels):
         entity_type_name = entity_type.name
-        
+
         # Find the column that maps to this entity type
         entity_column = None
         for col, et_name in column_mapping.items():
             if et_name == entity_type_name:
                 entity_column = col
                 break
-        
+
         if entity_column is None:
             # If no column mapping found, skip this entity type
             # This happens for entity types that are created separately (like hospital)
             continue
-        
+
         # Create all entities of this type without parents
         for _, row in df[[entity_column]].drop_duplicates().iterrows():
             entity_id = row[entity_column]
             hierarchy.add_entity(entity_id, entity_type)
-    
+
     # PASS 2: Establish parent-child relationships
     for i, entity_type in enumerate(levels):
         entity_type_name = entity_type.name
-        
+
         # Find the column that maps to this entity type
         entity_column = None
         for col, et_name in column_mapping.items():
             if et_name == entity_type_name:
                 entity_column = col
                 break
-        
+
         if entity_column is None:
             continue
-        
+
         # Skip top level (no parents)
         if i == len(levels) - 1:
             continue
-        
+
         # Find the parent column for this level
         parent_type = levels[i + 1]
         parent_type_name = parent_type.name
-        
+
         parent_column = None
         for col, et_name in column_mapping.items():
             if et_name == parent_type_name:
                 parent_column = col
                 break
-        
+
         if parent_column is None:
             continue
-        
+
         # Establish parent-child relationships with error checking
-        df_subset = df[[entity_column, parent_column]].drop_duplicates().sort_values([parent_column, entity_column])
+        df_subset = (
+            df[[entity_column, parent_column]]
+            .drop_duplicates()
+            .sort_values([parent_column, entity_column])
+        )
         for _, row in df_subset.iterrows():
             entity_id = row[entity_column]
             parent_id = row[parent_column]
-            
+
             # Check if parent exists before trying to link
             parent_entity_type = hierarchy.get_entity_type(parent_id)
             if parent_entity_type is None:
-                raise ValueError(f"Parent entity '{parent_id}' not found for child '{entity_id}' of type '{entity_type_name}'")
-            
+                raise ValueError(
+                    f"Parent entity '{parent_id}' not found for child '{entity_id}' of type '{entity_type_name}'"
+                )
+
             # Allow same entity name at different levels (entity collision scenario)
             if parent_entity_type != parent_type:
                 # Check if there's a parent with the correct type
@@ -1716,18 +1774,20 @@ def populate_hierarchy_from_dataframe(
                     # Use the correct parent
                     parent_prefixed = correct_parent_prefixed
                 else:
-                    raise ValueError(f"Parent entity '{parent_id}' has type '{parent_entity_type.name}' but expected type '{parent_type.name}' for child '{entity_id}'")
+                    raise ValueError(
+                        f"Parent entity '{parent_id}' has type '{parent_entity_type.name}' but expected type '{parent_type.name}' for child '{entity_id}'"
+                    )
             else:
                 parent_prefixed = f"{parent_type.name}:{parent_id}"
-            
+
             # Update the relationship
             child_prefixed = f"{entity_type.name}:{entity_id}"
             hierarchy.relationships[child_prefixed] = parent_prefixed
-    
+
     # Link all entities to the top-level entity
     top_level_type = hierarchy.get_top_level_type()
     top_level_entities = hierarchy.get_entities_by_type(top_level_type)
-    
+
     if not top_level_entities:
         # Create the top-level entity if it doesn't exist
         hierarchy.add_entity(top_level_id, top_level_type)
@@ -1737,26 +1797,29 @@ def populate_hierarchy_from_dataframe(
             if entity_id != top_level_id:
                 # Get prefixed IDs for both entities
                 entity_prefixed = hierarchy._get_prefixed_id(entity_id, top_level_type)
-                top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, top_level_type)
-                
+                top_level_prefixed = hierarchy._get_prefixed_id(
+                    top_level_id, top_level_type
+                )
+
                 if entity_prefixed and top_level_prefixed:
                     # Update the entity to have the specified top-level as parent
                     hierarchy.relationships[entity_prefixed] = top_level_prefixed
-    
+
     # Link all entities that don't have parents to the top-level entity
     # This ensures the hierarchy is properly connected
     for entity_id, entity_type in hierarchy.entity_types.items():
         # Skip the top-level entity itself
         if entity_type == top_level_type:
             continue
-            
+
         # Check if this entity already has a parent
         if entity_id not in hierarchy.relationships:
             # Link to the top-level entity
-            top_level_prefixed = hierarchy._get_prefixed_id(top_level_id, top_level_type)
+            top_level_prefixed = hierarchy._get_prefixed_id(
+                top_level_id, top_level_type
+            )
             if top_level_prefixed:
                 hierarchy.relationships[entity_id] = top_level_prefixed
-    
 
 
 def create_hierarchical_predictor(
@@ -1779,12 +1842,13 @@ def create_hierarchical_predictor(
         DataFrame containing organizational structure
     column_mapping : Dict[str, str]
         Mapping from DataFrame column names to entity type names.
-        Example: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit', 
+        Example: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit',
                  'division': 'division', 'board': 'board'}
     top_level_id : str
         Identifier for the top-level entity in the hierarchy
     k_sigma : float, default=4.0
-        Cap width in standard deviations used to clamp distributions.
+        Cap width in standard deviations used to clamp distributions using an
+        adaptive approach that prevents over-truncation for small lambda values.
     hierarchy_config_path : str, optional
         Path to YAML file containing custom hierarchy configuration.
         If None, uses default hospital hierarchy.
@@ -1817,10 +1881,14 @@ def create_hierarchical_predictor(
         hierarchy = Hierarchy.from_yaml(hierarchy_config_path)
     else:
         hierarchy = Hierarchy.create_default_hospital()
-    
+
     # Populate from DataFrame with explicit column mapping
-    populate_hierarchy_from_dataframe(hierarchy, hierarchy_df, column_mapping, top_level_id)
-    
+    populate_hierarchy_from_dataframe(
+        hierarchy, hierarchy_df, column_mapping, top_level_id
+    )
+
     # Create predictor
-    predictor = DemandPredictor(k_sigma=k_sigma, truncate_only_bottom=truncate_only_bottom)
+    predictor = DemandPredictor(
+        k_sigma=k_sigma, truncate_only_bottom=truncate_only_bottom
+    )
     return HierarchicalPredictor(hierarchy, predictor)
