@@ -45,13 +45,13 @@ class TestDemandPredictor:
 
     def test_truncate_only_bottom_parameter(self):
         """Test that truncate_only_bottom parameter is properly set."""
-        # Test default behavior (truncate at all levels)
+        # Test default behavior (truncate only at bottom level)
         predictor_default = DemandPredictor()
-        assert not predictor_default.truncate_only_bottom
+        assert predictor_default.truncate_only_bottom
 
-        # Test truncate only at bottom level
-        predictor_bottom_only = DemandPredictor(truncate_only_bottom=True)
-        assert predictor_bottom_only.truncate_only_bottom
+        # Test truncate at all levels
+        predictor_all_levels = DemandPredictor(truncate_only_bottom=False)
+        assert not predictor_all_levels.truncate_only_bottom
 
     def test_truncation_behavior_difference(self):
         """Test that truncate_only_bottom affects convolution behavior."""
@@ -1141,15 +1141,15 @@ class TestHierarchicalPredictor:
             "hospital": "hospital",
         }
 
-        # Test with truncate_only_bottom=True
+        # Test with truncate_only_bottom=True (default)
         predictor_bottom_only = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, "UCLH", truncate_only_bottom=True
+            hierarchy_df, column_mapping, "UCLH"
         )
         assert predictor_bottom_only.predictor.truncate_only_bottom
 
-        # Test with truncate_only_bottom=False (default)
+        # Test with truncate_only_bottom=False
         predictor_all_levels = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, "UCLH"
+            hierarchy_df, column_mapping, "UCLH", truncate_only_bottom=False
         )
         assert not predictor_all_levels.predictor.truncate_only_bottom
 
