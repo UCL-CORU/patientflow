@@ -8,7 +8,6 @@ from patientflow.predict.hierarchy import (
     DemandPredictor,
     DemandPrediction,
     FlowSelection,
-    Hierarchy,
     EntityType,
     PredictionBundle,
     create_hierarchical_predictor,
@@ -48,31 +47,31 @@ class TestDemandPredictor:
         """Test that truncate_only_bottom parameter is properly set."""
         # Test default behavior (truncate at all levels)
         predictor_default = DemandPredictor()
-        assert predictor_default.truncate_only_bottom == False
-        
+        assert not predictor_default.truncate_only_bottom
+
         # Test truncate only at bottom level
         predictor_bottom_only = DemandPredictor(truncate_only_bottom=True)
-        assert predictor_bottom_only.truncate_only_bottom == True
+        assert predictor_bottom_only.truncate_only_bottom
 
     def test_truncation_behavior_difference(self):
         """Test that truncate_only_bottom affects convolution behavior."""
         # Create two predictors with different truncation settings
         predictor_all_levels = DemandPredictor(k_sigma=2.0, truncate_only_bottom=False)
         predictor_bottom_only = DemandPredictor(k_sigma=2.0, truncate_only_bottom=True)
-        
+
         # Create distributions that would be truncated differently
         p1 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
         p2 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
-        
+
         # Test _convolve_multiple with both settings
         result_all_levels = predictor_all_levels._convolve_multiple([p1, p2])
         result_bottom_only = predictor_bottom_only._convolve_multiple([p1, p2])
-        
+
         # The results should be different due to truncation behavior
         # With truncate_only_bottom=True, no truncation is applied in _convolve_multiple
         # With truncate_only_bottom=False, truncation is applied
         assert len(result_all_levels) <= len(result_bottom_only)
-        
+
         # Verify that the bottom-only version preserves more of the original distribution
         assert np.sum(result_bottom_only) > 0  # Should have valid probabilities
 
@@ -836,65 +835,74 @@ class TestHierarchyCollisionFix:
         """Test that entities with the same name can coexist at different levels."""
         # Create test data with collision scenario
         data = {
-            'sub_specialty': ['Cardiology', 'Neurology', 'Cardiology'],  # Same name as reporting unit
-            'reporting_unit': ['Cardiology', 'Neurology', 'Cardiology'],  # Same name as subspecialty
-            'division': ['Medicine', 'Medicine', 'Medicine'],
-            'board': ['Clinical Board', 'Clinical Board', 'Clinical Board']
+            "sub_specialty": [
+                "Cardiology",
+                "Neurology",
+                "Cardiology",
+            ],  # Same name as reporting unit
+            "reporting_unit": [
+                "Cardiology",
+                "Neurology",
+                "Cardiology",
+            ],  # Same name as subspecialty
+            "division": ["Medicine", "Medicine", "Medicine"],
+            "board": ["Clinical Board", "Clinical Board", "Clinical Board"],
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         # Column mapping
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
         }
-        
+
         # Create hierarchical predictor
         predictor = create_hierarchical_predictor(
-            hierarchy_df=df,
-            column_mapping=column_mapping,
-            top_level_id="Hospital"
+            hierarchy_df=df, column_mapping=column_mapping, top_level_id="Hospital"
         )
-        
+
         # Test that both "Cardiology" entities exist but are different types
-        subspecialties = predictor.hierarchy.get_entities_by_type(EntityType("subspecialty"))
-        reporting_units = predictor.hierarchy.get_entities_by_type(EntityType("reporting_unit"))
-        
+        subspecialties = predictor.hierarchy.get_entities_by_type(
+            EntityType("subspecialty")
+        )
+        reporting_units = predictor.hierarchy.get_entities_by_type(
+            EntityType("reporting_unit")
+        )
+
         assert "Cardiology" in subspecialties
         assert "Cardiology" in reporting_units
         assert "Neurology" in subspecialties
         assert "Neurology" in reporting_units
-        
+
         # Test that they have different entity types
         cardio_subspecialty_type = predictor.hierarchy.get_entity_type("Cardiology")
-        cardio_reporting_unit_type = predictor.hierarchy.get_entity_type("Cardiology")
-        
+
         # Since we have two entities with the same name, we need to check which one is returned
         # The get_entity_type method should find the first match
         assert cardio_subspecialty_type is not None
-        
+
         # Test entity info for both entities
         cardio_info = predictor.hierarchy.get_entity_info("Cardiology")
         assert cardio_info is not None
         assert cardio_info["entity_id"] == "Cardiology"
         assert cardio_info["entity_type"] is not None
-        
+
         # Test that hierarchy structure is correct
         assert len(subspecialties) == 2
         assert len(reporting_units) == 2
-        
+
         # Test that no collisions occurred in internal storage
         all_entities = predictor.hierarchy.get_all_entities()
         assert "Cardiology" in all_entities
         assert "Neurology" in all_entities
-        
+
         # Test parent-child relationships work correctly
         hospital_children = predictor.hierarchy.get_children("Hospital")
         assert len(hospital_children) > 0
-        
+
         # Test that the hierarchy can be represented correctly
         hierarchy_str = str(predictor.hierarchy)
         assert "subspecialty: 2" in hierarchy_str
@@ -904,87 +912,103 @@ class TestHierarchyCollisionFix:
         """Test collision fix with entities having same names across multiple levels."""
         # Create more complex collision scenario
         data = {
-            'sub_specialty': ['Cardiology', 'Cardiology', 'Neurology'],
-            'reporting_unit': ['Cardiology', 'Cardiology', 'Neurology'],  # Same as subspecialty
-            'division': ['Cardiology', 'Medicine', 'Medicine'],  # Same as subspecialty/reporting_unit
-            'board': ['Clinical Board', 'Clinical Board', 'Clinical Board']
+            "sub_specialty": ["Cardiology", "Cardiology", "Neurology"],
+            "reporting_unit": [
+                "Cardiology",
+                "Cardiology",
+                "Neurology",
+            ],  # Same as subspecialty
+            "division": [
+                "Cardiology",
+                "Medicine",
+                "Medicine",
+            ],  # Same as subspecialty/reporting_unit
+            "board": ["Clinical Board", "Clinical Board", "Clinical Board"],
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
         }
-        
+
         predictor = create_hierarchical_predictor(
-            hierarchy_df=df,
-            column_mapping=column_mapping,
-            top_level_id="Hospital"
+            hierarchy_df=df, column_mapping=column_mapping, top_level_id="Hospital"
         )
-        
+
         # Test that all entities exist
-        subspecialties = predictor.hierarchy.get_entities_by_type(EntityType("subspecialty"))
-        reporting_units = predictor.hierarchy.get_entities_by_type(EntityType("reporting_unit"))
+        subspecialties = predictor.hierarchy.get_entities_by_type(
+            EntityType("subspecialty")
+        )
+        reporting_units = predictor.hierarchy.get_entities_by_type(
+            EntityType("reporting_unit")
+        )
         divisions = predictor.hierarchy.get_entities_by_type(EntityType("division"))
-        
+
         assert "Cardiology" in subspecialties
-        assert "Cardiology" in reporting_units  
+        assert "Cardiology" in reporting_units
         assert "Cardiology" in divisions
         assert "Neurology" in subspecialties
         assert "Neurology" in reporting_units
         assert "Medicine" in divisions
-        
+
         # Test that hierarchy relationships work
         for entity_name in ["Cardiology", "Neurology", "Medicine"]:
             entity_info = predictor.hierarchy.get_entity_info(entity_name)
             if entity_info:
                 assert entity_info["entity_id"] == entity_name
                 assert entity_info["entity_type"] is not None
-                assert entity_info["prefixed_id"].startswith(f"{entity_info['entity_type'].name}:")
+                assert entity_info["prefixed_id"].startswith(
+                    f"{entity_info['entity_type'].name}:"
+                )
 
     def test_hierarchy_methods_with_collision(self):
         """Test that all hierarchy methods work correctly with entity collisions."""
         data = {
-            'sub_specialty': ['Cardiology', 'Neurology'],
-            'reporting_unit': ['Cardiology', 'Neurology'],
-            'division': ['Medicine', 'Medicine'],
-            'board': ['Clinical Board', 'Clinical Board']
+            "sub_specialty": ["Cardiology", "Neurology"],
+            "reporting_unit": ["Cardiology", "Neurology"],
+            "division": ["Medicine", "Medicine"],
+            "board": ["Clinical Board", "Clinical Board"],
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
         }
-        
+
         predictor = create_hierarchical_predictor(
-            hierarchy_df=df,
-            column_mapping=column_mapping,
-            top_level_id="Hospital"
+            hierarchy_df=df, column_mapping=column_mapping, top_level_id="Hospital"
         )
-        
+
         # Test get_children method
         hospital_children = predictor.hierarchy.get_children("Hospital")
         assert len(hospital_children) > 0
-        
+
         # Test get_parent method
         for child in hospital_children:
             parent = predictor.hierarchy.get_parent(child)
             if parent:
                 assert parent == "Hospital"
-        
+
         # Test get_entity_type method
-        for entity_name in ["Cardiology", "Neurology", "Medicine", "Clinical Board", "Hospital"]:
+        for entity_name in [
+            "Cardiology",
+            "Neurology",
+            "Medicine",
+            "Clinical Board",
+            "Hospital",
+        ]:
             entity_type = predictor.hierarchy.get_entity_type(entity_name)
             if entity_type:
                 assert entity_type is not None
-        
+
         # Test get_entities_by_type method
         for level in predictor.hierarchy.get_levels_ordered():
             entities = predictor.hierarchy.get_entities_by_type(level)
@@ -992,7 +1016,7 @@ class TestHierarchyCollisionFix:
             for entity in entities:
                 assert isinstance(entity, str)
                 assert len(entity) > 0
-        
+
         # Test get_all_entities method
         all_entities = predictor.hierarchy.get_all_entities()
         assert len(all_entities) > 0
@@ -1002,41 +1026,47 @@ class TestHierarchyCollisionFix:
     def test_prefixed_id_helpers(self):
         """Test the helper methods for working with prefixed IDs."""
         data = {
-            'sub_specialty': ['Cardiology', 'Neurology'],
-            'reporting_unit': ['Cardiology', 'Neurology'],
-            'division': ['Medicine', 'Medicine'],
-            'board': ['Clinical Board', 'Clinical Board']
+            "sub_specialty": ["Cardiology", "Neurology"],
+            "reporting_unit": ["Cardiology", "Neurology"],
+            "division": ["Medicine", "Medicine"],
+            "board": ["Clinical Board", "Clinical Board"],
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
         }
-        
+
         predictor = create_hierarchical_predictor(
-            hierarchy_df=df,
-            column_mapping=column_mapping,
-            top_level_id="Hospital"
+            hierarchy_df=df, column_mapping=column_mapping, top_level_id="Hospital"
         )
-        
+
         # Test _get_original_name method
-        original_name = predictor.hierarchy._get_original_name("subspecialty:Cardiology")
+        original_name = predictor.hierarchy._get_original_name(
+            "subspecialty:Cardiology"
+        )
         assert original_name == "Cardiology"
-        
-        original_name = predictor.hierarchy._get_original_name("reporting_unit:Cardiology")
+
+        original_name = predictor.hierarchy._get_original_name(
+            "reporting_unit:Cardiology"
+        )
         assert original_name == "Cardiology"
-        
+
         # Test _get_prefixed_id method
-        prefixed_id = predictor.hierarchy._get_prefixed_id("Cardiology", EntityType("subspecialty"))
+        prefixed_id = predictor.hierarchy._get_prefixed_id(
+            "Cardiology", EntityType("subspecialty")
+        )
         assert prefixed_id == "subspecialty:Cardiology"
-        
-        prefixed_id = predictor.hierarchy._get_prefixed_id("Cardiology", EntityType("reporting_unit"))
+
+        prefixed_id = predictor.hierarchy._get_prefixed_id(
+            "Cardiology", EntityType("reporting_unit")
+        )
         assert prefixed_id == "reporting_unit:Cardiology"
-        
+
         # Test _find_entity_type_by_name method
         entity_type = predictor.hierarchy._find_entity_type_by_name("Cardiology")
         assert entity_type is not None
@@ -1045,41 +1075,41 @@ class TestHierarchyCollisionFix:
     def test_collision_fix_backward_compatibility(self):
         """Test that the collision fix maintains backward compatibility."""
         data = {
-            'sub_specialty': ['Cardiology', 'Neurology'],
-            'reporting_unit': ['Cardiology', 'Neurology'],
-            'division': ['Medicine', 'Medicine'],
-            'board': ['Clinical Board', 'Clinical Board']
+            "sub_specialty": ["Cardiology", "Neurology"],
+            "reporting_unit": ["Cardiology", "Neurology"],
+            "division": ["Medicine", "Medicine"],
+            "board": ["Clinical Board", "Clinical Board"],
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
         }
-        
+
         predictor = create_hierarchical_predictor(
-            hierarchy_df=df,
-            column_mapping=column_mapping,
-            top_level_id="Hospital"
+            hierarchy_df=df, column_mapping=column_mapping, top_level_id="Hospital"
         )
-        
+
         # Test that all public methods return original entity names (not prefixed)
-        subspecialties = predictor.hierarchy.get_entities_by_type(EntityType("subspecialty"))
+        subspecialties = predictor.hierarchy.get_entities_by_type(
+            EntityType("subspecialty")
+        )
         for entity in subspecialties:
             assert ":" not in entity  # Should not contain prefixed format
-        
+
         all_entities = predictor.hierarchy.get_all_entities()
         for entity in all_entities:
             assert ":" not in entity  # Should not contain prefixed format
-        
+
         # Test that get_children returns original names
         hospital_children = predictor.hierarchy.get_children("Hospital")
         for child in hospital_children:
             assert ":" not in child  # Should not contain prefixed format
-        
+
         # Test that get_parent returns original names
         for child in hospital_children:
             parent = predictor.hierarchy.get_parent(child)
@@ -1093,93 +1123,94 @@ class TestHierarchicalPredictor:
     def test_create_hierarchical_predictor_with_truncation_option(self):
         """Test that create_hierarchical_predictor respects truncate_only_bottom parameter."""
         # Create a simple hierarchy DataFrame
-        hierarchy_df = pd.DataFrame({
-            'sub_specialty': ['Cardiology', 'Neurology'],
-            'reporting_unit': ['Medicine', 'Medicine'],
-            'division': ['Clinical', 'Clinical'],
-            'board': ['Medical', 'Medical'],
-            'hospital': ['UCLH', 'UCLH']
-        })
-        
+        hierarchy_df = pd.DataFrame(
+            {
+                "sub_specialty": ["Cardiology", "Neurology"],
+                "reporting_unit": ["Medicine", "Medicine"],
+                "division": ["Clinical", "Clinical"],
+                "board": ["Medical", "Medical"],
+                "hospital": ["UCLH", "UCLH"],
+            }
+        )
+
         column_mapping = {
-            'sub_specialty': 'subspecialty',
-            'reporting_unit': 'reporting_unit', 
-            'division': 'division',
-            'board': 'board',
-            'hospital': 'hospital'
+            "sub_specialty": "subspecialty",
+            "reporting_unit": "reporting_unit",
+            "division": "division",
+            "board": "board",
+            "hospital": "hospital",
         }
-        
+
         # Test with truncate_only_bottom=True
         predictor_bottom_only = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, 'UCLH', 
-            truncate_only_bottom=True
+            hierarchy_df, column_mapping, "UCLH", truncate_only_bottom=True
         )
-        assert predictor_bottom_only.predictor.truncate_only_bottom == True
-        
+        assert predictor_bottom_only.predictor.truncate_only_bottom
+
         # Test with truncate_only_bottom=False (default)
         predictor_all_levels = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, 'UCLH'
+            hierarchy_df, column_mapping, "UCLH"
         )
-        assert predictor_all_levels.predictor.truncate_only_bottom == False
+        assert not predictor_all_levels.predictor.truncate_only_bottom
 
     def test_entity_type_name_usage_in_hierarchical_prediction(self):
         """Test that hierarchical prediction correctly uses EntityType.name instead of .value."""
         # Test the specific bug fix: EntityType.name vs EntityType.value
         predictor = DemandPredictor()
-        
+
         # Create some mock predictions to test the hierarchical level prediction
         mock_prediction1 = DemandPrediction(
             entity_id="test1",
-            entity_type="subspecialty", 
+            entity_type="subspecialty",
             probabilities=np.array([0.1, 0.2, 0.4, 0.2, 0.1]),
             expected_value=2.0,
             percentiles={50: 2, 75: 3, 90: 3, 95: 3, 99: 4},
-            offset=0
+            offset=0,
         )
-        
+
         mock_prediction2 = DemandPrediction(
             entity_id="test2",
             entity_type="subspecialty",
             probabilities=np.array([0.2, 0.3, 0.3, 0.2]),
             expected_value=1.5,
             percentiles={50: 1, 75: 2, 90: 2, 95: 3, 99: 3},
-            offset=0
+            offset=0,
         )
-        
+
         # Test that predict_hierarchical_level works with EntityType.name
         # This should not raise "EntityType object has no attribute 'value'"
         result = predictor.predict_hierarchical_level(
             entity_id="test_entity",
             entity_type=EntityType("reporting_unit"),  # This will use .name internally
-            child_predictions=[mock_prediction1, mock_prediction2]
+            child_predictions=[mock_prediction1, mock_prediction2],
         )
-        
+
         # Verify the result is a DemandPrediction
         assert isinstance(result, DemandPrediction)
         assert result.entity_id == "test_entity"
         assert result.entity_type == "reporting_unit"
-        assert hasattr(result, 'probabilities')
-        assert hasattr(result, 'expected_value')
+        assert hasattr(result, "probabilities")
+        assert hasattr(result, "expected_value")
 
     def test_create_bundle_from_children_with_empty_list(self):
         """Test that _create_bundle_from_children handles empty child_bundles list."""
         predictor = DemandPredictor()
-        
+
         # Test with empty child_bundles list - should not raise IndexError
         bundle = predictor._create_bundle_from_children(
             entity_id="test_entity",
             entity_type="reporting_unit",
-            child_bundles=[]  # Empty list
+            child_bundles=[],  # Empty list
         )
-        
+
         # Verify the result is a PredictionBundle
         assert isinstance(bundle, PredictionBundle)
         assert bundle.entity_id == "test_entity"
         assert bundle.entity_type == "reporting_unit"
-        assert hasattr(bundle, 'arrivals')
-        assert hasattr(bundle, 'departures')
-        assert hasattr(bundle, 'net_flow')
-        assert hasattr(bundle, 'flow_selection')
-        
+        assert hasattr(bundle, "arrivals")
+        assert hasattr(bundle, "departures")
+        assert hasattr(bundle, "net_flow")
+        assert hasattr(bundle, "flow_selection")
+
         # Should use default FlowSelection when no children
         assert bundle.flow_selection is not None
