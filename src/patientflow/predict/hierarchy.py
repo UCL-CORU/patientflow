@@ -835,16 +835,16 @@ class DemandPredictor:
 
     Parameters
     ----------
-    k_sigma : float, default=4.0
+    k_sigma : float, default=8.0
         Cap width measured in standard deviations. Final (and intermediate)
         distributions are hard-clipped using an adaptive approach that prevents
         over-truncation for small lambda values. For lambda < 0.1, uses 2x k_sigma;
         for lambda < 1.0, uses 1.5x k_sigma; otherwise uses the original k_sigma.
         Net-flow uses asymmetric caps around the mean with the same adaptive
         k_sigma multiplier and physical bounds.
-    truncate_only_bottom : bool, default=False
+    truncate_only_bottom : bool, default=True
         If True, only apply truncation at the bottom level (subspecialties).
-        If False, apply truncation at all hierarchical levels (default behavior).
+        If False, apply truncation at all hierarchical levels.
 
     Attributes
     ----------
@@ -875,7 +875,7 @@ class DemandPredictor:
     cohorts (elective/emergency/all) to include in predictions.
     """
 
-    def __init__(self, k_sigma: float = 4.0, truncate_only_bottom: bool = False):
+    def __init__(self, k_sigma: float = 8.0, truncate_only_bottom: bool = True):
         self.k_sigma = k_sigma
         self.truncate_only_bottom = truncate_only_bottom
         self.cache: Dict[str, DemandPrediction] = {}
@@ -1826,9 +1826,9 @@ def create_hierarchical_predictor(
     hierarchy_df: pd.DataFrame,
     column_mapping: Dict[str, str],
     top_level_id: str,
-    k_sigma: float = 4.0,
+    k_sigma: float = 8.0,
     hierarchy_config_path: Optional[str] = None,
-    truncate_only_bottom: bool = False,
+    truncate_only_bottom: bool = True,
 ) -> HierarchicalPredictor:
     """Create a HierarchicalPredictor with explicit column mapping.
 
@@ -1846,15 +1846,15 @@ def create_hierarchical_predictor(
                  'division': 'division', 'board': 'board'}
     top_level_id : str
         Identifier for the top-level entity in the hierarchy
-    k_sigma : float, default=4.0
+    k_sigma : float, default=8.0
         Cap width in standard deviations used to clamp distributions using an
         adaptive approach that prevents over-truncation for small lambda values.
     hierarchy_config_path : str, optional
         Path to YAML file containing custom hierarchy configuration.
         If None, uses default hospital hierarchy.
-    truncate_only_bottom : bool, default=False
+    truncate_only_bottom : bool, default=True
         If True, only apply truncation at the bottom level (subspecialties).
-        If False, apply truncation at all hierarchical levels (default behavior).
+        If False, apply truncation at all hierarchical levels.
 
     Returns
     -------
