@@ -170,7 +170,7 @@ class SubspecialtyPredictionInputs:
 
             if len(arr) <= max_display:
                 values = ", ".join(f"{v:.3f}" for v in arr)
-                return f"[{values}] (E={expectation:.1f}{total_str})"
+                return f"PMF[0:{len(arr)}]: [{values}] (E={expectation:.1f}{total_str})"
 
             # Determine display window centered on expectation
             center_idx = int(np.round(expectation))
