@@ -604,6 +604,8 @@ def _prepare_base_probabilities(
         name: ed_snapshots.apply(func, axis=1)
         for name, func in special_func_map.items()
     }
+    if "default" not in ed_masks_by_func:
+        ed_masks_by_func["default"] = pd.Series(True, index=ed_snapshots.index)
 
     return {
         "ed_snapshots": ed_snapshots,
