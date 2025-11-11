@@ -163,11 +163,13 @@ class SubspecialtyPredictionInputs:
 
     def __repr__(self) -> str:
         def format_pmf(
-            arr: np.ndarray, max_display: int = 10, total_count: Optional[int] = None, 
-            custom_bracket_text: Optional[str] = None
+            arr: np.ndarray,
+            max_display: int = 10,
+            total_count: Optional[int] = None,
+            custom_bracket_text: Optional[str] = None,
         ) -> str:
             expectation = np.sum(np.arange(len(arr)) * arr)
-            
+
             # Use custom bracket text if provided, otherwise use total_count
             if custom_bracket_text is not None:
                 if custom_bracket_text == "":
@@ -203,7 +205,7 @@ class SubspecialtyPredictionInputs:
             if flow.flow_type == "pmf":
                 assert isinstance(flow.distribution, np.ndarray)
                 total_count = len(flow.distribution) - 1
-                
+
                 # Customize bracket text based on flow type
                 custom_bracket_text = None
                 if flow.flow_id == "ed_current":
@@ -212,11 +214,19 @@ class SubspecialtyPredictionInputs:
                     # Remove 'of N' for transfers - just show expectation
                     custom_bracket_text = ""
                 elif flow.flow_id == "emergency_departures":
-                    custom_bracket_text = f"of {total_count} emergency patients in subspec"
+                    custom_bracket_text = (
+                        f"of {total_count} emergency patients in subspec"
+                    )
                 elif flow.flow_id == "elective_departures":
-                    custom_bracket_text = f"of {total_count} elective patients in subspec"
-                
-                return format_pmf(flow.distribution, total_count=total_count, custom_bracket_text=custom_bracket_text)
+                    custom_bracket_text = (
+                        f"of {total_count} elective patients in subspec"
+                    )
+
+                return format_pmf(
+                    flow.distribution,
+                    total_count=total_count,
+                    custom_bracket_text=custom_bracket_text,
+                )
             elif flow.flow_type == "poisson":
                 return f"λ = {flow.distribution:.3f}"
             else:
