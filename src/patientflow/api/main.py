@@ -1,4 +1,36 @@
-"""Simple FastAPI application exposing cached hierarchical predictions."""
+"""Simple FastAPI application exposing cached hierarchical predictions.
+
+Usage
+=====
+1. Build a pickle file that contains a dictionary mapping cohort names to
+   ``HierarchicalPredictor`` instances. Example structure::
+
+       {
+           "all": HierarchicalPredictor(...),
+           "elective": HierarchicalPredictor(...),
+           "emergency": HierarchicalPredictor(...),
+       }
+
+   Each predictor should already have its cache populated, typically by calling
+   ``predict_all_levels`` after constructing the predictor.
+
+2. Point the API to that pickle via the ``PREDICTOR_PICKLE_PATH`` environment
+   variable before starting uvicorn, e.g.::
+
+       export PREDICTOR_PICKLE_PATH=/path/to/hierarchical_predictors.pkl
+       uvicorn patientflow.api.main:app
+
+3. Call the HTTP endpoints with the desired cohort. For example::
+
+       GET /api/predictions/subspecialty/Cardiology?cohort=elective
+
+   The API selects the correct predictor dictionary entry and returns the
+   cached arrivals/departures/net-flow bundle for that entity.
+
+   cURL example::
+
+       curl "http://localhost:8000/api/predictions/subspecialty/Cardiology?cohort=all&flow_type=arrivals"
+"""
 
 from __future__ import annotations
 
@@ -7,22 +39,26 @@ import os
 import pickle
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+import numpy as np
+from typing import Any, Dict, Iterable
 
 from fastapi import FastAPI, HTTPException, Query
 
 from patientflow.predict.hierarchy import (
+    DEFAULT_MAX_PROBS,
+    # DEFAULT_PRECISION,
     DemandPrediction,
     EntityType,
     HierarchicalPredictor,
     PredictionBundle,
 )
 
+DEFAULT_PRECISION = 2
 LOGGER = logging.getLogger(__name__)
 
 app = FastAPI(title="PatientFlow Hierarchical Predictions")
 
-_predictor: Optional[HierarchicalPredictor] = None
+_predictors: Dict[str, HierarchicalPredictor] = {}
 
 
 class FlowType(str, Enum):
@@ -43,8 +79,8 @@ class DetailLevel(str, Enum):
     full = "full"
 
 
-def _load_predictor() -> HierarchicalPredictor:
-    """Load the pickled ``HierarchicalPredictor`` using environment configuration."""
+def _load_predictors() -> Dict[str, HierarchicalPredictor]:
+
     path_value = os.getenv("PREDICTOR_PICKLE_PATH")
     if not path_value:
         raise RuntimeError("PREDICTOR_PICKLE_PATH environment variable is not set")
@@ -55,33 +91,25 @@ def _load_predictor() -> HierarchicalPredictor:
 
     try:
         with path.open("rb") as file:
-            predictor = pickle.load(file)
+            predictors = pickle.load(file)
     except Exception as exc:  # pragma: no cover - defensive logging
         LOGGER.exception("Failed to load predictor pickle from %s", path)
         raise RuntimeError("Unable to load predictor pickle") from exc
 
-    if not isinstance(predictor, HierarchicalPredictor):
-        raise RuntimeError(
-            "Loaded object is not a HierarchicalPredictor; check the pickle content"
-        )
-
-    LOGGER.info(
-        "Loaded HierarchicalPredictor with %s cached bundles",
-        len(predictor.cache),
-    )
-    return predictor
+    LOGGER.info("Loaded %s cohort predictors", len(predictors))
+    return predictors
 
 
-def _get_predictor() -> HierarchicalPredictor:
-    if _predictor is None:
-        raise RuntimeError("Predictor not initialised")
-    return _predictor
+def _get_predictor(cohort: Cohort) -> HierarchicalPredictor:
+    if cohort.value not in _predictors:
+        raise RuntimeError(f"Predictor not initialised for cohort '{cohort.value}'")
+    return _predictors[cohort.value]
 
 
 @app.on_event("startup")
 def _on_startup() -> None:
-    global _predictor
-    _predictor = _load_predictor()
+    global _predictors
+    _predictors = _load_predictors()
 
 
 def _validate_entity_type(predictor: HierarchicalPredictor, entity_type: str) -> None:
@@ -100,8 +128,9 @@ def _prefixed_id(entity_type: str, entity_id: str) -> str:
     return f"{entity_type}:{entity_id}"
 
 
-def _get_bundle(entity_type: str, entity_id: str) -> PredictionBundle:
-    predictor = _get_predictor()
+def _get_bundle(
+    predictor: HierarchicalPredictor, entity_type: str, entity_id: str
+) -> PredictionBundle:
     _validate_entity_type(predictor, entity_type)
 
     cache_key = _prefixed_id(entity_type, entity_id)
@@ -115,13 +144,30 @@ def _get_bundle(entity_type: str, entity_id: str) -> PredictionBundle:
 
 
 def _serialize_prediction(
-    prediction: DemandPrediction, detail: DetailLevel
+    prediction: DemandPrediction, detail: DetailLevel, max_probs: int = DEFAULT_MAX_PROBS
 ) -> Dict[str, Any]:
+    probs = prediction.probabilities
+    if len(probs) <= max_probs:
+        start_idx = 0
+        end_idx = len(probs)
+    else:
+        mode_idx = int(np.argmax(probs))
+        half_window = max_probs // 2
+        start_idx = max(0, mode_idx - half_window)
+        end_idx = min(len(probs), start_idx + max_probs)
+        if end_idx - start_idx < max_probs:
+            start_idx = max(0, end_idx - max_probs)
+
+    window = probs[start_idx:end_idx].tolist()
+    rounded_window = [round(float(value), DEFAULT_PRECISION) for value in window]
+    rounded_expectation = round(float(prediction.expected_value), DEFAULT_PRECISION)
     payload: Dict[str, Any] = {
-        "entity_id": prediction.entity_id,
-        "entity_type": prediction.entity_type,
-        "expected_value": prediction.expected_value,
-        "percentiles": prediction.percentiles,
+        "expectation": rounded_expectation,
+        "pmf_window": {
+            "start_index": start_idx + prediction.offset,
+            "end_index": end_idx + prediction.offset,
+            "values": rounded_window,
+        },
     }
     if detail is DetailLevel.full:
         payload.update(
@@ -169,20 +215,8 @@ def read_prediction(
     cohort: Cohort = Cohort.all,
     detail_level: DetailLevel = DetailLevel.summary,
 ) -> Dict[str, Any]:
-    bundle = _get_bundle(entity_type, entity_id)
-
-    actual_cohort = bundle.flow_selection.cohort
-    if cohort.value != actual_cohort:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": (
-                    f"Cohort '{cohort.value}' not available for "
-                    f"{entity_type}/{entity_id}. Cached cohort is '{actual_cohort}'."
-                )
-            },
-        )
-
+    predictor = _get_predictor(cohort)
+    bundle = _get_bundle(predictor, entity_type, entity_id)
     return _bundle_to_response(bundle, flow_type, detail_level)
 
 
@@ -194,9 +228,6 @@ def read_cohort_comparison(
     cohorts: str = Query(..., description="Comma-separated cohort list"),
     detail_level: DetailLevel = DetailLevel.summary,
 ) -> Dict[str, Any]:
-    bundle = _get_bundle(entity_type, entity_id)
-    actual_cohort = bundle.flow_selection.cohort
-
     requested_cohorts_raw = [
         item.strip() for item in cohorts.split(",") if item.strip()
     ]
@@ -215,25 +246,18 @@ def read_cohort_comparison(
                 detail={"message": f"Unsupported cohort '{cohort_name}'"},
             ) from exc
 
-    invalid = [c.value for c in parsed_cohorts if c.value != actual_cohort]
-    if invalid:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": (
-                    "Only cached cohort "
-                    f"'{actual_cohort}' is available for {entity_type}/{entity_id}"
-                ),
-                "unsupported": invalid,
-            },
-        )
+    cohort_payloads: Dict[str, Dict[str, Any]] = {}
+    for cohort in parsed_cohorts:
+        predictor = _get_predictor(cohort)
+        bundle = _get_bundle(predictor, entity_type, entity_id)
+        cohort_payloads[cohort.value] = _bundle_to_response(
+            bundle, flow_type, detail_level
+        )["flows"]
 
-    # Return the same cached cohort data for each requested cohort (since cache is single-cohort)
-    flow_payload = _bundle_to_response(bundle, flow_type, detail_level)["flows"]
     return {
-        "entity_id": bundle.entity_id,
-        "entity_type": bundle.entity_type,
-        "cohorts": {actual_cohort: flow_payload},
+        "entity_id": entity_id,
+        "entity_type": entity_type,
+        "cohorts": cohort_payloads,
     }
 
 
@@ -246,20 +270,8 @@ def read_breakdown(
     flow_type: FlowType = FlowType.all,
     detail_level: DetailLevel = DetailLevel.summary,
 ) -> Dict[str, Any]:
-    predictor = _get_predictor()
-    bundle = _get_bundle(entity_type, entity_id)
-
-    actual_cohort = bundle.flow_selection.cohort
-    if cohort.value != actual_cohort:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": (
-                    f"Cohort '{cohort.value}' not available for "
-                    f"{entity_type}/{entity_id}. Cached cohort is '{actual_cohort}'."
-                )
-            },
-        )
+    predictor = _get_predictor(cohort)
+    bundle = _get_bundle(predictor, entity_type, entity_id)
 
     response = {
         "entity": _bundle_to_response(bundle, flow_type, detail_level),
@@ -273,7 +285,7 @@ def read_breakdown(
             child_type = predictor.hierarchy.get_entity_type(child_id)
             if child_type is None:
                 continue
-            child_bundle = _get_bundle(child_type.name, child_id)
+            child_bundle = _get_bundle(predictor, child_type.name, child_id)
             response["children"].append(
                 _bundle_to_response(child_bundle, flow_type, detail_level)
             )
@@ -283,13 +295,11 @@ def read_breakdown(
 
 @app.get("/health")
 def health() -> Dict[str, Any]:
-    try:
-        predictor = _get_predictor()
-    except RuntimeError:
+    if not _predictors:
         return {"status": "error", "details": "Predictor not loaded"}
 
-    return {
-        "status": "ok",
-        "cached_entities": len(predictor.cache),
+    cached_entities = {
+        cohort: len(predictor.cache) for cohort, predictor in _predictors.items()
     }
+    return {"status": "ok", "cached_entities": cached_entities}
 
