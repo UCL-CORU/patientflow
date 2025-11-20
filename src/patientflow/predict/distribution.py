@@ -85,6 +85,10 @@ class Distribution:
             return cls.from_pmf(np.array([1.0]))
         k = np.arange(int(max_k) + 1)
         p = _poisson.pmf(k, float(lambda_param))
+        # Assign any truncated tail mass to the final bucket to preserve normalization.
+        tail_mass = 1.0 - float(np.sum(p))
+        if tail_mass > 0.0:
+            p[-1] += tail_mass
         return cls.from_pmf(p)
 
     @staticmethod
@@ -201,24 +205,31 @@ class Distribution:
 
         return Distribution.from_pmf(result, 0)
 
-    def net(self, other: "Distribution", k_sigma: float) -> "Distribution":
-        """Distribution of the difference ``self - other`` with asymmetric truncation.
+    def net(self, other: "Distribution") -> "Distribution":
+        """Distribution of the difference ``self - other``.
 
-        The result support lies in ``[-max(other), +max(self)]`` translated by an
-        integer offset. Truncation uses k-sigma bounds intersected with physical
-        limits.
+        Computes the distribution of arrivals - departures naively from the input
+        distributions. The result support lies in ``[-max(other), +max(self)]``
+        translated by an integer offset. No additional truncation is applied since
+        the input distributions are already properly capped.
 
         Parameters
         ----------
         other : Distribution
-            Distribution to subtract from ``self``.
-        k_sigma : float
-            Number of standard deviations to include around the mean.
+            Distribution to subtract from ``self`` (typically departures).
 
         Returns
         -------
         Distribution
-            Truncated distribution of the difference with an appropriate offset.
+            Distribution of the difference with an appropriate offset, bounded
+            by physical limits [-max_departures, +max_arrivals].
+
+        Notes
+        -----
+        This method computes the net flow distribution naively from already-capped
+        arrivals and departures. Since the input distributions are already capped
+        using top-down statistical caps, the net flow is naturally bounded by
+        physical limits and no additional truncation is needed.
         """
         # Renormalize defensively to avoid drift
         p_a = self.renorm().probabilities
@@ -241,37 +252,11 @@ class Distribution:
                 idx = (a - d) + max_d
                 p_net[idx] += p_a[a] * p_d[d]
 
-        # Asymmetric k-sigma clamping with physical bounds
+        # Physical bounds are already enforced by the input distributions
+        # No additional truncation needed
         initial_offset = -max_d
 
-        mean_a = float(np.sum(np.arange(len(p_a)) * p_a))
-        var_a = float(np.sum((np.arange(len(p_a)) ** 2) * p_a) - mean_a * mean_a)
-        mean_d = float(np.sum(np.arange(len(p_d)) * p_d))
-        var_d = float(np.sum((np.arange(len(p_d)) ** 2) * p_d) - mean_d * mean_d)
-
-        mean_net = mean_a - mean_d
-        std_net = float(np.sqrt(max(0.0, var_a + var_d)))
-
-        physical_min = -max_d
-        physical_max = max_a
-
-        left_bound = int(np.floor(mean_net - k_sigma * std_net))
-        right_bound = int(np.ceil(mean_net + k_sigma * std_net))
-
-        left_value = max(physical_min, left_bound)
-        right_value = min(physical_max, right_bound)
-
-        start_idx = max(0, left_value - physical_min)
-        end_idx = min(len(p_net), right_value - physical_min + 1)
-
-        if start_idx >= end_idx:
-            start_idx = max(0, min(len(p_net) - 1, start_idx))
-            end_idx = start_idx + 1
-
-        p_trunc = p_net[start_idx:end_idx]
-        final_offset = initial_offset + start_idx
-
-        return Distribution.from_pmf(p_trunc, final_offset)
+        return Distribution.from_pmf(p_net, initial_offset)
 
     # ---- Statistics ----
     def expected(self) -> float:
