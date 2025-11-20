@@ -9,6 +9,7 @@ from patientflow.predict.hierarchy import (
     DemandPrediction,
     FlowSelection,
     EntityType,
+    Hierarchy,
     PredictionBundle,
     create_hierarchical_predictor,
     DEFAULT_PERCENTILES,
@@ -43,37 +44,122 @@ class TestDemandPrediction:
 class TestDemandPredictor:
     """Test the DemandPredictor class."""
 
-    def test_truncate_only_bottom_parameter(self):
-        """Test that truncate_only_bottom parameter is properly set."""
-        # Test default behavior (truncate only at bottom level)
-        predictor_default = DemandPredictor()
-        assert predictor_default.truncate_only_bottom
+    def test_apply_cap_with_renormalization_truncates_tail(self):
+        """Truncating with a cap should fold remaining mass into the last bin."""
+        predictor = DemandPredictor()
+        pmf = np.array([0.2, 0.3, 0.1, 0.4])
 
-        # Test truncate at all levels
-        predictor_all_levels = DemandPredictor(truncate_only_bottom=False)
-        assert not predictor_all_levels.truncate_only_bottom
+        truncated = predictor._apply_cap_with_renormalization(pmf, 2)
 
-    def test_truncation_behavior_difference(self):
-        """Test that truncate_only_bottom affects convolution behavior."""
-        # Create two predictors with different truncation settings
-        predictor_all_levels = DemandPredictor(k_sigma=2.0, truncate_only_bottom=False)
-        predictor_bottom_only = DemandPredictor(k_sigma=2.0, truncate_only_bottom=True)
+        assert len(truncated) == 3
+        assert pytest.approx(truncated.sum(), rel=1e-9) == 1.0
+        # Last bin should contain its own mass plus the tail.
+        assert pytest.approx(truncated[2], rel=1e-9) == 0.5
 
-        # Create distributions that would be truncated differently
-        p1 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
-        p2 = np.array([0.1, 0.2, 0.4, 0.2, 0.1])  # 5 elements
+    def test_apply_cap_with_renormalization_negative_cap(self):
+        """Negative caps should collapse the PMF into a single bucket."""
+        predictor = DemandPredictor()
+        pmf = np.array([0.2, 0.3])
 
-        # Test _convolve_multiple with both settings
-        result_all_levels = predictor_all_levels._convolve_multiple([p1, p2])
-        result_bottom_only = predictor_bottom_only._convolve_multiple([p1, p2])
+        truncated = predictor._apply_cap_with_renormalization(pmf, -1)
 
-        # The results should be different due to truncation behavior
-        # With truncate_only_bottom=True, no truncation is applied in _convolve_multiple
-        # With truncate_only_bottom=False, truncation is applied
-        assert len(result_all_levels) <= len(result_bottom_only)
+        assert len(truncated) == 1
+        assert pytest.approx(truncated[0], rel=1e-9) == 0.5
 
-        # Verify that the bottom-only version preserves more of the original distribution
-        assert np.sum(result_bottom_only) > 0  # Should have valid probabilities
+    def test_predict_flow_total_respects_max_support(self):
+        """predict_flow_total should respect the provided max_support cap."""
+        predictor = DemandPredictor()
+        flows = [
+            FlowInputs(
+                flow_id="pmf_flow",
+                flow_type="pmf",
+                distribution=np.array([0.6, 0.4]),
+            ),
+            FlowInputs(flow_id="pois_flow", flow_type="poisson", distribution=3.0),
+        ]
+
+        prediction = predictor.predict_flow_total(
+            flows, entity_id="entity", entity_type="arrivals", max_support=2
+        )
+
+        assert len(prediction.probabilities) == 3
+        assert pytest.approx(prediction.probabilities.sum(), rel=1e-9) == 1.0
+        # Ensure some mass lands in the capped bucket.
+        assert prediction.probabilities[-1] > 0.0
+
+    def test_calculate_hierarchical_stats_respects_flow_selection(self):
+        """_calculate_hierarchical_stats should honor flow selection filters."""
+        predictor = DemandPredictor(k_sigma=1.0)
+        hierarchy = Hierarchy.create_default_hospital()
+        levels = hierarchy.get_levels_ordered()
+        subspecialty_type = levels[0]
+        reporting_unit_type = levels[1]
+
+        hierarchy.add_entity("Cardiology", subspecialty_type)
+        hierarchy.add_entity("UnitA", reporting_unit_type)
+        hierarchy.relationships[f"{subspecialty_type.name}:Cardiology"] = (
+            f"{reporting_unit_type.name}:UnitA"
+        )
+
+        inputs = SubspecialtyPredictionInputs(
+            subspecialty_id="Cardiology",
+            prediction_window=24,
+            inflows={
+                "ed_current": FlowInputs(
+                    flow_id="ed_current", flow_type="poisson", distribution=2.0
+                ),
+                "ed_yta": FlowInputs(
+                    flow_id="ed_yta", flow_type="poisson", distribution=3.0
+                ),
+                "non_ed_yta": FlowInputs(
+                    flow_id="non_ed_yta", flow_type="poisson", distribution=0.0
+                ),
+                "elective_yta": FlowInputs(
+                    flow_id="elective_yta", flow_type="poisson", distribution=0.0
+                ),
+                "elective_transfers": FlowInputs(
+                    flow_id="elective_transfers", flow_type="poisson", distribution=0.0
+                ),
+                "emergency_transfers": FlowInputs(
+                    flow_id="emergency_transfers", flow_type="poisson", distribution=0.0
+                ),
+            },
+            outflows={
+                "elective_departures": FlowInputs(
+                    flow_id="elective_departures", flow_type="poisson", distribution=1.0
+                ),
+                "emergency_departures": FlowInputs(
+                    flow_id="emergency_departures",
+                    flow_type="poisson",
+                    distribution=1.0,
+                ),
+            },
+        )
+
+        bottom_level_data = {"Cardiology": inputs}
+
+        stats_all = predictor._calculate_hierarchical_stats(
+            "UnitA",
+            reporting_unit_type,
+            bottom_level_data,
+            hierarchy,
+            "arrivals",
+            FlowSelection.default(),
+        )
+        # Two Poisson flows with lambdas 2 and 3 -> mean 5, variance 5.
+        assert pytest.approx(stats_all[0], rel=1e-9) == 5.0
+        assert pytest.approx(stats_all[1], rel=1e-9) == np.sqrt(5.0)
+        assert stats_all[2] >= 5  # cap should be at least the mean
+
+        stats_elective = predictor._calculate_hierarchical_stats(
+            "UnitA",
+            reporting_unit_type,
+            bottom_level_data,
+            hierarchy,
+            "arrivals",
+            FlowSelection.elective_only(),
+        )
+        assert stats_elective == (0.0, 0.0, 0)
 
     def test_convolution(self):
         """Test basic convolution of two distributions."""
@@ -123,15 +209,11 @@ class TestDemandPredictor:
 
     def test_net_flow_pmf_deterministic(self):
         """Test net flow PMF with deterministic arrivals and departures."""
-        predictor = DemandPredictor()
-
         # Always 3 arrivals, always 2 departures -> net flow always 1
         p_arrivals = np.array([0.0, 0.0, 0.0, 1.0])
         p_departures = np.array([0.0, 0.0, 1.0])
 
-        net = Distribution.from_pmf(p_arrivals).net(
-            Distribution.from_pmf(p_departures), predictor.k_sigma
-        )
+        net = Distribution.from_pmf(p_arrivals).net(Distribution.from_pmf(p_departures))
 
         # Should have a single peak at net flow = 1
         assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
@@ -142,15 +224,11 @@ class TestDemandPredictor:
 
     def test_net_flow_pmf_negative_result(self):
         """Test net flow PMF when result is negative."""
-        predictor = DemandPredictor()
-
         # Always 1 arrival, always 3 departures -> net flow always -2
         p_arrivals = np.array([0.0, 1.0])
         p_departures = np.array([0.0, 0.0, 0.0, 1.0])
 
-        net = Distribution.from_pmf(p_arrivals).net(
-            Distribution.from_pmf(p_departures), predictor.k_sigma
-        )
+        net = Distribution.from_pmf(p_arrivals).net(Distribution.from_pmf(p_departures))
 
         assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
         mode_idx = np.argmax(net.probabilities)
@@ -159,15 +237,11 @@ class TestDemandPredictor:
 
     def test_net_flow_pmf_stochastic(self):
         """Test net flow PMF with stochastic distributions."""
-        predictor = DemandPredictor()
-
         # Simple stochastic case
         p_arrivals = np.array([0.3, 0.5, 0.2])  # E[A] = 0.9
         p_departures = np.array([0.2, 0.6, 0.2])  # E[D] = 1.0
 
-        net = Distribution.from_pmf(p_arrivals).net(
-            Distribution.from_pmf(p_departures), predictor.k_sigma
-        )
+        net = Distribution.from_pmf(p_arrivals).net(Distribution.from_pmf(p_departures))
 
         # Should sum to 1
         assert np.isclose(net.probabilities.sum(), 1.0, atol=1e-6)
@@ -1120,19 +1194,17 @@ class TestHierarchyCollisionFix:
 class TestHierarchicalPredictor:
     """Test the HierarchicalPredictor class."""
 
-    def test_create_hierarchical_predictor_with_truncation_option(self):
-        """Test that create_hierarchical_predictor respects truncate_only_bottom parameter."""
-        # Create a simple hierarchy DataFrame
+    def test_predict_all_levels_respects_caps(self):
+        """predict_all_levels should use statistical caps at higher levels."""
         hierarchy_df = pd.DataFrame(
             {
                 "sub_specialty": ["Cardiology", "Neurology"],
-                "reporting_unit": ["Medicine", "Medicine"],
-                "division": ["Clinical", "Clinical"],
-                "board": ["Medical", "Medical"],
+                "reporting_unit": ["UnitA", "UnitA"],
+                "division": ["DivisionA", "DivisionA"],
+                "board": ["BoardA", "BoardA"],
                 "hospital": ["UCLH", "UCLH"],
             }
         )
-
         column_mapping = {
             "sub_specialty": "subspecialty",
             "reporting_unit": "reporting_unit",
@@ -1141,17 +1213,55 @@ class TestHierarchicalPredictor:
             "hospital": "hospital",
         }
 
-        # Test with truncate_only_bottom=True (default)
-        predictor_bottom_only = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, "UCLH"
+        hierarchical_predictor = create_hierarchical_predictor(
+            hierarchy_df, column_mapping, "UCLH", k_sigma=0.0
         )
-        assert predictor_bottom_only.predictor.truncate_only_bottom
 
-        # Test with truncate_only_bottom=False
-        predictor_all_levels = create_hierarchical_predictor(
-            hierarchy_df, column_mapping, "UCLH", truncate_only_bottom=False
+        def poisson_flow(flow_id: str, lam: float) -> FlowInputs:
+            return FlowInputs(flow_id=flow_id, flow_type="poisson", distribution=lam)
+
+        def make_inputs(subspecialty_id: str) -> SubspecialtyPredictionInputs:
+            return SubspecialtyPredictionInputs(
+                subspecialty_id=subspecialty_id,
+                prediction_window=24,
+                inflows={
+                    "ed_current": poisson_flow("ed_current", 1.0),
+                    "ed_yta": poisson_flow("ed_yta", 0.0),
+                    "non_ed_yta": poisson_flow("non_ed_yta", 0.0),
+                    "elective_yta": poisson_flow("elective_yta", 0.0),
+                    "elective_transfers": poisson_flow("elective_transfers", 0.0),
+                    "emergency_transfers": poisson_flow("emergency_transfers", 0.0),
+                },
+                outflows={
+                    "elective_departures": poisson_flow("elective_departures", 0.5),
+                    "emergency_departures": poisson_flow("emergency_departures", 0.0),
+                },
+            )
+
+        bottom_level_data = {
+            "Cardiology": make_inputs("Cardiology"),
+            "Neurology": make_inputs("Neurology"),
+        }
+
+        results = hierarchical_predictor.predict_all_levels(
+            bottom_level_data, flow_selection=FlowSelection.default()
         )
-        assert not predictor_all_levels.predictor.truncate_only_bottom
+
+        assert "hospital:UCLH" in results
+        hospital_bundle = results["hospital:UCLH"]
+
+        # Two subspecialties with lambda=1 -> mean=2, so cap (k_sigma=0) should be 2.
+        assert len(hospital_bundle.arrivals.probabilities) == 3
+        assert (
+            pytest.approx(hospital_bundle.arrivals.probabilities.sum(), rel=1e-9) == 1.0
+        )
+
+        # Departures have mean 1 -> capped support [0, 1]
+        assert len(hospital_bundle.departures.probabilities) == 2
+        assert (
+            pytest.approx(hospital_bundle.departures.probabilities.sum(), rel=1e-9)
+            == 1.0
+        )
 
     def test_entity_type_name_usage_in_hierarchical_prediction(self):
         """Test that hierarchical prediction correctly uses EntityType.name instead of .value."""

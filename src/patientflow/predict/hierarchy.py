@@ -24,7 +24,7 @@ create_hierarchical_predictor
 import numpy as np
 import pandas as pd
 import yaml
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 
 
@@ -836,22 +836,17 @@ class DemandPredictor:
     Parameters
     ----------
     k_sigma : float, default=8.0
-        Cap width measured in standard deviations. Final (and intermediate)
-        distributions are hard-clipped using an adaptive approach that prevents
-        over-truncation for small lambda values. For lambda < 0.1, uses 2x k_sigma;
-        for lambda < 1.0, uses 1.5x k_sigma; otherwise uses the original k_sigma.
-        Net-flow uses asymmetric caps around the mean with the same adaptive
-        k_sigma multiplier and physical bounds.
-    truncate_only_bottom : bool, default=True
-        If True, only apply truncation at the bottom level (subspecialties).
-        If False, apply truncation at all hierarchical levels.
+        Cap width measured in standard deviations. Maximum support for each
+        hierarchical level is calculated top-down using statistical caps:
+        mean + k_sigma * sqrt(sum of variances). This ensures bounded array
+        sizes while maintaining statistical accuracy. Net flow is computed
+        naively from already-capped arrivals and departures, with no additional
+        truncation.
 
     Attributes
     ----------
     k_sigma : float
         Number of standard deviations used to cap supports
-    truncate_only_bottom : bool
-        Whether to truncate only at bottom level or all levels
     cache : dict
         Cache for storing computed predictions (currently unused)
 
@@ -865,8 +860,9 @@ class DemandPredictor:
     4. Computing statistics (expected value, percentiles) for each level
 
     The class uses discrete convolution to combine probability distributions.
-    Supports are clamped using adaptive k-sigma caps to prevent exponential
-    growth in array sizes while avoiding over-truncation for small lambda values.
+    Supports are clamped using top-down statistical caps calculated before
+    convolution, ensuring bounded array sizes while maintaining statistical
+    accuracy. Truncation uses renormalization to preserve probability mass.
 
     Flow Selection
     --------------
@@ -875,52 +871,202 @@ class DemandPredictor:
     cohorts (elective/emergency/all) to include in predictions.
     """
 
-    def __init__(self, k_sigma: float = 8.0, truncate_only_bottom: bool = True):
+    def __init__(self, k_sigma: float = 8.0):
         self.k_sigma = k_sigma
-        self.truncate_only_bottom = truncate_only_bottom
         self.cache: Dict[str, DemandPrediction] = {}
 
-    def adaptive_cap(self, lam: float, k_sigma: float) -> int:
-        """Calculate adaptive cap to prevent over-truncation for small lambda values.
+    def _calculate_hierarchical_stats(
+        self,
+        entity_id: str,
+        entity_type: EntityType,
+        bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
+        hierarchy: "Hierarchy",
+        flow_type: str,
+        flow_selection: Optional[FlowSelection] = None,
+    ) -> Tuple[float, float, int]:
+        """Calculate sum of means, combined SD, and maximum support for an entity.
 
-        This method uses higher k_sigma multipliers for small lambda values to avoid
-        over-truncation that could occur with the standard k-sigma approach.
+        This method recursively gathers all bottom-level entities in the subtree
+        and calculates statistical caps based on the sum of means and combined
+        variance of all distributions in the subtree.
 
         Parameters
         ----------
-        lam : float
-            Lambda parameter (mean) of the distribution
-        k_sigma : float
-            Base k_sigma value for cap calculation
+        entity_id : str
+            Unique identifier for the entity
+        entity_type : EntityType
+            Type of entity being analyzed
+        bottom_level_data : Dict[str, SubspecialtyPredictionInputs]
+            Dictionary mapping bottom-level entity IDs to their prediction inputs
+        hierarchy : Hierarchy
+            Hierarchy structure for traversing the tree
+        flow_type : str
+            Type of flow to analyze: 'arrivals' or 'departures' only
+        flow_selection : FlowSelection, optional
+            Selection for which flows to include. If None, includes all flows.
 
         Returns
         -------
-        int
-            Adaptive cap value calculated as:
-            - For lam < 0.1: lam + (2.0 * k_sigma) * sqrt(lam)
-            - For lam < 1.0: lam + (1.5 * k_sigma) * sqrt(lam)
-            - For lam >= 1.0: lam + k_sigma * sqrt(lam)
+        Tuple[float, float, int]
+            Tuple of (sum_of_means, combined_sd, max_support)
+            - sum_of_means: Sum of all means from distributions in subtree
+            - combined_sd: Combined standard deviation (sqrt of sum of variances)
+            - max_support: Maximum support value (min of statistical and physical caps)
 
         Notes
         -----
-        The adaptive approach prevents over-truncation by using higher k_sigma
-        multipliers for small lambda values, ensuring that distributions with
-        low means retain sufficient probability mass.
+        For Poisson distributions: variance = mean (lambda)
+        For PMF distributions: variance = E[X²] - E[X]² calculated from PMF array
+        Physical max for PMF = len(pmf_array) - 1 (maximum index value)
+        Physical max for Poisson = infinity (unbounded)
         """
-        if lam < 0.1:
-            effective_k_sigma = k_sigma * 2.0  # Double for very small λ
-        elif lam < 1.0:
-            effective_k_sigma = k_sigma * 1.5  # 50% more for small λ
-        else:
-            effective_k_sigma = k_sigma
+        if flow_type not in {"arrivals", "departures"}:
+            raise ValueError(
+                f"flow_type must be 'arrivals' or 'departures', got '{flow_type}'"
+            )
 
-        return max(0, int(np.floor(lam + effective_k_sigma * np.sqrt(lam))))
+        if flow_selection is None:
+            flow_selection = FlowSelection.default()
+
+        # Get bottom level type
+        bottom_type = hierarchy.get_bottom_level_type()
+
+        # Gather all bottom-level entities in the subtree
+        def gather_bottom_level_entities(
+            current_id: str, current_type: EntityType
+        ) -> List[str]:
+            """Recursively gather all bottom-level entity IDs in the subtree."""
+            if current_type == bottom_type:
+                # This is a bottom-level entity
+                return [current_id] if current_id in bottom_level_data else []
+
+            # Get children and recurse
+            children = hierarchy.get_children(current_id, current_type)
+            result = []
+            for child_id in children:
+                child_type = hierarchy.get_entity_type(child_id)
+                if child_type is not None:
+                    result.extend(gather_bottom_level_entities(child_id, child_type))
+            return result
+
+        bottom_level_ids = gather_bottom_level_entities(entity_id, entity_type)
+
+        # Extract relevant distributions based on flow_type
+        means: List[float] = []
+        variances: List[float] = []
+        physical_maxes: List[float] = []
+
+        for bottom_id in bottom_level_ids:
+            if bottom_id not in bottom_level_data:
+                continue
+
+            inputs = bottom_level_data[bottom_id]
+
+            # Get flows based on flow_type
+            if flow_type == "arrivals":
+                # Get inflows
+                flow_keys: List[str] = []
+                if flow_selection.include_ed_current:
+                    flow_keys.append("ed_current")
+                if flow_selection.include_ed_yta:
+                    flow_keys.append("ed_yta")
+                if flow_selection.include_non_ed_yta:
+                    flow_keys.append("non_ed_yta")
+                if flow_selection.include_elective_yta:
+                    flow_keys.append("elective_yta")
+                if flow_selection.include_transfers_in:
+                    flow_keys.extend(["elective_transfers", "emergency_transfers"])
+
+                def flow_allowed(key: str) -> bool:
+                    if flow_selection.cohort == "all":
+                        return True
+                    if flow_selection.cohort == "elective":
+                        return key.startswith("elective_") or key == "elective_yta"
+                    if flow_selection.cohort == "emergency":
+                        return key in {
+                            "ed_current",
+                            "ed_yta",
+                            "non_ed_yta",
+                        } or key.startswith("emergency_")
+                    return True
+
+                flows = [
+                    inputs.inflows[k]
+                    for k in flow_keys
+                    if k in inputs.inflows and flow_allowed(k)
+                ]
+            else:  # flow_type == "departures"
+                # Get outflows
+                flow_keys = []
+                if flow_selection.include_departures:
+                    flow_keys.extend(["elective_departures", "emergency_departures"])
+
+                def flow_allowed(key: str) -> bool:
+                    if flow_selection.cohort == "all":
+                        return True
+                    if flow_selection.cohort == "elective":
+                        return key.startswith("elective_")
+                    if flow_selection.cohort == "emergency":
+                        return key.startswith("emergency_")
+                    return True
+
+                flows = [
+                    inputs.outflows[k]
+                    for k in flow_keys
+                    if k in inputs.outflows and flow_allowed(k)
+                ]
+
+            # Process each flow
+            for flow in flows:
+                if flow.flow_type == "poisson":
+                    lam = float(flow.distribution)
+                    means.append(lam)
+                    variances.append(lam)  # Var(Poisson(λ)) = λ
+                    physical_maxes.append(float("inf"))  # Unbounded
+                elif flow.flow_type == "pmf":
+                    pmf_array = flow.distribution
+                    if isinstance(pmf_array, np.ndarray):
+                        mean = self._expected_value(pmf_array)
+                        variance = self._variance(pmf_array)
+                        physical_max = len(pmf_array) - 1  # Maximum index value
+                        means.append(mean)
+                        variances.append(variance)
+                        physical_maxes.append(physical_max)
+
+        # Calculate combined statistics
+        sum_of_means = float(np.sum(means)) if means else 0.0
+        combined_variance = float(np.sum(variances)) if variances else 0.0
+        combined_sd = (
+            float(np.sqrt(combined_variance)) if combined_variance > 0 else 0.0
+        )
+
+        # Statistical cap: mean + k_sigma * SD
+        statistical_cap = sum_of_means + self.k_sigma * combined_sd
+
+        # Physical cap: minimum of all physical maxes (infinity doesn't constrain)
+        finite_physical_maxes = [pm for pm in physical_maxes if pm != float("inf")]
+        if finite_physical_maxes:
+            physical_cap = float(np.sum(finite_physical_maxes))  # Sum for convolution
+        else:
+            physical_cap = float("inf")
+
+        # Never exceed what's physically possible
+        if physical_cap == float("inf"):
+            max_support = int(np.ceil(statistical_cap))
+        else:
+            max_support = int(min(np.ceil(statistical_cap), physical_cap))
+
+        # Ensure non-negative
+        max_support = max(0, max_support)
+
+        return (sum_of_means, combined_sd, max_support)
 
     def predict_flow_total(
         self,
         flow_inputs: List[FlowInputs],
         entity_id: str,
         entity_type: str,
+        max_support: Optional[int] = None,
     ) -> DemandPrediction:
         """Combine multiple flows into a single distribution.
 
@@ -937,6 +1083,10 @@ class DemandPredictor:
             Unique identifier for the entity
         entity_type : str
             Type of entity (for labeling purposes)
+        max_support : int, optional
+            Pre-calculated maximum support value. If provided, the result will
+            be truncated to this value with renormalization. If None, no truncation
+            is applied (for backward compatibility during transition).
 
         Returns
         -------
@@ -946,48 +1096,47 @@ class DemandPredictor:
         Notes
         -----
         Flows are combined through convolution, which represents the distribution
-        of the sum of independent random variables. Supports are clamped using an
-        adaptive k-sigma cap to maintain computational efficiency while preventing
-        over-truncation for small lambda values.
+        of the sum of independent random variables. If max_support is provided,
+        the result is truncated and renormalized to ensure probability conservation.
         """
-        # First pass: compute per-flow means and variances only
-        means: List[float] = []
-        variances: List[float] = []
-        flow_specs: List[tuple[str, np.ndarray | float]] = []
+        # Materialize flows via Distribution
+        dist_total = Distribution.from_pmf(np.array([1.0]))
         for flow in flow_inputs:
             if flow.flow_type == "poisson":
                 lam = float(flow.distribution)
-                means.append(lam)
-                variances.append(lam)
-                flow_specs.append(("poisson", lam))
+                # Use max_support if provided, otherwise use a reasonable default
+                if max_support is not None:
+                    poisson_cap = max_support
+                else:
+                    # Fallback: use k-sigma cap for Poisson
+                    poisson_cap = Distribution.poisson_cap_from_k_sigma(
+                        lam, self.k_sigma
+                    )
+                flow_dist = Distribution.from_poisson_with_cap(lam, poisson_cap)
             elif flow.flow_type == "pmf":
-                p_flow = flow.distribution
-                means.append(self._expected_value(p_flow))
-                variances.append(self._variance(p_flow))
-                flow_specs.append(("pmf", p_flow))
+                pmf_array = flow.distribution
+                if isinstance(pmf_array, np.ndarray):
+                    flow_dist = Distribution.from_pmf(pmf_array)
+                else:
+                    raise ValueError(
+                        f"PMF distribution must be numpy array, got {type(pmf_array)}"
+                    )
             else:
                 raise ValueError(
                     f"Unknown flow type: {flow.flow_type}. Expected 'pmf' or 'poisson'."
                 )
-
-        # Global cap for the total non-negative support from combined mean/std
-        total_mean = float(np.sum(means)) if means else 0.0
-        cap_max = self.adaptive_cap(total_mean, self.k_sigma)
-
-        # Second pass: materialize flows via Distribution using the global cap for Poisson
-        dist_total = Distribution.from_pmf(np.array([1.0]))
-        for flow_type, distribution_data in flow_specs:
-            if flow_type == "poisson":
-                lam = float(distribution_data)
-                flow_dist = Distribution.from_poisson_with_cap(lam, cap_max)
-            else:  # pmf
-                flow_dist = Distribution.from_pmf(distribution_data)  # type: ignore[arg-type]
             dist_total = dist_total.convolve(flow_dist)
-            # Only apply truncation if not in truncate_only_bottom mode
-            if not self.truncate_only_bottom:
-                dist_total = dist_total.clamp_nonnegative(cap_max)
 
-        return self._create_prediction(entity_id, entity_type, dist_total.probabilities)
+        # Apply cap with renormalization if max_support is provided
+        if max_support is not None:
+            truncated_pmf = self._apply_cap_with_renormalization(
+                dist_total.probabilities, max_support
+            )
+            return self._create_prediction(entity_id, entity_type, truncated_pmf)
+        else:
+            return self._create_prediction(
+                entity_id, entity_type, dist_total.probabilities
+            )
 
     def predict_subspecialty(
         self,
@@ -1124,9 +1273,10 @@ class DemandPredictor:
         arrivals_p = self._renormalize(arrivals.probabilities)
         departures_p = self._renormalize(departures.probabilities)
 
-        # Compute net flow distribution using Distribution algebra
+        # Compute net flow distribution naively from already-capped arrivals/departures
+        # Since arrivals and departures are already capped, no additional truncation is needed
         net_dist = Distribution.from_pmf(arrivals_p).net(
-            Distribution.from_pmf(departures_p), self.k_sigma
+            Distribution.from_pmf(departures_p)
         )
         # Ensure expected value matches arrivals - departures exactly for tests
         expected_diff = float(arrivals.expected_value - departures.expected_value)
@@ -1152,6 +1302,7 @@ class DemandPredictor:
         entity_id: str,
         entity_type: EntityType,
         child_predictions: List[DemandPrediction],
+        max_support: Optional[int] = None,
     ) -> DemandPrediction:
         """Generic method for hierarchical prediction at any level.
 
@@ -1166,6 +1317,9 @@ class DemandPredictor:
             Type of entity being predicted
         child_predictions : list[DemandPrediction]
             List of demand predictions from child entities
+        max_support : int, optional
+            Pre-calculated maximum support value. If provided, the result will
+            be truncated to this value with renormalization.
 
         Returns
         -------
@@ -1175,11 +1329,11 @@ class DemandPredictor:
         Notes
         -----
         The method convolves multiple probability distributions efficiently by
-        sorting them by expected value and clamping supports using a global
-        k-sigma cap to prevent computational overflow.
+        sorting them by expected value. If max_support is provided, truncation
+        uses renormalization to ensure probability conservation.
         """
         distributions = [p.probabilities for p in child_predictions]
-        p_total = self._convolve_multiple(distributions)
+        p_total = self._convolve_multiple(distributions, max_support)
         return self._create_prediction(entity_id, entity_type.name, p_total)
 
     def _create_bundle_from_children(
@@ -1187,6 +1341,8 @@ class DemandPredictor:
         entity_id: str,
         entity_type: str,
         child_bundles: List[PredictionBundle],
+        arrivals_max_support: Optional[int] = None,
+        departures_max_support: Optional[int] = None,
     ) -> PredictionBundle:
         """Create a PredictionBundle by aggregating child bundles.
 
@@ -1198,6 +1354,10 @@ class DemandPredictor:
             Type of entity being predicted
         child_bundles : list[PredictionBundle]
             List of prediction bundles from child entities
+        arrivals_max_support : int, optional
+            Pre-calculated maximum support for arrivals
+        departures_max_support : int, optional
+            Pre-calculated maximum support for departures
 
         Returns
         -------
@@ -1208,10 +1368,10 @@ class DemandPredictor:
         departures_preds = [b.departures for b in child_bundles]
 
         arrivals = self.predict_hierarchical_level(
-            entity_id, EntityType(entity_type), arrivals_preds
+            entity_id, EntityType(entity_type), arrivals_preds, arrivals_max_support
         )
         departures = self.predict_hierarchical_level(
-            entity_id, EntityType(entity_type), departures_preds
+            entity_id, EntityType(entity_type), departures_preds, departures_max_support
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
 
@@ -1231,17 +1391,23 @@ class DemandPredictor:
             flow_selection=flow_selection,
         )
 
-    def _convolve_multiple(self, distributions: List[np.ndarray]) -> np.ndarray:
-        """Convolve multiple distributions with adaptive k-sigma clamping.
+    def _convolve_multiple(
+        self, distributions: List[np.ndarray], max_support: Optional[int] = None
+    ) -> np.ndarray:
+        """Convolve multiple distributions with optional truncation and renormalization.
 
         This method efficiently convolves multiple probability distributions by
-        sorting them by expected value and applying adaptive deterministic caps
-        to prevent computational overflow while avoiding over-truncation.
+        sorting them by expected value. If max_support is provided, the result
+        is truncated and renormalized to ensure probability conservation.
 
         Parameters
         ----------
         distributions : list[numpy.ndarray]
             List of probability mass functions to convolve
+        max_support : int, optional
+            Pre-calculated maximum support value. If provided, the result will
+            be truncated to this value with renormalization. If None, no truncation
+            is applied.
 
         Returns
         -------
@@ -1251,37 +1417,30 @@ class DemandPredictor:
         Notes
         -----
         Distributions are sorted by expected value for computational efficiency.
-        If truncate_only_bottom is True, no truncation is applied at higher levels.
-        If truncate_only_bottom is False, adaptive truncation is applied after each convolution.
-        The adaptive approach uses higher k_sigma multipliers for small lambda values.
+        If max_support is provided, truncation uses _apply_cap_with_renormalization()
+        to ensure the PMF sums to 1.0 exactly.
         """
         if not distributions:
             return np.array([1.0])
         if len(distributions) == 1:
-            return distributions[0]
+            result = distributions[0]
+            if max_support is not None:
+                result = self._apply_cap_with_renormalization(result, max_support)
+            return result
 
         # Sort by expected value for efficiency
         distributions = sorted(distributions, key=lambda p: self._expected_value(p))
 
-        # Compute global cap from provided distributions using adaptive approach
-        means = [self._expected_value(p) for p in distributions]
-        total_mean = float(np.sum(means))
-        sigma_cap = self.adaptive_cap(total_mean, self.k_sigma)
-        physical_cap = int(np.sum([len(p) - 1 for p in distributions]))
-        cap_max = max(0, min(sigma_cap, physical_cap))
-
+        # Convolve all distributions
         result = distributions[0]
         for dist in distributions[1:]:
             result = self._convolve(result, dist)
-            # Only apply truncation if not in truncate_only_bottom mode
-            if not self.truncate_only_bottom:
-                result = self._clamp_nonnegative(result, cap_max)
 
-        # Apply final truncation only if not in truncate_only_bottom mode
-        if not self.truncate_only_bottom:
-            return self._clamp_nonnegative(result, cap_max)
-        else:
-            return result
+        # Apply cap with renormalization if max_support is provided
+        if max_support is not None:
+            result = self._apply_cap_with_renormalization(result, max_support)
+
+        return result
 
     def _convolve(self, p: np.ndarray, q: np.ndarray) -> np.ndarray:
         """Discrete convolution of two probability distributions.
@@ -1307,14 +1466,43 @@ class DemandPredictor:
         """
         return np.convolve(p, q)
 
-    def _clamp_nonnegative(self, p: np.ndarray, cap_max: int) -> np.ndarray:
-        """Clamp a non-negative support PMF to [0, cap_max]."""
-        if cap_max < 0:
-            return p[:1] if len(p) else np.array([1.0])
-        max_len = cap_max + 1
-        if len(p) <= max_len:
-            return p
-        return p[:max_len]
+    def _apply_cap_with_renormalization(
+        self, pmf: np.ndarray, max_support: int
+    ) -> np.ndarray:
+        """Truncate PMF to max_support and assign remaining probability to the last bin.
+
+        This ensures probability conservation: the PMF sums to 1.0 exactly.
+        The last bin (at index max_support) represents "at least this many".
+
+        Parameters
+        ----------
+        pmf : np.ndarray
+            Original probability mass function
+        max_support : int
+            Maximum support value (corresponds to array index max_support)
+
+        Returns
+        -------
+        np.ndarray
+            Truncated PMF with length (max_support + 1) where the last element
+            contains all remaining probability mass
+        """
+        if max_support < 0:
+            # Return a single bin with all probability mass
+            return np.array([np.sum(pmf)])
+
+        max_len = max_support + 1
+        if len(pmf) <= max_len:
+            return pmf.copy()
+
+        # Truncate to max_support + 1 elements (indices 0 to max_support)
+        truncated = pmf[:max_len].copy()
+
+        # Add remaining probability mass to the last bin
+        remaining_mass = np.sum(pmf[max_len:])
+        truncated[max_support] += remaining_mass
+
+        return truncated
 
     def _variance(self, p: np.ndarray, offset: int = 0) -> float:
         """Calculate variance of a discrete distribution."""
@@ -1398,9 +1586,9 @@ class DemandPredictor:
         Parameters
         ----------
         arrivals : DemandPrediction
-            Arrivals prediction
+            Arrivals prediction (already capped at hierarchical level)
         departures : DemandPrediction
-            Departures prediction
+            Departures prediction (already capped at hierarchical level)
         entity_id : str
             Entity identifier for the net flow prediction
 
@@ -1408,13 +1596,24 @@ class DemandPredictor:
         -------
         DemandPrediction
             Net flow prediction (arrivals - departures)
+
+        Notes
+        -----
+        Net flow is computed naively from already-capped arrivals and departures distributions.
+        Since arrivals and departures are already capped using top-down statistical caps,
+        the net flow is naturally bounded by physical limits [-max_departures, +max_arrivals].
+        No additional truncation is applied.
         """
         # Renormalize arrivals and departures before net-flow
         arrivals_p = self._renormalize(arrivals.probabilities)
         departures_p = self._renormalize(departures.probabilities)
 
+        # Compute net flow distribution naively from already-capped arrivals/departures
+        # Since arrivals and departures are already capped using top-down statistical caps,
+        # the net flow is naturally bounded by physical limits [-max_departures, +max_arrivals].
+        # No additional truncation is needed.
         net_dist = Distribution.from_pmf(arrivals_p).net(
-            Distribution.from_pmf(departures_p), self.k_sigma
+            Distribution.from_pmf(departures_p)
         )
         return self._create_prediction(
             entity_id, "net_flow", net_dist.probabilities, net_dist.offset
@@ -1515,9 +1714,14 @@ class HierarchicalPredictor:
     ) -> Dict[str, PredictionBundle]:
         """Compute predictions for all levels using the generic hierarchy.
 
-        This method orchestrates the complete hierarchical prediction process,
-        starting from the bottom level and aggregating predictions up through
-        all levels to the top level.
+        This method orchestrates the complete hierarchical prediction process with
+        top-down statistical cap calculation.
+
+        It performs three phases:
+
+        1. Phase 1 (Pre-processing): Calculate maximum support caps for all entities.
+        2. Phase 2 (Bottom-Level Prediction): Compute predictions for all bottom-level entities.
+        3. Phase 3 (Convolution): Aggregate child predictions bottom-up using pre-calculated caps.
 
         For each level, tracks arrivals, departures, and net flow separately.
 
@@ -1548,10 +1752,15 @@ class HierarchicalPredictor:
         Notes
         -----
         The prediction process follows this sequence:
-        1. Predict bottom-level entities using provided parameters (returns bundles)
-        2. For each level from bottom to top, aggregate child bundles into parent bundles
-        3. All predictions are cached for efficient retrieval.
+
+        1. Phase 1: Calculate caps for all entities (top-down traversal).
+        2. Phase 2: Predict bottom-level entities using provided parameters.
+        3. Phase 3: For each level from bottom to top, aggregate child bundles using pre-calculated caps.
+        4. Cache all predictions for efficient retrieval.
         """
+        if flow_selection is None:
+            flow_selection = FlowSelection.default()
+
         # Determine top_level_id if not provided
         if top_level_id is None:
             top_level_type = self.hierarchy.get_top_level_type()
@@ -1566,13 +1775,50 @@ class HierarchicalPredictor:
                     "Please specify top_level_id parameter."
                 )
 
-        results = {}
-
         # Get levels ordered from bottom to top
         levels = self.hierarchy.get_levels_ordered()
         bottom_type = levels[0]
 
-        # Level 1: Bottom level (e.g., subspecialties)
+        # PHASE 1: Calculate caps for all entities (top-down)
+        # Process levels from top to bottom to calculate caps
+        caps: Dict[
+            str, Dict[str, int]
+        ] = {}  # entity_id -> {'arrivals': cap, 'departures': cap}
+
+        for level_type in reversed(levels):
+            entities_at_level = self.hierarchy.get_entities_by_type(level_type)
+
+            for entity_id in entities_at_level:
+                # Calculate caps for arrivals and departures
+                arrivals_stats = self.predictor._calculate_hierarchical_stats(
+                    entity_id,
+                    level_type,
+                    bottom_level_data,
+                    self.hierarchy,
+                    "arrivals",
+                    flow_selection,
+                )
+                departures_stats = self.predictor._calculate_hierarchical_stats(
+                    entity_id,
+                    level_type,
+                    bottom_level_data,
+                    self.hierarchy,
+                    "departures",
+                    flow_selection,
+                )
+
+                # Store max_support (third element of tuple)
+                prefixed_entity_id = f"{level_type.name}:{entity_id}"
+                caps[prefixed_entity_id] = {
+                    "arrivals": arrivals_stats[2],  # max_support
+                    "departures": departures_stats[2],  # max_support
+                }
+
+        results = {}
+
+        # PHASE 2: Predict bottom level (e.g., subspecialties)
+        # Bottom level doesn't use caps from hierarchical stats (they're already
+        # calculated at the bottom level in predict_subspecialty via predict_flow_total)
         for entity_id, inputs in bottom_level_data.items():
             bundle = self.predictor.predict_subspecialty(
                 entity_id, inputs, flow_selection
@@ -1582,7 +1828,7 @@ class HierarchicalPredictor:
             results[prefixed_entity_id] = bundle
             self.cache[prefixed_entity_id] = bundle
 
-        # Process each level from bottom to top
+        # PHASE 3: Process each level from bottom to top, using pre-calculated caps
         for level_type in levels[1:]:
             entities_at_level = self.hierarchy.get_entities_by_type(level_type)
 
@@ -1599,12 +1845,21 @@ class HierarchicalPredictor:
                         if prefixed_child_id in results:
                             child_bundles.append(results[prefixed_child_id])
 
-                # Create bundle using generic method
+                # Get pre-calculated caps for this entity
+                prefixed_entity_id = f"{level_type.name}:{entity_id}"
+                entity_caps = caps.get(prefixed_entity_id, {})
+                arrivals_max_support = entity_caps.get("arrivals")
+                departures_max_support = entity_caps.get("departures")
+
+                # Create bundle using generic method with pre-calculated caps
                 bundle = self.predictor._create_bundle_from_children(
-                    entity_id, level_type.name, child_bundles
+                    entity_id,
+                    level_type.name,
+                    child_bundles,
+                    arrivals_max_support,
+                    departures_max_support,
                 )
                 # Use prefixed entity ID as key to avoid collisions
-                prefixed_entity_id = f"{level_type.name}:{entity_id}"
                 results[prefixed_entity_id] = bundle
                 self.cache[prefixed_entity_id] = bundle
 
@@ -1852,9 +2107,6 @@ def create_hierarchical_predictor(
     hierarchy_config_path : str, optional
         Path to YAML file containing custom hierarchy configuration.
         If None, uses default hospital hierarchy.
-    truncate_only_bottom : bool, default=True
-        If True, only apply truncation at the bottom level (subspecialties).
-        If False, apply truncation at all hierarchical levels.
 
     Returns
     -------
@@ -1888,7 +2140,5 @@ def create_hierarchical_predictor(
     )
 
     # Create predictor
-    predictor = DemandPredictor(
-        k_sigma=k_sigma, truncate_only_bottom=truncate_only_bottom
-    )
+    predictor = DemandPredictor(k_sigma=k_sigma)
     return HierarchicalPredictor(hierarchy, predictor)
