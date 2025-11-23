@@ -2267,7 +2267,6 @@ def create_hierarchical_predictor(
     top_level_id: str,
     k_sigma: float = 8.0,
     hierarchy_config_path: Optional[str] = None,
-    truncate_only_bottom: bool = True,
 ) -> HierarchicalPredictor:
     """Create a HierarchicalPredictor with explicit column mapping.
 
@@ -2286,8 +2285,8 @@ def create_hierarchical_predictor(
     top_level_id : str
         Identifier for the top-level entity in the hierarchy
     k_sigma : float, default=8.0
-        Cap width in standard deviations used to clamp distributions using an
-        adaptive approach that prevents over-truncation for small lambda values.
+        Cap width in standard deviations used by the top-down statistical cap
+        calculation (mean + k_sigma * sqrt(sum of variances)).
     hierarchy_config_path : str, optional
         Path to YAML file containing custom hierarchy configuration.
         If None, uses default hospital hierarchy.
