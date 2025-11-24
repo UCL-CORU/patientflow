@@ -4,21 +4,35 @@ Aggregate Prediction From Patient-Level Probabilities
 This submodule provides functions to aggregate patient-level predicted probabilities into a probability distribution
 using a generating function approach.
 
-The module usesdynamic programming to compute the exact probability distribution of sums of
+The module uses dynamic programming to compute the exact probability distribution of sums of
 independent Bernoulli random variables, which is mathematically equivalent to multiplying their generating
 functions but computationally much more efficient.
+
+Computation Method Selection
+----------------------------
+For computational efficiency, the module automatically switches between two methods based on sample size:
+
+- Exact computation (default for n ≤ 30): Uses dynamic programming to compute the exact probability
+  distribution. This is the preferred method for smaller groups as it provides exact results.
+- Normal approximation (default for n > 30): Uses a normal approximation with continuity correction
+  for larger groups. The approximation is based on the central limit theorem, where the sum of independent
+  Bernoulli random variables approaches a normal distribution for large n. The mean is the sum of probabilities
+  and the variance is the sum of p_i * (1 - p_i).
+
+The threshold (default: 30) can be adjusted via the `normal_approx_threshold` parameter in functions that
+accept it. Setting this parameter to `None` or a very large value forces exact computation for all sample sizes.
 
 Functions
 ---------
 BernoulliGeneratingFunction : class
     Efficient generating function implementation for sums of Bernoulli random variables.
+    Automatically selects between exact computation and normal approximation based on sample size.
 
 model_input_to_pred_proba : function
     Use a predictive model to convert model input data into predicted probabilities.
 
 pred_proba_to_agg_predicted : function
     Convert individual probability predictions into aggregate predicted probability distribution using optional weights.
-    Uses dynamic programming for exact computation (small n) or normal approximation (large n).
 
 get_prob_dist_for_prediction_moment : function
     Calculate both predicted distributions and observed values for a given date using test data.
@@ -53,6 +67,9 @@ class BernoulliGeneratingFunction:
 
     The product G_1(z) * G_2(z) * ... * G_n(z) gives the generating function of the sum,
     and the coefficient of z^k gives P(sum = k).
+
+    The `get_distribution()` method automatically selects between exact computation and normal
+    approximation based on sample size (see module-level documentation for details).
 
     Parameters
     ----------
