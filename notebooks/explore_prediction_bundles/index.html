@@ -1,0 +1,2149 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../4d_Predict_emergency_demand_with_special_categories/">
+      
+      
+        <link rel="next" href="../../src/patientflow/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Explore Prediction Bundles - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#explore-prediction-bundles" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Explore Prediction Bundles
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MIT License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Notebooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Notebooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the notebooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. Set up your environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Introducing our users
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2a. Create patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2b_Predict_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2b. Make predictions using patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2c_Evaluate_patient_snapshot_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2c. Evaluate models trained on patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2d. Explore the datasets provided
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3a. Prepare group snapshots from patient snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3b_Evaluate_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3b. Evaluate group snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3c. Predict bed counts without using patient snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d. Predict bed count distributions for subgroups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Specify requirements for emergency demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_emergency_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Evaluate predictions of emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore Prediction Bundles
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore Prediction Bundles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#load-pickled-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load Pickled Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extract-data-from-all-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extract Data from 'all' Entry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-hierarchy-dataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Hierarchy DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-subspecialty-prediction-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Subspecialty Prediction Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-existing-prediction-bundles-from-pickled-predictor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Existing Prediction Bundles (from Pickled Predictor)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-new-predictions-with-different-k_sigma-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create New Predictions with Different k_sigma Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compare-different-k_sigma-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare Different k_sigma Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#explore-specific-subspecialty-predictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explore Specific Subspecialty Predictions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-net-flow-bounds-based-on-k_sigma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Net Flow Bounds Based on k_sigma
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Src
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Src
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patientflow
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Patientflow
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PatientFlow: A Python package for converting patient-level predictions into output that is useful for bed managers in hospitals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#load-pickled-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load Pickled Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extract-data-from-all-entry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extract Data from 'all' Entry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-hierarchy-dataframe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Hierarchy DataFrame
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-subspecialty-prediction-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Subspecialty Prediction Inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-existing-prediction-bundles-from-pickled-predictor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect Existing Prediction Bundles (from Pickled Predictor)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-new-predictions-with-different-k_sigma-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create New Predictions with Different k_sigma Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compare-different-k_sigma-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compare Different k_sigma Values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#explore-specific-subspecialty-predictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explore Specific Subspecialty Predictions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verify-net-flow-bounds-based-on-k_sigma" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verify Net Flow Bounds Based on k_sigma
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/explore_prediction_bundles.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="explore-prediction-bundles">Explore Prediction Bundles</h1>
+<p>This notebook loads pickled hierarchical predictors and allows you to explore the prediction bundles that were created.</p>
+<pre><code class="language-python">import pickle
+from pathlib import Path
+import pandas as pd
+import numpy as np
+
+from patientflow.predict.hierarchy import (
+    HierarchicalPredictor,
+    FlowSelection,
+    create_hierarchical_predictor,
+)
+from patientflow.predict.subspecialty import SubspecialtyPredictionInputs
+
+</code></pre>
+<h2 id="load-pickled-data">Load Pickled Data</h2>
+<p>Update the path below to point to your pickle file.</p>
+<pre><code class="language-python"># Update this path to your pickle file
+pickle_path = &quot;/Users/zellaking/Downloads/hierarchical_predictors_with_inputs.pkl&quot;
+
+with open(pickle_path, 'rb') as f:
+    pickled_data = pickle.load(f)
+
+print(f&quot;Loaded pickle file: {pickle_path}&quot;)
+print(f&quot;Keys in pickle: {list(pickled_data.keys())}&quot;)
+
+</code></pre>
+<pre><code>Loaded pickle file: /Users/zellaking/Downloads/hierarchical_predictors_with_inputs.pkl
+Keys in pickle: ['all', 'elective', 'emergency']
+
+
+/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_12431/3782410358.py:5: DeprecationWarning: numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer.
+  pickled_data = pickle.load(f)
+</code></pre>
+<h2 id="extract-data-from-all-entry">Extract Data from 'all' Entry</h2>
+<pre><code class="language-python">if 'all' not in pickled_data:
+    raise ValueError(f&quot;Pickled data must contain 'all' key. Available keys: {list(pickled_data.keys())}&quot;)
+
+all_data = pickled_data['all']
+
+# Extract all components
+predictor = all_data['predictor']
+subspecialty_data = all_data['subspecialty_data']
+hierarchy_df = all_data['hierarchy_df']
+column_mapping = all_data['column_mapping']
+top_level_id = all_data['top_level_id']
+
+print(f&quot;Number of subspecialties: {len(subspecialty_data)}&quot;)
+print(f&quot;Subspecialty IDs: {list(subspecialty_data.keys())[:10]}...&quot; if len(subspecialty_data) &gt; 10 else f&quot;Subspecialty IDs: {list(subspecialty_data.keys())}&quot;)
+print(f&quot;Top level ID: {top_level_id}&quot;)
+print(f&quot;\nHierarchy DataFrame shape: {hierarchy_df.shape}&quot;)
+print(f&quot;Column mapping: {column_mapping}&quot;)
+
+</code></pre>
+<pre><code>Number of subspecialties: 291
+Subspecialty IDs: ['Oncology - Gynae - Clinical', 'Neurology - Stroke ASU', 'Neurosurgery - Epilepsy', 'Haematology - BMT - Treatment', 'CYPPS - Psychiatry', 'Neurosurgery - Stereotactic Functional', 'Neurosurgery - Gamma Knife', 'Paediatric - Respiratory Medicine', 'Infectious Diseases - COVID-19 Medicines Delivery', 'Neurosurgery - Vascular']...
+Top level ID: uclh
+
+Hierarchy DataFrame shape: (290, 4)
+Column mapping: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit', 'division': 'division', 'board': 'board'}
+</code></pre>
+<h2 id="inspect-hierarchy-dataframe">Inspect Hierarchy DataFrame</h2>
+<pre><code class="language-python">hierarchy_df.head(10)
+
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sub_specialty</th>
+      <th>reporting_unit</th>
+      <th>division</th>
+      <th>board</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>Neurology - Upper Limb</td>
+      <td>Rehab &amp; Stroke</td>
+      <td>Queen Square</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>Oncology - Head and Neck - Clinical</td>
+      <td>Oncology</td>
+      <td>Cancer Services</td>
+      <td>Cancer &amp; Surgery Board</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Oncology - Radiotherapy</td>
+      <td>Oncology</td>
+      <td>Cancer Services</td>
+      <td>Cancer &amp; Surgery Board</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>Neurology - Spasticity</td>
+      <td>Rehab &amp; Stroke</td>
+      <td>Queen Square</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>Neurology - Inherited Metabolic Diseases</td>
+      <td>Specialist Services</td>
+      <td>Queen Square</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>Haematology - ITP</td>
+      <td>Haematology</td>
+      <td>Cancer Services</td>
+      <td>Cancer &amp; Surgery Board</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>ENT - Ears</td>
+      <td>Adult ENT</td>
+      <td>RNENT &amp; EDH</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>Paediatric - Proton Beam Therapy</td>
+      <td>Children &amp; Young Peoples Cancer</td>
+      <td>Children and Young People</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>Paediatric - Surgery</td>
+      <td>Paediatric Surgery</td>
+      <td>Children and Young People</td>
+      <td>Specialist Hospitals Board</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>Orthopaedics - Upper Limb</td>
+      <td>Trauma &amp; Orthopaedics</td>
+      <td>Surgical Specialties</td>
+      <td>Cancer &amp; Surgery Board</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<pre><code class="language-python">print(f&quot;Hierarchy levels:&quot;)
+for col in hierarchy_df.columns:
+    unique_count = hierarchy_df[col].nunique()
+    print(f&quot;  {col}: {unique_count} unique values&quot;)
+
+</code></pre>
+<pre><code>Hierarchy levels:
+  sub_specialty: 290 unique values
+  reporting_unit: 55 unique values
+  division: 14 unique values
+  board: 3 unique values
+</code></pre>
+<h2 id="inspect-subspecialty-prediction-inputs">Inspect Subspecialty Prediction Inputs</h2>
+<pre><code class="language-python"># Look at one subspecialty's inputs
+first_spec_id = list(subspecialty_data.keys())[0]
+first_spec_inputs = subspecialty_data[first_spec_id]
+
+print(f&quot;Example subspecialty: {first_spec_id}&quot;)
+print(f&quot;\n{first_spec_inputs}&quot;)
+
+</code></pre>
+<pre><code>Example subspecialty: Oncology - Gynae - Clinical
+
+SubspecialtyPredictionInputs(subspecialty='Oncology - Gynae - Clinical')
+  INFLOWS:
+    Admissions from current ED               PMF[0:10]: [0.970, 0.030, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.0 of 27 patients in ED)
+    ED yet-to-arrive admissions              λ = 0.014
+    Non-ED emergency admissions              λ = 0.000
+    Elective admissions                      λ = 0.075
+    Elective transfers from other subspecialties PMF[0:2]: [1.000, 0.000] (E=0.0)
+    Emergency transfers from other subspecialties PMF[0:7]: [0.957, 0.042, 0.001, 0.000, 0.000, 0.000, 0.000] (E=0.0)
+  OUTFLOWS:
+    Emergency inpatient departures           PMF[0:2]: [0.905, 0.095] (E=0.1 of 1 emergency patients in subspec)
+    Elective inpatient departures            PMF[0:2]: [1.000, 0.000] (E=0.0 of 1 elective patients in subspec)
+</code></pre>
+<pre><code class="language-python"># Inspect inflows for the first subspecialty
+print(f&quot;Inflows for {first_spec_id}:&quot;)
+for flow_id, flow_input in first_spec_inputs.inflows.items():
+    if flow_input.flow_type == 'pmf':
+        pmf = flow_input.distribution
+        print(f&quot;  {flow_id}: PMF with {len(pmf)} elements, sum={pmf.sum():.4f}, mean={np.sum(pmf * np.arange(len(pmf))):.4f}&quot;)
+    elif flow_input.flow_type == 'poisson':
+        lam = flow_input.distribution
+        print(f&quot;  {flow_id}: Poisson(λ={lam:.4f})&quot;)
+
+</code></pre>
+<pre><code>Inflows for Oncology - Gynae - Clinical:
+  ed_current: PMF with 28 elements, sum=1.0000, mean=0.0303
+  ed_yta: Poisson(λ=0.0141)
+  non_ed_yta: Poisson(λ=0.0000)
+  elective_yta: Poisson(λ=0.0755)
+  elective_transfers: PMF with 2 elements, sum=1.0000, mean=0.0000
+  emergency_transfers: PMF with 7 elements, sum=1.0000, mean=0.0436
+</code></pre>
+<pre><code class="language-python"># Inspect outflows for the first subspecialty
+print(f&quot;Outflows for {first_spec_id}:&quot;)
+for flow_id, flow_input in first_spec_inputs.outflows.items():
+    if flow_input.flow_type == 'pmf':
+        pmf = flow_input.distribution
+        print(f&quot;  {flow_id}: PMF with {len(pmf)} elements, sum={pmf.sum():.4f}, mean={np.sum(pmf * np.arange(len(pmf))):.4f}&quot;)
+    elif flow_input.flow_type == 'poisson':
+        lam = flow_input.distribution
+        print(f&quot;  {flow_id}: Poisson(λ={lam:.4f})&quot;)
+
+</code></pre>
+<pre><code>Outflows for Oncology - Gynae - Clinical:
+  emergency_departures: PMF with 2 elements, sum=1.0000, mean=0.0953
+  elective_departures: PMF with 2 elements, sum=1.0000, mean=0.0000
+</code></pre>
+<h2 id="inspect-existing-prediction-bundles-from-pickled-predictor">Inspect Existing Prediction Bundles (from Pickled Predictor)</h2>
+<pre><code class="language-python"># Get flow selection from the pickled predictor
+if predictor.cache:
+    first_bundle = next(iter(predictor.cache.values()))
+    flow_selection = first_bundle.flow_selection
+    print(f&quot;Flow selection from pickled predictor: {flow_selection.cohort}&quot;)
+    print(f&quot;\nCached bundles in predictor: {len(predictor.cache)} entities&quot;)
+    print(f&quot;\nEntity IDs in cache:&quot;)
+    for entity_id in list(predictor.cache.keys())[:20]:
+        print(f&quot;  {entity_id}&quot;)
+    if len(predictor.cache) &gt; 20:
+        print(f&quot;  ... and {len(predictor.cache) - 20} more&quot;)
+
+</code></pre>
+<pre><code>Flow selection from pickled predictor: all
+
+Cached bundles in predictor: 364 entities
+
+Entity IDs in cache:
+  subspecialty:Oncology - Gynae - Clinical
+  subspecialty:Neurology - Stroke ASU
+  subspecialty:Neurosurgery - Epilepsy
+  subspecialty:Haematology - BMT - Treatment
+  subspecialty:CYPPS - Psychiatry
+  subspecialty:Neurosurgery - Stereotactic Functional
+  subspecialty:Neurosurgery - Gamma Knife
+  subspecialty:Paediatric - Respiratory Medicine
+  subspecialty:Infectious Diseases - COVID-19 Medicines Delivery
+  subspecialty:Neurosurgery - Vascular
+  subspecialty:Gastroenterology - Adolescent
+  subspecialty:Gynaecology - Endometriosis
+  subspecialty:Neurology - Neuro Ophthalmology
+  subspecialty:Respiratory - Lung Cancer
+  subspecialty:Obstetrics - Still Birth
+  subspecialty:Neurology - Autonomics
+  subspecialty:Urology - Stones
+  subspecialty:Neurosurgery - General Cranial
+  subspecialty:Gynaecology - Urogynaecology
+  subspecialty:Oncology - Interventional Oncology Service
+  ... and 344 more
+</code></pre>
+<pre><code class="language-python"># Inspect a specific prediction bundle from the cache
+# You can modify this to look at different entities
+entity_to_inspect = list(predictor.cache.keys())[0] if predictor.cache else None
+
+if entity_to_inspect:
+    bundle = predictor.cache[entity_to_inspect]
+    print(f&quot;\nPrediction Bundle for: {entity_to_inspect}&quot;)
+    print(f&quot;Entity ID: {bundle.entity_id}&quot;)
+    print(f&quot;Entity Type: {bundle.entity_type}&quot;)
+    print(f&quot;\n{bundle}&quot;)
+
+</code></pre>
+<pre><code>Prediction Bundle for: subspecialty:Oncology - Gynae - Clinical
+Entity ID: Oncology - Gynae - Clinical
+Entity Type: subspecialty
+
+PredictionBundle(subspecialty: Oncology - Gynae - Clinical)
+  Arrivals:    PMF[0:10]: [0.849, 0.140, 0.011, 0.001, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.2)
+  Departures:  PMF[0:3]: [0.905, 0.095, 0.000] (E=0.1)
+  Net flow:    PMF[-2:6]: [0.000, 0.081, 0.781, 0.127, 0.010, 0.001, 0.000, 0.000] (E=0.1)
+  Flows:       selection cohort=all inflows(ed_current=True, ed_yta=True, non_ed_yta=True, elective_yta=True, transfers_in=True) outflows(departures=True)
+</code></pre>
+<h2 id="create-new-predictions-with-different-k_sigma-values">Create New Predictions with Different k_sigma Values</h2>
+<p>You can create new predictions with different k_sigma values to see how they affect the results.</p>
+<pre><code class="language-python"># Choose a k_sigma value to test
+k_sigma = 8.0
+
+# Create a new predictor with this k_sigma
+new_predictor = create_hierarchical_predictor(
+    hierarchy_df,
+    column_mapping,
+    top_level_id,
+    k_sigma=k_sigma,
+)
+
+print(f&quot;Created new predictor with k_sigma={k_sigma}&quot;)
+
+</code></pre>
+<pre><code>Created new predictor with k_sigma=8.0
+</code></pre>
+<pre><code class="language-python"># Generate predictions with the new k_sigma
+# Use the flow_selection from the pickled predictor
+new_results = new_predictor.predict_all_levels(
+    subspecialty_data,
+    flow_selection=flow_selection
+)
+
+print(f&quot;Generated {len(new_results)} prediction bundles&quot;)
+print(f&quot;\nEntity IDs in results:&quot;)
+for entity_id in list(new_results.keys())[:20]:
+    print(f&quot;  {entity_id}&quot;)
+if len(new_results) &gt; 20:
+    print(f&quot;  ... and {len(new_results) - 20} more&quot;)
+
+</code></pre>
+<pre><code>Generated 364 prediction bundles
+
+Entity IDs in results:
+  subspecialty:Oncology - Gynae - Clinical
+  subspecialty:Neurology - Stroke ASU
+  subspecialty:Neurosurgery - Epilepsy
+  subspecialty:Haematology - BMT - Treatment
+  subspecialty:CYPPS - Psychiatry
+  subspecialty:Neurosurgery - Stereotactic Functional
+  subspecialty:Neurosurgery - Gamma Knife
+  subspecialty:Paediatric - Respiratory Medicine
+  subspecialty:Infectious Diseases - COVID-19 Medicines Delivery
+  subspecialty:Neurosurgery - Vascular
+  subspecialty:Gastroenterology - Adolescent
+  subspecialty:Gynaecology - Endometriosis
+  subspecialty:Neurology - Neuro Ophthalmology
+  subspecialty:Respiratory - Lung Cancer
+  subspecialty:Obstetrics - Still Birth
+  subspecialty:Neurology - Autonomics
+  subspecialty:Urology - Stones
+  subspecialty:Neurosurgery - General Cranial
+  subspecialty:Gynaecology - Urogynaecology
+  subspecialty:Oncology - Interventional Oncology Service
+  ... and 344 more
+</code></pre>
+<pre><code class="language-python"># Inspect a specific prediction bundle from the new results
+# Try different entity IDs to explore
+entity_to_inspect = list(new_results.keys())[0]
+
+bundle = new_results[entity_to_inspect]
+print(f&quot;\nPrediction Bundle for: {entity_to_inspect}&quot;)
+print(f&quot;\n{bundle}&quot;)
+
+</code></pre>
+<pre><code>Prediction Bundle for: subspecialty:Oncology - Gynae - Clinical
+
+PredictionBundle(subspecialty: Oncology - Gynae - Clinical)
+  Arrivals:    PMF[0:10]: [0.849, 0.140, 0.011, 0.001, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.2)
+  Departures:  PMF[0:3]: [0.905, 0.095, 0.000] (E=0.1)
+  Net flow:    PMF[-2:8]: [0.000, 0.081, 0.781, 0.128, 0.010, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.1)
+  Flows:       selection cohort=all inflows(ed_current=True, ed_yta=True, non_ed_yta=True, elective_yta=True, transfers_in=True) outflows(departures=True)
+</code></pre>
+<pre><code class="language-python"># Compare PMF sizes for top-level entity
+top_level_key = f&quot;hospital:{top_level_id}&quot; if f&quot;hospital:{top_level_id}&quot; in new_results else None
+if not top_level_key:
+    # Try to find top level by checking entity types
+    for key, bundle in new_results.items():
+        if bundle.entity_type == 'hospital':
+            top_level_key = key
+            break
+
+if top_level_key:
+    bundle = new_results[top_level_key]
+    print(f&quot;Top-level bundle: {top_level_key}&quot;)
+    print(f&quot;\nArrivals PMF length: {len(bundle.arrivals.probabilities)}&quot;)
+    print(f&quot;Arrivals expected value: {bundle.arrivals.expected_value:.2f}&quot;)
+    print(f&quot;\nDepartures PMF length: {len(bundle.departures.probabilities)}&quot;)
+    print(f&quot;Departures expected value: {bundle.departures.expected_value:.2f}&quot;)
+    print(f&quot;\nNet flow PMF length: {len(bundle.net_flow.probabilities)}&quot;)
+    print(f&quot;Net flow expected value: {bundle.net_flow.expected_value:.2f}&quot;)
+    print(f&quot;Net flow offset: {bundle.net_flow.offset}&quot;)
+
+    # Show percentiles
+    print(f&quot;\nArrivals percentiles: {bundle.arrivals.percentiles}&quot;)
+    print(f&quot;Departures percentiles: {bundle.departures.percentiles}&quot;)
+    print(f&quot;Net flow percentiles: {bundle.net_flow.percentiles}&quot;)
+else:
+    print(&quot;Could not find top-level entity&quot;)
+
+</code></pre>
+<pre><code>Top-level bundle: hospital:uclh
+
+Arrivals PMF length: 189
+Arrivals expected value: 106.17
+
+Departures PMF length: 144
+Departures expected value: 86.42
+
+Net flow PMF length: 332
+Net flow expected value: 19.75
+Net flow offset: -143
+
+Arrivals percentiles: {50: 106, 75: 113, 90: 119, 95: 123, 99: 130}
+Departures percentiles: {50: 86, 75: 91, 90: 95, 95: 98, 99: 103}
+Net flow percentiles: {50: 20, 75: 28, 90: 36, 95: 40, 99: 49}
+</code></pre>
+<h2 id="compare-different-k_sigma-values">Compare Different k_sigma Values</h2>
+<p>Compare how different k_sigma values affect PMF sizes and predictions.</p>
+<pre><code class="language-python"># Test multiple k_sigma values
+k_sigma_values = [4.0, 6.0, 8.0, 10.0, 12.0]
+comparison_results = {}
+
+for k_sigma in k_sigma_values:
+    predictor = create_hierarchical_predictor(
+        hierarchy_df,
+        column_mapping,
+        top_level_id,
+        k_sigma=k_sigma,
+    )
+
+    results = predictor.predict_all_levels(
+        subspecialty_data,
+        flow_selection=flow_selection
+    )
+
+    # Find top-level bundle
+    top_bundle = None
+    for key, bundle in results.items():
+        if bundle.entity_type == 'hospital':
+            top_bundle = bundle
+            break
+
+    if top_bundle:
+        comparison_results[k_sigma] = {
+            'arrivals_pmf_len': len(top_bundle.arrivals.probabilities),
+            'departures_pmf_len': len(top_bundle.departures.probabilities),
+            'net_flow_pmf_len': len(top_bundle.net_flow.probabilities),
+            'arrivals_expected': top_bundle.arrivals.expected_value,
+            'departures_expected': top_bundle.departures.expected_value,
+            'net_flow_expected': top_bundle.net_flow.expected_value,
+        }
+
+# Display comparison
+print(f&quot;{'k_sigma':&lt;10} {'Arr PMF':&lt;12} {'Dep PMF':&lt;12} {'Net PMF':&lt;12} {'Arr E[X]':&lt;12} {'Dep E[X]':&lt;12} {'Net E[X]':&lt;12}&quot;)
+print(&quot;-&quot; * 80)
+for k_sigma in sorted(comparison_results.keys()):
+    r = comparison_results[k_sigma]
+    print(f&quot;{k_sigma:&lt;10.1f} {r['arrivals_pmf_len']:&lt;12} {r['departures_pmf_len']:&lt;12} {r['net_flow_pmf_len']:&lt;12} &quot;
+          f&quot;{r['arrivals_expected']:&lt;12.2f} {r['departures_expected']:&lt;12.2f} {r['net_flow_expected']:&lt;12.2f}&quot;)
+
+</code></pre>
+<pre><code>k_sigma    Arr PMF      Dep PMF      Net PMF      Arr E[X]     Dep E[X]     Net E[X]    
+--------------------------------------------------------------------------------
+4.0        148          116          263          106.09       86.42        19.67       
+6.0        169          130          298          106.16       86.42        19.74       
+8.0        189          144          332          106.17       86.42        19.75       
+10.0       209          158          366          106.17       86.42        19.75       
+12.0       230          172          401          106.17       86.42        19.75
+</code></pre>
+<h2 id="explore-specific-subspecialty-predictions">Explore Specific Subspecialty Predictions</h2>
+<h2 id="verify-net-flow-bounds-based-on-k_sigma">Verify Net Flow Bounds Based on k_sigma</h2>
+<p>Check that net flow bounds are correct: net flow should range from <code>[-max_departures, +max_arrivals]</code> where the max values come from the capped arrivals and departures distributions.</p>
+<pre><code class="language-python">def verify_net_flow_bounds(bundle):
+    &quot;&quot;&quot;Verify that net flow bounds are correct based on arrivals and departures.
+
+    Net flow should have:
+    - Offset = -(max_departures + departures.offset)
+    - Support range: [-(max_departures + dep_offset), +(max_arrivals + arr_offset)]
+    - PMF length = (max_arrivals + arr_offset) + (max_departures + dep_offset) + 1
+
+    Where:
+    - max_arrivals = len(arrivals.probabilities) - 1
+    - max_departures = len(departures.probabilities) - 1
+    - arr_offset = arrivals.offset (typically 0)
+    - dep_offset = departures.offset (typically 0)
+
+    Returns a dictionary with verification results.
+    &quot;&quot;&quot;
+    arrivals = bundle.arrivals
+    departures = bundle.departures
+    net_flow = bundle.net_flow
+
+    # Calculate max values (accounting for offsets)
+    arr_offset = arrivals.offset
+    dep_offset = departures.offset
+    max_arrivals_idx = len(arrivals.probabilities) - 1
+    max_departures_idx = len(departures.probabilities) - 1
+
+    # Maximum actual values (not indices)
+    max_arrivals_value = arr_offset + max_arrivals_idx
+    max_departures_value = dep_offset + max_departures_idx
+
+    # Expected net flow bounds
+    # Net flow = arrivals - departures
+    # Minimum: min_arrivals - max_departures = arr_offset - max_departures_value
+    # Maximum: max_arrivals - min_departures = max_arrivals_value - dep_offset
+    expected_min_value = arr_offset - max_departures_value
+    expected_max_value = max_arrivals_value - dep_offset
+    expected_offset = expected_min_value
+    expected_pmf_length = expected_max_value - expected_min_value + 1
+
+    # Actual values
+    actual_offset = net_flow.offset
+    actual_min_value = net_flow.offset
+    actual_max_value = net_flow.offset + len(net_flow.probabilities) - 1
+    actual_pmf_length = len(net_flow.probabilities)
+
+    # Verify
+    offset_correct = actual_offset == expected_offset
+    min_value_correct = actual_min_value == expected_min_value
+    max_value_correct = actual_max_value == expected_max_value
+    pmf_length_correct = actual_pmf_length == expected_pmf_length
+
+    all_correct = offset_correct and min_value_correct and max_value_correct and pmf_length_correct
+
+    return {
+        'entity_id': bundle.entity_id,
+        'entity_type': bundle.entity_type,
+        'arr_offset': arr_offset,
+        'dep_offset': dep_offset,
+        'max_arrivals_idx': max_arrivals_idx,
+        'max_departures_idx': max_departures_idx,
+        'max_arrivals_value': max_arrivals_value,
+        'max_departures_value': max_departures_value,
+        'expected_offset': expected_offset,
+        'actual_offset': actual_offset,
+        'offset_correct': offset_correct,
+        'expected_min_value': expected_min_value,
+        'actual_min_value': actual_min_value,
+        'min_value_correct': min_value_correct,
+        'expected_max_value': expected_max_value,
+        'actual_max_value': actual_max_value,
+        'max_value_correct': max_value_correct,
+        'expected_pmf_length': expected_pmf_length,
+        'actual_pmf_length': actual_pmf_length,
+        'pmf_length_correct': pmf_length_correct,
+        'all_correct': all_correct,
+    }
+
+# Verify bounds for a specific bundle
+if 'new_results' in locals() and new_results:
+    bundle_to_check = list(new_results.values())[0]
+    verification = verify_net_flow_bounds(bundle_to_check)
+
+    print(f&quot;Verification for: {verification['entity_id']} ({verification['entity_type']})&quot;)
+    print(f&quot;\nArrivals:&quot;)
+    print(f&quot;  Offset: {verification['arr_offset']}, Max index: {verification['max_arrivals_idx']}, Max value: {verification['max_arrivals_value']}&quot;)
+    print(f&quot;\nDepartures:&quot;)
+    print(f&quot;  Offset: {verification['dep_offset']}, Max index: {verification['max_departures_idx']}, Max value: {verification['max_departures_value']}&quot;)
+    print(f&quot;\nNet Flow Bounds:&quot;)
+    print(f&quot;  Expected offset: {verification['expected_offset']}, Actual: {verification['actual_offset']} {'✓' if verification['offset_correct'] else '✗'}&quot;)
+    print(f&quot;  Expected min value: {verification['expected_min_value']}, Actual: {verification['actual_min_value']} {'✓' if verification['min_value_correct'] else '✗'}&quot;)
+    print(f&quot;  Expected max value: {verification['expected_max_value']}, Actual: {verification['actual_max_value']} {'✓' if verification['max_value_correct'] else '✗'}&quot;)
+    print(f&quot;  Expected PMF length: {verification['expected_pmf_length']}, Actual: {verification['actual_pmf_length']} {'✓' if verification['pmf_length_correct'] else '✗'}&quot;)
+    print(f&quot;\n{'All checks passed!' if verification['all_correct'] else 'Some checks failed!'}&quot;)
+else:
+    print(&quot;Run the cells above to generate predictions first.&quot;)
+
+</code></pre>
+<pre><code>Verification for: Oncology - Gynae - Clinical (subspecialty)
+
+Arrivals:
+  Offset: 0, Max index: 38, Max value: 38
+
+Departures:
+  Offset: 0, Max index: 2, Max value: 2
+
+Net Flow Bounds:
+  Expected offset: -2, Actual: -2 ✓
+  Expected min value: -2, Actual: -2 ✓
+  Expected max value: 38, Actual: 38 ✓
+  Expected PMF length: 41, Actual: 41 ✓
+
+All checks passed!
+</code></pre>
+<pre><code class="language-python"># Verify bounds across all entities and different k_sigma values
+k_sigma_test_values = [4.0, 6.0, 8.0, 10.0, 12.0, 50.0, 100.0]
+verification_results = {}
+
+for k_sigma in k_sigma_test_values:
+    predictor = create_hierarchical_predictor(
+        hierarchy_df,
+        column_mapping,
+        top_level_id,
+        k_sigma=k_sigma,
+    )
+
+    results = predictor.predict_all_levels(
+        subspecialty_data,
+        flow_selection=flow_selection
+    )
+
+    # Verify all bundles
+    entity_verifications = {}
+    for entity_id, bundle in results.items():
+        verification = verify_net_flow_bounds(bundle)
+        entity_verifications[entity_id] = verification
+
+    verification_results[k_sigma] = entity_verifications
+
+# Summary: Check how many entities pass verification for each k_sigma
+print(&quot;Verification Summary:&quot;)
+print(f&quot;{'k_sigma':&lt;10} {'Total Entities':&lt;15} {'All Correct':&lt;15} {'Failed':&lt;15}&quot;)
+print(&quot;-&quot; * 60)
+
+for k_sigma in sorted(verification_results.keys()):
+    verifications = verification_results[k_sigma]
+    total = len(verifications)
+    all_correct = sum(1 for v in verifications.values() if v['all_correct'])
+    failed = total - all_correct
+    print(f&quot;{k_sigma:&lt;10.1f} {total:&lt;15} {all_correct:&lt;15} {failed:&lt;15}&quot;)
+
+# Show any failures
+print(&quot;\n&quot; + &quot;=&quot;*60)
+print(&quot;Detailed Failures (if any):&quot;)
+print(&quot;=&quot;*60)
+
+for k_sigma in sorted(verification_results.keys()):
+    verifications = verification_results[k_sigma]
+    failures = [(eid, v) for eid, v in verifications.items() if not v['all_correct']]
+    if failures:
+        print(f&quot;\nk_sigma = {k_sigma}:&quot;)
+        for entity_id, v in failures:
+            print(f&quot;  {entity_id}:&quot;)
+            if not v['offset_correct']:
+                print(f&quot;    Offset: expected {v['expected_offset']}, got {v['actual_offset']}&quot;)
+            if not v['min_value_correct']:
+                print(f&quot;    Min value: expected {v['expected_min_value']}, got {v['actual_min_value']}&quot;)
+            if not v['max_value_correct']:
+                print(f&quot;    Max value: expected {v['expected_max_value']}, got {v['actual_max_value']}&quot;)
+            if not v['pmf_length_correct']:
+                print(f&quot;    PMF length: expected {v['expected_pmf_length']}, got {v['actual_pmf_length']}&quot;)
+    else:
+        print(f&quot;\nk_sigma = {k_sigma}: All entities passed verification ✓&quot;)
+
+</code></pre>
+<pre><code>Verification Summary:
+k_sigma    Total Entities  All Correct     Failed         
+------------------------------------------------------------
+4.0        364             364             0              
+6.0        364             364             0              
+8.0        364             364             0              
+10.0       364             364             0              
+12.0       364             364             0              
+50.0       364             364             0              
+100.0      364             364             0
+
+============================================================
+Detailed Failures (if any):
+============================================================
+
+k_sigma = 4.0: All entities passed verification ✓
+
+k_sigma = 6.0: All entities passed verification ✓
+
+k_sigma = 8.0: All entities passed verification ✓
+
+k_sigma = 10.0: All entities passed verification ✓
+
+k_sigma = 12.0: All entities passed verification ✓
+
+k_sigma = 50.0: All entities passed verification ✓
+
+k_sigma = 100.0: All entities passed verification ✓
+</code></pre>
+<pre><code class="language-python"># Show how k_sigma affects net flow bounds for top-level entity
+print(&quot;How k_sigma affects net flow bounds (top-level entity):&quot;)
+print(f&quot;{'k_sigma':&lt;10} {'Max Arr Val':&lt;12} {'Max Dep Val':&lt;12} {'Net Min':&lt;10} {'Net Max':&lt;10} {'Net PMF Len':&lt;12} {'Status':&lt;10}&quot;)
+print(&quot;-&quot; * 80)
+
+for k_sigma in sorted(verification_results.keys()):
+    verifications = verification_results[k_sigma]
+
+    # Find top-level entity
+    top_verification = None
+    for entity_id, v in verifications.items():
+        if v['entity_type'] == 'hospital':
+            top_verification = v
+            break
+
+    if top_verification:
+        v = top_verification
+        status = &quot;✓&quot; if v['all_correct'] else &quot;✗&quot;
+        print(f&quot;{k_sigma:&lt;10.1f} {v['max_arrivals_value']:&lt;12} {v['max_departures_value']:&lt;12} &quot;
+              f&quot;{v['actual_min_value']:&lt;10} {v['actual_max_value']:&lt;10} {v['actual_pmf_length']:&lt;12} {status:&lt;10}&quot;)
+
+</code></pre>
+<pre><code>How k_sigma affects net flow bounds (top-level entity):
+k_sigma    Max Arr Val  Max Dep Val  Net Min    Net Max    Net PMF Len  Status    
+--------------------------------------------------------------------------------
+4.0        147          115          -115       147        263          ✓         
+6.0        168          129          -129       168        298          ✓         
+8.0        188          143          -143       188        332          ✓         
+10.0       208          157          -157       208        366          ✓         
+12.0       229          171          -171       229        401          ✓         
+50.0       614          436          -436       614        1051         ✓         
+100.0      1122         563          -563       1122       1686         ✓
+</code></pre>
+<pre><code class="language-python"># Choose a subspecialty to inspect in detail
+spec_to_inspect = list(subspecialty_data.keys())[0]
+spec_key = f&quot;subspecialty:{spec_to_inspect}&quot;
+
+if spec_key in new_results:
+    spec_bundle = new_results[spec_key]
+    print(f&quot;Detailed view of subspecialty: {spec_to_inspect}&quot;)
+    print(f&quot;\n{spec_bundle}&quot;)
+
+    # Show PMF arrays
+    print(f&quot;\n\nArrivals PMF (first 20 values):&quot;)
+    print(spec_bundle.arrivals.probabilities[:20])
+
+    print(f&quot;\nDepartures PMF (first 20 values):&quot;)
+    print(spec_bundle.departures.probabilities[:20])
+
+    print(f&quot;\nNet Flow PMF (first 20 values, offset={spec_bundle.net_flow.offset}):&quot;)
+    print(spec_bundle.net_flow.probabilities[:20])
+else:
+    print(f&quot;Could not find {spec_key} in results&quot;)
+
+</code></pre>
+<pre><code>Detailed view of subspecialty: Oncology - Gynae - Clinical
+
+PredictionBundle(subspecialty: Oncology - Gynae - Clinical)
+  Arrivals:    PMF[0:10]: [0.849, 0.140, 0.011, 0.001, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.2)
+  Departures:  PMF[0:3]: [0.905, 0.095, 0.000] (E=0.1)
+  Net flow:    PMF[-2:8]: [0.000, 0.081, 0.781, 0.128, 0.010, 0.000, 0.000, 0.000, 0.000, 0.000] (E=0.1)
+  Flows:       selection cohort=all inflows(ed_current=True, ed_yta=True, non_ed_yta=True, elective_yta=True, transfers_in=True) outflows(departures=True)
+
+
+Arrivals PMF (first 20 values):
+[8.48694244e-01 1.39805058e-01 1.09366768e-02 5.45197028e-04
+ 1.83986641e-05 4.18752076e-07 6.35445372e-09 6.36642404e-11
+ 4.18183760e-13 1.80973266e-15 5.31576184e-18 1.09678047e-20
+ 1.63744117e-23 1.81122916e-26 1.51211119e-29 9.66733306e-33
+ 4.78723204e-36 1.85225818e-39 5.63508145e-43 1.35349652e-46]
+
+Departures PMF (first 20 values):
+[0.90469798 0.09530202 0.        ]
+
+Net Flow PMF (first 20 values, offset=-2):
+[0.00000000e+00 8.08822721e-02 7.81135676e-01 1.27523642e-01
+ 9.94634782e-03 4.94992082e-04 1.66851423e-05 3.79449751e-07
+ 5.75492880e-09 5.76367637e-11 3.78502476e-13 1.63776810e-15
+ 4.81020427e-18 9.92411128e-21 1.48156234e-23 1.63875948e-26
+ 1.36809608e-29 8.74647296e-33 4.33117570e-36 1.67578794e-39]
+</code></pre>
+<pre><code class="language-python">
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
