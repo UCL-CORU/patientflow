@@ -17,7 +17,7 @@ For computational efficiency, the module automatically switches between two meth
 - Normal approximation (default for n > 30): Uses a normal approximation with continuity correction
   for larger groups. The approximation is based on the central limit theorem, where the sum of independent
   Bernoulli random variables approaches a normal distribution for large n. The mean is the sum of probabilities
-  and the variance is the sum of p_i * (1 - p_i).
+  and the variance is the sum of `p_i * (1 - p_i)`.
 
 The threshold (default: 30) can be adjusted via the `normal_approx_threshold` parameter in functions that
 accept it. Setting this parameter to `None` or a very large value forces exact computation for all sample sizes.
@@ -62,11 +62,11 @@ class BernoulliGeneratingFunction:
     This class is based on the mathematical principle that the generating function of
     a sum of independent random variables is the product of their individual generating functions.
 
-    For Bernoulli random variables with success probabilities p_i, the generating function is:
-    G_i(z) = (1 - p_i) + p_i * z
+    For Bernoulli random variables with success probabilities `p_i`, the generating function is:
+    `G_i(z) = (1 - p_i) + p_i * z`
 
-    The product G_1(z) * G_2(z) * ... * G_n(z) gives the generating function of the sum,
-    and the coefficient of z^k gives P(sum = k).
+    The product `G_1(z) * G_2(z) * ... * G_n(z)` gives the generating function of the sum,
+    and the coefficient of `z^k` gives `P(sum = k)`.
 
     The `get_distribution()` method automatically selects between exact computation and normal
     approximation based on sample size (see module-level documentation for details).
@@ -132,15 +132,15 @@ class BernoulliGeneratingFunction:
 
         For sums of independent Bernoulli random variables:
         - Mean = sum of probabilities
-        - Variance = sum of p_i * (1 - p_i)
+        - Variance = `sum of p_i * (1 - p_i)`
 
-        Uses continuity correction: P(X = k) ≈ P(k - 0.5 < Y < k + 0.5)
-        where Y ~ Normal(mean, variance)
+        Uses continuity correction: `P(X = k) ≈ P(k - 0.5 < Y < k + 0.5)`
+        where `Y ~ Normal(mean, variance)`
 
         Returns
         -------
         Dict[int, float]
-            Dictionary mapping {k: P(sum = k)} for k = 0, 1, ..., n
+            Dictionary mapping `{k: P(sum = k)}` for `k = 0, 1, ..., n`
         """
         mean = self.probs.sum()
         variance = (self.probs * (1 - self.probs)).sum()
@@ -237,11 +237,11 @@ def pred_proba_to_agg_predicted(
 
     Mathematical Background
     ----------------------
-    Each patient has a probability p_i of needing a bed (Bernoulli random variable).
+    Each patient has a probability `p_i` of needing a bed (Bernoulli random variable).
     The total number of beds needed is the sum of these Bernoulli variables.
 
     The generating function approach computes:
-    P(Total = k) = coefficient of z^k in ∏(1 - p_i + p_i * z)
+    `P(Total = k) = coefficient of z^k in ∏(1 - p_i + p_i * z)`
 
     This is computed efficiently using dynamic programming without symbolic expansion.
 
@@ -261,8 +261,8 @@ def pred_proba_to_agg_predicted(
     -------
     pd.DataFrame
         A DataFrame with a single column 'agg_proba' showing the aggregated probability distribution,
-        indexed from 0 to n, where n is the number of predictions. Each row gives P(total = k)
-        where k is the row index.
+        indexed from `0` to `n`, where `n` is the number of predictions. Each row gives `P(total = k)`
+        where `k` is the row index.
 
     """
     n = len(predictions_proba)
