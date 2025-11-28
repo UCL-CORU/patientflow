@@ -25,7 +25,7 @@ accept it. Setting this parameter to `None` or a very large value forces exact c
 Functions
 ---------
 BernoulliGeneratingFunction : class
-    Efficient generating function implementation for sums of Bernoulli random variables.
+    Generating function for sums of Bernoulli random variables.
     Automatically selects between exact computation and normal approximation based on sample size.
 
 model_input_to_pred_proba : function
@@ -41,7 +41,7 @@ get_prob_dist : function
     Calculate probability distributions for each snapshot date based on given model predictions.
 
 get_prob_dist_using_survival_curve : function
-    Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
+    Calculate probability distributions for each snapshot date based on given model predictions, using a survival curve to predict the probability of each patient being admitted within a given prediction window.
 
 """
 
@@ -294,10 +294,7 @@ def get_prob_dist_for_prediction_moment(
     normal_approx_threshold: int = 30,
 ) -> Dict[str, Any]:
     """
-    Calculate both predicted distributions and observed values for a given date using test data.
-
-    This function applies the generating function approach to compute aggregate
-    probability distributions efficiently.
+    Calculate both predicted distributions and observed values for a given snapshot date.
 
     Parameters
     ----------
@@ -386,10 +383,6 @@ def get_prob_dist(
 ) -> Dict[date, Dict[str, Any]]:
     """
     Calculate probability distributions for each snapshot date based on given model predictions.
-
-    This function uses the refactored generating function approach for significant performance
-    improvements over the original symbolic mathematics implementation.
-
     Parameters
     ----------
     snapshots_dict : Dict[date, List[int]]
@@ -528,9 +521,6 @@ def get_prob_dist_using_survival_curve(
 ) -> Dict[date, Dict[str, Any]]:
     """
     Calculate probability distributions for each snapshot date using an EmpiricalIncomingAdmissionPredictor.
-
-    This function maintains the same interface as the original but benefits from any internal
-    improvements in the EmpiricalIncomingAdmissionPredictor implementation.
 
     Parameters
     ----------
