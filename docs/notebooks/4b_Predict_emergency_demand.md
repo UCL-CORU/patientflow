@@ -482,8 +482,6 @@ survival_df = plot_admission_time_survival_curve(train_inpatient_arrivals_df.res
 )
 ```
 
-![png](4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_33_0.png)
-
 `patientflow` includes a function to look up the probability of admission within a prediction window, using the survival curve. This is demonstrated below. It is used in the `create_predictions` function if the optional parameter `use_admission_in_window_prob` is set.
 
 ```python
@@ -497,8 +495,6 @@ prob_admission_in_window_from_survival_curve = calculate_admission_probability_f
 
 print(f'Probability of admission in prediction window of {prediction_window.total_seconds() / 3600:.0f} hours, assuming patient has been in ED for 1 hour: {prob_admission_in_window_from_survival_curve:.2}')
 ```
-
-    Probability of admission in prediction window of 8 hours, assuming patient has been in ED for 1 hour: 0.48
 
 For an array of patients, the probability of admission within the window would be created as shown below.
 
@@ -517,7 +513,7 @@ prob_admission_in_window_from_survival_curve = prediction_snapshots.apply(
 
 ```
 
-Predictions are created exactly as before. The
+Predictions are created exactly as before.
 
 ```python
 from patientflow.predict.emergency_demand import create_predictions
@@ -567,9 +563,9 @@ create_predictions(
     use_admission_in_window_prob = True)
 ```
 
-    {'medical': {'in_ed': [3, 2], 'yet_to_arrive': [0, 0]},
-     'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
-     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+    {'medical': {'in_ed': [7, 5], 'yet_to_arrive': [0, 0]},
+     'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 
 ## Summary
