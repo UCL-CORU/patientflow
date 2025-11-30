@@ -1,20 +1,22 @@
 # 4d. Evaluate predictions with special categories
 
-In the previous notebook I demonstrated how we evaluate the models used at UCLH. As a final step, I now show the same implementation in code, but including extra functionality to handle certain sub-groups differently from others.
+In the previous notebook I demonstrated how we evaluate the models used at UCLH. As a final step, I now show the same implementation in code, but including extra functionality to handle certain sub-groups differently from others. 
 
-At UCLH, it is standard practice to admit paediatric patients (defined as patients under 18 on the day of arrival at the ED) to paediatric wards, and not to admit adult patients (18 or over) to paediatric wards.
+At UCLH, it is standard practice to admit paediatric patients (defined as patients under 18 on the day of arrival at the ED) to paediatric wards, and not to admit adult patients (18 or over) to paediatric wards. 
 
-The two models that enable prediction by sub-groups (specialty of admission, and yet-to-arrive by specialty) offer parameters that allow you to specify that certain groups are handled differently. In the UCLH example, this means disregarding any consult requests for patients in the ED when predicting which specialty they will be admitted to, and counting all yet-to-arrive patients under 18 as paediatric admissions.
+The two models that enable prediction by sub-groups (specialty of admission, and yet-to-arrive by specialty) offer parameters that allow you to specify that certain groups are handled differently. In the UCLH example, this means disregarding any consult requests for patients in the ED when predicting which specialty they will be admitted to, and counting all yet-to-arrive patients under 18 as paediatric admissions. 
 
-Most of the code below is the same as in the previous notebook. I limit the narrative here to pointing out how the special sub-groups are handled.
+Most of the code below is the same as in the previous notebook. I limit the narrative here to pointing out how the special sub-groups are handled. 
 
 ## Set up the notebook environment
 
+
 ```python
 # Reload functions every time
-%load_ext autoreload
+%load_ext autoreload 
 %autoreload 2
 ```
+
 
 ```python
 from patientflow.load import set_project_root
@@ -24,11 +26,13 @@ project_root = set_project_root()
 
     Inferred project root: /Users/zellaking/Repos/patientflow
 
+
 ## Set file paths and load data
 
-I'm going to use real patient data from UCLH to demonstrate the implementation.
+I'm going to use real patient data from UCLH to demonstrate the implementation. 
 
 As noted previously, you can request the datasets that are used here on [Zenodo](https://zenodo.org/records/14866057). Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
+
 
 ```python
 from patientflow.load import set_file_paths
@@ -38,25 +42,26 @@ data_folder_name = 'data-public'
 data_file_path = project_root / data_folder_name
 
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-    project_root,
+    project_root, 
     data_folder_name=data_folder_name,
     config_file = 'config.yaml', verbose=False)
 ```
+
 
 ```python
 import pandas as pd
 from patientflow.load import load_data
 
 # load ED snapshots data
-ed_visits = load_data(data_file_path,
-                    file_name='ed_visits.csv',
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
 # load data on inpatient arrivals
-inpatient_arrivals = inpatient_arrivals = load_data(data_file_path,
+inpatient_arrivals = inpatient_arrivals = load_data(data_file_path, 
                     file_name='inpatient_arrivals.csv')
 inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'], utc = True)
 
@@ -65,6 +70,7 @@ inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arri
 ## Set modelling parameters
 
 The parameters are used in training or inference. They are set in config.json in the root of the repository and loaded by `load_config_file()`
+
 
 ```python
 # load params
@@ -76,6 +82,7 @@ start_training_set, start_validation_set, start_test_set, end_test_set = params[
 ```
 
 ## Apply temporal splits
+
 
 ```python
 from patientflow.prepare import create_temporal_splits
@@ -102,9 +109,11 @@ train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_spl
     Split sizes: [62071, 10415, 29134]
     Split sizes: [7716, 1285, 3898]
 
+
 ## Train models to predict bed count distributions for patients currently in the ED
 
 This time I'll use a larger parameter grid, while still limiting the search space to a few hyperparameters for expediency.
+
 
 ```python
 
@@ -115,7 +124,7 @@ grid = { # Current parameters
     'n_estimators': [30, 40, 50],  # Number of trees
     'subsample': [0.7, 0.8, 0.9],  # Sample ratio of training instances
     'colsample_bytree': [0.7, 0.8, 0.9],  # Sample ratio of columns for each tree
-   }
+   } 
 
 exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
 
@@ -158,7 +167,7 @@ for prediction_time in ed_visits.prediction_time.unique():
         use_balanced_training=True,
     )
     model_key = get_model_key(model_name, prediction_time)
-
+    
     admissions_models[model_key] = model
 ```
 
@@ -168,9 +177,144 @@ for prediction_time in ed_visits.prediction_time.unique():
     Training model for (12, 0)
     Training model for (9, 30)
 
-## Train specialty model
 
-Here, when training the model predicting specialty of admission, the `apply_special_category_filtering` parameter has been set to True, so it will be assumed that all patients under 18 on arrival will be admitted to a paediatric specialty.
+## Train specialty model using cohort-aware prediction
+
+MultiSubgroupPredictor creates separate models for different patient subgroups (for example different age/sex combinations). This makes it possible to ensure that a model never predicts that an adult be admitted to a paediatric specialty, for example. As we move towards predicting by subspecialty at UCLH, we want to ensure that some of male sex would have zero probability of being admitted to wards dedicated to women's health, for example. 
+
+Here I demonstrate a simple case ensuing that children and adults are treated separately.
+
+
+```python
+from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
+
+def create_subgroup_functions_from_age_group():
+    """Create subgroup functions that work with age_group categorical variable."""
+    
+    def is_paediatric(row):
+        return row.get("age_group") == "0-17"
+    
+    def is_adult(row):
+        # All non-paediatric patients are adults
+        return row.get("age_group") != "0-17"
+    
+    return {
+        "paediatric": is_paediatric,
+        "adult": is_adult,
+    }
+
+subgroup_functions = create_subgroup_functions_from_age_group()
+
+spec_model = MultiSubgroupPredictor(
+    subgroup_functions=subgroup_functions,
+    base_predictor_class=SequenceToOutcomePredictor,
+    input_var="consultation_sequence",
+    grouping_var="final_sequence",
+    outcome_var="specialty",
+    min_samples=50,  # Minimum samples required per subgroup
+)
+spec_model = spec_model.fit(train_visits_df)
+```
+
+By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults form paediatric specialties did not work as intended. That is because `infer_specialty_to_subgroups` function includes any subgroup that appears **at least once** for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy), both subgroups will be included.
+
+
+```python
+spec_model.specialty_to_subgroups
+```
+
+
+
+
+    {'medical': ['paediatric', 'adult'],
+     'surgical': ['paediatric', 'adult'],
+     'paediatric': ['paediatric', 'adult'],
+     'haem/onc': ['paediatric', 'adult']}
+
+
+
+Looking at the actual subgroup mapping in the data, we see that some children do go to adult specialties and vice versa. From the data below, 3% of children were admitted to surgical specialties; these might be genuine decisions rather than coding errors.
+
+
+```python
+
+for specialty in spec_model.specialty_to_subgroups.keys():
+    spec_mask = train_visits_df['specialty'] == specialty
+    spec_data = train_visits_df[spec_mask]
+    
+    paediatric_count = spec_data.apply(subgroup_functions['paediatric'], axis=1).sum()
+    adult_count = spec_data.apply(subgroup_functions['adult'], axis=1).sum()
+    total = len(spec_data)
+    
+    print(f"\n{specialty} specialty:")
+    print(f"  Total patients: {total}")
+    print(f"  Paediatric (age_group == '0-17'): {paediatric_count} ({paediatric_count/total*100:.1f}%)")
+    print(f"  Adult (age_group != '0-17'): {adult_count} ({adult_count/total*100:.1f}%)")
+    
+    # Check for missing age_group values
+    missing_age = spec_data['age_group'].isna().sum()
+    if missing_age > 0:
+        print(f"  Missing age_group: {missing_age} ({missing_age/total*100:.1f}%)")
+```
+
+    
+    medical specialty:
+      Total patients: 5392
+      Paediatric (age_group == '0-17'): 12 (0.2%)
+      Adult (age_group != '0-17'): 5380 (99.8%)
+    
+    surgical specialty:
+      Total patients: 2185
+      Paediatric (age_group == '0-17'): 70 (3.2%)
+      Adult (age_group != '0-17'): 2115 (96.8%)
+    
+    paediatric specialty:
+      Total patients: 528
+      Paediatric (age_group == '0-17'): 513 (97.2%)
+      Adult (age_group != '0-17'): 15 (2.8%)
+    
+    haem/onc specialty:
+      Total patients: 707
+      Paediatric (age_group == '0-17'): 1 (0.1%)
+      Adult (age_group != '0-17'): 706 (99.9%)
+
+
+We can override this mapping if we wished to enforce stricter policy rules, as shown below.
+
+
+```python
+expected_mapping = {
+    'paediatric': ['paediatric'],
+    'medical': ['adult'],
+    'surgical': ['adult'],
+    'haem/onc': ['adult'],
+}
+
+# Override the inferred mapping
+spec_model.specialty_to_subgroups = expected_mapping
+
+print("Updated specialty_to_subgroups mapping:")
+spec_model.specialty_to_subgroups
+```
+
+    Updated specialty_to_subgroups mapping:
+
+
+
+
+
+    {'paediatric': ['paediatric'],
+     'medical': ['adult'],
+     'surgical': ['adult'],
+     'haem/onc': ['adult']}
+
+
+
+## Train specialty model - legacy code
+
+The legacy approach, prior to implementing the MultiSubgroupPredictor was, when training the model predicting specialty of admission, to set a `apply_special_category_filtering` parameter to True. The legacy approach has been included here for completeness.
+
 
 ```python
 from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
@@ -187,7 +331,10 @@ spec_model = spec_model.fit(train_visits_df)
 spec_model
 ```
 
-<style>#sk-container-id-1 {
+
+
+
+<style>#sk-container-id-2 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -218,15 +365,15 @@ spec_model
   }
 }
 
-#sk-container-id-1 {
+#sk-container-id-2 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-1 pre {
+#sk-container-id-2 pre {
   padding: 0;
 }
 
-#sk-container-id-1 input.sk-hidden--visually {
+#sk-container-id-2 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -238,7 +385,7 @@ spec_model
   width: 1px;
 }
 
-#sk-container-id-1 div.sk-dashed-wrapped {
+#sk-container-id-2 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -246,7 +393,7 @@ spec_model
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-1 div.sk-container {
+#sk-container-id-2 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -256,7 +403,7 @@ spec_model
   position: relative;
 }
 
-#sk-container-id-1 div.sk-text-repr-fallback {
+#sk-container-id-2 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -272,14 +419,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-1 div.sk-parallel-item::after {
+#sk-container-id-2 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-1 div.sk-parallel {
+#sk-container-id-2 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -287,28 +434,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-1 div.sk-parallel-item {
+#sk-container-id-2 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-1 div.sk-parallel-item:first-child::after {
+#sk-container-id-2 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-1 div.sk-parallel-item:last-child::after {
+#sk-container-id-2 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-1 div.sk-parallel-item:only-child::after {
+#sk-container-id-2 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-1 div.sk-serial {
+#sk-container-id-2 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,14 +473,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-1 div.sk-toggleable {
+#sk-container-id-2 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-1 label.sk-toggleable__label {
+#sk-container-id-2 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -346,13 +493,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-1 label.sk-toggleable__label .caption {
+#sk-container-id-2 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -360,13 +507,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-1 div.sk-toggleable__content {
+#sk-container-id-2 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -375,12 +522,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content.fitted {
+#sk-container-id-2 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content pre {
+#sk-container-id-2 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -388,79 +535,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+#sk-container-id-2 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-2 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-1 div.sk-label label.sk-toggleable__label,
-#sk-container-id-1 div.sk-label label {
+#sk-container-id-2 div.sk-label label.sk-toggleable__label,
+#sk-container-id-2 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-2 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-1 div.sk-label label {
+#sk-container-id-2 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-1 div.sk-label-container {
+#sk-container-id-2 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-1 div.sk-estimator {
+#sk-container-id-2 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -470,18 +617,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted {
+#sk-container-id-2 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-1 div.sk-estimator:hover {
+#sk-container-id-2 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-1 div.sk-estimator.fitted:hover {
+#sk-container-id-2 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -569,7 +716,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-1 a.estimator_doc_link {
+#sk-container-id-2 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -584,54 +731,60 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-1 a.estimator_doc_link.fitted {
+#sk-container-id-2 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-1 a.estimator_doc_link:hover {
+#sk-container-id-2 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+#sk-container-id-2 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequenceToOutcomePredictor(
-
+</style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequenceToOutcomePredictor(
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=True,
     admit_col=&#x27;is_admitted&#x27;
-
-)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>SequenceToOutcomePredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>SequenceToOutcomePredictor(
-input_var=&#x27;consultation_sequence&#x27;,
-grouping_var=&#x27;final_sequence&#x27;,
-outcome_var=&#x27;specialty&#x27;,
-apply_special_category_filtering=True,
-admit_col=&#x27;is_admitted&#x27;
+)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>SequenceToOutcomePredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>SequenceToOutcomePredictor(
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=True,
+    admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle paediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for paediatric, 0.0 for others) and functions to identify paediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group).
+
+
+Under the hood, the `SequenceToOutcomePredictor` will call a `create_special_category_objects()` function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle paediatric patients (under 18) as a special category. A `SpecialCategoryParams` class generates a dictionary mapping specialties to flags (1.0 for paediatric, 0.0 for others) and functions to identify paediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group). 
 
 The `SequenceToOutcomePredictor` applies these rules during both training and prediction, ensuring consistent handling of special categories across the entire prediction pipeline
 
 The `SpecialCategoryParams` class is designed to be picklable, which is necessary for saving the specialty predictor model to disk.
 
-The output from `create_special_category_objects` is shown below. Note that the output is specific to the UCLH implementation, and that its use has been deprecated in favour of a more generalisable approach.
+The output from `create_special_category_objects` is shown below. Note that the output is specific to the UCLH implementation, and that its use has been deprecated in favour of a more generalisable approach. 
 
-See below for notes about how to change this for your implementation.
+See below for notes about how to change this for your implementation. 
+
+
+
 
 ```python
 from patientflow.prepare import create_special_category_objects
 create_special_category_objects(train_visits_df.columns)
 ```
+
+
+
 
     {'special_category_func': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_paediatric(row)>,
      'special_category_dict': {'medical': 0.0,
@@ -641,20 +794,24 @@ create_special_category_objects(train_visits_df.columns)
      'special_func_map': {'paediatric': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_paediatric(row)>,
       'default': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_not_paediatric(row)>}}
 
+
+
 ## Train models for yet-to-arrive patients
 
-Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See [3c_Predict_bed_counts_without_using_patient_snapshots.md](3c_Predict_bed_counts_without_using_patient_snapshots.md) for more information. When making predictions by specialty, arrival rates are learned for each specialty separately.
+Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See  [3c_Predict_bed_counts_without_using_patient_snapshots.md](3c_Predict_bed_counts_without_using_patient_snapshots.md) for more information. When making predictions by specialty, arrival rates are learned for each specialty separately. 
 
 The `create_yta_filters()` function generates a dictionary of filters for the `ParametricIncomingAdmissionPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
 
-- For paediatric patients: {"is_child": True}
-- For other specialties: {"specialty": specialty_name, "is_child": False}
+* For paediatric patients: {"is_child": True}
+* For other specialties: {"specialty": specialty_name, "is_child": False}
 
-This allows the predictor to
+This allows the predictor to 
+* Train separate models for each specialty
+* Handle sub-groups differently
+* Apply appropriate filtering during both training and prediction
 
-- Train separate models for each specialty
-- Handle sub-groups differently
-- Apply appropriate filtering during both training and prediction
+
+
 
 ```python
 from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
@@ -672,31 +829,41 @@ num_days = (start_validation_set - start_training_set).days
 if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
     train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
 
-yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-              prediction_window=timedelta(hours=params["prediction_window"]),
-              yta_time_interval=timedelta(minutes=params["yta_time_interval"]),
-              prediction_times=ed_visits.prediction_time.unique(),
+yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df, 
+              prediction_window=timedelta(hours=params["prediction_window"]), 
+              yta_time_interval=timedelta(minutes=params["yta_time_interval"]), 
+              prediction_times=ed_visits.prediction_time.unique(), 
               num_days=num_days )
 ```
 
 ### Saving of special category information
 
-The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for paediatric cases), but does not need them in the predict method. The filters are saved with the instance.
+The `ParametricIncomingAdmissionPredictor` class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for paediatric cases), but does not need them in the predict method. The filters are saved with the instance. 
+
 
 ```python
 yta_model_by_spec.filters
 ```
+
+
+
 
     {'medical': {'specialty': 'medical', 'is_child': False},
      'surgical': {'specialty': 'surgical', 'is_child': False},
      'haem/onc': {'specialty': 'haem/onc', 'is_child': False},
      'paediatric': {'is_child': True}}
 
+
+
 In contrast, the `SequenceToOutcomePredictor` save the special parameters as a function, which is used by the predict method to filter and categorise patients based on their characteristics.
+
 
 ```python
 spec_model.special_params
 ```
+
+
+
 
     {'special_category_func': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_paediatric(row)>,
      'special_category_dict': {'medical': 0.0,
@@ -706,50 +873,44 @@ spec_model.special_params
      'special_func_map': {'paediatric': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_paediatric(row)>,
       'default': <function patientflow.predictors.legacy_compatibility.create_special_category_objects.<locals>.is_not_paediatric(row)>}}
 
+
+
 ## Changes required in your implementation
 
-Listed below are the functions that relate to this special handling. However, note that the way this is handled has been deprecated, in favour of a more generalisable approach.
+Listed below are the functions that relate to this special handling. However, note that the way this is handled has been deprecated, in favour of a more generalisable approach. 
 
 1. **SpecialCategoryParams Class** (`src/patientflow/prepare.py`):
-
 - Specialty names and flags in `special_category_dict`
 - Age detection logic in `special_category_func`
 - Category mapping in `special_func_map`
 
 2. **SequenceToOutcomePredictor Class** (`src/patientflow/predictors/sequence_to_outcome_predictor.py`):
-
 - Uses `create_special_category_objects` in `_preprocess_data`
 - Filters data based on special categories
 - Handles specialty predictions differently for special categories
 
 3. **ValueToOutcomePredictor Class** (`src/patientflow/predictors/value_to_outcome_predictor.py`):
-
 - Similar to SequenceToOutcomePredictor, uses special category filtering
 - Applies the same filtering logic in `_preprocess_data`
 
 4. **create_yta_filters Function** (`src/patientflow/prepare.py`):
-
 - Creates specialty filters based on special category parameters
 - Generates filter configurations for each specialty
 
 5. **get_specialty_probs Function** (`src/patientflow/predict/emergency_demand.py`):
-
 - Uses special category functions to determine specialty probabilities
 - Applies different probability distributions for special categories
 
 6. **create_predictions Function** (`src/patientflow/predict/emergency_demand.py`):
-
 - Validates that requested specialties match special category dictionary
 - Uses special function map for filtering predictions
 - Applies different prediction logic for special categories
 
 7. **WeightedPoissonPredictor Class** (`src/patientflow/predictors/weighted_poisson_predictor.py`):
-
 - Uses specialty filters for predictions
 - Handles different prediction logic for special categories
 
 8. **Tests** (`tests/test_create_predictions.py`):
-
 - Test cases for special category handling
 - Validation of special category predictions
 
@@ -762,16 +923,20 @@ To modify your implementation for different specialty names and rules, you would
 5. Ensure all test cases are updated to reflect your new specialty structure
 6. Update any documentation or examples that reference the specialty names
 
+
 ## Generate predicted distributions for each specialty and prediction time for patients in ED
 
-Now that the models have been trained with the special parameters, we proceed with generating and evaluating predictions. The approach below uses a similar function to the `get_specialty_probability_distributions` function shown in the previous notebook, with some additional logic to identify sub-groups that need special processing.
+Now that the models have been trained with the special parameters, we proceed with generating and evaluating predictions. The approach below uses a similar function to the `get_specialty_probability_distributions` function shown in the previous notebook, with some additional logic to identify sub-groups that need special processing. 
 
-The function
+The function 
 
-- retrieves the special parameters than were saved with the specialty predictor
-- ensures that only eligible patient snapshots are included in the predictions for each specialty. A temporary version of the test set, called `test_df_eligible` is created for each iteration through the various specialties using only the eligible visits
+* retrieves the special parameters than were saved with the specialty predictor
+* ensures that only eligible patient snapshots are included in the predictions for each specialty. A temporary version of the test set, called `test_df_eligible` is created for each iteration through the various specialties using only the eligible visits 
 
-Why is this necessary? Imagine an ED that currently has 75 adult patients and 25 children. Tje maximum number of beds that could be needed in the paediatric specialties is 25 and the maximum number of beds that could be needed in the adult specialties is 75. Without filtering a probabilty distribution for 100 beds would be produced. The logic below means that adult patients are excluded from the predicted distribution for the paediatric specialty, and children from the predicted distributions for the adult specialty.
+Why is this necessary? Imagine an ED that currently has 75 adult patients and 25 children. Tje maximum number of beds that could be needed in the paediatric specialties is 25 and the maximum number of beds that could be needed in the adult specialties is 75. Without filtering a probabilty distribution for 100 beds would be produced. The logic below means that adult patients are excluded from the predicted distribution for the paediatric specialty, and children from the predicted distributions for the adult specialty. 
+
+
+
 
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -791,7 +956,7 @@ def get_specialty_probability_distributions_with_special_categories(
 ):
     """
     Calculate probability distributions for emergency department patients by specialty and prediction time.
-
+    
     Args:
         test_visits_df: DataFrame containing test visit data
         spec_model: Model for specialty predictions (SequenceToOutcomePredictor)
@@ -800,7 +965,7 @@ def get_specialty_probability_distributions_with_special_categories(
         specialties: List of specialties to consider
         exclude_from_training_data: List of columns to exclude from training data
         baseline_prob_dict: Optional dict of baseline probabilities to use instead of spec_model predictions
-
+        
     Returns:
         Dictionary containing probability distributions for each specialty and prediction time
     """
@@ -816,7 +981,7 @@ def get_specialty_probability_distributions_with_special_categories(
         # Create paediatric dictionary for age group 0-17
         paediatric_dict = {key: 0 for key in baseline_prob_dict.keys()}
         paediatric_dict['paediatric'] = 1
-
+        
         # Apply different dictionaries based specialty category function
         test_visits_df.loc[:, "specialty_prob"] = test_visits_df.apply(
             lambda row: paediatric_dict if special_category_func(row) else baseline_prob_dict,
@@ -840,10 +1005,10 @@ def get_specialty_probability_distributions_with_special_categories(
         prob_dist_dict_for_pats_in_ED = {}
         print("\nProcessing :" + str(_prediction_time))
         model_key = get_model_key(model_name, _prediction_time)
-
+        
         for specialty in specialties:
             print(f"Predicting bed counts for {specialty} specialty, for all snapshots in the test set")
-
+            
             # Get indices of patients who are eligible for this specialty
             func = special_func_map.get(specialty, special_func_map["default"])
             non_zero_indices = test_visits_df[
@@ -857,13 +1022,13 @@ def get_specialty_probability_distributions_with_special_categories(
             prob_admission_to_specialty = test_df_eligible["specialty_prob"].apply(
                 lambda x: x[specialty]
             )
-
+            
             # Prepare patient snapshots
             X_test, y_test = prepare_patient_snapshots(
-                df=test_df_eligible,
-                prediction_time=_prediction_time,
+                df=test_df_eligible, 
+                prediction_time=_prediction_time, 
                 single_snapshot_per_visit=False,
-                exclude_columns=exclude_from_training_data,
+                exclude_columns=exclude_from_training_data, 
                 visit_col='visit_number'
             )
 
@@ -881,9 +1046,9 @@ def get_specialty_probability_distributions_with_special_categories(
 
             # Get probability distribution for this time and specialty
             prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
-                group_snapshots_dict, X_test, y_test, admissions_models[model_key],
+                group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
                 weights=filtered_prob_admission_to_specialty,
-                category_filter=admitted_to_specialty,
+                category_filter=admitted_to_specialty, 
                 normal_approx_threshold=30
             )
 
@@ -892,58 +1057,62 @@ def get_specialty_probability_distributions_with_special_categories(
     return prob_dist_dict_all
 ```
 
+
 ```python
 prob_dist_dict_all = get_specialty_probability_distributions_with_special_categories(
     test_visits_df=test_visits_df,
-    spec_model=spec_model,
+    spec_model=spec_model,      
     admissions_models=admissions_models,
     model_name=model_name,
     exclude_from_training_data=exclude_from_training_data,
 )
 ```
 
+    
     Processing :(22, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(6, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(15, 30)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(9, 30)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(12, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
 
+
 ## Visualise the performance of emergency demand prediction models for patients in the ED
 
 Below I generate Adjusted QQ plots for each specialties, using both the baseline predictions, and the sequence predictor. The plots are very similar to the previous notebook. Using age as a fixed category for identifying patients destined for paediatric or adult wards yields similar results.
 
+
 ```python
-baseline_probs = train_inpatient_arrivals_df[~(train_inpatient_arrivals_df.is_child) &
+baseline_probs = train_inpatient_arrivals_df[~(train_inpatient_arrivals_df.is_child) & 
                                              (train_inpatient_arrivals_df.specialty.isin(['medical', 'surgical', 'haem/onc']))]['specialty'].value_counts(normalize=True).to_dict()
 baseline_probs['paediatric'] = 0
 
 prob_dist_dict_all_baseline = get_specialty_probability_distributions_with_special_categories(
     test_visits_df=test_visits_df,
-    spec_model=spec_model,
+    spec_model=spec_model,      
     admissions_models=admissions_models,
     model_name=model_name,
     exclude_from_training_data=exclude_from_training_data,
@@ -951,35 +1120,38 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions_with_speci
 )
 ```
 
+    
     Processing :(22, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(6, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(15, 30)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(9, 30)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
-
+    
     Processing :(12, 0)
     Predicting bed counts for medical specialty, for all snapshots in the test set
     Predicting bed counts for surgical specialty, for all snapshots in the test set
     Predicting bed counts for haem/onc specialty, for all snapshots in the test set
     Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -991,43 +1163,89 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
     specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    plot_epudd(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(), 
         specialty_prob_dist_baseline,
         model_name="admissions",
         suptitle=f"EPUDD plots for {specialty} specialty using baseline probability")
-
-    plot_epudd(ed_visits.prediction_time.unique(),
+    
+    plot_epudd(ed_visits.prediction_time.unique(), 
         specialty_prob_dist,
         model_name="admissions",
         suptitle=f"EPUDD plots for {specialty} specialty using sequence predictor")
 ```
 
+    
     EPUDD plots for medical specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_1.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_2.png)
 
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_1.png)
+    
+
+
+
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_2.png)
+    
+
+
+    
     EPUDD plots for surgical specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_4.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_5.png)
 
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_4.png)
+    
+
+
+
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_5.png)
+    
+
+
+    
     EPUDD plots for haem/onc specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_7.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_8.png)
 
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_7.png)
+    
+
+
+
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_8.png)
+    
+
+
+    
     EPUDD plots for paediatric specialty: baseline vs sequence predictor
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_10.png)
 
-![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_29_11.png)
+
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_10.png)
+    
+
+
+
+    
+![png](4d_Predict_emergency_demand_with_special_categories_files/4d_Predict_emergency_demand_with_special_categories_37_11.png)
+    
+
 
 ## Summary
 
-In this notebook I have shown how to specify that certain groups are handled differently. In the UCLH case, we assume that all patients under 18 will be admitted to a paediatric specialty. I have demonstrated how you can use the functions in patientflow to handle such special cases.
+In this notebook I have shown how to specify that certain groups are handled differently. In the UCLH case, we assume that all patients under 18 will be admitted to a paediatric specialty. I have demonstrated how you can use the functions in patientflow to handle such special cases. 
 
-Note: the approach illustrated here had been deprecated. The code will still work, but this notebook will be replaced in due course.
+Note: the approach illustrated here had been deprecated. The code will still work, but this notebook will be replaced in due course. 
+
+
+
+
+
+
