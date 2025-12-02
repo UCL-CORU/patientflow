@@ -1,0 +1,33 @@
+/Users/zellaking/Repos/patientflow/tests/test_k_sigma_sensitivity.py:41: DeprecationWarning: numpy.core.numeric is deprecated and has been renamed to numpy._core.numeric. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core.numeric._frombuffer.
+  data = pickle.load(f)
+Loading pickled data from /Users/zellaking/Downloads/hierarchical_predictors_with_inputs.pkl...
+Using FlowSelection: all
+Found 291 subspecialties
+Top level ID: uclh
+
+Testing k_sigma = 10.0...
+  Mean time: 0.2383s
+  Total PMF elements: 27108
+
+Testing k_sigma = 50.0...
+  Mean time: 0.3407s
+  Total PMF elements: 45138
+
+Testing k_sigma = 100.0...
+  Mean time: 0.4727s
+  Total PMF elements: 63470
+
+================================================================================
+K_SIGMA SENSITIVITY TEST RESULTS
+================================================================================
+
+k_sigma    Mean Time (s)   Std Time (s)    Total PMF Elements  
+--------------------------------------------------------------------------------
+10.00      0.2383          0.0071          27108               
+50.00      0.3407          0.0056          45138               
+100.00     0.4727          0.0269          63470               
+
+--------------------------------------------------------------------------------
+Performance relative to smallest k_sigma:
+  k_sigma=50.00 is 1.43x slower than k_sigma=10.00
+  k_sigma=100.00 is 1.98x slower than k_sigma=10.00

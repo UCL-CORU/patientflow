@@ -4,7 +4,8 @@ This script benchmarks the time taken to generate hierarchical predictions
 across a range of k_sigma values. It loads pickled HierarchicalPredictor objects
 and measures performance metrics for each k_sigma value.
 
-To run it: "uv run python tests/test_k_sigma_sensitivity.py /path/to/file/hierarchical_predictors_with_inputs.pkl 10 50 100"
+To run it: "uv run python tests/test_k_sigma_sensitivity.py <pickle_path> [k_sigma_values...]"
+Example: "uv run python tests/test_k_sigma_sensitivity.py hierarchical_predictors.pkl 2 4 6 8 10 12"
 """
 
 import pickle
@@ -271,17 +272,18 @@ def print_results_summary(results: Dict[float, Dict[str, Any]]) -> None:
             f"{r['total_pmf_elements']:<20}"
         )
     
-    # Calculate speedup ratios
+    # Calculate relative performance (slowdown/speedup)
     if len(results) > 1:
         print("\n" + "-" * 80)
-        print("Speedup relative to smallest k_sigma:")
+        print("Performance relative to smallest k_sigma:")
         k_sigmas = sorted(results.keys())
         baseline_k = k_sigmas[0]
         baseline_time = results[baseline_k]['mean_time']
         
         for k_sigma in k_sigmas[1:]:
-            speedup = baseline_time / results[k_sigma]['mean_time']
-            print(f"  k_sigma={baseline_k:.2f} vs k_sigma={k_sigma:.2f}: {speedup:.2f}x")
+            current_time = results[k_sigma]['mean_time']
+            slowdown = current_time / baseline_time
+            print(f"  k_sigma={k_sigma:.2f} is {slowdown:.2f}x slower than k_sigma={baseline_k:.2f}")
 
 
 if __name__ == "__main__":
