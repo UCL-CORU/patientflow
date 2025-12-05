@@ -1019,6 +1019,12 @@ class DemandPredictor:
             # Process each flow
             for flow in flows:
                 if flow.flow_type == "poisson":
+                    # Departures should never be Poisson (they're always PMF-based from current patients)
+                    if flow_type == "departures":
+                        raise ValueError(
+                            f"Unexpected Poisson flow in departures: {flow.flow_id}. "
+                            f"Departures must be PMF-based (physically bounded by current patients)."
+                        )
                     lam = float(flow.distribution)
                     means.append(lam)
                     variances.append(lam)  # Var(Poisson(λ)) = λ
@@ -1043,18 +1049,29 @@ class DemandPredictor:
         # Statistical cap: mean + k_sigma * SD
         statistical_cap = sum_of_means + self.k_sigma * combined_sd
 
-        # Physical cap: minimum of all physical maxes (infinity doesn't constrain)
+        # Physical cap: sum of all physical maxes (for convolution)
         finite_physical_maxes = [pm for pm in physical_maxes if pm != float("inf")]
         if finite_physical_maxes:
             physical_cap = float(np.sum(finite_physical_maxes))  # Sum for convolution
         else:
             physical_cap = float("inf")
 
-        # Never exceed what's physically possible
-        if physical_cap == float("inf"):
+        # For departures: always physically bounded (all flows are PMF-based)
+        # The only way physical_cap could be infinite is if flows is empty
+        if flow_type == "departures":
+            if physical_cap == float("inf"):
+                # No departure flows (empty flows list) - return zero distribution cap
+                max_support = 0
+            else:
+                # Departures are always physically bounded - use physical cap only
+                max_support = int(np.ceil(physical_cap))
+        elif physical_cap == float("inf"):
+            # For arrivals: no physical constraint (has Poisson flows), use statistical cap
             max_support = int(np.ceil(statistical_cap))
         else:
-            max_support = int(min(np.ceil(statistical_cap), physical_cap))
+            # For arrivals: physical cap exists (all flows are PMF-based), use physical cap
+            # The physical cap is the hard limit - we should not use statistical cap
+            max_support = int(np.ceil(physical_cap))
 
         # Ensure non-negative
         max_support = max(0, max_support)
