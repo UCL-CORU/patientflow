@@ -706,7 +706,8 @@ def _process_inpatients_for_specialty_by_admission_type(
         agg_predicted_departures = pred_proba_to_agg_predicted(filtered_prob_departure)
     else:
         # No inpatients of this type in this specialty, create zero PMF
-        agg_predicted_departures = {"agg_proba": np.array([1.0, 0.0])}
+        # For 0 patients, PMF should be [1.0] (P(0 departures) = 1.0)
+        agg_predicted_departures = {"agg_proba": np.array([1.0])}
 
     return {
         f"agg_predicted_{admission_type}_departures": agg_predicted_departures,
