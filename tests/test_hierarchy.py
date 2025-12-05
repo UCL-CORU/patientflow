@@ -1219,6 +1219,9 @@ class TestHierarchicalPredictor:
 
         def poisson_flow(flow_id: str, lam: float) -> FlowInputs:
             return FlowInputs(flow_id=flow_id, flow_type="poisson", distribution=lam)
+        
+        def pmf_flow(flow_id: str, probabilities: np.ndarray) -> FlowInputs:
+            return FlowInputs(flow_id=flow_id, flow_type="pmf", distribution=probabilities)
 
         def make_inputs(subspecialty_id: str) -> SubspecialtyPredictionInputs:
             return SubspecialtyPredictionInputs(
@@ -1233,8 +1236,11 @@ class TestHierarchicalPredictor:
                     "emergency_transfers": poisson_flow("emergency_transfers", 0.0),
                 },
                 outflows={
-                    "elective_departures": poisson_flow("elective_departures", 0.5),
-                    "emergency_departures": poisson_flow("emergency_departures", 0.0),
+                    # Departures must be PMF-based (physically bounded by current patients)
+                    # For mean=0.5, use PMF [0.5, 0.5] (P(0)=0.5, P(1)=0.5)
+                    "elective_departures": pmf_flow("elective_departures", np.array([0.5, 0.5])),
+                    # For mean=0.0, use PMF [1.0] (0 patients)
+                    "emergency_departures": pmf_flow("emergency_departures", np.array([1.0])),
                 },
             )
 
@@ -1256,11 +1262,18 @@ class TestHierarchicalPredictor:
             pytest.approx(hospital_bundle.arrivals.probabilities.sum(), rel=1e-9) == 1.0
         )
 
-        # Departures have mean 1 -> capped support [0, 1]
-        assert len(hospital_bundle.departures.probabilities) == 2
+        # Departures: each subspecialty has PMF [0.5, 0.5] (1 patient, mean=0.5)
+        # When convolved: [0.5, 0.5] * [0.5, 0.5] = [0.25, 0.5, 0.25] (support [0, 1, 2])
+        # Physical cap = 1 + 1 = 2, so length should be 3 (support 0-2)
+        assert len(hospital_bundle.departures.probabilities) == 3
         assert (
             pytest.approx(hospital_bundle.departures.probabilities.sum(), rel=1e-9)
             == 1.0
+        )
+        # Verify the expected distribution
+        expected_departures = np.array([0.25, 0.5, 0.25])
+        np.testing.assert_array_almost_equal(
+            hospital_bundle.departures.probabilities, expected_departures
         )
 
     def test_entity_type_name_usage_in_hierarchical_prediction(self):
