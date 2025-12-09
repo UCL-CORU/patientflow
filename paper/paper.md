@@ -23,7 +23,7 @@ authors:
     affiliation: "3"
   - name: Matt Graham
     orcid: 0000-0001-9104-7960
-    affiliation: "1"
+    affiliation: "4"
   - name: Sonya Crowe
     orcid: 0000-0003-1882-5476
     affiliation: "1"
@@ -34,8 +34,12 @@ affiliations:
     index: 2
   - name: Sahlgrenska University Hospital, Göteborg, Sweden
     index: 3
+  - name: Centre for Advanced Research Computing, University College London, United Kingdom
+    index: 4
 date: 2025-06-02
 bibliography: paper.bib
+version: v1.0.3
+archive: 10.5281/zenodo.15723614
 ---
 
 # patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
@@ -52,7 +56,7 @@ Many studies demonstrate the use of EHR data to predict individual patient outco
 
 This package is intended to make it easier for researchers to create such predictions. Its central tenet is the structuring of data into 'snapshots' of a hospital, where a patient snapshot captures what data are available on a current patient's state at a specific moment, and a cohort snapshot represents a collection of patient snapshots, for aggregate predictions. Notebooks in the Github repository demonstrate how to use the package to create patient and group snapshots from EHR data. Once data is structured into snapshots, researchers can use their own patient-level models with our analytical methods to produce cohort-level predictions. The package provides tools to compare predicted distributions against observations.
 
-Our intention is that the patientflow package will help researchers demonstrate the practical value of their predictive models for hospital management. Notebooks in the accompanying repository show examples based on fake and synthetic data [@patientflow_github]. Researchers also have the option to download real patient data from Zenodo to use with the notebooks [@patientflow_data]. The repository includes a fully worked example of how the package has been used in a live application at University College London Hospital to predict demand for emergency beds. Detailed examples illustrating the features of the package applied to predicting demand for emergency beds are available in a series of Jupyter notebooks [@patientflow_notebooks].
+Our intention is that the patientflow package will help researchers demonstrate the practical value of their predictive models for hospital management. Notebooks in the accompanying repository show examples based on synthetic data [@patientflow_github]. Researchers also have the option to download real patient data from Zenodo to use with the notebooks [@patientflow_data]. The repository includes a fully worked example of how the package has been used in a live application at University College London Hospital to predict demand for emergency beds. Detailed examples illustrating the features of the package applied to predicting demand for emergency beds are available in a series of Jupyter notebooks [@patientflow_notebooks].
 
 # Related software
 
