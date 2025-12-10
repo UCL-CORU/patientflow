@@ -287,6 +287,18 @@ def test_k_sigma_sensitivity(
                         level_sums[level]['departures'] += pmf_info['departures_pmf_len']
                         level_sums[level]['net_flow'] += pmf_info['net_flow_pmf_len']
                         level_sums[level]['count'] += 1
+            
+            # Display PMF length sums by level
+            print(f"\n  k_sigma = {k_sigma}")
+            print(f"  Flow type: {flow_type}")
+            print(f"    PMF Length Sums by Hierarchy Level:")
+            print(f"    {'Level':<20} {'Count':<10} {'Arrivals':<12} {'Departures':<12} {'Net Flow':<12}")
+            print(f"    {'-'*20} {'-'*10} {'-'*12} {'-'*12} {'-'*12}")
+            for level in ['subspecialty', 'reporting_unit', 'division', 'board', 'hospital']:
+                if level_sums[level]['count'] > 0:
+                    print(f"    {level:<20} {level_sums[level]['count']:<10} "
+                          f"{level_sums[level]['arrivals']:<12} {level_sums[level]['departures']:<12} "
+                          f"{level_sums[level]['net_flow']:<12}")
         
         # Store results for all flow types
         results[k_sigma] = {
