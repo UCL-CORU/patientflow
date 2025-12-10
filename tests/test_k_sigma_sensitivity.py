@@ -226,24 +226,133 @@ def test_k_sigma_sensitivity(
     # Test each k_sigma value
     results = {}
     
+    # Process all flow types
+    flow_types = ['all', 'elective', 'emergency']
+    flow_type_data = {}
+    for flow_type in flow_types:
+        if flow_type in pickled_data:
+            flow_type_data[flow_type] = pickled_data[flow_type]
+    
     for k_sigma in k_sigma_values:
         print(f"\nTesting k_sigma = {k_sigma}...")
         
-        # Create predictor with this k_sigma value
-        hierarchical_predictor = create_hierarchical_predictor(
-            hierarchy_df,
-            column_mapping,
-            top_level_id,
-            k_sigma=k_sigma,
-        )
+        # Process each flow type
+        flow_type_results = {}
         
-        # Measure prediction time
-        mean_time, metrics = measure_prediction_time(
-            hierarchical_predictor,
-            subspecialty_data,
-            flow_selection,
-            n_iterations=n_iterations,
-        )
+        for flow_type in flow_types:
+            if flow_type not in flow_type_data:
+                continue
+                
+            print(f"\n  Flow type: {flow_type}")
+            flow_data = flow_type_data[flow_type]
+            flow_subspecialty_data = flow_data['subspecialty_data']
+            flow_hierarchy_df = flow_data['hierarchy_df']
+            flow_column_mapping = flow_data['column_mapping']
+            flow_top_level_id = flow_data['top_level_id']
+            
+            # Extract flow_selection from the predictor
+            flow_predictor = flow_data['predictor']
+            _, flow_flow_selection = extract_hierarchy_info(flow_predictor)
+            
+            if flow_flow_selection is None:
+                flow_flow_selection = FlowSelection.default()
+            
+            # Create predictor with this k_sigma value
+            hierarchical_predictor = create_hierarchical_predictor(
+                flow_hierarchy_df,
+                flow_column_mapping,
+                flow_top_level_id,
+                k_sigma=k_sigma,
+            )
+            
+            # Measure prediction time
+            mean_time, metrics = measure_prediction_time(
+                hierarchical_predictor,
+                flow_subspecialty_data,
+                flow_flow_selection,
+                n_iterations=n_iterations,
+            )
+            
+            flow_type_results[flow_type] = {
+                'mean_time': mean_time,
+                **metrics
+            }
+            
+            # Group PMF metrics by hierarchy level
+            level_sums = {
+                'subspecialty': {'arrivals': 0, 'departures': 0, 'net_flow': 0, 'count': 0},
+                'reporting_unit': {'arrivals': 0, 'departures': 0, 'net_flow': 0, 'count': 0},
+                'division': {'arrivals': 0, 'departures': 0, 'net_flow': 0, 'count': 0},
+                'board': {'arrivals': 0, 'departures': 0, 'net_flow': 0, 'count': 0},
+                'hospital': {'arrivals': 0, 'departures': 0, 'net_flow': 0, 'count': 0},
+            }
+            
+            for pmf_info in metrics['pmf_metrics']:
+                entity_id = pmf_info['entity_id']
+                # Extract level from entity_id prefix (e.g., "subspecialty:..." -> "subspecialty")
+                if ':' in entity_id:
+                    level = entity_id.split(':')[0]
+                    if level in level_sums:
+                        level_sums[level]['arrivals'] += pmf_info['arrivals_pmf_len']
+                        level_sums[level]['departures'] += pmf_info['departures_pmf_len']
+                        level_sums[level]['net_flow'] += pmf_info['net_flow_pmf_len']
+                        level_sums[level]['count'] += 1
+            
+            # Display PMF length sums by level
+            print(f"    PMF Length Sums by Hierarchy Level:")
+            print(f"    {'Level':<20} {'Count':<10} {'Arrivals':<12} {'Departures':<12} {'Net Flow':<12}")
+            print(f"    {'-'*20} {'-'*10} {'-'*12} {'-'*12} {'-'*12}")
+            for level in ['subspecialty', 'reporting_unit', 'division', 'board', 'hospital']:
+                if level_sums[level]['count'] > 0:
+                    print(f"    {level:<20} {level_sums[level]['count']:<10} "
+                          f"{level_sums[level]['arrivals']:<12} {level_sums[level]['departures']:<12} "
+                          f"{level_sums[level]['net_flow']:<12}")
+            
+            # Print departures PMF length for each subspecialty
+            subspecialty_departures = []
+            for pmf_info in metrics['pmf_metrics']:
+                entity_id = pmf_info['entity_id']
+                if entity_id.startswith('subspecialty:'):
+                    subspecialty_name = entity_id.replace('subspecialty:', '')
+                    subspecialty_departures.append({
+                        'name': subspecialty_name,
+                        'departures_pmf_len': pmf_info['departures_pmf_len']
+                    })
+            
+            # Sort by subspecialty name
+            subspecialty_departures.sort(key=lambda x: x['name'])
+            
+            print(f"\n    Departures PMF Length for Each Subspecialty:")
+            print(f"    {'Subspecialty':<60} {'Departures PMF Length':<25}")
+            print(f"    {'-'*60} {'-'*25}")
+            for sub in subspecialty_departures:
+                print(f"    {sub['name']:<60} {sub['departures_pmf_len']:<25}")
+        
+        # Store results for all flow types
+        results[k_sigma] = {
+            'flow_type_results': flow_type_results
+        }
+        
+        # For backward compatibility and analysis, use 'all' results as primary
+        if 'all' in flow_type_results:
+            mean_time = flow_type_results['all']['mean_time']
+            metrics = {k: v for k, v in flow_type_results['all'].items() if k != 'mean_time'}
+            subspecialty_data = flow_type_data['all']['subspecialty_data']
+            analysis_flow_selection = flow_type_data['all'].get('predictor')
+            if analysis_flow_selection:
+                _, analysis_flow_selection = extract_hierarchy_info(analysis_flow_selection)
+        else:
+            # Fallback to first available flow type
+            first_flow_type = list(flow_type_results.keys())[0]
+            mean_time = flow_type_results[first_flow_type]['mean_time']
+            metrics = {k: v for k, v in flow_type_results[first_flow_type].items() if k != 'mean_time'}
+            subspecialty_data = flow_type_data[first_flow_type]['subspecialty_data']
+            analysis_flow_selection = flow_type_data[first_flow_type].get('predictor')
+            if analysis_flow_selection:
+                _, analysis_flow_selection = extract_hierarchy_info(analysis_flow_selection)
+        
+        if analysis_flow_selection is None:
+            analysis_flow_selection = FlowSelection.default()
         
         # Analyze individual flows from input data to see how physical_maxes accumulate
         if k_sigma == k_sigma_values[0]:  # Only do this detailed analysis once
@@ -331,11 +440,13 @@ def test_k_sigma_sensitivity(
                             print(f"      {spec_id} - emergency: PMF={pmf_array} (0 patients)")
                         examples_shown += 1
         
-        results[k_sigma] = {
+        # Update results with primary metrics for backward compatibility
+        results[k_sigma].update({
             'mean_time': mean_time,
             **metrics
-        }
+        })
         
+        print(f"\n  Summary (using 'all' flow type):")
         print(f"  Mean time: {mean_time:.4f}s")
         print(f"  Arrivals PMF elements: {metrics['arrivals_pmf_elements']}")
         print(f"  Departures PMF elements: {metrics['departures_pmf_elements']}")
@@ -352,19 +463,19 @@ def test_k_sigma_sensitivity(
             print(f"  Hospital level max departures: {hospital_departures_max}")
         
         # Show detailed breakdown of departures at subspecialty level
-        subspecialty_data = []
+        subspecialty_pmf_info = []
         for pmf_info in metrics['pmf_metrics']:
             if pmf_info['entity_id'].startswith('subspecialty:'):
-                subspecialty_data.append({
+                subspecialty_pmf_info.append({
                     'entity_id': pmf_info['entity_id'],
                     'departures_max': pmf_info['departures_max'],
                     'departures_pmf_len': pmf_info['departures_pmf_len'],
                 })
         
-        if subspecialty_data:
-            total_max = sum(d['departures_max'] for d in subspecialty_data)
+        if subspecialty_pmf_info:
+            total_max = sum(d['departures_max'] for d in subspecialty_pmf_info)
             print(f"\n  Detailed subspecialty departures breakdown:")
-            print(f"  Total subspecialties: {len(subspecialty_data)}")
+            print(f"  Total subspecialties: {len(subspecialty_pmf_info)}")
             print(f"  Sum of max departures (from aggregated PMF): {total_max}")
             print(f"  Expected (total inpatients): 305")
             print(f"  Difference: {total_max - 305}")
@@ -376,7 +487,7 @@ def test_k_sigma_sensitivity(
             
             # Group by departures_max value to see distribution
             max_distribution = {}
-            for d in subspecialty_data:
+            for d in subspecialty_pmf_info:
                 max_val = d['departures_max']
                 max_distribution[max_val] = max_distribution.get(max_val, 0) + 1
             
@@ -389,13 +500,13 @@ def test_k_sigma_sensitivity(
                 print(f"    ... and {len(max_distribution) - 20} more values")
             
             # Show examples of subspecialties with high departures_max
-            sorted_by_max = sorted(subspecialty_data, key=lambda x: x['departures_max'], reverse=True)
+            sorted_by_max = sorted(subspecialty_pmf_info, key=lambda x: x['departures_max'], reverse=True)
             print(f"\n  Top 10 subspecialties by departures_max:")
             for i, d in enumerate(sorted_by_max[:10], 1):
                 print(f"    {i}. {d['entity_id']}: max={d['departures_max']}, PMF_len={d['departures_pmf_len']}")
             
             # Check for cases where PMF_len != max + 1 (should always be true)
-            mismatches = [d for d in subspecialty_data if d['departures_pmf_len'] != d['departures_max'] + 1]
+            mismatches = [d for d in subspecialty_pmf_info if d['departures_pmf_len'] != d['departures_max'] + 1]
             if mismatches:
                 print(f"\n  ⚠️  Found {len(mismatches)} subspecialties where PMF_len != max + 1:")
                 for d in mismatches[:5]:
