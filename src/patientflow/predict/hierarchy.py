@@ -1282,8 +1282,24 @@ class DemandPredictor:
         selected_outflows = [
             inputs.outflows[k] for k in outflow_keys if outflow_allowed(k)
         ]
+        
+        # Calculate physical cap for departures (sum of physical maxes from PMF-based flows)
+        # Departures are always PMF-based (physically bounded by current patients)
+        departures_physical_cap = 0
+        for flow in selected_outflows:
+            if flow.flow_type == "pmf":
+                pmf_array = flow.distribution
+                if isinstance(pmf_array, np.ndarray):
+                    # Physical max is the maximum index value (len - 1)
+                    departures_physical_cap += len(pmf_array) - 1
+            elif flow.flow_type == "poisson":
+                # Departures should never be Poisson (enforced elsewhere)
+                # But if somehow one exists, it's unbounded, so we skip it
+                pass
+        
+        # Apply physical cap to departures prediction
         departures = self.predict_flow_total(
-            selected_outflows, subspecialty_id, "departures"
+            selected_outflows, subspecialty_id, "departures", max_support=departures_physical_cap
         )
 
         # Renormalize arrivals and departures before net-flow
@@ -1834,8 +1850,9 @@ class HierarchicalPredictor:
         results = {}
 
         # PHASE 2: Predict bottom level (e.g., subspecialties)
-        # Bottom level doesn't use caps from hierarchical stats (they're already
-        # calculated at the bottom level in predict_subspecialty via predict_flow_total)
+        # Bottom level calculates and applies physical caps directly in predict_subspecialty:
+        # - Departures: physical cap = sum of physical maxes from PMF-based flows
+        # - Arrivals: may use statistical caps for Poisson flows or physical caps for PMF-only flows
         for entity_id, inputs in bottom_level_data.items():
             bundle = self.predictor.predict_subspecialty(
                 entity_id, inputs, flow_selection
