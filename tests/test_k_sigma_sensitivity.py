@@ -328,41 +328,6 @@ def test_k_sigma_sensitivity(
                     print(f"    {level:<20} {level_sums[level]['count']:<10} "
                           f"{level_sums[level]['arrivals']:<12} {level_sums[level]['departures']:<12} "
                           f"{level_sums[level]['net_flow']:<12}")
-            
-            # Debug: Show individual hospital-level departures PMF length contributions
-            # Get board-level entities that contribute to hospital-level
-            board_departures = []
-            for entity_id, bundle in prediction_bundles.items():
-                if entity_id.startswith('board:'):
-                    pmf_len = len(bundle.departures.probabilities)
-                    physical_max = pmf_len - 1 if pmf_len > 0 else 0
-                    board_departures.append({
-                        'entity_id': entity_id,
-                        'departures_pmf_len': pmf_len,
-                        'departures_physical_max': physical_max
-                    })
-            
-            hospital_departures = []
-            for entity_id, bundle in prediction_bundles.items():
-                if entity_id.startswith('hospital:'):
-                    pmf_len = len(bundle.departures.probabilities)
-                    physical_max = pmf_len - 1 if pmf_len > 0 else 0
-                    hospital_departures.append({
-                        'entity_id': entity_id,
-                        'departures_pmf_len': pmf_len,
-                        'departures_physical_max': physical_max
-                    })
-            
-            if hospital_departures:
-                print(f"\n    Debug: Hospital-level departures PMF length constituent elements:")
-                print(f"      Hospital PMF length: {[h['departures_pmf_len'] for h in hospital_departures]}")
-                print(f"      Hospital physical max (max_support): {[h['departures_physical_max'] for h in hospital_departures]}")
-                if board_departures:
-                    print(f"      Board PMF lengths: {[b['departures_pmf_len'] for b in board_departures]}")
-                    print(f"      Board physical maxes: {[b['departures_physical_max'] for b in board_departures]}")
-                    sum_physical_maxes = sum(b['departures_physical_max'] for b in board_departures)
-                    print(f"      Sum of board physical maxes: {sum_physical_maxes} (should equal hospital physical max)")
-                    print(f"      Board entity IDs: {[b['entity_id'] for b in board_departures]}")
         
         # Store results for all flow types
         results[k_sigma] = {
