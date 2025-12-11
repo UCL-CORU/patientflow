@@ -94,10 +94,13 @@ def measure_prediction_time(
     """
     times = []
     pmf_lengths = []
+    truncated_stats = None
     
     for i in range(n_iterations):
         # Clear cache to ensure fresh computation
         predictor.cache.clear()
+        # Clear truncated mass tracking for fresh measurements
+        predictor.predictor.clear_truncated_mass()
         
         start = time.perf_counter()
         results = predictor.predict_all_levels(
@@ -109,12 +112,19 @@ def measure_prediction_time(
         elapsed = end - start
         times.append(elapsed)
         
-        # Collect PMF length metrics on first iteration
+        # Collect PMF length metrics and truncated mass on first iteration
         if i == 0:
+            # Get truncated mass statistics from first iteration
+            truncated_stats = predictor.predictor.get_truncated_mass_stats()
+            
             for entity_id, bundle in results.items():
                 # Calculate maximum value (not just length)
                 arrivals_max = len(bundle.arrivals.probabilities) - 1 if len(bundle.arrivals.probabilities) > 0 else 0
                 departures_max = len(bundle.departures.probabilities) - 1 if len(bundle.departures.probabilities) > 0 else 0
+                
+                # Get truncated mass for this entity
+                entity_mass = truncated_stats['by_entity'].get(entity_id, {})
+                
                 pmf_lengths.append({
                     'entity_id': entity_id,
                     'arrivals_pmf_len': len(bundle.arrivals.probabilities),
@@ -124,6 +134,8 @@ def measure_prediction_time(
                     'departures_expected': bundle.departures.expected_value,
                     'arrivals_max': arrivals_max,
                     'departures_max': departures_max,
+                    'arrivals_truncated_mass': entity_mass.get('arrivals', 0.0),
+                    'departures_truncated_mass': entity_mass.get('departures', 0.0),
                 })
     
     mean_time = np.mean(times)
@@ -131,6 +143,10 @@ def measure_prediction_time(
     min_time = np.min(times)
     max_time = np.max(times)
     median_time = np.median(times)
+    
+    # Use truncated_stats from first iteration, or get empty stats if somehow not collected
+    if truncated_stats is None:
+        truncated_stats = predictor.predictor.get_truncated_mass_stats()
     
     metrics = {
         'mean_time': mean_time,
@@ -147,6 +163,12 @@ def measure_prediction_time(
         'arrivals_pmf_elements': sum(m['arrivals_pmf_len'] for m in pmf_lengths),
         'departures_pmf_elements': sum(m['departures_pmf_len'] for m in pmf_lengths),
         'net_flow_pmf_elements': sum(m['net_flow_pmf_len'] for m in pmf_lengths),
+        'truncated_mass': {
+            'total': truncated_stats['total_truncated_mass'],
+            'max': truncated_stats['max_truncated_mass'],
+            'num_truncations': truncated_stats['num_truncations'],
+            'by_flow_type': truncated_stats['by_flow_type'],
+        },
     }
     
     return mean_time, metrics
@@ -389,18 +411,26 @@ def print_results_summary(results: Dict[float, Dict[str, Any]]) -> None:
     print("K_SIGMA SENSITIVITY TEST RESULTS")
     print("="*80)
     
-    print(f"\n{'k_sigma':<10} {'Mean Time (s)':<15} {'Std Time (s)':<15} {'Arrivals PMF':<15} {'Departures PMF':<15} {'Net Flow PMF':<15}")
-    print("-" * 100)
+    print(f"\n{'k_sigma':<10} {'Mean Time (s)':<15} {'Std Time (s)':<15} {'Total Truncated':<15} {'Max Truncated':<15} {'Arrivals Trunc':<15} {'Departures Trunc':<15}")
+    print("-" * 120)
     
     for k_sigma in sorted(results.keys()):
         r = results[k_sigma]
+        truncated = r.get('truncated_mass', {})
+        total_truncated = truncated.get('total', 0.0)
+        max_truncated = truncated.get('max', 0.0)
+        by_flow_type = truncated.get('by_flow_type', {})
+        arrivals_trunc = by_flow_type.get('arrivals', 0.0)
+        departures_trunc = by_flow_type.get('departures', 0.0)
+        
         print(
             f"{k_sigma:<10.2f} "
             f"{r['mean_time']:<15.4f} "
             f"{r['std_time']:<15.4f} "
-            f"{r['arrivals_pmf_elements']:<15} "
-            f"{r['departures_pmf_elements']:<15} "
-            f"{r['net_flow_pmf_elements']:<15}"
+            f"{total_truncated:<15.6f} "
+            f"{max_truncated:<15.6f} "
+            f"{arrivals_trunc:<15.6f} "
+            f"{departures_trunc:<15.6f}"
         )
     
     # Calculate relative performance (slowdown/speedup)
