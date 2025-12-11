@@ -1848,6 +1848,10 @@ class HierarchicalPredictor:
         # PHASE 3: Process each level from bottom to top, using pre-calculated caps
         for level_type in levels[1:]:
             entities_at_level = self.hierarchy.get_entities_by_type(level_type)
+            
+            # Get the child level type (one level below the current level)
+            level_index = levels.index(level_type)
+            child_level_type = levels[level_index - 1]
 
             for entity_id in entities_at_level:
                 # Use the entity type to avoid entity name collisions
@@ -1855,8 +1859,9 @@ class HierarchicalPredictor:
                 # Convert child IDs to prefixed format for lookup
                 child_bundles = []
                 for child_id in children:
-                    # Find the child's entity type to create prefixed ID
-                    child_entity_type = self.hierarchy.get_entity_type(child_id)
+                    # Use the known child level type to avoid entity name collisions
+                    # Children of a parent at level_type are always at child_level_type
+                    child_entity_type = self.hierarchy.get_entity_type(child_id, child_level_type)
                     if child_entity_type is not None:
                         prefixed_child_id = f"{child_entity_type.name}:{child_id}"
                         if prefixed_child_id in results:
