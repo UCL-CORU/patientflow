@@ -1403,8 +1403,23 @@ class DemandPredictor:
         arrivals = self.predict_hierarchical_level(
             entity_id, EntityType(entity_type), arrivals_preds, arrivals_max_support
         )
+        
+        # For departures: always calculate physical cap from child predictions' PMF lengths
+        # This ensures correctness when aggregating, especially for single-child cases.
+        # The physical cap is the sum of physical maxes (len(pmf) - 1) from each child.
+        # We use child predictions rather than pre-calculated caps because child predictions
+        # have already been computed with correct physical caps applied.
+        departures_physical_cap = 0
+        for pred in departures_preds:
+            if len(pred.probabilities) > 0:
+                # Physical max is the maximum index value (len - 1)
+                departures_physical_cap += len(pred.probabilities) - 1
+        
+        # Use calculated cap from child predictions (more accurate than pre-calculated)
+        departures_max_support_from_children = int(departures_physical_cap) if departures_physical_cap > 0 else None
+        
         departures = self.predict_hierarchical_level(
-            entity_id, EntityType(entity_type), departures_preds, departures_max_support
+            entity_id, EntityType(entity_type), departures_preds, departures_max_support_from_children
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
 
