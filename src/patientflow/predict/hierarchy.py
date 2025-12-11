@@ -24,7 +24,7 @@ create_hierarchical_predictor
 import numpy as np
 import pandas as pd
 import yaml
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any, Tuple, Union
 from dataclasses import dataclass
 
 
@@ -874,6 +874,9 @@ class DemandPredictor:
     def __init__(self, k_sigma: float = 8.0):
         self.k_sigma = k_sigma
         self.cache: Dict[str, DemandPrediction] = {}
+        # Track truncated mass: {(entity_id, flow_type): truncated_mass}
+        # flow_type is 'arrivals' or 'departures'
+        self.truncated_mass: Dict[Tuple[str, str], float] = {}
 
     def _calculate_hierarchical_stats(
         self,
@@ -1146,8 +1149,13 @@ class DemandPredictor:
 
         # Apply cap with renormalization if max_support is provided
         if max_support is not None:
-            truncated_pmf = self._apply_cap_with_renormalization(
-                dist_total.probabilities, max_support
+            truncated_pmf, truncated_mass = self._apply_cap_with_renormalization(
+                dist_total.probabilities, max_support, return_truncated_mass=True
+            )
+            # Track truncated mass for this entity and flow type
+            key = (entity_id, entity_type)
+            self.truncated_mass[key] = (
+                self.truncated_mass.get(key, 0.0) + truncated_mass
             )
             return self._create_prediction(entity_id, entity_type, truncated_pmf)
         else:
@@ -1282,7 +1290,7 @@ class DemandPredictor:
         selected_outflows = [
             inputs.outflows[k] for k in outflow_keys if outflow_allowed(k)
         ]
-        
+
         # Calculate physical cap for departures (sum of physical maxes from PMF-based flows)
         # Departures are always PMF-based (physically bounded by current patients)
         departures_physical_cap = 0
@@ -1296,10 +1304,13 @@ class DemandPredictor:
                 # Departures should never be Poisson (enforced elsewhere)
                 # But if somehow one exists, it's unbounded, so we skip it
                 pass
-        
+
         # Apply physical cap to departures prediction
         departures = self.predict_flow_total(
-            selected_outflows, subspecialty_id, "departures", max_support=departures_physical_cap
+            selected_outflows,
+            subspecialty_id,
+            "departures",
+            max_support=departures_physical_cap,
         )
 
         # Renormalize arrivals and departures before net-flow
@@ -1336,6 +1347,7 @@ class DemandPredictor:
         entity_type: EntityType,
         child_predictions: List[DemandPrediction],
         max_support: Optional[int] = None,
+        flow_type: Optional[str] = None,
     ) -> DemandPrediction:
         """Generic method for hierarchical prediction at any level.
 
@@ -1353,6 +1365,9 @@ class DemandPredictor:
         max_support : int, optional
             Pre-calculated maximum support value. If provided, the result will
             be truncated to this value with renormalization.
+        flow_type : str, optional
+            Flow type ('arrivals' or 'departures') for truncated mass tracking.
+            If None, truncated mass will not be tracked for this aggregation.
 
         Returns
         -------
@@ -1366,7 +1381,9 @@ class DemandPredictor:
         uses renormalization to ensure probability conservation.
         """
         distributions = [p.probabilities for p in child_predictions]
-        p_total = self._convolve_multiple(distributions, max_support)
+        p_total = self._convolve_multiple(
+            distributions, max_support, entity_id=entity_id, flow_type=flow_type
+        )
         return self._create_prediction(entity_id, entity_type.name, p_total)
 
     def _create_bundle_from_children(
@@ -1401,9 +1418,13 @@ class DemandPredictor:
         departures_preds = [b.departures for b in child_bundles]
 
         arrivals = self.predict_hierarchical_level(
-            entity_id, EntityType(entity_type), arrivals_preds, arrivals_max_support
+            entity_id,
+            EntityType(entity_type),
+            arrivals_preds,
+            arrivals_max_support,
+            flow_type="arrivals",
         )
-        
+
         # For departures: always calculate physical cap from child predictions' PMF lengths
         # This ensures correctness when aggregating, especially for single-child cases.
         # The physical cap is the sum of physical maxes (len(pmf) - 1) from each child.
@@ -1414,12 +1435,18 @@ class DemandPredictor:
             if len(pred.probabilities) > 0:
                 # Physical max is the maximum index value (len - 1)
                 departures_physical_cap += len(pred.probabilities) - 1
-        
+
         # Use calculated cap from child predictions (more accurate than pre-calculated)
-        departures_max_support_from_children = int(departures_physical_cap) if departures_physical_cap > 0 else None
-        
+        departures_max_support_from_children = (
+            int(departures_physical_cap) if departures_physical_cap > 0 else None
+        )
+
         departures = self.predict_hierarchical_level(
-            entity_id, EntityType(entity_type), departures_preds, departures_max_support_from_children
+            entity_id,
+            EntityType(entity_type),
+            departures_preds,
+            departures_max_support_from_children,
+            flow_type="departures",
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
 
@@ -1440,7 +1467,11 @@ class DemandPredictor:
         )
 
     def _convolve_multiple(
-        self, distributions: List[np.ndarray], max_support: Optional[int] = None
+        self,
+        distributions: List[np.ndarray],
+        max_support: Optional[int] = None,
+        entity_id: Optional[str] = None,
+        flow_type: Optional[str] = None,
     ) -> np.ndarray:
         """Convolve multiple distributions with optional truncation and renormalization.
 
@@ -1456,6 +1487,12 @@ class DemandPredictor:
             Pre-calculated maximum support value. If provided, the result will
             be truncated to this value with renormalization. If None, no truncation
             is applied.
+        entity_id : str, optional
+            Entity identifier for truncated mass tracking. If provided along with
+            flow_type, truncated mass will be tracked.
+        flow_type : str, optional
+            Flow type ('arrivals' or 'departures') for truncated mass tracking.
+            If provided along with entity_id, truncated mass will be tracked.
 
         Returns
         -------
@@ -1473,7 +1510,16 @@ class DemandPredictor:
         if len(distributions) == 1:
             result = distributions[0]
             if max_support is not None:
-                result = self._apply_cap_with_renormalization(result, max_support)
+                if entity_id is not None and flow_type is not None:
+                    result, truncated_mass = self._apply_cap_with_renormalization(
+                        result, max_support, return_truncated_mass=True
+                    )
+                    key = (entity_id, flow_type)
+                    self.truncated_mass[key] = (
+                        self.truncated_mass.get(key, 0.0) + truncated_mass
+                    )
+                else:
+                    result = self._apply_cap_with_renormalization(result, max_support)
             return result
 
         # Sort by expected value for efficiency
@@ -1486,7 +1532,16 @@ class DemandPredictor:
 
         # Apply cap with renormalization if max_support is provided
         if max_support is not None:
-            result = self._apply_cap_with_renormalization(result, max_support)
+            if entity_id is not None and flow_type is not None:
+                result, truncated_mass = self._apply_cap_with_renormalization(
+                    result, max_support, return_truncated_mass=True
+                )
+                key = (entity_id, flow_type)
+                self.truncated_mass[key] = (
+                    self.truncated_mass.get(key, 0.0) + truncated_mass
+                )
+            else:
+                result = self._apply_cap_with_renormalization(result, max_support)
 
         return result
 
@@ -1515,8 +1570,8 @@ class DemandPredictor:
         return np.convolve(p, q)
 
     def _apply_cap_with_renormalization(
-        self, pmf: np.ndarray, max_support: int
-    ) -> np.ndarray:
+        self, pmf: np.ndarray, max_support: int, return_truncated_mass: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, float]]:
         """Truncate PMF to max_support and assign remaining probability to the last bin.
 
         This ensures probability conservation: the PMF sums to 1.0 exactly.
@@ -1528,28 +1583,41 @@ class DemandPredictor:
             Original probability mass function
         max_support : int
             Maximum support value (corresponds to array index max_support)
+        return_truncated_mass : bool, default=False
+            If True, return a tuple (truncated_pmf, truncated_mass) instead of just truncated_pmf.
+            truncated_mass is the sum of probability mass beyond max_support.
 
         Returns
         -------
-        np.ndarray
-            Truncated PMF with length (max_support + 1) where the last element
-            contains all remaining probability mass
+        np.ndarray or tuple[np.ndarray, float]
+            If return_truncated_mass=False: Truncated PMF with length (max_support + 1)
+            If return_truncated_mass=True: Tuple of (truncated_pmf, truncated_mass)
         """
         if max_support < 0:
             # Return a single bin with all probability mass
-            return np.array([np.sum(pmf)])
+            result = np.array([np.sum(pmf)])
+            if return_truncated_mass:
+                # No truncation occurred (all mass fits in one bin)
+                return result, 0.0
+            return result
 
         max_len = max_support + 1
         if len(pmf) <= max_len:
-            return pmf.copy()
+            # No truncation needed
+            result = pmf.copy()
+            if return_truncated_mass:
+                return result, 0.0
+            return result
 
         # Truncate to max_support + 1 elements (indices 0 to max_support)
         truncated = pmf[:max_len].copy()
 
-        # Add remaining probability mass to the last bin
+        # Calculate remaining probability mass beyond max_support
         remaining_mass = np.sum(pmf[max_len:])
         truncated[max_support] += remaining_mass
 
+        if return_truncated_mass:
+            return truncated, float(remaining_mass)
         return truncated
 
     def _variance(self, p: np.ndarray, offset: int = 0) -> float:
@@ -1572,6 +1640,66 @@ class DemandPredictor:
         if total <= 0.0:
             return p
         return p / total
+
+    def get_truncated_mass_stats(self) -> Dict[str, Any]:
+        """Get statistics about truncated mass across all predictions.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'total_truncated_mass': Total truncated mass across all entities/flows
+            - 'max_truncated_mass': Maximum single truncation value
+            - 'num_truncations': Number of distinct (entity_id, flow_type) pairs that were truncated
+            - 'by_entity': Dictionary mapping entity_id to dict of {flow_type: truncated_mass}
+            - 'by_flow_type': Dictionary with 'arrivals' and 'departures' totals
+        """
+        if not self.truncated_mass:
+            return {
+                "total_truncated_mass": 0.0,
+                "max_truncated_mass": 0.0,
+                "num_truncations": 0,
+                "by_entity": {},
+                "by_flow_type": {
+                    "arrivals": 0.0,
+                    "departures": 0.0,
+                },
+            }
+
+        total = sum(self.truncated_mass.values())
+        max_mass = max(self.truncated_mass.values())
+
+        # Group by entity_id
+        by_entity: Dict[str, Dict[str, float]] = {}
+        for (entity_id, flow_type), mass in self.truncated_mass.items():
+            if entity_id not in by_entity:
+                by_entity[entity_id] = {}
+            by_entity[entity_id][flow_type] = mass
+
+        # Group by flow_type
+        by_flow_type = {
+            "arrivals": sum(
+                m for (_, ft), m in self.truncated_mass.items() if ft == "arrivals"
+            ),
+            "departures": sum(
+                m for (_, ft), m in self.truncated_mass.items() if ft == "departures"
+            ),
+        }
+
+        return {
+            "total_truncated_mass": total,
+            "max_truncated_mass": max_mass,
+            "num_truncations": len(self.truncated_mass),
+            "by_entity": by_entity,
+            "by_flow_type": by_flow_type,
+        }
+
+    def clear_truncated_mass(self) -> None:
+        """Clear the truncated mass tracking dictionary.
+
+        This is useful when starting a new prediction iteration to get fresh measurements.
+        """
+        self.truncated_mass.clear()
 
     def _expected_value(self, p: np.ndarray, offset: int = 0) -> float:
         """Calculate expected value of distribution.
@@ -1880,7 +2008,7 @@ class HierarchicalPredictor:
         # PHASE 3: Process each level from bottom to top, using pre-calculated caps
         for level_type in levels[1:]:
             entities_at_level = self.hierarchy.get_entities_by_type(level_type)
-            
+
             # Get the child level type (one level below the current level)
             level_index = levels.index(level_type)
             child_level_type = levels[level_index - 1]
@@ -1893,7 +2021,9 @@ class HierarchicalPredictor:
                 for child_id in children:
                     # Use the known child level type to avoid entity name collisions
                     # Children of a parent at level_type are always at child_level_type
-                    child_entity_type = self.hierarchy.get_entity_type(child_id, child_level_type)
+                    child_entity_type = self.hierarchy.get_entity_type(
+                        child_id, child_level_type
+                    )
                     if child_entity_type is not None:
                         prefixed_child_id = f"{child_entity_type.name}:{child_id}"
                         if prefixed_child_id in results:
