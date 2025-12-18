@@ -42,8 +42,6 @@ version: v1.0.3
 archive: 10.5281/zenodo.15723614
 ---
 
-# patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
-
 # Summary
 
 patientflow is a Python package available on PyPi[@patientflow] for real-time prediction of hospital bed demand from current and incoming patients. It enables researchers to easily develop predictive models and demonstrate their utility to practitioners. Researchers can use it to prepare data sets for predictive modelling, generate patient level predictions of admission, discharge or transfer, and then combine patient-level predictions at different levels of aggregation to give output that is useful for bed managers. The package was developed for University College London Hospitals (UCLH) NHS Trust to predict demand for emergency beds using real-time data. The methods generalise to any problem where it is useful to predict non-clinical outcomes for a cohort of patients at a point in time. The repository includes a synthetic dataset and a series of notebooks demonstrating the use of the package.
@@ -62,7 +60,7 @@ Our intention is that the patientflow package will help researchers demonstrate 
 
 Simulation is a common approach for modelling patient flow, and there are various packages to support that, such as PathSimR for R [@tyler2022improving] and sim-tools [@monks2023improving] and ActaPatientFlow [@szabo2024patient] for Python.
 
-To our knowledge, there are no packages that support the use of real-time patient data with a specific focus on output that can help healthcare managers respond to changes as they arise. Our intention for patientflow is to support the development of patient level predictive models and the use of real-time data, conbined with a mathematical approach to calculating distributions of aggregate demand. Taking a mathematical approach provides quicker and more accurate results than deploying simulation for the same task.
+To our knowledge, there are no packages that support the use of real-time patient data with a specific focus on output that can help healthcare managers respond to changes as they arise. Our intention for patientflow is to support the development of patient level predictive models and the use of real-time data, combined with a mathematical approach to calculating distributions of aggregate demand. Taking a mathematical approach provides quicker and more accurate results than deploying simulation for the same task.
 
 # Acknowledgements
 
