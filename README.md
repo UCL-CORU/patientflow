@@ -8,6 +8,7 @@
 [![License][license-badge]](./LICENSE.md)
 [![PyPI version][pypi-version]][pypi-link]
 [![PyPI platforms][pypi-platforms]][pypi-link]
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.09187/status.svg)](https://doi.org/10.21105/joss.09187)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15722296.svg)](https://doi.org/10.5281/zenodo.15722296)
 
 [![ORCID](https://img.shields.io/badge/ORCID-0000--0001--7389--1527-green.svg)](https://orcid.org/0000-0001-7389-1527)
@@ -55,6 +56,29 @@ A series of notebooks demonstrates the use of the package. I show how to prepare
 ## Citation
 
 If you use this software in your research, please cite it as:
+
+**King et al., (2025). patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients. Journal of Open Source Software, 10(116), 9187, https://doi.org/10.21105/joss.09187**
+
+BibTeX:
+
+```bibtex
+@article{King2025,
+  doi = {10.21105/joss.09187},
+  url = {https://doi.org/10.21105/joss.09187},
+  year = {2025},
+  publisher = {The Open Journal},
+  volume = {10},
+  number = {116},
+  pages = {9187},
+  author = {King, Zella and Gillham, Jon and Utley, Martin and Lundell, Sara and Graham, Matt and Crowe, Sonya},
+  title = {patientflow: a Python package for real-time prediction of hospital bed demand from current and incoming patients},
+  journal = {Journal of Open Source Software}
+}
+```
+
+### Archived software version
+
+For the archived software release on Zenodo, you may also cite:
 
 **King, Zella. (2025). PatientFlow: Code and training materials for predicting short-term hospital bed capacity using real-time data (v1.0.3). Zenodo. https://doi.org/10.5281/zenodo.15722296**
 
