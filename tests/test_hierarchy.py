@@ -49,7 +49,7 @@ class TestDemandPredictor:
         predictor = DemandPredictor()
         pmf = np.array([0.2, 0.3, 0.1, 0.4])
 
-        truncated = predictor._apply_cap_with_renormalization(pmf, 2)
+        truncated = predictor.apply_cap_with_renormalization(pmf, 2)
 
         assert len(truncated) == 3
         assert pytest.approx(truncated.sum(), rel=1e-9) == 1.0
@@ -61,7 +61,7 @@ class TestDemandPredictor:
         predictor = DemandPredictor()
         pmf = np.array([0.2, 0.3])
 
-        truncated = predictor._apply_cap_with_renormalization(pmf, -1)
+        truncated = predictor.apply_cap_with_renormalization(pmf, -1)
 
         assert len(truncated) == 1
         assert pytest.approx(truncated[0], rel=1e-9) == 0.5
@@ -88,7 +88,7 @@ class TestDemandPredictor:
         assert prediction.probabilities[-1] > 0.0
 
     def test_calculate_hierarchical_stats_respects_flow_selection(self):
-        """_calculate_hierarchical_stats should honor flow selection filters."""
+        """calculate_hierarchical_stats should honor flow selection filters."""
         predictor = DemandPredictor(k_sigma=1.0)
         hierarchy = Hierarchy.create_default_hospital()
         levels = hierarchy.get_levels_ordered()
@@ -138,7 +138,7 @@ class TestDemandPredictor:
 
         bottom_level_data = {"Cardiology": inputs}
 
-        stats_all = predictor._calculate_hierarchical_stats(
+        stats_all = predictor.calculate_hierarchical_stats(
             "UnitA",
             reporting_unit_type,
             bottom_level_data,
@@ -151,7 +151,7 @@ class TestDemandPredictor:
         assert pytest.approx(stats_all[1], rel=1e-9) == np.sqrt(5.0)
         assert stats_all[2] >= 5  # cap should be at least the mean
 
-        stats_elective = predictor._calculate_hierarchical_stats(
+        stats_elective = predictor.calculate_hierarchical_stats(
             "UnitA",
             reporting_unit_type,
             bottom_level_data,
@@ -1219,9 +1219,11 @@ class TestHierarchicalPredictor:
 
         def poisson_flow(flow_id: str, lam: float) -> FlowInputs:
             return FlowInputs(flow_id=flow_id, flow_type="poisson", distribution=lam)
-        
+
         def pmf_flow(flow_id: str, probabilities: np.ndarray) -> FlowInputs:
-            return FlowInputs(flow_id=flow_id, flow_type="pmf", distribution=probabilities)
+            return FlowInputs(
+                flow_id=flow_id, flow_type="pmf", distribution=probabilities
+            )
 
         def make_inputs(subspecialty_id: str) -> SubspecialtyPredictionInputs:
             return SubspecialtyPredictionInputs(
@@ -1238,9 +1240,13 @@ class TestHierarchicalPredictor:
                 outflows={
                     # Departures must be PMF-based (physically bounded by current patients)
                     # For mean=0.5, use PMF [0.5, 0.5] (P(0)=0.5, P(1)=0.5)
-                    "elective_departures": pmf_flow("elective_departures", np.array([0.5, 0.5])),
+                    "elective_departures": pmf_flow(
+                        "elective_departures", np.array([0.5, 0.5])
+                    ),
                     # For mean=0.0, use PMF [1.0] (0 patients)
-                    "emergency_departures": pmf_flow("emergency_departures", np.array([1.0])),
+                    "emergency_departures": pmf_flow(
+                        "emergency_departures", np.array([1.0])
+                    ),
                 },
             )
 
@@ -1253,8 +1259,8 @@ class TestHierarchicalPredictor:
             bottom_level_data, flow_selection=FlowSelection.default()
         )
 
-        assert "hospital:UCLH" in results
-        hospital_bundle = results["hospital:UCLH"]
+        assert "UCLH" in results
+        hospital_bundle = results["UCLH"]
 
         # Two subspecialties with lambda=1 -> mean=2, so cap (k_sigma=0) should be 2.
         assert len(hospital_bundle.arrivals.probabilities) == 3
