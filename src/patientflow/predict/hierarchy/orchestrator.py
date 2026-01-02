@@ -98,11 +98,6 @@ class HierarchicalPredictor:
         bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
         flow_selection: FlowSelection,
     ):
-        """Recursively predict for a subtree.
-
-        This internal method implements the 3-phase prediction algorithm for a
-        specific subtree rooted at entity_id.
-        """
         entity_type = self.hierarchy.get_entity_type(entity_id)
         if entity_type is None:
             raise ValueError(f"Entity type not found for id: {entity_id}")

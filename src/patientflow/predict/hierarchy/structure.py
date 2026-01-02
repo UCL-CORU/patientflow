@@ -46,9 +46,9 @@ class HierarchyLevel:
 
 
 class Hierarchy:
-    """Generic hierarchical structure that can represent any organizational hierarchy.
+    """Generic hierarchical structure that can represent any organisational hierarchy.
 
-    This class eliminates the need for specific methods for each entity type by using
+    This class removes any hardcoding of entities within a hierarchy, by using
     a generic approach that works with any hierarchical structure.
 
     Attributes
@@ -70,7 +70,6 @@ class Hierarchy:
         self._validate_levels()
 
     def _validate_levels(self):
-        """Validate that the hierarchy levels are properly configured."""
         # Check that there's exactly one top level (no parent)
         top_levels = [
             level for level in self.levels.values() if level.parent_type is None
@@ -161,18 +160,6 @@ class Hierarchy:
         self.entity_types[unique_id] = entity_type
 
     def _find_entity_type_by_name(self, entity_name: str) -> Optional[EntityType]:
-        """Find the entity type for a given entity name by searching through existing entities.
-
-        Parameters
-        ----------
-        entity_name : str
-            Original entity name to search for
-
-        Returns
-        -------
-        Optional[EntityType]
-            Entity type if found, None otherwise
-        """
         for unique_id, entity_type in self.entity_types.items():
             # Extract original name from prefixed ID
             if ":" in unique_id:
@@ -182,18 +169,6 @@ class Hierarchy:
         return None
 
     def _get_original_name(self, unique_id: str) -> str:
-        """Extract original entity name from prefixed ID.
-
-        Parameters
-        ----------
-        unique_id : str
-            Prefixed entity ID (e.g., "subspecialty:Cardiology")
-
-        Returns
-        -------
-        str
-            Original entity name (e.g., "Cardiology")
-        """
         if ":" in unique_id:
             return unique_id.split(":", 1)[1]
         return unique_id
@@ -201,20 +176,6 @@ class Hierarchy:
     def _get_prefixed_id(
         self, entity_name: str, entity_type: EntityType
     ) -> Optional[str]:
-        """Get prefixed ID for an entity name and type.
-
-        Parameters
-        ----------
-        entity_name : str
-            Original entity name
-        entity_type : EntityType
-            Entity type
-
-        Returns
-        -------
-        Optional[str]
-            Prefixed ID if entity exists, None otherwise
-        """
         prefixed_id = f"{entity_type.name}:{entity_name}"
         return prefixed_id if prefixed_id in self.entity_types else None
 
