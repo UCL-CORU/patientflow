@@ -58,19 +58,163 @@ class HierarchicalPredictor:
         Parameters
         ----------
         bottom_level_data : Dict[str, SubspecialtyPredictionInputs]
-            Dictionary mapping bottom-level entity IDs to their prediction inputs
+            Dictionary mapping bottom-level entity IDs to their prediction inputs.
+            Each value is a `SubspecialtyPredictionInputs` object containing:
+            
+            - ``subspecialty_id``: Identifier for the subspecialty (must match the key)
+            - ``prediction_window``: Time window for predictions (typically a timedelta)
+            - ``inflows``: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta', 
+              'non_ed_yta', 'elective_yta', 'elective_transfers', 'emergency_transfers')
+            - ``outflows``: Dictionary of departure flows (e.g., 'elective_departures', 
+              'emergency_departures')
+            
+            **Key Requirements:**
+            - Keys must exactly match the entity IDs in the hierarchy at the bottom level.
+              For example, if your bottom level is 'subspecialty', the keys should be
+              subspecialty names like 'Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', etc., 
+              exactly as they appear in the hierarchy (case-sensitive).
+            - Typically created using `build_subspecialty_data()` from the 
+              `patientflow.predict.subspecialty` module.
+            - Only entities that exist in the hierarchy and are reachable from the
+              specified `top_level_id` will have predictions generated.
         top_level_id : str, optional
             Root entity to start prediction from. If None, predicts for all
-            top-level entities in the hierarchy.
+            top-level entities in the hierarchy. The entity ID must exist in the
+            hierarchy and match exactly (case-sensitive).
         flow_selection : FlowSelection, optional
             Selection specifying which flows to include. If None, uses
-            FlowSelection.default() which includes all flows.
+            FlowSelection.default() which includes all flows. Use this to restrict
+            predictions to specific patient flows (e.g., ED inflows only).
 
         Returns
         -------
         Dict[str, PredictionBundle]
             Dictionary containing prediction bundles for all entities in the
             hierarchy (bottom-level and aggregated), keyed by entity ID.
+            
+            **Dictionary Structure:**
+            - Keys are entity IDs (original names, not prefixed IDs) for all entities
+              in the hierarchy that were processed, including:
+              - Bottom-level entities (subspecialties) that had data in `bottom_level_data`
+              - All intermediate-level entities (reporting units, divisions, etc.)
+              - Top-level entities (hospital, board, etc.)
+            - Values are `PredictionBundle` objects containing:
+              - ``arrivals``: `DemandPrediction` with PMF, expected value, percentiles
+              - ``departures``: `DemandPrediction` with PMF, expected value, percentiles
+              - ``net_flow``: `DemandPrediction` with PMF, expected value, percentiles
+            
+            **Example structure:**
+            ::
+            
+                {
+                    'Gsurg LowGI': PredictionBundle(...),              # Bottom-level
+                    'Gsurg UppGI': PredictionBundle(...),              # Bottom-level
+                    'Gastrointestinal Surgery': PredictionBundle(...), # Aggregated
+                    'Surgery Division': PredictionBundle(...),          # Aggregated
+                    'uclh': PredictionBundle(...)                       # Top-level aggregated
+                }
+            
+            **Note:** Entities in the hierarchy that don't have corresponding entries
+            in `bottom_level_data` will not appear in the results dictionary, even if
+            they are part of the hierarchy structure.
+
+        Examples
+        --------
+        Run predictions for entire hierarchy with default flow selection:
+
+        >>> from patientflow.predict.subspecialty import build_subspecialty_data
+        >>> bottom_level_data = build_subspecialty_data(
+        ...     models=(...),
+        ...     prediction_time=(12, 0),
+        ...     ed_snapshots=ed_snapshots_df,
+        ...     inpatient_snapshots=inpatient_snapshots_df,
+        ...     specialties=['Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', 'Older Gen'],
+        ...     prediction_window=timedelta(hours=8),
+        ...     x1=4.0, y1=0.95, x2=8.0, y2=0.99
+        ... )
+        >>> results = predictor.predict_all_levels(bottom_level_data)
+        >>> # Access subspecialty-level prediction
+        >>> gsurg_bundle = results['Gsurg LowGI']
+        >>> print(f"Expected arrivals: {gsurg_bundle.arrivals.expected_value:.1f}")
+        >>> # Access hospital-level aggregated prediction
+        >>> hospital_bundle = results['uclh']
+        >>> print(f"Hospital expected arrivals: {hospital_bundle.arrivals.expected_value:.1f}")
+
+        Run predictions with custom flow selection (ED inflows only):
+
+        >>> from patientflow.predict.hierarchy import FlowSelection
+        >>> flow_selection = FlowSelection.custom(
+        ...     include_ed_current=True,
+        ...     include_ed_yta=True,
+        ...     include_non_ed_yta=False,
+        ...     include_elective_yta=False,
+        ...     include_transfers_in=False,
+        ...     include_departures=False,
+        ...     cohort="emergency"
+        ... )
+        >>> results = predictor.predict_all_levels(
+        ...     bottom_level_data,
+        ...     flow_selection=flow_selection
+        ... )
+
+        Run predictions for a specific subtree:
+
+        >>> # Predict only for entities under 'Surgery Division'
+        >>> results = predictor.predict_all_levels(
+        ...     bottom_level_data,
+        ...     top_level_id="Surgery Division"
+        ... )
+        >>> # Results will only contain entities under 'Surgery Division'
+        >>> print(list(results.keys()))
+        ['Gsurg LowGI', 'Gsurg UppGI', 'Gastrointestinal Surgery', 'Surgery Division']
+
+        Notes
+        -----
+        **Data Format Requirements:**
+        
+        The `bottom_level_data` dictionary should be created using `build_subspecialty_data()`
+        from `patientflow.predict.subspecialty`. Each `SubspecialtyPredictionInputs` object
+        contains probability distributions (PMFs) for current patients and Poisson parameters
+        for yet-to-arrive patients, organized by flow type (inflows/outflows).
+        
+        **Entity ID Matching:**
+        
+        - Subspecialty IDs in `bottom_level_data` keys **must exactly match** (case-sensitive)
+          the entity IDs at the bottom level of the hierarchy.
+        - If a subspecialty ID in `bottom_level_data` doesn't exist in the hierarchy:
+          - It will be silently ignored during prediction (no error raised)
+          - It won't appear in the results dictionary
+          - This is typically not an error condition, as you may have data for subspecialties
+            that aren't part of the current hierarchy structure
+        - If a subspecialty exists in the hierarchy but not in `bottom_level_data`:
+          - No prediction will be generated for that subspecialty
+          - It won't appear in the results dictionary
+          - Aggregated predictions at higher levels will exclude this subspecialty
+          - This is the expected behavior when you don't have data for all subspecialties
+        
+        **Error Handling:**
+        
+        - ``ValueError``: Raised if `top_level_id` is provided but doesn't exist in the hierarchy
+        - ``ValueError``: Raised if `flow_selection` is invalid (e.g., conflicting settings)
+        - Missing subspecialties in `bottom_level_data` are handled gracefully (no error)
+        - Extra subspecialties in `bottom_level_data` (not in hierarchy) are ignored (no error)
+        
+        **Prediction Process:**
+        
+        The method follows a 3-phase algorithm:
+        
+        1. **Phase 1 (Capping)**: Calculate statistical caps for each entity based on
+           the sum of means and combined variance of all distributions in its subtree
+        2. **Phase 2 (Bottom-level Prediction)**: Generate full PMF predictions for
+           all bottom-level entities that have data
+        3. **Phase 3 (Aggregation)**: Aggregate predictions upward through the hierarchy
+           using convolution, applying caps at each level
+        
+        **Performance Considerations:**
+        
+        - Predictions are computed recursively from the specified `top_level_id` downward
+        - Only entities in the subtree rooted at `top_level_id` are processed
+        - Intermediate results are cached in `self.prediction_results` for efficient access
         """
         if flow_selection is None:
             flow_selection = FlowSelection.default()
@@ -208,22 +352,65 @@ def create_hierarchical_predictor(
     Parameters
     ----------
     hierarchy_df : pd.DataFrame, optional
-        DataFrame containing organizational structure
+        DataFrame containing organizational structure. Each row represents
+        one path through the hierarchy from bottom to top. The DataFrame
+        must form a proper tree structure (each child has exactly one parent).
     column_mapping : Dict[str, str], optional
-        Mapping from DataFrame columns to entity types
+        Mapping from DataFrame column names to entity type names. Entity type names
+        are the names of the levels defined in the hierarchy structure (e.g., 'subspecialty',
+        'reporting_unit', 'division', 'board', 'hospital'). These must match the entity
+        type names used when creating the hierarchy (from create_default_hospital() or
+        from_yaml()). Example: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit'}
     top_level_id : str, optional
-        ID of the top-level entity
+        ID of the top-level entity (e.g., "Hospital" or "uclh")
     config_path : str, optional
         Path to the hierarchy configuration YAML file.
         If provided, loads hierarchy structure from file.
         If None, uses default hospital hierarchy.
     k_sigma : float, default=8.0
-        Cap width in standard deviations
+        Cap width in standard deviations. Controls the maximum support size
+        for probability distributions. Higher values allow larger distributions
+        but use more memory.
 
     Returns
     -------
     HierarchicalPredictor
         Ready-to-use predictor instance
+
+    Examples
+    --------
+    Create predictor with default hospital hierarchy:
+
+    >>> predictor = create_hierarchical_predictor()
+
+    Create predictor from DataFrame:
+
+    >>> import pandas as pd
+    >>> hierarchy_df = pd.DataFrame({
+    ...     'subspecialty': ['Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', 'Older Gen'],
+    ...     'reporting_unit': ['Gastrointestinal Surgery', 'Gastrointestinal Surgery', 'Care Of the Elderly', 'Care Of the Elderly'],
+    ...     'division': ['Surgery Division', 'Surgery Division', 'Medicine Division', 'Medicine Division'],
+    ... })
+    >>> column_mapping = {
+    ...     'subspecialty': 'subspecialty',
+    ...     'reporting_unit': 'reporting_unit',
+    ...     'division': 'division',
+    ... }
+    >>> predictor = create_hierarchical_predictor(
+    ...     hierarchy_df=hierarchy_df,
+    ...     column_mapping=column_mapping,
+    ...     top_level_id="uclh"
+    ... )
+
+    Create predictor from YAML configuration:
+
+    >>> predictor = create_hierarchical_predictor(
+    ...     config_path="hierarchy_config.yaml",
+    ...     hierarchy_df=hierarchy_df,
+    ...     column_mapping=column_mapping,
+    ...     top_level_id="Hospital",
+    ...     k_sigma=10.0
+    ... )
     """
     if config_path:
         hierarchy = Hierarchy.from_yaml(config_path)
