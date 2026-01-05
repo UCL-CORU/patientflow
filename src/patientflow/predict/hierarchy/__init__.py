@@ -111,6 +111,84 @@ Components
 - **DemandPrediction**: Individual prediction result with PMF, expected value,
   and percentiles for a single flow type (arrivals, departures, or net flow).
 
+Architecture and Component Relationships
+----------------------------------------
+Understanding when to use each component and how they relate:
+
+**Component Hierarchy:**
+::
+    
+    Hierarchy (structure)
+        ↓
+    HierarchicalPredictor (orchestration)
+        ↓
+    DemandPredictor (calculations)
+        ↓
+    PredictionBundle (results)
+
+**When to Use Each Component:**
+
+1. **`Hierarchy`**: Always needed first. Defines your organizational structure.
+   - Use `Hierarchy.create_default_hospital()` for standard hospital hierarchy
+   - Use `Hierarchy.from_yaml()` for custom hierarchy structures
+   - Populate with `populate_hierarchy_from_dataframe()` to add your organizational data
+
+2. **`create_hierarchical_predictor()` vs Manual Construction:**
+   - **Use `create_hierarchical_predictor()`** (factory function) when:
+     - You have a DataFrame with your hierarchy structure
+     - You want a quick, one-step setup
+     - You're using standard configurations
+   - **Use manual construction** when:
+     - You need fine-grained control over `DemandPredictor` parameters
+     - You're building the hierarchy programmatically
+     - You want to reuse a `DemandPredictor` instance across multiple hierarchies
+     - Example manual construction:
+       ::
+       
+           from patientflow.predict.hierarchy import DemandPredictor, HierarchicalPredictor
+           demand_predictor = DemandPredictor(k_sigma=10.0)  # Custom k_sigma
+           predictor = HierarchicalPredictor(hierarchy, demand_predictor)
+
+3. **`DemandPredictor` vs `HierarchicalPredictor`:**
+   - **Use `HierarchicalPredictor`** (recommended) when:
+     - You need predictions across multiple organizational levels
+     - You want automatic aggregation from bottom to top
+     - You're working with a complete hierarchy structure
+   - **Use `DemandPredictor` directly** when:
+     - You only need predictions for a single level (no aggregation)
+     - You're doing custom prediction workflows
+     - You're testing or debugging individual prediction calculations
+
+**Prediction Flow (3-Phase Algorithm):**
+
+The prediction process follows a strict 3-phase algorithm managed by `HierarchicalPredictor`:
+
+1. **Phase 1: Bottom-up Stats & Top-down Capping**
+   - Recursively traverses the hierarchy from bottom to top
+   - Calculates statistical properties (sum of means, combined variance) for each entity
+   - Calculates max_support caps for each node based on statistical properties
+   - Ensures bounded distribution sizes while maintaining accuracy
+
+2. **Phase 2: Bottom-level Prediction**
+   - Generates full PMF predictions for all bottom-level entities (subspecialties)
+   - Uses the caps calculated in Phase 1 to bound distribution sizes
+   - Only processes entities that have data in `bottom_level_data`
+
+3. **Phase 3: Aggregation**
+   - Aggregates predictions upward through the hierarchy using convolution
+   - Applies caps at each level during aggregation
+   - Computes net flow (arrivals - departures) at each level
+   - Results are stored in `prediction_results` dictionary keyed by entity ID
+
+**Data Flow:**
+::
+    
+    build_subspecialty_data() → SubspecialtyPredictionInputs
+        ↓
+    predict_all_levels(bottom_level_data) → Dict[str, PredictionBundle]
+        ↓
+    Access results by entity ID → PredictionBundle → DemandPrediction
+
 Notes
 -----
 The prediction process follows a 3-phase algorithm:

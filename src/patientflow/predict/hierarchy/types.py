@@ -1,4 +1,8 @@
-"""Type definitions for hierarchical demand prediction."""
+"""Type definitions for hierarchical demand prediction.
+
+This module defines the core data structures used for hierarchical predictions:
+DemandPrediction, PredictionBundle, and FlowSelection.
+"""
 
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple

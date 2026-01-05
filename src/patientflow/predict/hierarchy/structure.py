@@ -1,4 +1,8 @@
-"""Hierarchical structure definitions."""
+"""Hierarchical structure definitions.
+
+This module provides the Hierarchy class and related utilities for representing
+and populating organizational hierarchies from YAML configurations or DataFrames.
+"""
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
@@ -59,6 +63,48 @@ class Hierarchy:
         Mapping from child_id to parent_id for all entities
     entity_types : Dict[str, EntityType]
         Mapping from entity_id to its EntityType
+
+    Notes
+    -----
+    **Prefixed ID System:**
+
+    Internally, the hierarchy uses prefixed IDs (e.g., ``"subspecialty:Gsurg LowGI"``)
+    to ensure unique identification across entity types. This prevents name collisions
+    when the same entity name appears at different levels (e.g., a subspecialty and
+    a reporting unit both named "Acute Medicine").
+
+    **When You See Prefixed IDs vs Original Names:**
+
+    - **Internal storage**: All entity IDs are stored with prefixes (e.g.,
+      ``"subspecialty:Gsurg LowGI"``, ``"division:Surgery Division"``)
+    - **Public API**: Methods that return entity IDs use **original names** (without prefixes)
+      for user convenience. For example:
+      - `get_children()` returns ``['Gsurg LowGI', 'Gsurg UppGI']`` (original names)
+      - `get_parent()` returns ``'Surgery Division'`` (original name)
+      - `predict_all_levels()` returns results keyed by original names
+    - **Input methods**: Methods that accept entity IDs accept **either** original names
+      or prefixed IDs. The class automatically handles the conversion.
+
+    **Why This Design:**
+
+    - Prevents entity name collisions across different hierarchy levels
+    - Allows flexible entity naming (same name can appear at different levels)
+    - Keeps the public API clean (users work with original names)
+    - Maintains internal consistency (unique IDs for all entities)
+
+    **Handling Entity Name Collisions:**
+
+    If you have entities with the same name at different levels (e.g., a subspecialty
+    "Surgery Division" and a division "Surgery Division"), the prefixed ID system automatically
+    handles this. When calling methods, you can use either:
+
+    - Original name: ``hierarchy.get_children("Gastrointestinal Surgery")`` - the method will
+      attempt to infer the entity type from context
+    - Prefixed ID: ``hierarchy.get_children("reporting_unit:Gastrointestinal Surgery")`` - explicitly
+      specifies the entity type
+
+    If there's ambiguity (same name at multiple levels), prefer using prefixed IDs
+    or providing the `entity_type` parameter when available.
     """
 
     def __init__(self, levels: List[HierarchyLevel]):
@@ -550,31 +596,84 @@ def populate_hierarchy_from_dataframe(
 
     Notes
     -----
-    The function follows a consistent approach:
+    The function follows a consistent approach with a two-pass process:
 
-    1. **Entity Creation**: Only entity types with a column_mapping entry will
-       have entities created from the DataFrame. Entity types without a mapping
-       are skipped (except the top-level, which is handled separately).
+    1. **Entity Creation (Pass 1)**:
+       - Iterates through hierarchy levels from bottom to top
+       - For each entity type that has a column mapping:
+         * Extracts unique values from the corresponding DataFrame column
+         * Creates entities using `hierarchy.add_entity()` for each unique value
+         * Entities are created **without relationships** at this stage
+       - Entity types without column mappings are skipped (no entities created)
+       - This pass ensures all entities exist before relationships are established
 
-    2. **Two-Pass Process**:
-       - **Pass 1**: Creates all entities from DataFrame columns (for mapped types)
-       - **Pass 2**: Establishes parent-child relationships based on DataFrame rows
+    2. **Relationship Establishment (Pass 2)**:
+       - Iterates through each row of the DataFrame
+       - For each row, establishes parent-child relationships between adjacent levels:
+         * Bottom level → Parent level (e.g., subspecialty → reporting_unit)
+         * Parent level → Grandparent level (e.g., reporting_unit → division)
+         * And so on up the hierarchy
+       - Relationships are stored in `hierarchy.relationships` dictionary
+       - If a child entity appears with different parents in different rows:
+         * The **last relationship processed** will overwrite previous ones
+         * This can create an invalid hierarchy if not careful
+         * Ensure your DataFrame represents a proper tree structure
 
-    3. **Top-Level Entity**: The `top_level_id` parameter ensures a single top-level
-       entity exists. If top-level entities exist in the DataFrame (via column_mapping),
-       they are consolidated to this ID. If none exist, this ID is used to create one.
+    3. **Top-Level Entity Handling**:
+       - After Pass 2, the function ensures a single top-level entity exists:
+         * If top-level entities exist in DataFrame (via column_mapping):
+           - All top-level entities are consolidated to `top_level_id`
+           - Any top-level entities with different IDs are linked to `top_level_id`
+         * If no top-level entities exist (no column_mapping for top-level type):
+           - A new top-level entity is created with ID `top_level_id`
+       - All entities without parents (orphaned entities) are linked to the top-level entity
+       - This ensures the hierarchy is fully connected
 
-    4. **Validation and Cleanup**:
-       - Validates required columns exist
-       - Validates mapped entity types exist in hierarchy
-       - Removes duplicate rows and rows with missing values
+    4. **What Happens If Relationships Are Missing**:
+       - If a parent entity referenced in a row doesn't exist:
+         * A `ValueError` is raised: "Parent entity 'X' not found for child 'Y'"
+         * This typically means:
+           - The parent entity wasn't created in Pass 1 (missing from DataFrame)
+           - The parent entity type doesn't have a column mapping
+           - There's a mismatch between entity IDs in the DataFrame
+       - If a child entity has no parent after Pass 2:
+         * The child is automatically linked to the top-level entity
+         * This ensures no orphaned entities remain
 
-    Important requirements:
-    - The DataFrame must represent a tree structure (each child has one parent)
-    - If the same child appears with different parents, the last one processed
-      will overwrite previous relationships
-    - Duplicate rows with the same relationships are automatically handled
-    - Missing values (NaN) in any column will cause that row to be dropped
+    5. **Validation and Cleanup**:
+       - **Before processing**: Validates required columns exist in DataFrame
+       - **Before processing**: Validates mapped entity types exist in hierarchy structure
+       - **During processing**: Removes duplicate rows (same relationships)
+       - **During processing**: Drops rows with missing values (NaN) in any column
+       - **After processing**: Ensures all entities are connected (no orphans)
+
+    **Important Requirements:**
+
+    - The DataFrame must represent a **tree structure**: each child entity has exactly
+      one parent. If the same child appears with different parents in different rows,
+      the last relationship processed will overwrite previous ones, potentially creating
+      an invalid hierarchy.
+    - All entity IDs in the DataFrame must be strings (or convertible to strings)
+    - Entity IDs are case-sensitive and must match exactly when referenced
+    - Duplicate rows with the same relationships are automatically handled (no error)
+    - Missing values (NaN) in any column will cause that entire row to be dropped
+
+    **Example of Two-Pass Process:**
+
+    Given a DataFrame with one row:
+    ::
+
+        subspecialty='Gsurg LowGI', reporting_unit='Gastrointestinal Surgery', division='Surgery Division'
+
+    **Pass 1** creates entities (no relationships yet):
+    - Creates entity "subspecialty:Gsurg LowGI"
+    - Creates entity "reporting_unit:Gastrointestinal Surgery"
+    - Creates entity "division:Surgery Division"
+
+    **Pass 2** establishes relationships:
+    - Links "subspecialty:Gsurg LowGI" → "reporting_unit:Gastrointestinal Surgery"
+    - Links "reporting_unit:Gastrointestinal Surgery" → "division:Surgery Division"
+    - Links "division:Surgery Division" → "hospital:uclh" (top-level, created/consolidated)
     """
     # Validate that all required columns exist
     required_columns = list(column_mapping.keys())

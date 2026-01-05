@@ -1,4 +1,8 @@
-"""Hierarchical prediction orchestrator."""
+"""Hierarchical prediction orchestrator.
+
+This module provides HierarchicalPredictor, which orchestrates the 3-phase
+prediction algorithm across all levels of the organizational hierarchy.
+"""
 
 from typing import Dict, Optional, Tuple, Any
 
@@ -171,14 +175,14 @@ class HierarchicalPredictor:
         Notes
         -----
         **Data Format Requirements:**
-        
+
         The `bottom_level_data` dictionary should be created using `build_subspecialty_data()`
         from `patientflow.predict.subspecialty`. Each `SubspecialtyPredictionInputs` object
         contains probability distributions (PMFs) for current patients and Poisson parameters
         for yet-to-arrive patients, organized by flow type (inflows/outflows).
-        
+
         **Entity ID Matching:**
-        
+
         - Subspecialty IDs in `bottom_level_data` keys **must exactly match** (case-sensitive)
           the entity IDs at the bottom level of the hierarchy.
         - If a subspecialty ID in `bottom_level_data` doesn't exist in the hierarchy:
@@ -191,27 +195,27 @@ class HierarchicalPredictor:
           - It won't appear in the results dictionary
           - Aggregated predictions at higher levels will exclude this subspecialty
           - This is the expected behavior when you don't have data for all subspecialties
-        
+
         **Error Handling:**
-        
+
         - ``ValueError``: Raised if `top_level_id` is provided but doesn't exist in the hierarchy
         - ``ValueError``: Raised if `flow_selection` is invalid (e.g., conflicting settings)
         - Missing subspecialties in `bottom_level_data` are handled gracefully (no error)
         - Extra subspecialties in `bottom_level_data` (not in hierarchy) are ignored (no error)
-        
+
         **Prediction Process:**
-        
+
         The method follows a 3-phase algorithm:
-        
+
         1. **Phase 1 (Capping)**: Calculate statistical caps for each entity based on
            the sum of means and combined variance of all distributions in its subtree
         2. **Phase 2 (Bottom-level Prediction)**: Generate full PMF predictions for
            all bottom-level entities that have data
         3. **Phase 3 (Aggregation)**: Aggregate predictions upward through the hierarchy
            using convolution, applying caps at each level
-        
+
         **Performance Considerations:**
-        
+
         - Predictions are computed recursively from the specified `top_level_id` downward
         - Only entities in the subtree rooted at `top_level_id` are processed
         - Intermediate results are cached in `self.prediction_results` for efficient access
@@ -322,10 +326,10 @@ class HierarchicalPredictor:
             Prediction bundle if available, None otherwise
         """
         return self.prediction_results.get(entity_id)
-    
+
     def get_truncated_mass_stats(self) -> Dict[str, Any]:
         """Get statistics about truncated probability mass from the predictor.
-        
+
         Returns
         -------
         dict

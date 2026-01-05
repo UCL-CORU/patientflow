@@ -1,4 +1,8 @@
-"""Core calculation engine for demand prediction."""
+"""Core calculation engine for demand prediction.
+
+This module provides DemandPredictor, which performs convolution of probability
+distributions and statistical capping for hierarchical bed demand predictions.
+"""
 
 from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np

@@ -33,3 +33,13 @@ x2: 12
 
 # Target proportion of patients admitted by time x2.
 y2: .99
+
+# Hierarchy configuration
+# Defines the organizational hierarchy structure
+levels:
+  - entity_type: specialty
+    parent_type: division
+    level_order: 0
+  - entity_type: division
+    parent_type: null
+    level_order: 1
