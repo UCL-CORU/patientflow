@@ -41,5 +41,8 @@ levels:
     parent_type: division
     level_order: 0
   - entity_type: division
-    parent_type: null
+    parent_type: hospital
     level_order: 1
+  - entity_type: hospital
+    parent_type: null
+    level_order: 2
