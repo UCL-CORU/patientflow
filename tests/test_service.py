@@ -4,9 +4,9 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 
-from patientflow.predict.subspecialty import (
-    build_subspecialty_data,
-    SubspecialtyPredictionInputs,
+from patientflow.predict.service import (
+    build_service_data,
+    ServicePredictionInputs,
     FlowInputs,
     compute_transfer_arrivals,
 )
@@ -268,7 +268,7 @@ def _create_transfer_model(specialties):
     return model
 
 
-class TestBuildSubspecialtyData(unittest.TestCase):
+class TestBuildServiceData(unittest.TestCase):
     def setUp(self):
         self.prediction_time = (7, 0)
         self.prediction_window = timedelta(hours=8)
@@ -328,7 +328,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
     def test_basic_functionality_returns_expected_keys(self):
         ed_snapshots = self._make_snapshots(50)
         inpatient_snapshots = self._make_inpatient_snapshots(30)
-        result = build_subspecialty_data(
+        result = build_service_data(
             models=self.models,
             prediction_time=self.prediction_time,
             ed_snapshots=ed_snapshots,
@@ -345,9 +345,9 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         for spec in self.specialties:
             self.assertIn(spec, result)
             spec_data = result[spec]
-            self.assertIsInstance(spec_data, SubspecialtyPredictionInputs)
+            self.assertIsInstance(spec_data, ServicePredictionInputs)
             # Check new structure attributes exist
-            self.assertTrue(hasattr(spec_data, "subspecialty_id"))
+            self.assertTrue(hasattr(spec_data, "service_id"))
             self.assertTrue(hasattr(spec_data, "prediction_window"))
             self.assertTrue(hasattr(spec_data, "inflows"))
             self.assertTrue(hasattr(spec_data, "outflows"))
@@ -400,7 +400,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         ed_snapshots = self._make_snapshots(40)
         inpatient_snapshots = self._make_inpatient_snapshots(25)
-        result = build_subspecialty_data(
+        result = build_service_data(
             models=models,
             prediction_time=self.prediction_time,
             ed_snapshots=ed_snapshots,
@@ -422,7 +422,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         inpatient_snapshots = self._make_inpatient_snapshots(5)
         # Wrong prediction time
         with self.assertRaises(ValueError):
-            build_subspecialty_data(
+            build_service_data(
                 models=self.models,
                 prediction_time=(8, 0),
                 ed_snapshots=ed_snapshots,
@@ -450,7 +450,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             self.transfer_model,  # Transfer model
         )
         with self.assertRaises(ValueError):
-            build_subspecialty_data(
+            build_service_data(
                 models=models,
                 prediction_time=self.prediction_time,
                 ed_snapshots=ed_snapshots,
@@ -468,7 +468,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         inpatient_snapshots = self._make_inpatient_snapshots(3)
         # Missing column in ED snapshots
         with self.assertRaises(ValueError):
-            build_subspecialty_data(
+            build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
                 ed_snapshots=ed_snapshots.drop(columns=["elapsed_los"]),
@@ -482,7 +482,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             )
         # Missing column in inpatient snapshots
         with self.assertRaises(ValueError):
-            build_subspecialty_data(
+            build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
                 ed_snapshots=ed_snapshots,
@@ -500,7 +500,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
             "elapsed_los"
         ].dt.total_seconds()
         with self.assertRaises(ValueError):
-            build_subspecialty_data(
+            build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
                 ed_snapshots=ed_snapshots_bad,
@@ -535,7 +535,7 @@ class TestBuildSubspecialtyData(unittest.TestCase):
         )
         ed_snapshots = self._make_snapshots(60)
         inpatient_snapshots = self._make_inpatient_snapshots(35)
-        result = build_subspecialty_data(
+        result = build_service_data(
             models=models,
             prediction_time=self.prediction_time,
             ed_snapshots=ed_snapshots,
@@ -555,11 +555,11 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.subspecialties = ["cardiology", "surgery", "medicine"]
+        self.services = ["cardiology", "surgery", "medicine"]
 
     def test_simple_transfer_calculation(self):
         """Test basic transfer calculation: cardiology -> surgery."""
-        subspecialty_data = {
+        service_data = {
             "cardiology": {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -615,10 +615,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
         )
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         result = compute_transfer_arrivals(
-            subspecialty_data, transfer_model, self.subspecialties
+            service_data, transfer_model, self.services
         )
 
         # Surgery should receive 2 emergency arrivals with certainty
@@ -631,7 +631,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
     def test_mixed_transfers_and_discharges(self):
         """Test calculation when some patients transfer and some are discharged (None)."""
-        subspecialty_data = {
+        service_data = {
             "cardiology": {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -694,10 +694,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
         )
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         result = compute_transfer_arrivals(
-            subspecialty_data, transfer_model, self.subspecialties
+            service_data, transfer_model, self.services
         )
 
         # Check cardiology stats for emergency patients
@@ -732,7 +732,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
     def test_multiple_sources_aggregation(self):
         """Test aggregation when multiple sources transfer to one destination."""
-        subspecialty_data = {
+        service_data = {
             "cardiology": {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -786,10 +786,10 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
         )
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         result = compute_transfer_arrivals(
-            subspecialty_data, transfer_model, self.subspecialties
+            service_data, transfer_model, self.services
         )
 
         # Medicine should receive 2 emergency arrivals (convolution of two Bernoulli)
@@ -797,7 +797,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
     def test_complex_transfer_network(self):
         """Test realistic complex network with circular transfers."""
-        subspecialty_data = {
+        service_data = {
             "cardiology": {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -857,14 +857,14 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
         )
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         result = compute_transfer_arrivals(
-            subspecialty_data, transfer_model, self.subspecialties
+            service_data, transfer_model, self.services
         )
 
         # All subspecialties should receive emergency arrivals and sum to 1
-        for subspecialty in self.subspecialties:
+        for subspecialty in self.services:
             self.assertAlmostEqual(np.sum(result["emergency"][subspecialty]), 1.0)
             self.assertTrue(np.all(result["emergency"][subspecialty] >= 0))
             # No elective transfers in this test
@@ -874,7 +874,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
     def test_probability_validity(self):
         """Test that arrival PMFs are valid probability distributions."""
         np.random.seed(42)
-        subspecialty_data = {
+        service_data = {
             subspecialty: {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -891,27 +891,27 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     ),
                 }
             }
-            for subspecialty in self.subspecialties
+            for subspecialty in self.services
         }
 
         # Create random transfer network for emergency patients
         transfers = [
             {
-                "current_subspecialty": np.random.choice(self.subspecialties),
-                "next_subspecialty": np.random.choice([None] + self.subspecialties),
+                "current_subspecialty": np.random.choice(self.services),
+                "next_subspecialty": np.random.choice([None] + self.services),
                 "admission_type": "emergency",
             }
             for _ in range(10)
         ]
         X = pd.DataFrame(transfers)
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         result = compute_transfer_arrivals(
-            subspecialty_data, transfer_model, self.subspecialties
+            service_data, transfer_model, self.services
         )
 
-        for subspecialty in self.subspecialties:
+        for subspecialty in self.services:
             # Check emergency arrivals
             emergency_arrivals = result["emergency"][subspecialty]
             self.assertAlmostEqual(np.sum(emergency_arrivals), 1.0, places=10)
@@ -924,7 +924,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
     def test_error_handling(self):
         """Test essential error conditions."""
         # Missing departure PMF
-        subspecialty_data = {
+        service_data = {
             "cardiology": {},  # Missing outflows entirely
             "surgery": {
                 "outflows": {
@@ -963,15 +963,15 @@ class TestComputeTransferArrivals(unittest.TestCase):
             }
         )
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
-        transfer_model.fit(X, set(self.subspecialties))
+        transfer_model.fit(X, set(self.services))
 
         with self.assertRaises(KeyError):
             compute_transfer_arrivals(
-                subspecialty_data, transfer_model, self.subspecialties
+                service_data, transfer_model, self.services
             )
 
         # Unfitted transfer model
-        subspecialty_data_valid = {
+        service_data_valid = {
             spec: {
                 "outflows": {
                     "elective_departures": FlowInputs(
@@ -986,13 +986,13 @@ class TestComputeTransferArrivals(unittest.TestCase):
                     ),
                 }
             }
-            for spec in self.subspecialties
+            for spec in self.services
         }
         unfitted_model = TransferProbabilityEstimator(cohort_col="admission_type")
 
         with self.assertRaises(ValueError):
             compute_transfer_arrivals(
-                subspecialty_data_valid, unfitted_model, self.subspecialties
+                service_data_valid, unfitted_model, self.services
             )
 
 

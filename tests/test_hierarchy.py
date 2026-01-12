@@ -17,8 +17,8 @@ from patientflow.predict.hierarchy import (
     DEFAULT_MAX_PROBS,
 )
 from patientflow.predict.distribution import Distribution
-from patientflow.predict.subspecialty import (
-    SubspecialtyPredictionInputs,
+from patientflow.predict.service import (
+    ServicePredictionInputs,
     FlowInputs,
 )
 
@@ -101,8 +101,8 @@ class TestDemandPredictor:
             f"{reporting_unit_type.name}:UnitA"
         )
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="Cardiology",
+        inputs = ServicePredictionInputs(
+            service_id="Cardiology",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -250,12 +250,12 @@ class TestDemandPredictor:
         expected = net.expected()
         assert np.isclose(expected, -0.1, atol=1e-10)
 
-    def test_predict_subspecialty(self):
+    def test_predict_service(self):
         """Test subspecialty-level prediction."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -295,10 +295,10 @@ class TestDemandPredictor:
             },
         )
 
-        bundle = predictor.predict_subspecialty("cardio", inputs)
+        bundle = predictor.predict_service("cardio", inputs)
 
         assert bundle.entity_id == "cardio"
-        assert bundle.entity_type == "subspecialty"
+        assert bundle.entity_type == "service"
 
         # Net flow expected should match arrivals - departures
         expected_diff = (
@@ -306,12 +306,12 @@ class TestDemandPredictor:
         )
         assert np.isclose(bundle.net_flow.expected_value, expected_diff, atol=1e-6)
 
-    def test_predict_subspecialty_with_custom_flow_selection(self):
+    def test_predict_service_with_custom_flow_selection(self):
         """Test subspecialty prediction with custom flow selection."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -353,19 +353,19 @@ class TestDemandPredictor:
 
         # Test with emergency-only flow selection
         flow_selection = FlowSelection.emergency_only()
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
-        assert bundle.entity_type == "subspecialty"
+        assert bundle.entity_type == "service"
         assert bundle.flow_selection.cohort == "emergency"
 
-    def test_predict_subspecialty_missing_keys_validation(self):
+    def test_predict_service_missing_keys_validation(self):
         """Test that missing flow keys raise appropriate errors."""
         predictor = DemandPredictor()
 
         # Create inputs with missing keys
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -385,7 +385,7 @@ class TestDemandPredictor:
 
         # Should raise KeyError for missing inflow keys
         with pytest.raises(KeyError, match="Missing inflow keys"):
-            predictor.predict_subspecialty("cardio", inputs)
+            predictor.predict_service("cardio", inputs)
 
     def test_compute_net_flow_helper(self):
         """Test the _compute_net_flow helper method."""
@@ -562,8 +562,8 @@ class TestCohortFiltering:
         """Test that elective cohort correctly filters flows."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -599,7 +599,7 @@ class TestCohortFiltering:
 
         # Test elective-only flow selection
         flow_selection = FlowSelection.elective_only()
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         # Should only include elective flows
         assert bundle.flow_selection.cohort == "elective"
@@ -609,8 +609,8 @@ class TestCohortFiltering:
         """Test that emergency cohort correctly filters flows."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -646,7 +646,7 @@ class TestCohortFiltering:
 
         # Test emergency-only flow selection
         flow_selection = FlowSelection.emergency_only()
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         # Should only include emergency flows
         assert bundle.flow_selection.cohort == "emergency"
@@ -655,8 +655,8 @@ class TestCohortFiltering:
         """Test that 'all' cohort includes all flows."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -692,7 +692,7 @@ class TestCohortFiltering:
 
         # Test all cohort flow selection
         flow_selection = FlowSelection(cohort="all")
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         # Should include all flows
         assert bundle.flow_selection.cohort == "all"
@@ -705,8 +705,8 @@ class TestFlowSelectionEdgeCases:
         """Test flow selection with no flows enabled."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -751,10 +751,10 @@ class TestFlowSelectionEdgeCases:
         )
 
         # Should succeed but with empty flow lists
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
-        assert bundle.entity_type == "subspecialty"
+        assert bundle.entity_type == "service"
         assert bundle.flow_selection.include_departures is False
         # All flow settings should be False
         assert bundle.flow_selection.include_ed_current is False
@@ -767,8 +767,8 @@ class TestFlowSelectionEdgeCases:
         """Test flow selection with only some flows enabled."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -812,10 +812,10 @@ class TestFlowSelectionEdgeCases:
             include_departures=True,
         )
 
-        bundle = predictor.predict_subspecialty("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service("cardio", inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
-        assert bundle.entity_type == "subspecialty"
+        assert bundle.entity_type == "service"
         assert bundle.flow_selection.include_ed_current is True
         assert bundle.flow_selection.include_ed_yta is True
         assert bundle.flow_selection.include_non_ed_yta is False
@@ -828,8 +828,8 @@ class TestFlowSelectionEdgeCases:
         predictor = DemandPredictor()
 
         # Create inputs with only some flows
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -860,14 +860,14 @@ class TestFlowSelectionEdgeCases:
 
         # Should raise KeyError for missing inflow keys
         with pytest.raises(KeyError, match="Missing inflow keys"):
-            predictor.predict_subspecialty("cardio", inputs, flow_selection)
+            predictor.predict_service("cardio", inputs, flow_selection)
 
     def test_missing_outflow_keys_validation(self):
         """Test missing outflow keys validation."""
         predictor = DemandPredictor()
 
-        inputs = SubspecialtyPredictionInputs(
-            subspecialty_id="cardio",
+        inputs = ServicePredictionInputs(
+            service_id="cardio",
             prediction_window=24,
             inflows={
                 "ed_current": FlowInputs(
@@ -899,7 +899,7 @@ class TestFlowSelectionEdgeCases:
 
         # Should raise KeyError for missing outflow keys
         with pytest.raises(KeyError, match="Missing outflow keys"):
-            predictor.predict_subspecialty("cardio", inputs)
+            predictor.predict_service("cardio", inputs)
 
 
 class TestHierarchyCollisionFix:
@@ -1225,9 +1225,9 @@ class TestHierarchicalPredictor:
                 flow_id=flow_id, flow_type="pmf", distribution=probabilities
             )
 
-        def make_inputs(subspecialty_id: str) -> SubspecialtyPredictionInputs:
-            return SubspecialtyPredictionInputs(
-                subspecialty_id=subspecialty_id,
+        def make_inputs(subspecialty_id: str) -> ServicePredictionInputs:
+            return ServicePredictionInputs(
+                service_id=subspecialty_id,
                 prediction_window=24,
                 inflows={
                     "ed_current": poisson_flow("ed_current", 1.0),

@@ -1,10 +1,10 @@
 """
-Transfer probability predictor for patient movements between subspecialties.
+Transfer probability predictor for patient movements between services.
 
 This module provides a predictor for modelling patient transfers between hospital
-subspecialties based on historical movement patterns. It computes the probability
+services based on historical movement patterns. It computes the probability
 that a departing patient will transfer to another subspecialty versus being
-discharged, and the distribution of destination subspecialties for transfers.
+discharged, and the distribution of destination services for transfers.
 
 The predictor supports cohort-based analysis, allowing separate transfer probability
 models to be trained for different patient groups (e.g., elective vs emergency
@@ -21,7 +21,7 @@ This predictor is designed to work in conjunction with inpatient departure class
 to provide a complete picture of subspecialty bed demand by accounting for both
 external discharges and internal transfers.
 
-The predictor stores transition probabilities between subspecialties, which can be
+The predictor stores transition probabilities between services, which can be
 used at prediction time to model internal patient flows and compute arrival
 distributions for each subspecialty from transfers.
 
@@ -38,7 +38,7 @@ from patientflow.predictors.subgroup_definitions import create_subgroup_function
 class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     """Estimate patient transfer probabilities from subspecialty movement patterns.
 
-    This estimator computes and stores transfer probabilities between subspecialties
+    This estimator computes and stores transfer probabilities between services
     based on historical patient movement data. For each source subspecialty, it
     calculates:
     1. The probability that a departure results in a transfer (vs discharge)
@@ -50,9 +50,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     Parameters
     ----------
     source_col : str, default='current_subspecialty'
-        Name of the column containing the source subspecialty (where patient is leaving from)
+        Name of the column containing the source service (where patient is leaving from)
     destination_col : str, default='next_subspecialty'
-        Name of the column containing the destination subspecialty (where patient is going to).
+        Name of the column containing the destination service (where patient is going to).
         None/NaN values indicate discharge rather than transfer.
     visit_col : str, optional
         Name of the column identifying a visit/encounter. If provided, the
@@ -87,7 +87,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         If cohort_col is None:
         {
             'all': {
-                'source_subspecialty': {
+                'source_service': {
                     'prob_transfer': float,
                     'destination_distribution': dict
                 }
@@ -97,20 +97,20 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         If cohort_col is specified:
         {
             'cohort_name': {
-                'source_subspecialty': {
+                'source_service': {
                     'prob_transfer': float,
                     'destination_distribution': dict
                 },
                 'subgroup_name': {
-                    'source_subspecialty': {
+                    'source_service': {
                         'prob_transfer': float,
                         'destination_distribution': dict
                     }
                 }
             }
         }
-    subspecialties : set
-        Set of all subspecialties in the system
+    services : set
+        Set of all services in the system
     cohorts : set or None
         Set of all cohorts in the system, or None if not using cohorts
     subgroups : set or None
@@ -126,16 +126,16 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     ...     'next_subspecialty': ['surgery', None, None],  # None = discharge
     ...     'admission_type': ['elective', 'emergency', 'elective']
     ... })
-    >>> subspecialties = {'cardiology', 'surgery', 'medicine'}
+    >>> services = {'cardiology', 'surgery', 'medicine'}
     >>>
     >>> # Train the estimator without cohorts (uses all data)
     >>> estimator = TransferProbabilityEstimator()
-    >>> estimator.fit(X, subspecialties)
+    >>> estimator.fit(X, services)
     >>> prob_transfer = estimator.get_transfer_prob('cardiology')
     >>>
     >>> # Train the estimator with cohorts (separate models for each cohort)
     >>> estimator = TransferProbabilityEstimator(cohort_col='admission_type')
-    >>> estimator.fit(X, subspecialties)
+    >>> estimator.fit(X, services)
     >>> prob_transfer_elective = estimator.get_transfer_prob('cardiology', 'elective')
     >>> prob_transfer_emergency = estimator.get_transfer_prob('cardiology', 'emergency')
     >>>
@@ -149,8 +149,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     None/NaN for discharges and contain the destination subspecialty name for
     transfers.
 
-    All subspecialties in the system should be provided to ensure complete
-    probability distributions, even for subspecialties with no observed transfers.
+    All services in the system should be provided to ensure complete
+    probability distributions, even for services with no observed transfers.
     """
 
     def __init__(
@@ -173,7 +173,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         self.transfer_probabilities: Optional[Dict[str, Dict[str, Dict[str, Dict]]]] = (
             None
         )
-        self.subspecialties: Optional[Set[str]] = None
+        self.services: Optional[Set[str]] = None
         self.cohorts: Optional[Set[str]] = None
         self.subgroups: Optional[Set[str]] = None
         self.patient_counts: Optional[Dict[str, Dict[str, int]]] = None
@@ -193,15 +193,15 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f")"
             )
 
-        n_subspecialties = (
-            len(self.subspecialties) if self.subspecialties is not None else 0
+        n_services = (
+            len(self.services) if self.services is not None else 0
         )
         n_cohorts = len(self.cohorts) if self.cohorts is not None else 0
         n_subgroups = len(self.subgroups) if self.subgroups is not None else 0
 
         n_with_transfers = 0
         cohort_subspecialty_counts: Dict[str, Dict[str, int]] = {}
-        subspecialties_with_transfers: Set[str] = set()
+        services_with_transfers: Set[str] = set()
 
         if self.transfer_probabilities is not None:
             # Process each cohort separately to get cohort-specific counts
@@ -215,17 +215,17 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                             isinstance(prob_transfer, (int, float))
                             and prob_transfer > 0
                         ):
-                            subspecialties_with_transfers.add(
+                            services_with_transfers.add(
                                 key
-                            )  # Track unique subspecialties with transfers
+                            )  # Track unique services with transfers
                     # Check if this is subgroup data (contains nested subspecialty data)
                     elif isinstance(value, dict) and any(
                         isinstance(v, dict) and "prob_transfer" in v
                         for v in value.values()
                     ):
-                        # Count subspecialties in this subgroup for this specific cohort
-                        # Only count subspecialties that have actual data (prob_transfer > 0)
-                        subgroup_total_subspecialties = sum(
+                        # Count services in this subgroup for this specific cohort
+                        # Only count services that have actual data (prob_transfer > 0)
+                        subgroup_total_services = sum(
                             1
                             for v in value.values()
                             if isinstance(v, dict)
@@ -233,11 +233,11 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                             and v["prob_transfer"] > 0
                         )
                         cohort_subspecialty_counts[cohort_name][key] = (
-                            subgroup_total_subspecialties
+                            subgroup_total_services
                         )
 
-            # Set final count of unique subspecialties with transfers
-            n_with_transfers = len(subspecialties_with_transfers)
+            # Set final count of unique services with transfers
+            n_with_transfers = len(services_with_transfers)
 
         # Collect patient counts for subgroups by cohort
         cohort_subgroup_counts = {}
@@ -277,7 +277,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                             f"{subgroup_name} ({subspec_count}/{patient_count})"
                         )
                     lines.append(
-                        f"    {cohort_name} (subspecialties/snapshots): "
+                        f"    {cohort_name} (services/snapshots): "
                         + "; ".join(entries)
                     )
                 subgroup_info = "\n".join(lines)
@@ -303,17 +303,17 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             f"{core_info}\n"
             f"{subgroup_info_line}\n"
             f"    fitted=True,\n"
-            f"    n_subspecialties={n_subspecialties}, n_with_transfers={n_with_transfers}\n"
+            f"    n_services={n_services}, n_with_transfers={n_with_transfers}\n"
             f")"
         )
 
     def fit(
-        self, X: pd.DataFrame, subspecialties: Set[str]
+        self, X: pd.DataFrame, services: Set[str]
     ) -> "TransferProbabilityEstimator":
         """Fit the transfer probability estimator from patient movement data.
 
         This method computes transfer probabilities from historical patient
-        movements between subspecialties. For each source subspecialty, it
+        movements between services. For each source subspecialty, it
         calculates what proportion of departures result in transfers and
         where those transfers go.
 
@@ -326,7 +326,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             Training DataFrame containing patient movement data with columns as
             specified by source_col and destination_col parameters. If cohort_col
             is specified, must also contain that column.
-        subspecialties : set of str
+        services : set of str
             Set of all subspecialty names in the system
 
         Returns
@@ -339,7 +339,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         ValueError
             If required columns are missing from X
         TypeError
-            If subspecialties is not a set or collection of strings
+            If services is not a set or collection of strings
         """
         # Validate inputs
         required_columns = {self.source_col, self.destination_col}
@@ -355,13 +355,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f"Required columns are: {required_columns}"
             )
 
-        if not isinstance(subspecialties, (set, list, tuple)):
+        if not isinstance(services, (set, list, tuple)):
             raise TypeError(
-                f"subspecialties must be a set, list, or tuple, got {type(subspecialties)}"
+                f"services must be a set, list, or tuple, got {type(services)}"
             )
 
         # Convert to set if needed
-        self.subspecialties = set(subspecialties)
+        self.services = set(services)
 
         # If visit_col is provided, drop duplicate transitions per visit
         if self.visit_col is not None:
@@ -369,15 +369,15 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 subset=[self.visit_col, self.source_col, self.destination_col]
             )
 
-        # Validate that all destinations are in subspecialties
+        # Validate that all destinations are in services
         destinations = X[self.destination_col].dropna().unique()
-        unknown_destinations = set(destinations) - self.subspecialties
+        unknown_destinations = set(destinations) - self.services
         if unknown_destinations:
             raise ValueError(
-                f"Found destination subspecialties in data that are not in the "
-                f"subspecialties set: {sorted(unknown_destinations)}. "
-                f"Please ensure all destination subspecialties are included in the "
-                f"subspecialties parameter."
+                f"Found destination services in data that are not in the "
+                f"services set: {sorted(unknown_destinations)}. "
+                f"Please ensure all destination services are included in the "
+                f"services parameter."
             )
 
         # Handle cohort processing
@@ -404,7 +404,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 # Train global model for this cohort (all data) - store directly at cohort level
                 self.transfer_probabilities[cohort] = (
                     self._prepare_transfer_probabilities(
-                        self.subspecialties, cohort_data
+                        self.services, cohort_data
                     )
                 )
 
@@ -417,7 +417,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     if len(subgroup_data) > 0:  # Only train if subgroup has data
                         self.transfer_probabilities[cohort][subgroup_name] = (
                             self._prepare_transfer_probabilities(
-                                self.subspecialties, subgroup_data
+                                self.services, subgroup_data
                             )
                         )
                         # Store patient count for this subgroup
@@ -439,7 +439,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             # No cohort processing - use all data
             self.cohorts = None
             self.transfer_probabilities = {
-                "all": self._prepare_transfer_probabilities(self.subspecialties, X)
+                "all": self._prepare_transfer_probabilities(self.services, X)
             }
             self.patient_counts = {"all": {}}
 
@@ -449,7 +449,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 if len(subgroup_data) > 0:  # Only train if subgroup has data
                     self.transfer_probabilities["all"][subgroup_name] = (
                         self._prepare_transfer_probabilities(
-                            self.subspecialties, subgroup_data
+                            self.services, subgroup_data
                         )
                     )
                     # Store patient count for this subgroup
@@ -472,7 +472,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         return self
 
     def _prepare_transfer_probabilities(
-        self, subspecialties: Set[str], X: pd.DataFrame
+        self, services: Set[str], X: pd.DataFrame
     ) -> Dict[str, Dict]:
         """Prepare transfer probabilities dictionary from patient movement data.
 
@@ -481,7 +481,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        subspecialties : set of str
+        services : set of str
             Set of all subspecialty names
         X : pandas.DataFrame
             Training DataFrame with source_col and destination_col columns
@@ -491,7 +491,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         dict
             Transfer probabilities dictionary with structure:
             {
-                'source_subspecialty': {
+                'source_service': {
                     'prob_transfer': float,
                     'destination_distribution': {
                         'destination': float, ...
@@ -506,13 +506,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         """
         transfer_probabilities = {}
 
-        for source_subspecialty in subspecialties:
+        for source_service in services:
             # Filter to movements from this source
-            source_movements = X[X[self.source_col] == source_subspecialty].copy()
+            source_movements = X[X[self.source_col] == source_service].copy()
 
             if len(source_movements) == 0:
                 # No data for this subspecialty - set prob_transfer to 0
-                transfer_probabilities[source_subspecialty] = {
+                transfer_probabilities[source_service] = {
                     "prob_transfer": 0.0,
                     "destination_distribution": {},
                 }
@@ -527,7 +527,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
             # If no transfers, include with empty destination distribution
             if num_transfers == 0:
-                transfer_probabilities[source_subspecialty] = {
+                transfer_probabilities[source_service] = {
                     "prob_transfer": 0.0,
                     "destination_distribution": {},
                 }
@@ -538,7 +538,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             destination_distribution = (destination_counts / num_transfers).to_dict()
 
             # Store results
-            transfer_probabilities[source_subspecialty] = {
+            transfer_probabilities[source_service] = {
                 "prob_transfer": prob_transfer,
                 "destination_distribution": destination_distribution,
             }
@@ -547,7 +547,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
     def get_transfer_prob(
         self,
-        source_subspecialty: str,
+        source_service: str,
         cohort: Optional[str] = None,
         subgroup: Optional[str] = None,
     ) -> float:
@@ -555,7 +555,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        source_subspecialty : str
+        source_service : str
             Name of the source subspecialty
         cohort : str, optional
             Name of the cohort to get probabilities for. If None and multiple
@@ -574,7 +574,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         ValueError
             If the predictor has not been fitted or cohort not found
         KeyError
-            If source_subspecialty is not in the trained subspecialties
+            If source_service is not in the trained services
         """
         if not self.is_fitted_:
             raise ValueError(
@@ -605,12 +605,12 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         if subgroup is None:
             # Use global model (stored directly at cohort level)
-            if source_subspecialty not in cohort_data:
+            if source_service not in cohort_data:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}'. "
+                    f"Available services: {sorted(cohort_data.keys())}"
                 )
-            prob_transfer = cohort_data[source_subspecialty]["prob_transfer"]
+            prob_transfer = cohort_data[source_service]["prob_transfer"]
             if isinstance(prob_transfer, (int, float)):
                 return prob_transfer
             else:
@@ -624,13 +624,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 )
 
             subgroup_probabilities = cohort_data[subgroup]
-            if source_subspecialty not in subgroup_probabilities:
+            if source_service not in subgroup_probabilities:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
-                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available services: {sorted(subgroup_probabilities.keys())}"
                 )
 
-            prob_transfer = subgroup_probabilities[source_subspecialty]["prob_transfer"]
+            prob_transfer = subgroup_probabilities[source_service]["prob_transfer"]
             if isinstance(prob_transfer, (int, float)):
                 return prob_transfer
             else:
@@ -638,7 +638,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
     def get_destination_distribution(
         self,
-        source_subspecialty: str,
+        source_service: str,
         cohort: Optional[str] = None,
         subgroup: Optional[str] = None,
     ) -> Dict[str, float]:
@@ -646,7 +646,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        source_subspecialty : str
+        source_service : str
             Name of the source subspecialty
         cohort : str, optional
             Name of the cohort to get probabilities for. If None and multiple
@@ -664,7 +664,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         ValueError
             If the predictor has not been fitted or cohort not found
         KeyError
-            If source_subspecialty is not in the trained subspecialties
+            If source_service is not in the trained services
 
         Notes
         -----
@@ -701,12 +701,12 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         if subgroup is None:
             # Use global model (stored directly at cohort level)
-            if source_subspecialty not in cohort_data:
+            if source_service not in cohort_data:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}'. "
+                    f"Available services: {sorted(cohort_data.keys())}"
                 )
-            return cohort_data[source_subspecialty]["destination_distribution"]
+            return cohort_data[source_service]["destination_distribution"]
         else:
             # Use specific subgroup
             if subgroup not in cohort_data:
@@ -716,19 +716,19 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 )
 
             subgroup_probabilities = cohort_data[subgroup]
-            if source_subspecialty not in subgroup_probabilities:
+            if source_service not in subgroup_probabilities:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
-                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available services: {sorted(subgroup_probabilities.keys())}"
                 )
 
-            return subgroup_probabilities[source_subspecialty][
+            return subgroup_probabilities[source_service][
                 "destination_distribution"
             ]
 
     def predict(
         self,
-        source_subspecialty: str,
+        source_service: str,
         cohort: Optional[str] = None,
         subgroup: Optional[str] = None,
     ) -> Dict[str, Union[float, Dict[str, float]]]:
@@ -739,7 +739,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         Parameters
         ----------
-        source_subspecialty : str
+        source_service : str
             Name of the source subspecialty
         cohort : str, optional
             Name of the cohort to get probabilities for. If None and multiple
@@ -758,7 +758,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         ValueError
             If the predictor has not been fitted or cohort not found
         KeyError
-            If source_subspecialty is not in the trained subspecialties
+            If source_service is not in the trained services
         """
         if not self.is_fitted_:
             raise ValueError(
@@ -789,12 +789,12 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         if subgroup is None:
             # Use global model (stored directly at cohort level)
-            if source_subspecialty not in cohort_data:
+            if source_service not in cohort_data:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}'. "
-                    f"Available subspecialties: {sorted(cohort_data.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}'. "
+                    f"Available services: {sorted(cohort_data.keys())}"
                 )
-            subspecialty_data = cohort_data[source_subspecialty]
+            subspecialty_data = cohort_data[source_service]
             return {
                 "prob_transfer": subspecialty_data["prob_transfer"],
                 "destination_distribution": subspecialty_data[
@@ -810,13 +810,13 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 )
 
             subgroup_probabilities = cohort_data[subgroup]
-            if source_subspecialty not in subgroup_probabilities:
+            if source_service not in subgroup_probabilities:
                 raise KeyError(
-                    f"Subspecialty '{source_subspecialty}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
-                    f"Available subspecialties: {sorted(subgroup_probabilities.keys())}"
+                    f"Subspecialty '{source_service}' not found in cohort '{cohort}', subgroup '{subgroup}'. "
+                    f"Available services: {sorted(subgroup_probabilities.keys())}"
                 )
 
-            subspecialty_data = subgroup_probabilities[source_subspecialty]
+            subspecialty_data = subgroup_probabilities[source_service]
             return {
                 "prob_transfer": subspecialty_data["prob_transfer"],
                 "destination_distribution": subspecialty_data[
@@ -869,8 +869,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
     def get_transition_matrix(self, cohort: Optional[str] = None) -> pd.DataFrame:
         """Format transition probabilities as a matrix.
 
-        Creates a DataFrame with source subspecialties as rows and target
-        subspecialties as columns, plus a 'Discharge' column. Each cell
+        Creates a DataFrame with source services as rows and target
+        services as columns, plus a 'Discharge' column. Each cell
         contains the probability of transitioning from the source (row) to
         the target (column).
 
@@ -885,8 +885,8 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         -------
         pandas.DataFrame
             Transition probability matrix where:
-            - Index: source subspecialties
-            - Columns: target subspecialties + 'Discharge'
+            - Index: source services
+            - Columns: target services + 'Discharge'
             - Values: transition probabilities (sum to 1.0 across each row)
 
         Raises
@@ -897,7 +897,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         Examples
         --------
         >>> estimator = TransferProbabilityEstimator(cohort_col='admission_type')
-        >>> estimator.fit(X, subspecialties={'cardiology', 'surgery'})
+        >>> estimator.fit(X, services={'cardiology', 'surgery'})
         >>> matrix = estimator.get_transition_matrix('elective')
         >>> print(matrix)
                       cardiology  surgery  Discharge
@@ -919,7 +919,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
             )
 
         assert self.transfer_probabilities is not None  # Guaranteed by is_fitted_
-        assert self.subspecialties is not None  # Guaranteed by is_fitted_
+        assert self.services is not None  # Guaranteed by is_fitted_
 
         # Determine which cohort to use
         if cohort is None:
@@ -937,20 +937,20 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f"Available cohorts: {sorted(self.transfer_probabilities.keys())}"
             )
 
-        # Sort subspecialties for consistent ordering
-        sorted_subspecialties = sorted(self.subspecialties)
+        # Sort services for consistent ordering
+        sorted_services = sorted(self.services)
 
         # Initialize matrix with zeros
         matrix = pd.DataFrame(
             0.0,
-            index=sorted_subspecialties,
-            columns=sorted_subspecialties + ["Discharge"],
+            index=sorted_services,
+            columns=sorted_services + ["Discharge"],
         )
 
         # Fill in the matrix using the specified cohort's global probabilities
         cohort_data = self.transfer_probabilities[cohort]
         # Global model is stored directly at cohort level
-        for source in sorted_subspecialties:
+        for source in sorted_services:
             if source in cohort_data:
                 prob_transfer = cohort_data[source]["prob_transfer"]
                 destination_dist = cohort_data[source]["destination_distribution"]
@@ -962,9 +962,9 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     matrix.loc[source, "Discharge"] = 1.0
 
                 # Probabilities of transferring to each destination
-                # Only include destinations that are in the subspecialties set
+                # Only include destinations that are in the services set
                 for destination, conditional_prob in destination_dist.items():
-                    if destination in self.subspecialties:
+                    if destination in self.services:
                         # Unconditional probability = prob_transfer * conditional_prob
                         matrix.loc[source, destination] = (
                             prob_transfer * conditional_prob
@@ -1005,7 +1005,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         Returns
         -------
         dict
-            Dictionary containing transfer probabilities for all subspecialties
+            Dictionary containing transfer probabilities for all services
             in the specified cohort
 
         Raises
@@ -1103,7 +1103,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         Returns
         -------
         dict
-            Dictionary containing transfer probabilities for all subspecialties
+            Dictionary containing transfer probabilities for all services
             in the specified cohort and subgroup
 
         Raises

@@ -9,7 +9,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.subspecialties = {"cardiology", "surgery", "medicine", "oncology"}
+        self.services = {"cardiology", "surgery", "medicine", "oncology"}
 
     def test_fit_and_calculate_transfer_probabilities(self):
         """Test basic fitting and calculation of transfer probabilities."""
@@ -32,7 +32,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Check cardiology: 1 transfer out of 2 departures = 50%
         self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
@@ -54,7 +54,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         dests = predictor.get_destination_distribution("cardiology")
         self.assertAlmostEqual(dests["surgery"], 0.5)
@@ -71,7 +71,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         self.assertEqual(predictor.get_transfer_prob("cardiology"), 1.0)
         dests = predictor.get_destination_distribution("cardiology")
@@ -87,7 +87,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         self.assertEqual(predictor.get_transfer_prob("cardiology"), 0.0)
         self.assertEqual(predictor.get_destination_distribution("cardiology"), {})
@@ -96,8 +96,8 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         """Test that computed probabilities are valid (between 0 and 1, sum to 1)."""
         np.random.seed(42)
         n = 500
-        sources = np.random.choice(list(self.subspecialties), size=n)
-        destinations = np.random.choice(list(self.subspecialties) + [None] * 2, size=n)
+        sources = np.random.choice(list(self.services), size=n)
+        destinations = np.random.choice(list(self.services) + [None] * 2, size=n)
 
         X = pd.DataFrame(
             {
@@ -106,14 +106,14 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
-        for subspecialty in self.subspecialties:
-            prob_transfer = predictor.get_transfer_prob(subspecialty)
+        for service in self.services:
+            prob_transfer = predictor.get_transfer_prob(service)
             self.assertGreaterEqual(prob_transfer, 0.0)
             self.assertLessEqual(prob_transfer, 1.0)
 
-            dest_dist = predictor.get_destination_distribution(subspecialty)
+            dest_dist = predictor.get_destination_distribution(service)
             if len(dest_dist) > 0:
                 self.assertAlmostEqual(sum(dest_dist.values()), 1.0)
                 for prob in dest_dist.values():
@@ -131,7 +131,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         predictor = TransferProbabilityEstimator(
             source_col="from_ward", destination_col="to_ward"
         )
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
 
@@ -160,7 +160,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
 
         # Test with visit_col - should deduplicate to 3 unique transitions
         predictor_with_visit = TransferProbabilityEstimator(visit_col="visit_id")
-        predictor_with_visit.fit(X, self.subspecialties)
+        predictor_with_visit.fit(X, self.services)
 
         # Should have 1 transfer out of 3 total (visit_1, visit_2, visit_3)
         # After deduplication: visit_1->surgery, visit_2->None, visit_3->None
@@ -173,7 +173,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
 
         # Test without visit_col - should use all 5 rows (including duplicates)
         predictor_without_visit = TransferProbabilityEstimator()
-        predictor_without_visit.fit(X, self.subspecialties)
+        predictor_without_visit.fit(X, self.services)
 
         # Should have 2 transfers out of 2 cardiology departures = 100%
         # Should have 0 transfers out of 2 surgery departures = 0%
@@ -198,7 +198,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         predictor = TransferProbabilityEstimator(visit_col="visit_id")
 
         with self.assertRaises(ValueError) as context:
-            predictor.fit(X, self.subspecialties)
+            predictor.fit(X, self.services)
         self.assertIn("missing required columns", str(context.exception))
         self.assertIn("visit_id", str(context.exception))
 
@@ -213,7 +213,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         # Test missing columns
         X_bad = pd.DataFrame({"wrong_column": ["cardiology"]})
         with self.assertRaises(ValueError):
-            predictor.fit(X_bad, self.subspecialties)
+            predictor.fit(X_bad, self.services)
 
         # Test invalid subspecialties type
         X = pd.DataFrame(
@@ -233,7 +233,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         with self.assertRaises(ValueError) as context:
-            predictor.fit(X_unknown, self.subspecialties)
+            predictor.fit(X_unknown, self.services)
         self.assertIn("unknown_subspecialty", str(context.exception))
 
     def test_cohort_functionality_basic(self):
@@ -251,7 +251,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator(cohort_col="admission_type")
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Check that cohorts are properly identified
         cohorts = predictor.get_available_cohorts()
@@ -278,7 +278,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator()  # No cohort_col
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Should create "all" cohort automatically
         cohorts = predictor.get_available_cohorts()
@@ -297,7 +297,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator(cohort_col="admission_type")
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Should automatically use the single cohort
         self.assertAlmostEqual(predictor.get_transfer_prob("cardiology"), 0.5)
@@ -315,7 +315,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator(cohort_col="admission_type")
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Should raise error when no cohort specified with multiple cohorts
         with self.assertRaises(ValueError) as context:
@@ -332,7 +332,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator(cohort_col="admission_type")
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Test invalid cohort
         with self.assertRaises(ValueError) as context:
@@ -350,7 +350,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             cohort_col="admission_type"
         )
         with self.assertRaises(ValueError) as context:
-            predictor_with_cohort.fit(X_no_cohort, self.subspecialties)
+            predictor_with_cohort.fit(X_no_cohort, self.services)
         self.assertIn("missing required columns", str(context.exception))
 
     def test_cohort_functionality_validation(self):
@@ -367,7 +367,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         predictor = TransferProbabilityEstimator(
             cohort_col="admission_type", cohort_values=["elective", "emergency"]
         )
-        predictor.fit(X, self.subspecialties)  # Should not raise
+        predictor.fit(X, self.services)  # Should not raise
 
         # Test with invalid cohort in data
         X_invalid = pd.DataFrame(
@@ -381,7 +381,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             cohort_col="admission_type", cohort_values=["elective", "emergency"]
         )
         with self.assertRaises(ValueError) as context:
-            predictor_with_validation.fit(X_invalid, self.subspecialties)
+            predictor_with_validation.fit(X_invalid, self.services)
         self.assertIn(
             "Found cohort values in data that are not in the cohort_values parameter",
             str(context.exception),
@@ -397,7 +397,7 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
             }
         )
         predictor = TransferProbabilityEstimator(cohort_col="admission_type")
-        predictor.fit(X, self.subspecialties)
+        predictor.fit(X, self.services)
 
         # Test elective cohort matrix
         matrix_elective = predictor.get_transition_matrix("elective")

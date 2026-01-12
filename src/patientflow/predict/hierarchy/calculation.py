@@ -7,7 +7,7 @@ distributions and statistical capping for hierarchical bed demand predictions.
 from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np
 
-from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
+from patientflow.predict.service import ServicePredictionInputs, FlowInputs
 from patientflow.predict.distribution import Distribution
 from patientflow.predict.types import DemandPrediction, PredictionBundle, FlowSelection, DEFAULT_PERCENTILES
 from .structure import Hierarchy, EntityType
@@ -69,7 +69,7 @@ class DemandPredictor:
         self,
         entity_id: str,
         entity_type: EntityType,
-        bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
+        bottom_level_data: Dict[str, ServicePredictionInputs],
         hierarchy: "Hierarchy",
         flow_type: str,
         flow_selection: Optional[FlowSelection] = None,
@@ -86,7 +86,7 @@ class DemandPredictor:
             Unique identifier for the entity
         entity_type : EntityType
             Type of entity being analyzed
-        bottom_level_data : Dict[str, SubspecialtyPredictionInputs]
+        bottom_level_data : Dict[str, ServicePredictionInputs]
             Dictionary mapping bottom-level entity IDs to their prediction inputs
         hierarchy : Hierarchy
             Hierarchy structure for traversing the tree
@@ -349,25 +349,25 @@ class DemandPredictor:
                 entity_id, entity_type, dist_total.probabilities
             )
 
-    def predict_subspecialty(
+    def predict_service(
         self,
-        subspecialty_id: str,
-        inputs: SubspecialtyPredictionInputs,
+        service_id: str,
+        inputs: ServicePredictionInputs,
         flow_selection: Optional[FlowSelection] = None,
     ) -> PredictionBundle:
-        """Predict subspecialty demand with flexible flow selection.
+        """Predict service demand with flexible flow selection.
 
         This method computes predictions for arrivals, departures, and net flow
-        for a single subspecialty. Users can customize which flows to include
+        for a single service. Users can customize which flows to include
         via the flow_selection parameter.
 
         Parameters
         ----------
-        subspecialty_id : str
-            Unique identifier for the subspecialty
-        inputs : SubspecialtyPredictionInputs
-            Dataclass containing all prediction inputs for this subspecialty.
-            See SubspecialtyPredictionInputs for field details.
+        service_id : str
+            Unique identifier for the service
+        inputs : ServicePredictionInputs
+            Dataclass containing all prediction inputs for this service.
+            See ServicePredictionInputs for field details.
         flow_selection : FlowSelection, optional
             Selection specifying which flows to include. If None, uses
             FlowSelection.default() which includes all flows.
@@ -388,15 +388,15 @@ class DemandPredictor:
         Examples
         --------
         >>> # Default: all flows included
-        >>> bundle = predictor.predict_subspecialty(spec_id, inputs)
+        >>> bundle = predictor.predict_service(spec_id, inputs)
 
         >>> # Only incoming flows (arrivals, no departures)
-        >>> bundle = predictor.predict_subspecialty(
+        >>> bundle = predictor.predict_service(
         ...     spec_id, inputs, flow_selection=FlowSelection.incoming_only()
         ... )
 
         >>> # Custom selection
-        >>> bundle = predictor.predict_subspecialty(
+        >>> bundle = predictor.predict_service(
         ...     spec_id, inputs,
         ...     flow_selection=FlowSelection.custom(
         ...         include_ed_current=True,
@@ -444,12 +444,12 @@ class DemandPredictor:
         missing_inflow_keys = [k for k in inflow_keys if k not in inputs.inflows]
         if missing_inflow_keys:
             raise KeyError(
-                f"Missing inflow keys in SubspecialtyPredictionInputs: {missing_inflow_keys}"
+                f"Missing inflow keys in ServicePredictionInputs: {missing_inflow_keys}"
             )
 
         selected_inflows = [inputs.inflows[k] for k in inflow_keys if inflow_allowed(k)]
         arrivals = self.predict_flow_total(
-            selected_inflows, subspecialty_id, "arrivals"
+            selected_inflows, service_id, "arrivals"
         )
 
         # Build outflows from families and cohort
@@ -470,7 +470,7 @@ class DemandPredictor:
         missing_outflow_keys = [k for k in outflow_keys if k not in inputs.outflows]
         if missing_outflow_keys:
             raise KeyError(
-                f"Missing outflow keys in SubspecialtyPredictionInputs: {missing_outflow_keys}"
+                f"Missing outflow keys in ServicePredictionInputs: {missing_outflow_keys}"
             )
 
         selected_outflows = [
@@ -494,7 +494,7 @@ class DemandPredictor:
         # Apply physical cap to departures prediction
         departures = self.predict_flow_total(
             selected_outflows,
-            subspecialty_id,
+            service_id,
             "departures",
             max_support=departures_physical_cap,
         )
@@ -511,7 +511,7 @@ class DemandPredictor:
         # Ensure expected value matches arrivals - departures exactly for tests
         expected_diff = float(arrivals.expected_value - departures.expected_value)
         net_flow = self._create_prediction(
-            subspecialty_id,
+            service_id,
             "net_flow",
             net_dist.probabilities,
             net_dist.offset,
@@ -519,8 +519,8 @@ class DemandPredictor:
         )
 
         return PredictionBundle(
-            entity_id=subspecialty_id,
-            entity_type="subspecialty",
+            entity_id=service_id,
+            entity_type="service",
             arrivals=arrivals,
             departures=departures,
             net_flow=net_flow,

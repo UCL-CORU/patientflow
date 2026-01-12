@@ -111,12 +111,12 @@ class FlowInputs:
 
 
 @dataclass(frozen=True)
-class SubspecialtyPredictionInputs:
-    """Input parameters for subspecialty demand prediction.
+class ServicePredictionInputs:
+    """Input parameters for service demand prediction.
 
     These inputs represent the probability distributions and parameters
-    needed to predict demand for a single subspecialty. This dataclass packages
-    the outputs from build_subspecialty_data for use in hierarchical prediction.
+    needed to predict demand for a single service (e.g., subspecialty). This dataclass packages
+    the outputs from build_service_data for use in prediction.
 
     The inputs are organized into inflows (patient arrivals) and outflows (patient
     departures), with each flow represented as a FlowInputs object containing its
@@ -124,8 +124,8 @@ class SubspecialtyPredictionInputs:
 
     Attributes
     ----------
-    subspecialty_id : str
-        Unique identifier for the subspecialty
+    service_id : str
+        Unique identifier for the service
     prediction_window : Any
         Time window over which predictions are made (typically a timedelta)
     inflows : Dict[str, FlowInputs]
@@ -136,8 +136,8 @@ class SubspecialtyPredictionInputs:
         - "ed_yta": Yet-to-arrive ED patients who will be admitted (Poisson)
         - "non_ed_yta": Yet-to-arrive non-ED emergency admissions (Poisson)
         - "elective_yta": Yet-to-arrive elective admissions (Poisson)
-        - "elective_transfers": Elective patients transferring from other subspecialties (PMF)
-        - "emergency_transfers": Emergency patients transferring from other subspecialties (PMF)
+        - "elective_transfers": Elective patients transferring from other services (PMF)
+        - "emergency_transfers": Emergency patients transferring from other services (PMF)
     outflows : Dict[str, FlowInputs]
         Dictionary mapping flow identifiers to FlowInputs objects for departures.
         Standard keys include:
@@ -156,7 +156,7 @@ class SubspecialtyPredictionInputs:
     and easy extension to new flow types in the future.
     """
 
-    subspecialty_id: str
+    service_id: str
     prediction_window: Any
     inflows: Dict[str, FlowInputs]
     outflows: Dict[str, FlowInputs]
@@ -215,11 +215,11 @@ class SubspecialtyPredictionInputs:
                     custom_bracket_text = ""
                 elif flow.flow_id == "emergency_departures":
                     custom_bracket_text = (
-                        f"of {total_count} emergency patients in subspec"
+                        f"of {total_count} emergency patients in service"
                     )
                 elif flow.flow_id == "elective_departures":
                     custom_bracket_text = (
-                        f"of {total_count} elective patients in subspec"
+                        f"of {total_count} elective patients in service"
                     )
 
                 return format_pmf(
@@ -233,7 +233,7 @@ class SubspecialtyPredictionInputs:
                 return f"{flow.flow_type}: {flow.distribution}"
 
         # Build output dynamically
-        lines = [f"SubspecialtyPredictionInputs(subspecialty='{self.subspecialty_id}')"]
+        lines = [f"ServicePredictionInputs(service='{self.service_id}')"]
 
         # INFLOWS section
         if self.inflows:
@@ -829,7 +829,7 @@ def _build_legacy_flows(
     y2: float,
     base_probs: Dict[str, Any],
 ) -> Dict[str, Dict[str, Any]]:
-    """Build flows for all specialties using legacy processing logic.
+    """Build flows for all specialties using processing logic.
 
     Returns
     -------
@@ -857,7 +857,7 @@ def _build_legacy_flows(
     ed_masks_by_func = base_probs["ed_masks_by_func"]
 
     # First pass: gather computed data in temporary structure
-    temp_subspecialty_data: Dict[str, Dict[str, Any]] = {}
+    temp_service_data: Dict[str, Dict[str, Any]] = {}
 
     for spec in specialties:
         # Process ED patients
@@ -895,59 +895,59 @@ def _build_legacy_flows(
         )
 
         # Store in temporary dictionary structure
-        temp_subspecialty_data[spec] = flow_data
+        temp_service_data[spec] = flow_data
 
-    return temp_subspecialty_data
+    return temp_service_data
 
 
-def _finalise_subspecialty_data(
-    temp_subspecialty_data: Dict[str, Dict[str, Any]],
+def _finalise_service_data(
+    temp_service_data: Dict[str, Dict[str, Any]],
     transfer_model: TransferProbabilityEstimator,
     specialties: List[str],
     prediction_window,
-) -> Dict[str, SubspecialtyPredictionInputs]:
-    """Add transfers and create final SubspecialtyPredictionInputs objects.
+) -> Dict[str, ServicePredictionInputs]:
+    """Add transfers and create final ServicePredictionInputs objects.
 
     Returns
     -------
     dict
-        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs
+        Dictionary mapping service_id to ServicePredictionInputs
     """
     # Compute transfer arrivals using the departure PMFs from temporary data
     transfer_arrivals = compute_transfer_arrivals(
-        temp_subspecialty_data, transfer_model, specialties
+        temp_service_data, transfer_model, specialties
     )
 
     # Second pass: Add transfer arrivals to inflows and create final immutable dataclass objects
-    subspecialty_data: Dict[str, SubspecialtyPredictionInputs] = {}
+    service_data: Dict[str, ServicePredictionInputs] = {}
     for spec in specialties:
         # Add elective and emergency transfers to the inflows dictionary
-        temp_subspecialty_data[spec]["inflows"]["elective_transfers"] = FlowInputs(
+        temp_service_data[spec]["inflows"]["elective_transfers"] = FlowInputs(
             flow_id="elective_transfers",
             flow_type="pmf",
             distribution=transfer_arrivals["elective"][spec],
-            display_name="Elective transfers from other subspecialties",
+            display_name="Elective transfers from other services",
         )
 
-        temp_subspecialty_data[spec]["inflows"]["emergency_transfers"] = FlowInputs(
+        temp_service_data[spec]["inflows"]["emergency_transfers"] = FlowInputs(
             flow_id="emergency_transfers",
             flow_type="pmf",
             distribution=transfer_arrivals["emergency"][spec],
-            display_name="Emergency transfers from other subspecialties",
+            display_name="Emergency transfers from other services",
         )
 
         # Create final immutable dataclass with complete inflows and outflows
-        subspecialty_data[spec] = SubspecialtyPredictionInputs(
-            subspecialty_id=spec,
+        service_data[spec] = ServicePredictionInputs(
+            service_id=spec,
             prediction_window=prediction_window,
-            inflows=temp_subspecialty_data[spec]["inflows"],
-            outflows=temp_subspecialty_data[spec]["outflows"],
+            inflows=temp_service_data[spec]["inflows"],
+            outflows=temp_service_data[spec]["outflows"],
         )
 
-    return subspecialty_data
+    return service_data
 
 
-def build_subspecialty_data(
+def build_service_data(
     models: Tuple[
         TrainedClassifier,
         TrainedClassifier,
@@ -973,11 +973,11 @@ def build_subspecialty_data(
     y2: float,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
-) -> Dict[str, SubspecialtyPredictionInputs]:
-    """Build per-subspecialty inputs for downstream roll-up.
+) -> Dict[str, ServicePredictionInputs]:
+    """Build per-service inputs for downstream roll-up.
 
     This function processes current patient snapshots through trained models and
-    computes, for each subspecialty, the probability distribution of admissions
+    computes, for each service, the probability distribution of admissions
     from current ED patients, departures from current inpatients, the expected
     means of yet-to-arrive admissions, and transfer arrival distributions.
 
@@ -1002,9 +1002,9 @@ def build_subspecialty_data(
         Each row represents a patient currently in the ED.
     inpatient_snapshots : pandas.DataFrame
         DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in a subspecialty ward.
+        Each row represents a patient currently in a service ward.
     specialties : list of str
-        List of subspecialties to prepare inputs for
+        List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
     x1, y1, x2, y2 : float
@@ -1019,9 +1019,9 @@ def build_subspecialty_data(
 
     Returns
     -------
-    dict of str to SubspecialtyPredictionInputs
-        Dictionary mapping subspecialty_id to SubspecialtyPredictionInputs dataclass.
-        See SubspecialtyPredictionInputs for field details.
+    dict of str to ServicePredictionInputs
+        Dictionary mapping service_id to ServicePredictionInputs dataclass.
+        See ServicePredictionInputs for field details.
 
     Raises
     ------
@@ -1067,7 +1067,7 @@ def build_subspecialty_data(
     )
 
     # 3. Build flows using legacy processing logic
-    temp_subspecialty_data = _build_legacy_flows(
+    temp_service_data = _build_legacy_flows(
         models,
         prediction_time,
         ed_snapshots,
@@ -1082,64 +1082,64 @@ def build_subspecialty_data(
     )
 
     # 4. Finalize with transfers
-    return _finalise_subspecialty_data(
-        temp_subspecialty_data, models[6], specialties, prediction_window
+    return _finalise_service_data(
+        temp_service_data, models[6], specialties, prediction_window
     )
 
 
 def compute_transfer_arrivals(
-    subspecialty_data: Union[
-        Dict[str, Dict[str, Any]], Dict[str, SubspecialtyPredictionInputs]
+    service_data: Union[
+        Dict[str, Dict[str, Any]], Dict[str, ServicePredictionInputs]
     ],
     transfer_model: Any,
-    subspecialties: List[str],
-) -> Dict[str, np.ndarray]:
-    """Compute arrival PMFs from internal transfers for each subspecialty.
+    services: List[str],
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Compute arrival PMFs from internal transfers for each service.
 
-    This function uses departure PMFs from subspecialty_data and transfer
+    This function uses departure PMFs from service_data and transfer
     probabilities from transfer_model to calculate how many patients arrive
-    at each subspecialty from transfers within other subspecialties.
+    at each service from transfers within other services.
 
     Parameters
     ----------
-    subspecialty_data : dict
+    service_data : dict
         Either a dict of dicts with nested structure containing departure FlowInputs,
-        or a dict of SubspecialtyPredictionInputs objects. For dict format, expects:
-        {'subspecialty': {'outflows': {'departures': FlowInputs(...)}}}
+        or a dict of ServicePredictionInputs objects. For dict format, expects:
+        {'service': {'outflows': {'departures': FlowInputs(...)}}}
     transfer_model : TransferProbabilityEstimator
         Trained transfer probability estimator with methods:
         - get_transfer_prob(source) -> float
         - get_destination_distribution(source) -> dict
-    subspecialties : list of str
-        List of all subspecialties in the system
+    services : list of str
+        List of all services in the system
 
     Returns
     -------
     dict
-        Nested dictionary mapping admission_type to subspecialty_id to PMF of arrivals from transfers.
+        Nested dictionary mapping admission_type to service_id to PMF of arrivals from transfers.
         {
             'elective': {
-                'subspecialty_name': numpy.ndarray (PMF of elective transfer arrivals)
+                'service_name': numpy.ndarray (PMF of elective transfer arrivals)
             },
             'emergency': {
-                'subspecialty_name': numpy.ndarray (PMF of emergency transfer arrivals)
+                'service_name': numpy.ndarray (PMF of emergency transfer arrivals)
             }
         }
 
     Raises
     ------
     KeyError
-        If subspecialty_data is missing required departure flow information
+        If service_data is missing required departure flow information
     ValueError
         If transfer_model has not been fitted
 
     Examples
     --------
-    >>> # After computing subspecialty_data with departure PMFs
+    >>> # After computing service_data with departure PMFs
     >>> transfer_arrivals = compute_transfer_arrivals(
-    ...     subspecialty_data,
+    ...     service_data,
     ...     transfer_model,
-    ...     subspecialties=['cardiology', 'surgery', 'medicine']
+    ...     services=['cardiology', 'surgery', 'medicine']
     ... )
     >>> # Access arrival PMF for a specific subspecialty and admission type
     >>> cardiology_elective_arrivals = transfer_arrivals['elective']['cardiology']
@@ -1149,10 +1149,10 @@ def compute_transfer_arrivals(
     -----
     Algorithm:
 
-    For each target subspecialty, the function:
+    For each target service, the function:
 
     1. Initializes with zero arrivals (PMF = [1.0, 0.0])
-    2. Iterates over each potential source subspecialty
+    2. Iterates over each potential source service
     3. Gets the departure PMF from the source
     4. Gets transfer probabilities from the transfer model
     5. If the source sends patients to the target:
@@ -1180,22 +1180,22 @@ def compute_transfer_arrivals(
     }
 
     for admission_type in ["elective", "emergency"]:
-        for target_subspecialty in subspecialties:
+        for target_service in services:
             # Initialize with zero arrivals: P(0 arrivals) = 1.0
             arrival_dist = Distribution.from_pmf(np.array([1.0, 0.0]))
 
-            for source_subspecialty in subspecialties:
+            for source_service in services:
                 # Skip self-transfers
-                if source_subspecialty == target_subspecialty:
+                if source_service == target_service:
                     continue
 
                 # Get departure PMF for source (handle both dict and dataclass)
-                source_data = subspecialty_data[source_subspecialty]
-                if isinstance(source_data, SubspecialtyPredictionInputs):
+                source_data = service_data[source_service]
+                if isinstance(source_data, ServicePredictionInputs):
                     # Access through new structure: outflows dict -> "departures" -> distribution
                     if f"{admission_type}_departures" not in source_data.outflows:
                         raise KeyError(
-                            f"Missing '{admission_type}_departures' outflow for subspecialty '{source_subspecialty}'"
+                            f"Missing '{admission_type}_departures' outflow for service '{source_service}'"
                         )
                     departure_pmf = source_data.outflows[
                         f"{admission_type}_departures"
@@ -1207,24 +1207,24 @@ def compute_transfer_arrivals(
                         or f"{admission_type}_departures" not in source_data["outflows"]
                     ):
                         raise KeyError(
-                            f"Missing '{admission_type}_departures' in 'outflows' for subspecialty '{source_subspecialty}'"
+                            f"Missing '{admission_type}_departures' in 'outflows' for service '{source_service}'"
                         )
                     departure_pmf = source_data["outflows"][
                         f"{admission_type}_departures"
                     ].distribution
                 else:
                     raise TypeError(
-                        f"subspecialty_data values must be dict or SubspecialtyPredictionInputs, "
+                        f"service_data values must be dict or ServicePredictionInputs, "
                         f"got {type(source_data)}"
                     )
 
                 # Get transfer probabilities from model
                 try:
                     prob_transfer = transfer_model.get_transfer_prob(
-                        source_subspecialty, admission_type
+                        source_service, admission_type
                     )
                     dest_dist = transfer_model.get_destination_distribution(
-                        source_subspecialty, admission_type
+                        source_service, admission_type
                     )
                 except ValueError as e:
                     # Handle case where cohort doesn't exist in transfer model
@@ -1233,11 +1233,11 @@ def compute_transfer_arrivals(
                         continue
                     else:
                         raise ValueError(
-                            f"Error getting transfer probabilities for '{source_subspecialty}' and admission type '{admission_type}': {e}"
+                            f"Error getting transfer probabilities for '{source_service}' and admission type '{admission_type}': {e}"
                         )
                 except KeyError as e:
                     raise ValueError(
-                        f"Error getting transfer probabilities for '{source_subspecialty}' and admission type '{admission_type}': {e}"
+                        f"Error getting transfer probabilities for '{source_service}' and admission type '{admission_type}': {e}"
                     )
 
                 # Skip if no transfers from this source
@@ -1245,10 +1245,10 @@ def compute_transfer_arrivals(
                     continue
 
                 # Check if this source sends to our target
-                if target_subspecialty not in dest_dist:
+                if target_service not in dest_dist:
                     continue
 
-                prob_this_dest = dest_dist[target_subspecialty]
+                prob_this_dest = dest_dist[target_service]
 
                 # Calculate compound probability
                 compound_prob = prob_transfer * prob_this_dest
@@ -1261,7 +1261,7 @@ def compute_transfer_arrivals(
                 arrival_dist = arrival_dist.convolve(scaled_dist)
 
             # Store the final arrival PMF for this target
-            predicted_arrivals[admission_type][target_subspecialty] = (
+            predicted_arrivals[admission_type][target_service] = (
                 arrival_dist.probabilities
             )
 

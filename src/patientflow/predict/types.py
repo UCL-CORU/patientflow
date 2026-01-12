@@ -305,7 +305,7 @@ class PredictionBundle:
         def format_pmf(
             pred: DemandPrediction, max_display: int = DEFAULT_MAX_PROBS
         ) -> str:
-            """Format PMF similar to SubspecialtyPredictionInputs."""
+            """Format PMF similar to ServicePredictionInputs."""
             arr = pred.probabilities
             offset = pred.offset
             expectation = pred.expected_value

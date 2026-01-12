@@ -46,9 +46,9 @@ The typical workflow is:
    ...     hierarchy, hierarchy_df, column_mapping, top_level_id="uclh"
    ... )
 
-3. Prepare prediction inputs (using functions from predict.subspecialty):
-   >>> from patientflow.predict.subspecialty import build_subspecialty_data
-   >>> bottom_level_data = build_subspecialty_data(
+3. Prepare prediction inputs (using functions from predict.service):
+   >>> from patientflow.predict.service import build_service_data
+   >>> bottom_level_data = build_service_data(
    ...     models=(ed_classifier, inpatient_classifier, spec_model, ...),
    ...     prediction_time=(12, 0),
    ...     ed_snapshots=ed_snapshots_df,
@@ -170,7 +170,7 @@ The prediction process follows a strict 3-phase algorithm managed by `Hierarchic
    - Ensures bounded distribution sizes while maintaining accuracy
 
 2. **Phase 2: Bottom-level Prediction**
-   - Generates full PMF predictions for all bottom-level entities (subspecialties)
+   - Generates full PMF predictions for all bottom-level entities (services)
    - Uses the caps calculated in Phase 1 to bound distribution sizes
    - Only processes entities that have data in `bottom_level_data`
 
@@ -183,7 +183,7 @@ The prediction process follows a strict 3-phase algorithm managed by `Hierarchic
 **Data Flow:**
 ::
     
-    build_subspecialty_data() → SubspecialtyPredictionInputs
+    build_service_data() → ServicePredictionInputs
         ↓
     predict_all_levels(bottom_level_data) → Dict[str, PredictionBundle]
         ↓
@@ -198,7 +198,7 @@ The prediction process follows a 3-phase algorithm:
    - Calculate max_support caps for each node (statistical cap)
 
 2. **Phase 2: Bottom-level Prediction**
-   - Compute full PMF predictions for all bottom-level entities (subspecialties)
+   - Compute full PMF predictions for all bottom-level entities (services)
    - Uses caps from Phase 1 to bound distribution sizes
 
 3. **Phase 3: Aggregation**

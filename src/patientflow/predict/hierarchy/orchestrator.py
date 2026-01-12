@@ -6,7 +6,7 @@ prediction algorithm across all levels of the organizational hierarchy.
 
 from typing import Dict, Optional, Tuple, Any
 
-from patientflow.predict.subspecialty import SubspecialtyPredictionInputs
+from patientflow.predict.service import ServicePredictionInputs
 from .structure import Hierarchy
 from patientflow.predict.types import PredictionBundle, FlowSelection
 from .calculation import DemandPredictor
@@ -27,7 +27,7 @@ class HierarchicalPredictor:
     - Intermediate caps respect both their own statistical properties and are sufficient to support children
 
     Phase 2: Bottom-level Prediction
-    - Compute full PMF predictions for all bottom-level entities (subspecialties) using the caps from Phase 1
+    - Compute full PMF predictions for all bottom-level entities (services) using the caps from Phase 1
 
     Phase 3: Aggregation
     - Aggregate predictions upwards through the hierarchy using convolution
@@ -50,7 +50,7 @@ class HierarchicalPredictor:
 
     def predict_all_levels(
         self,
-        bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
+        bottom_level_data: Dict[str, ServicePredictionInputs],
         top_level_id: Optional[str] = None,
         flow_selection: Optional[FlowSelection] = None,
     ) -> Dict[str, PredictionBundle]:
@@ -61,11 +61,11 @@ class HierarchicalPredictor:
 
         Parameters
         ----------
-        bottom_level_data : Dict[str, SubspecialtyPredictionInputs]
+        bottom_level_data : Dict[str, ServicePredictionInputs]
             Dictionary mapping bottom-level entity IDs to their prediction inputs.
-            Each value is a `SubspecialtyPredictionInputs` object containing:
+            Each value is a `ServicePredictionInputs` object containing:
             
-            - ``subspecialty_id``: Identifier for the subspecialty (must match the key)
+            - ``service_id``: Identifier for the service (must match the key)
             - ``prediction_window``: Time window for predictions (typically a timedelta)
             - ``inflows``: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta', 
               'non_ed_yta', 'elective_yta', 'elective_transfers', 'emergency_transfers')
@@ -77,8 +77,8 @@ class HierarchicalPredictor:
               For example, if your bottom level is 'subspecialty', the keys should be
               subspecialty names like 'Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', etc., 
               exactly as they appear in the hierarchy (case-sensitive).
-            - Typically created using `build_subspecialty_data()` from the 
-              `patientflow.predict.subspecialty` module.
+            - Typically created using `build_service_data()` from the 
+              `patientflow.predict.service` module.
             - Only entities that exist in the hierarchy and are reachable from the
               specified `top_level_id` will have predictions generated.
         top_level_id : str, optional
@@ -99,7 +99,7 @@ class HierarchicalPredictor:
             **Dictionary Structure:**
             - Keys are entity IDs (original names, not prefixed IDs) for all entities
               in the hierarchy that were processed, including:
-              - Bottom-level entities (subspecialties) that had data in `bottom_level_data`
+              - Bottom-level entities (services) that had data in `bottom_level_data`
               - All intermediate-level entities (reporting units, divisions, etc.)
               - Top-level entities (hospital, board, etc.)
             - Values are `PredictionBundle` objects containing:
@@ -126,8 +126,8 @@ class HierarchicalPredictor:
         --------
         Run predictions for entire hierarchy with default flow selection:
 
-        >>> from patientflow.predict.subspecialty import build_subspecialty_data
-        >>> bottom_level_data = build_subspecialty_data(
+        >>> from patientflow.predict.service import build_service_data
+        >>> bottom_level_data = build_service_data(
         ...     models=(...),
         ...     prediction_time=(12, 0),
         ...     ed_snapshots=ed_snapshots_df,
@@ -137,7 +137,7 @@ class HierarchicalPredictor:
         ...     x1=4.0, y1=0.95, x2=8.0, y2=0.99
         ... )
         >>> results = predictor.predict_all_levels(bottom_level_data)
-        >>> # Access subspecialty-level prediction
+        >>> # Access service-level prediction
         >>> gsurg_bundle = results['Gsurg LowGI']
         >>> print(f"Expected arrivals: {gsurg_bundle.arrivals.expected_value:.1f}")
         >>> # Access hospital-level aggregated prediction
@@ -176,32 +176,32 @@ class HierarchicalPredictor:
         -----
         **Data Format Requirements:**
 
-        The `bottom_level_data` dictionary should be created using `build_subspecialty_data()`
-        from `patientflow.predict.subspecialty`. Each `SubspecialtyPredictionInputs` object
+        The `bottom_level_data` dictionary should be created using `build_service_data()`
+        from `patientflow.predict.service`. Each `ServicePredictionInputs` object
         contains probability distributions (PMFs) for current patients and Poisson parameters
         for yet-to-arrive patients, organized by flow type (inflows/outflows).
 
         **Entity ID Matching:**
 
-        - Subspecialty IDs in `bottom_level_data` keys **must exactly match** (case-sensitive)
+        - Service IDs in `bottom_level_data` keys **must exactly match** (case-sensitive)
           the entity IDs at the bottom level of the hierarchy.
-        - If a subspecialty ID in `bottom_level_data` doesn't exist in the hierarchy:
+        - If a service ID in `bottom_level_data` doesn't exist in the hierarchy:
           - It will be silently ignored during prediction (no error raised)
           - It won't appear in the results dictionary
           - This is typically not an error condition, as you may have data for subspecialties
             that aren't part of the current hierarchy structure
-        - If a subspecialty exists in the hierarchy but not in `bottom_level_data`:
-          - No prediction will be generated for that subspecialty
+        - If a service exists in the hierarchy but not in `bottom_level_data`:
+          - No prediction will be generated for that service
           - It won't appear in the results dictionary
-          - Aggregated predictions at higher levels will exclude this subspecialty
-          - This is the expected behavior when you don't have data for all subspecialties
+          - Aggregated predictions at higher levels will exclude this service
+          - This is the expected behavior when you don't have data for all services
 
         **Error Handling:**
 
         - ``ValueError``: Raised if `top_level_id` is provided but doesn't exist in the hierarchy
         - ``ValueError``: Raised if `flow_selection` is invalid (e.g., conflicting settings)
-        - Missing subspecialties in `bottom_level_data` are handled gracefully (no error)
-        - Extra subspecialties in `bottom_level_data` (not in hierarchy) are ignored (no error)
+        - Missing services in `bottom_level_data` are handled gracefully (no error)
+        - Extra services in `bottom_level_data` (not in hierarchy) are ignored (no error)
 
         **Prediction Process:**
 
@@ -243,7 +243,7 @@ class HierarchicalPredictor:
     def _predict_subtree(
         self,
         entity_id: str,
-        bottom_level_data: Dict[str, SubspecialtyPredictionInputs],
+        bottom_level_data: Dict[str, ServicePredictionInputs],
         flow_selection: FlowSelection,
     ):
         entity_type = self.hierarchy.get_entity_type(entity_id)
@@ -274,16 +274,11 @@ class HierarchicalPredictor:
 
         if not children:
             # PHASE 2: Bottom-level prediction
-            # This is a leaf node (subspecialty)
+            # This is a leaf node (service)
             if entity_id in bottom_level_data:
-                # Prediction logic for base level
-                # Pass explicit caps to prevent large arrays from Poisson tails
-                # But wait, predict_subspecialty doesn't adhere to external caps directly
-                # It computes its own based on its flows.
-                # The caps calculated in Phase 1 are for THIS level's aggregation.
-                # For leaf nodes, we use the standard prediction logic.
+                # Prediction logic for base level (leaf nodes)
                 inputs = bottom_level_data[entity_id]
-                bundle = self.predictor.predict_subspecialty(
+                bundle = self.predictor.predict_service(
                     entity_id, inputs, flow_selection
                 )
                 self.prediction_results[entity_id] = bundle
