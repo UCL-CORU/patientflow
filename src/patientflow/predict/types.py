@@ -1,6 +1,6 @@
-"""Type definitions for hierarchical demand prediction.
+"""Type definitions for demand prediction.
 
-This module defines the core data structures used for hierarchical predictions:
+This module defines the core data structures used for demand predictions:
 DemandPrediction, PredictionBundle, and FlowSelection.
 """
 
@@ -16,18 +16,18 @@ DEFAULT_MAX_PROBS = 10
 
 @dataclass
 class DemandPrediction:
-    """Result of a demand prediction at any hierarchical level.
+    """Result of a demand prediction for an entity.
 
     This dataclass encapsulates the complete prediction results for a single
-    organizational entity (subspecialty, reporting unit, division, board, or hospital).
-    It contains the probability mass function, expected value, and key percentiles.
+    entity (e.g., a service or unit). It contains the probability mass function,
+    expected value, and key percentiles.
 
     Parameters
     ----------
     entity_id : str
-        Unique identifier for the organizational entity (e.g., subspecialty name)
+        Unique identifier for the entity (e.g., service name)
     entity_type : str
-        Type of entity ('subspecialty', 'reporting_unit', 'division', 'board', 'hospital')
+        Type of entity
     probabilities : numpy.ndarray
         Probability mass function for bed demand (probability of 0, 1, 2, ... beds)
     expected_value : float
@@ -41,9 +41,9 @@ class DemandPrediction:
     Attributes
     ----------
     entity_id : str
-        Unique identifier for the organizational entity
+        Unique identifier for the entity
     entity_type : str
-        Type of entity in the hierarchy
+        Type of entity
     probabilities : numpy.ndarray
         Probability mass function for bed demand
     expected_value : float
@@ -249,15 +249,15 @@ class PredictionBundle:
     """Complete prediction results for arrivals, departures, and net flow.
 
     This dataclass bundles together predictions for patient arrivals, departures,
-    and the net change in bed occupancy for a single organizational entity.
+    and the net change in bed occupancy for a single entity.
     It provides a comprehensive view of demand dynamics.
 
     Attributes
     ----------
     entity_id : str
-        Unique identifier for the entity (subspecialty, reporting unit, etc.)
+        Unique identifier for the entity
     entity_type : str
-        Type of entity in the hierarchy
+        Type of entity
     arrivals : DemandPrediction
         Prediction for total patient arrivals
     departures : DemandPrediction
@@ -278,7 +278,7 @@ class PredictionBundle:
 
     The flow_selection attribute allows you to determine which flows contributed
     to the aggregated predictions. To see individual flow contributions, access
-    the original SubspecialtyPredictionInputs.
+    the original input data.
     """
 
     entity_id: str

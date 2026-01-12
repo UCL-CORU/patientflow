@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple, Any
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs
 from .structure import Hierarchy
-from .types import PredictionBundle, FlowSelection
+from patientflow.predict.types import PredictionBundle, FlowSelection
 from .calculation import DemandPredictor
 
 

@@ -9,7 +9,7 @@ import numpy as np
 
 from patientflow.predict.subspecialty import SubspecialtyPredictionInputs, FlowInputs
 from patientflow.predict.distribution import Distribution
-from .types import DemandPrediction, PredictionBundle, FlowSelection, DEFAULT_PERCENTILES
+from patientflow.predict.types import DemandPrediction, PredictionBundle, FlowSelection, DEFAULT_PERCENTILES
 from .structure import Hierarchy, EntityType
 
 

@@ -211,7 +211,7 @@ Supports are clamped using top-down statistical caps calculated before
 convolution, ensuring bounded array sizes while maintaining statistical accuracy.
 """
 
-from .types import (
+from patientflow.predict.types import (
     DemandPrediction,
     PredictionBundle,
     FlowSelection,
