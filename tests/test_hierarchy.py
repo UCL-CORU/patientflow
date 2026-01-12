@@ -34,13 +34,14 @@ class TestDemandPrediction:
             entity_id="test_net",
             entity_type="net_flow",
             probabilities=np.array([0.1, 0.2, 0.4, 0.2, 0.1]),
-            expected_value=-0.5,
+            expectation=-0.5,
+            mode=0,
             percentiles={50: 0, 75: 1, 90: 2, 95: 2, 99: 2},
             offset=-2,  # Support starts at -2
         )
 
         assert pred.offset == -2
-        assert pred.expected_value == -0.5
+        assert pred.expectation == -0.5
 
 
 class TestDemandPredictor:
@@ -299,16 +300,16 @@ class TestDemandPredictor:
             },
         )
 
-        bundle = predictor.predict_service("cardio", inputs)
+        bundle = predictor.predict_service(inputs)
 
         assert bundle.entity_id == "cardio"
         assert bundle.entity_type == "service"
 
         # Net flow expected should match arrivals - departures
         expected_diff = (
-            bundle.arrivals.expected_value - bundle.departures.expected_value
+            bundle.arrivals.expectation - bundle.departures.expectation
         )
-        assert np.isclose(bundle.net_flow.expected_value, expected_diff, atol=1e-6)
+        assert np.isclose(bundle.net_flow.expectation, expected_diff, atol=1e-6)
 
     def test_predict_service_with_custom_flow_selection(self):
         """Test subspecialty prediction with custom flow selection."""
@@ -357,7 +358,7 @@ class TestDemandPredictor:
 
         # Test with emergency-only flow selection
         flow_selection = FlowSelection.emergency_only()
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
         assert bundle.entity_type == "service"
@@ -389,7 +390,7 @@ class TestDemandPredictor:
 
         # Should raise KeyError for missing inflow keys
         with pytest.raises(KeyError, match="Missing inflow keys"):
-            predictor.predict_service("cardio", inputs)
+            predictor.predict_service(inputs)
 
     def test_compute_net_flow_helper(self):
         """Test the _compute_net_flow helper method."""
@@ -400,7 +401,8 @@ class TestDemandPredictor:
             entity_id="test",
             entity_type="arrivals",
             probabilities=np.array([0.3, 0.5, 0.2]),
-            expected_value=0.9,
+            expectation=0.9,
+            mode=1,
             percentiles={50: 1, 75: 1, 90: 2, 95: 2, 99: 2},
         )
 
@@ -408,7 +410,8 @@ class TestDemandPredictor:
             entity_id="test",
             entity_type="departures",
             probabilities=np.array([0.2, 0.6, 0.2]),
-            expected_value=1.0,
+            expectation=1.0,
+            mode=1,
             percentiles={50: 1, 75: 1, 90: 2, 95: 2, 99: 2},
         )
 
@@ -417,7 +420,7 @@ class TestDemandPredictor:
         assert net_flow.entity_id == "test_net"
         assert net_flow.entity_type == "net_flow"
         # Expected value should be approximately arrivals - departures
-        assert np.isclose(net_flow.expected_value, -0.1, atol=1e-6)
+        assert np.isclose(net_flow.expectation, -0.1, atol=1e-6)
 
 
 class TestFlowSelection:
@@ -542,7 +545,8 @@ class TestConstants:
             entity_id="test",
             entity_type="test",
             probabilities=np.array([0.1, 0.2, 0.4, 0.2, 0.1]),
-            expected_value=2.0,
+            expectation=2.0,
+            mode=2,
             percentiles={50: 2, 75: 3, 90: 3, 95: 4, 99: 4},
         )
 
@@ -603,7 +607,7 @@ class TestCohortFiltering:
 
         # Test elective-only flow selection
         flow_selection = FlowSelection.elective_only()
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         # Should only include elective flows
         assert bundle.flow_selection.cohort == "elective"
@@ -650,7 +654,7 @@ class TestCohortFiltering:
 
         # Test emergency-only flow selection
         flow_selection = FlowSelection.emergency_only()
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         # Should only include emergency flows
         assert bundle.flow_selection.cohort == "emergency"
@@ -696,7 +700,7 @@ class TestCohortFiltering:
 
         # Test all cohort flow selection
         flow_selection = FlowSelection(cohort="all")
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         # Should include all flows
         assert bundle.flow_selection.cohort == "all"
@@ -755,7 +759,7 @@ class TestFlowSelectionEdgeCases:
         )
 
         # Should succeed but with empty flow lists
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
         assert bundle.entity_type == "service"
@@ -816,7 +820,7 @@ class TestFlowSelectionEdgeCases:
             include_departures=True,
         )
 
-        bundle = predictor.predict_service("cardio", inputs, flow_selection)
+        bundle = predictor.predict_service(inputs, flow_selection)
 
         assert bundle.entity_id == "cardio"
         assert bundle.entity_type == "service"
@@ -864,7 +868,7 @@ class TestFlowSelectionEdgeCases:
 
         # Should raise KeyError for missing inflow keys
         with pytest.raises(KeyError, match="Missing inflow keys"):
-            predictor.predict_service("cardio", inputs, flow_selection)
+            predictor.predict_service(inputs, flow_selection)
 
     def test_missing_outflow_keys_validation(self):
         """Test missing outflow keys validation."""
@@ -903,7 +907,7 @@ class TestFlowSelectionEdgeCases:
 
         # Should raise KeyError for missing outflow keys
         with pytest.raises(KeyError, match="Missing outflow keys"):
-            predictor.predict_service("cardio", inputs)
+            predictor.predict_service(inputs)
 
 
 class TestHierarchyCollisionFix:
@@ -1268,6 +1272,7 @@ class TestHierarchicalPredictor:
 
         # Two subspecialties with lambda=1 -> mean=2, so cap (k_sigma=0) should be 2.
         assert len(hospital_bundle.arrivals.probabilities) == 3
+        print(f"Hospital expected arrivals: {hospital_bundle.arrivals.expectation:.1f}")
         assert (
             pytest.approx(hospital_bundle.arrivals.probabilities.sum(), rel=1e-9) == 1.0
         )
@@ -1296,7 +1301,8 @@ class TestHierarchicalPredictor:
             entity_id="test1",
             entity_type="subspecialty",
             probabilities=np.array([0.1, 0.2, 0.4, 0.2, 0.1]),
-            expected_value=2.0,
+            expectation=2.0,
+            mode=2,
             percentiles={50: 2, 75: 3, 90: 3, 95: 3, 99: 4},
             offset=0,
         )
@@ -1305,7 +1311,8 @@ class TestHierarchicalPredictor:
             entity_id="test2",
             entity_type="subspecialty",
             probabilities=np.array([0.2, 0.3, 0.3, 0.2]),
-            expected_value=1.5,
+            expectation=1.5,
+            mode=1,
             percentiles={50: 1, 75: 2, 90: 2, 95: 3, 99: 3},
             offset=0,
         )
@@ -1322,7 +1329,7 @@ class TestHierarchicalPredictor:
         assert result.entity_id == "test_entity"
         assert result.entity_type == "reporting_unit"
         assert hasattr(result, "probabilities")
-        assert hasattr(result, "expected_value")
+        assert hasattr(result, "expectation")
 
     def test_create_bundle_from_children_with_empty_list(self):
         """Test that _create_bundle_from_children handles empty child_bundles list."""

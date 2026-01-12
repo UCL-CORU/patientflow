@@ -64,20 +64,17 @@ class DemandPredictor:
 
     def predict_service(
         self,
-        service_id: str,
         inputs: ServicePredictionInputs,
         flow_selection: Optional[FlowSelection] = None,
     ) -> PredictionBundle:
         """Predict service demand with flexible flow selection.
 
         This method computes predictions for arrivals, departures, and net flow
-        for a single service. Users can customize which flows to include
+        for a single service. Users can customise which flows to include
         via the flow_selection parameter.
 
         Parameters
         ----------
-        service_id : str
-            Unique identifier for the service
         inputs : ServicePredictionInputs
             Dataclass containing all prediction inputs for this service.
             See ServicePredictionInputs for field details.
@@ -103,6 +100,8 @@ class DemandPredictor:
 
         # Validate flow selection configuration
         flow_selection.validate()
+
+        service_id = inputs.service_id
 
         # Build inflows from families and cohort
         inflow_keys: List[str] = []
@@ -195,8 +194,7 @@ class DemandPredictor:
         net_dist = Distribution.from_pmf(arrivals_p).net(
             Distribution.from_pmf(departures_p)
         )
-        # Ensure expected value matches arrivals - departures exactly for tests
-        expected_diff = float(arrivals.expected_value - departures.expected_value)
+        expected_diff = float(arrivals.expectation - departures.expectation)
         net_flow = self._create_prediction(
             service_id,
             "net_flow",
@@ -565,16 +563,25 @@ class DemandPredictor:
         offset: int = 0,
         expected_override: Optional[float] = None,
     ) -> DemandPrediction:
-        expected_value = (
+        expectation = (
             float(expected_override)
             if expected_override is not None
             else float(self._expected_value(probabilities, offset))
         )
+        
+        # Calculate mode
+        if len(probabilities) > 0:
+            mode_idx = int(np.argmax(probabilities))
+            mode = mode_idx + offset
+        else:
+            mode = offset
+
         return DemandPrediction(
             entity_id=entity_id,
             entity_type=entity_type,
             probabilities=probabilities,
-            expected_value=expected_value,
+            expectation=expectation,
+            mode=mode,
             percentiles=self._percentiles(probabilities, DEFAULT_PERCENTILES, offset),
             offset=offset,
         )

@@ -132,7 +132,7 @@ def add_missing_columns(pipeline, df):
 
 
 def find_probability_threshold_index(sequence: List[float], threshold: float) -> int:
-    """Find index where cumulative probability exceeds threshold.
+    """Find index k such that P(X >= k) >= threshold.
 
     Parameters
     ----------
@@ -144,15 +144,16 @@ def find_probability_threshold_index(sequence: List[float], threshold: float) ->
     Returns
     -------
     int
-        The index where the cumulative probability exceeds 1 - threshold,
-        indicating the number of resources needed with the specified probability
+        The index k where P(X >= k) >= threshold. This represents the minimum
+        number of resources needed with the specified probability.
 
     Examples
     --------
     >>> pmf = [0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05]
     >>> find_probability_threshold_index(pmf, 0.9)
-    5
-    # This means there is a 90% probability of needing at least 5 beds
+    1
+    # This means there is a 90% probability of needing at least 1 bed.
+    # P(X >= 1) = 1 - P(X < 1) = 1 - 0.05 = 0.95 >= 0.9
     """
     cumulative_sum = 0.0
     for i, value in enumerate(sequence):

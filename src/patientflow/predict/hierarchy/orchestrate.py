@@ -142,10 +142,10 @@ class HierarchicalPredictor:
         >>> results = predictor.predict_all_levels(bottom_level_data)
         >>> # Access service-level prediction
         >>> gsurg_bundle = results['Gsurg LowGI']
-        >>> print(f"Expected arrivals: {gsurg_bundle.arrivals.expected_value:.1f}")
+        >>> print(f"Expected arrivals: {gsurg_bundle.arrivals.expectation:.1f}")
         >>> # Access hospital-level aggregated prediction
         >>> hospital_bundle = results['uclh']
-        >>> print(f"Hospital expected arrivals: {hospital_bundle.arrivals.expected_value:.1f}")
+        >>> print(f"Hospital expected arrivals: {hospital_bundle.arrivals.expectation:.1f}")
 
         Run predictions with custom flow selection (ED inflows only):
 
@@ -284,7 +284,7 @@ class HierarchicalPredictor:
                 # Prediction logic for base level (leaf nodes)
                 inputs = bottom_level_data[entity_id]
                 bundle = self.predictor.predict_service(
-                    entity_id, inputs, flow_selection
+                    inputs, flow_selection
                 )
                 self.prediction_results[entity_id] = bundle
             return

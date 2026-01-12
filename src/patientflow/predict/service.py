@@ -1,14 +1,14 @@
 """Demand preparation utilities for later consolidation.
 
-This module prepares per-subspecialty demand inputs using a flexible
+This module prepares per-service demand inputs using a flexible
 architecture. It converts trained model outputs and current patient snapshots
 into structured representations organised by direction (inflows/outflows).
 The flow-based structure allows flexible selection of which flows to include
 in predictions and easy extension to new flow types in the future.
 
-The outputs are independent per subspecialty and do not presuppose any
+The outputs are independent per service and do not presuppose any
 particular consolidation hierarchy. They can be used directly for single-
-specialty analyses or fed into any combination scheme (including hierarchical
+service analyses or fed into any combination scheme (including hierarchical
 schemes) implemented elsewhere.
 
 """
@@ -254,22 +254,28 @@ class ServicePredictionInputs:
 
 def _validate_models_and_data(
     models: Tuple[
-        TrainedClassifier,
-        TrainedClassifier,
-        Union[
-            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        Optional[TrainedClassifier],
+        Optional[TrainedClassifier],
+        Optional[
+            Union[
+                SequenceToOutcomePredictor,
+                ValueToOutcomePredictor,
+                MultiSubgroupPredictor,
+            ]
         ],
-        Union[
-            ParametricIncomingAdmissionPredictor,
-            EmpiricalIncomingAdmissionPredictor,
+        Optional[
+            Union[
+                ParametricIncomingAdmissionPredictor,
+                EmpiricalIncomingAdmissionPredictor,
+            ]
         ],
-        DirectAdmissionPredictor,
-        DirectAdmissionPredictor,
-        TransferProbabilityEstimator,
+        Optional[DirectAdmissionPredictor],
+        Optional[DirectAdmissionPredictor],
+        Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
     specialties: List[str],
 ) -> None:
@@ -294,96 +300,120 @@ def _validate_models_and_data(
     ) = models
 
     # Validate model types
-    if not isinstance(ed_classifier, TrainedClassifier):
+    if ed_classifier is not None and not isinstance(ed_classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier (ED classifier)")
-    if not isinstance(inpatient_classifier, TrainedClassifier):
+    if inpatient_classifier is not None and not isinstance(
+        inpatient_classifier, TrainedClassifier
+    ):
         raise TypeError(
             "Second model must be of type TrainedClassifier (inpatient classifier)"
         )
-    if not isinstance(
+    if spec_model is not None and not isinstance(
         spec_model,
         (SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor),
     ):
         raise TypeError(
             "Third model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor or MultiSubgroupPredictor"
         )
-    yet_to_arrive_class_name = type(yet_to_arrive_model).__name__
-    expected_types = (
-        "ParametricIncomingAdmissionPredictor",
-        "EmpiricalIncomingAdmissionPredictor",
-    )
-    if yet_to_arrive_class_name not in expected_types:
-        actual_module = type(yet_to_arrive_model).__module__
-        raise TypeError(
-            "Fourth model must be of type ParametricIncomingAdmissionPredictor or "
-            "EmpiricalIncomingAdmissionPredictor, "
-            f"but got {actual_module}.{yet_to_arrive_class_name}. "
-            "If you're using Jupyter, try restarting the kernel."
+
+    if yet_to_arrive_model is not None:
+        yet_to_arrive_class_name = type(yet_to_arrive_model).__name__
+        expected_types = (
+            "ParametricIncomingAdmissionPredictor",
+            "EmpiricalIncomingAdmissionPredictor",
         )
+        if yet_to_arrive_class_name not in expected_types:
+            actual_module = type(yet_to_arrive_model).__module__
+            raise TypeError(
+                "Fourth model must be of type ParametricIncomingAdmissionPredictor or "
+                "EmpiricalIncomingAdmissionPredictor, "
+                f"but got {actual_module}.{yet_to_arrive_class_name}. "
+                "If you're using Jupyter, try restarting the kernel."
+            )
 
     # Validate that non-ED and elective models are DirectAdmissionPredictor
-    if not isinstance(non_ed_yta_model, DirectAdmissionPredictor):
+    if non_ed_yta_model is not None and not isinstance(
+        non_ed_yta_model, DirectAdmissionPredictor
+    ):
         raise TypeError(
             "Fifth model must be of type DirectAdmissionPredictor (non-ED emergency)"
         )
-    if not isinstance(elective_yta_model, DirectAdmissionPredictor):
+    if elective_yta_model is not None and not isinstance(
+        elective_yta_model, DirectAdmissionPredictor
+    ):
         raise TypeError(
             "Sixth model must be of type DirectAdmissionPredictor (elective)"
         )
-    if not isinstance(transfer_model, TransferProbabilityEstimator):
+    if transfer_model is not None and not isinstance(
+        transfer_model, TransferProbabilityEstimator
+    ):
         raise TypeError(
             "Seventh model must be of type TransferProbabilityEstimator (transfer)"
         )
 
     # Validate elapsed_los column presence and dtype for ED snapshots
-    if "elapsed_los" not in ed_snapshots.columns:
-        raise ValueError("Column 'elapsed_los' not found in ed_snapshots")
-    if not pd.api.types.is_timedelta64_dtype(ed_snapshots["elapsed_los"]):
-        actual_type = ed_snapshots["elapsed_los"].dtype
-        raise ValueError(
-            "Column 'elapsed_los' must be a timedelta column in ed_snapshots, but found type: "
-            f"{actual_type}"
-        )
+    if ed_snapshots is not None:
+        if "elapsed_los" not in ed_snapshots.columns:
+            raise ValueError("Column 'elapsed_los' not found in ed_snapshots")
+        if not pd.api.types.is_timedelta64_dtype(ed_snapshots["elapsed_los"]):
+            actual_type = ed_snapshots["elapsed_los"].dtype
+            raise ValueError(
+                "Column 'elapsed_los' must be a timedelta column in ed_snapshots, but found type: "
+                f"{actual_type}"
+            )
 
     # Validate elapsed_los column presence and dtype for inpatient snapshots
-    if "elapsed_los" not in inpatient_snapshots.columns:
-        raise ValueError("Column 'elapsed_los' not found in inpatient_snapshots")
-    if not pd.api.types.is_timedelta64_dtype(inpatient_snapshots["elapsed_los"]):
-        actual_type = inpatient_snapshots["elapsed_los"].dtype
-        raise ValueError(
-            "Column 'elapsed_los' must be a timedelta column in inpatient_snapshots, but found type: "
-            f"{actual_type}"
-        )
+    if inpatient_snapshots is not None:
+        if "elapsed_los" not in inpatient_snapshots.columns:
+            raise ValueError("Column 'elapsed_los' not found in inpatient_snapshots")
+        if not pd.api.types.is_timedelta64_dtype(inpatient_snapshots["elapsed_los"]):
+            actual_type = inpatient_snapshots["elapsed_los"].dtype
+            raise ValueError(
+                "Column 'elapsed_los' must be a timedelta column in inpatient_snapshots, but found type: "
+                f"{actual_type}"
+            )
 
     # Check that all models have been fit
-    if not hasattr(ed_classifier, "pipeline") or ed_classifier.pipeline is None:
+    if ed_classifier is not None and (
+        not hasattr(ed_classifier, "pipeline") or ed_classifier.pipeline is None
+    ):
         raise ValueError("ED classifier model has not been fit")
-    if (
+    if inpatient_classifier is not None and (
         not hasattr(inpatient_classifier, "pipeline")
         or inpatient_classifier.pipeline is None
     ):
         raise ValueError("Inpatient classifier model has not been fit")
-    if isinstance(spec_model, (SequenceToOutcomePredictor, ValueToOutcomePredictor)):
-        if not hasattr(spec_model, "weights") or spec_model.weights is None:
-            raise ValueError("Specialty model has not been fit")
-    else:
-        if not hasattr(spec_model, "specialty_to_subgroups"):
-            raise ValueError("Specialty model has not been fit")
-    if (
+
+    if spec_model is not None:
+        if isinstance(
+            spec_model, (SequenceToOutcomePredictor, ValueToOutcomePredictor)
+        ):
+            if not hasattr(spec_model, "weights") or spec_model.weights is None:
+                raise ValueError("Specialty model has not been fit")
+        else:
+            if not hasattr(spec_model, "specialty_to_subgroups"):
+                raise ValueError("Specialty model has not been fit")
+    if yet_to_arrive_model is not None and (
         not hasattr(yet_to_arrive_model, "prediction_window")
         or yet_to_arrive_model.prediction_window is None
     ):
         raise ValueError("Yet-to-arrive model has not been fit")
 
     # Validate prediction_time and prediction_window compatibility
-    if not ed_classifier.training_results.prediction_time == prediction_time:
+    if (
+        ed_classifier is not None
+        and not ed_classifier.training_results.prediction_time == prediction_time
+    ):
         raise ValueError(
             "Requested prediction time {pt} does not match the prediction time of the "
             "trained ED classifier {ct}".format(
                 pt=prediction_time, ct=ed_classifier.training_results.prediction_time
             )
         )
-    if not inpatient_classifier.training_results.prediction_time == prediction_time:
+    if (
+        inpatient_classifier is not None
+        and not inpatient_classifier.training_results.prediction_time == prediction_time
+    ):
         raise ValueError(
             "Requested prediction time {pt} does not match the prediction time of the "
             "trained inpatient classifier {ct}".format(
@@ -391,7 +421,10 @@ def _validate_models_and_data(
                 ct=inpatient_classifier.training_results.prediction_time,
             )
         )
-    if prediction_window != yet_to_arrive_model.prediction_window:
+    if (
+        yet_to_arrive_model is not None
+        and prediction_window != yet_to_arrive_model.prediction_window
+    ):
         raise ValueError(
             "Requested prediction window {pw} does not match the prediction window of "
             "the trained yet-to-arrive model {mw}".format(
@@ -401,6 +434,8 @@ def _validate_models_and_data(
 
     # Ensure DirectAdmissionPredictors are fit and aligned to the requested prediction window
     for name, model in (("non-ED", non_ed_yta_model), ("elective", elective_yta_model)):
+        if model is None:
+            continue
         if not hasattr(model, "prediction_window") or model.prediction_window is None:
             raise ValueError(
                 f"{name} DirectAdmissionPredictor has not been fit (missing prediction_window)"
@@ -411,17 +446,19 @@ def _validate_models_and_data(
             )
 
     # Ensure TransferProbabilityEstimator has been fitted
-    if not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_:
+    if transfer_model is not None and (
+        not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_
+    ):
         raise ValueError("Transfer model has not been fit")
 
     # Validate specialties alignment
-    if hasattr(yet_to_arrive_model, "filters"):
+    if yet_to_arrive_model is not None and hasattr(yet_to_arrive_model, "filters"):
         if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
             raise ValueError(
                 f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
             )
 
-    special_params = spec_model.special_params
+    special_params = spec_model.special_params if spec_model is not None else None
 
     if special_params:
         special_category_dict = special_params["special_category_dict"]
@@ -445,21 +482,27 @@ def _validate_models_and_data(
 
 def _prepare_base_probabilities(
     models: Tuple[
-        TrainedClassifier,
-        TrainedClassifier,
-        Union[
-            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        Optional[TrainedClassifier],
+        Optional[TrainedClassifier],
+        Optional[
+            Union[
+                SequenceToOutcomePredictor,
+                ValueToOutcomePredictor,
+                MultiSubgroupPredictor,
+            ]
         ],
-        Union[
-            ParametricIncomingAdmissionPredictor,
-            EmpiricalIncomingAdmissionPredictor,
+        Optional[
+            Union[
+                ParametricIncomingAdmissionPredictor,
+                EmpiricalIncomingAdmissionPredictor,
+            ]
         ],
-        DirectAdmissionPredictor,
-        DirectAdmissionPredictor,
-        TransferProbabilityEstimator,
+        Optional[DirectAdmissionPredictor],
+        Optional[DirectAdmissionPredictor],
+        Optional[TransferProbabilityEstimator],
     ],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
     x1: float,
     y1: float,
@@ -485,86 +528,128 @@ def _prepare_base_probabilities(
     ) = models
 
     # Use calibrated pipeline if available for ED classifier
-    ed_pipeline = (
-        ed_classifier.calibrated_pipeline
-        if hasattr(ed_classifier, "calibrated_pipeline")
-        and ed_classifier.calibrated_pipeline is not None
-        else ed_classifier.pipeline
-    )
+    if ed_classifier is not None:
+        ed_pipeline = (
+            ed_classifier.calibrated_pipeline
+            if hasattr(ed_classifier, "calibrated_pipeline")
+            and ed_classifier.calibrated_pipeline is not None
+            else ed_classifier.pipeline
+        )
+    else:
+        ed_pipeline = None
 
     # Use calibrated pipeline if available for inpatient classifier
-    inpatient_pipeline = (
-        inpatient_classifier.calibrated_pipeline
-        if hasattr(inpatient_classifier, "calibrated_pipeline")
-        and inpatient_classifier.calibrated_pipeline is not None
-        else inpatient_classifier.pipeline
-    )
+    if inpatient_classifier is not None:
+        inpatient_pipeline = (
+            inpatient_classifier.calibrated_pipeline
+            if hasattr(inpatient_classifier, "calibrated_pipeline")
+            and inpatient_classifier.calibrated_pipeline is not None
+            else inpatient_classifier.pipeline
+        )
+    else:
+        inpatient_pipeline = None
 
     # Ensure model expects columns exist
-    ed_snapshots = add_missing_columns(ed_pipeline, ed_snapshots.copy())
-    inpatient_snapshots = add_missing_columns(
-        inpatient_pipeline, inpatient_snapshots.copy()
-    )
+    if ed_pipeline is not None and ed_snapshots is not None:
+        ed_snapshots = add_missing_columns(ed_pipeline, ed_snapshots.copy())
+    if inpatient_pipeline is not None and inpatient_snapshots is not None:
+        inpatient_snapshots = add_missing_columns(
+            inpatient_pipeline, inpatient_snapshots.copy()
+        )
 
     # Convert elapsed_los to seconds for the ED classifier pipeline
-    ed_snapshots_temp = ed_snapshots.copy()
-    ed_snapshots_temp["elapsed_los"] = ed_snapshots_temp[
-        "elapsed_los"
-    ].dt.total_seconds()
+    if ed_snapshots is not None:
+        ed_snapshots_temp = ed_snapshots.copy()
+        ed_snapshots_temp["elapsed_los"] = ed_snapshots_temp[
+            "elapsed_los"
+        ].dt.total_seconds()
+    else:
+        ed_snapshots_temp = None
 
     # Admission probability for current ED patients (per row)
-    prob_admission_after_ed = model_input_to_pred_proba(ed_snapshots_temp, ed_pipeline)
+    if ed_pipeline is not None and ed_snapshots_temp is not None:
+        prob_admission_after_ed = model_input_to_pred_proba(
+            ed_snapshots_temp, ed_pipeline
+        )
+    elif ed_snapshots is not None:
+        prob_admission_after_ed = pd.Series(0.0, index=ed_snapshots.index)
+    else:
+        prob_admission_after_ed = pd.Series(dtype=float)
 
     # Convert elapsed_los to seconds for the inpatient classifier pipeline
-    inpatient_snapshots_temp = inpatient_snapshots.copy()
-    inpatient_snapshots_temp["elapsed_los"] = inpatient_snapshots_temp[
-        "elapsed_los"
-    ].dt.total_seconds()
+    if inpatient_snapshots is not None:
+        inpatient_snapshots_temp = inpatient_snapshots.copy()
+        inpatient_snapshots_temp["elapsed_los"] = inpatient_snapshots_temp[
+            "elapsed_los"
+        ].dt.total_seconds()
 
-    # Split inpatient snapshots into elective and emergency
-    elective_snapshots = inpatient_snapshots_temp[
-        inpatient_snapshots_temp["admission_type"] == "elective"
-    ]
-    emergency_snapshots = inpatient_snapshots_temp[
-        inpatient_snapshots_temp["admission_type"] == "emergency"
-    ]
+        # Split inpatient snapshots into elective and emergency
+        elective_snapshots = inpatient_snapshots_temp[
+            inpatient_snapshots_temp["admission_type"] == "elective"
+        ]
+        emergency_snapshots = inpatient_snapshots_temp[
+            inpatient_snapshots_temp["admission_type"] == "emergency"
+        ]
+    else:
+        inpatient_snapshots_temp = None
+        elective_snapshots = pd.DataFrame()
+        emergency_snapshots = pd.DataFrame()
 
     # Departure probability for current inpatients (per row)
-    prob_departure_after_elective = (
-        model_input_to_pred_proba(elective_snapshots, inpatient_pipeline)
-        if not elective_snapshots.empty
-        else pd.Series(dtype=float)
-    )
+    if inpatient_pipeline is not None:
+        prob_departure_after_elective = (
+            model_input_to_pred_proba(elective_snapshots, inpatient_pipeline)
+            if not elective_snapshots.empty
+            else pd.Series(dtype=float)
+        )
 
-    prob_departure_after_emergency = (
-        model_input_to_pred_proba(emergency_snapshots, inpatient_pipeline)
-        if not emergency_snapshots.empty
-        else pd.Series(dtype=float)
-    )
+        prob_departure_after_emergency = (
+            model_input_to_pred_proba(emergency_snapshots, inpatient_pipeline)
+            if not emergency_snapshots.empty
+            else pd.Series(dtype=float)
+        )
+    else:
+        prob_departure_after_elective = (
+            pd.Series(0.0, index=elective_snapshots.index)
+            if not elective_snapshots.empty
+            else pd.Series(dtype=float)
+        )
+        prob_departure_after_emergency = (
+            pd.Series(0.0, index=emergency_snapshots.index)
+            if not emergency_snapshots.empty
+            else pd.Series(dtype=float)
+        )
 
     # Specialty probabilities per row for ED patients
-    if hasattr(spec_model, "predict_dataframe"):
+    if spec_model is not None and hasattr(spec_model, "predict_dataframe") and ed_snapshots is not None:
         ed_snapshots.loc[:, "specialty_prob"] = spec_model.predict_dataframe(
             ed_snapshots
         )
-    else:
-        special_params = spec_model.special_params
+    elif ed_snapshots is not None:
+        special_params = (
+            spec_model.special_params if spec_model is not None else None
+        )
         if special_params:
             special_category_func = special_params["special_category_func"]
             special_category_dict = special_params["special_category_dict"]
         else:
             special_category_func = special_category_dict = None
 
-        ed_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
-            [],  # specialties will be determined from the model
-            spec_model,
-            ed_snapshots,
-            special_category_func=special_category_func,
-            special_category_dict=special_category_dict,
-        )
+        if spec_model is not None:
+            ed_snapshots.loc[:, "specialty_prob"] = get_specialty_probs(
+                [],  # specialties will be determined from the model
+                spec_model,
+                ed_snapshots,
+                special_category_func=special_category_func,
+                special_category_dict=special_category_dict,
+            )
+        else:
+            # If no spec model, assuming 0 probability for all specialties
+            # This is effectively "unknown"
+            ed_snapshots.loc[:, "specialty_prob"] = [{} for _ in range(len(ed_snapshots))]
 
     # Probability of being admitted within window (per row) for ED patients
-    if use_admission_in_window_prob:
+    if use_admission_in_window_prob and yet_to_arrive_model is not None and ed_snapshots is not None:
         if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
             prob_admission_in_window = ed_snapshots.apply(
                 lambda row: calculate_admission_probability_from_survival_curve(
@@ -581,11 +666,13 @@ def _prepare_base_probabilities(
                 ),
                 axis=1,
             )
-    else:
+    elif ed_snapshots is not None:
         prob_admission_in_window = pd.Series(1.0, index=ed_snapshots.index)
+    else:
+        prob_admission_in_window = pd.Series(dtype=float)
 
     # Prepare subgroup masks if using MultiSubgroupPredictor
-    special_params = spec_model.special_params
+    special_params = spec_model.special_params if spec_model is not None else None
     if special_params:
         special_func_map = special_params["special_func_map"]
     else:
@@ -595,17 +682,22 @@ def _prepare_base_probabilities(
         special_func_map = {"default": lambda row: True}
 
     # Resolve specialty_to_subgroups directly from the model attribute
-    specialty_to_subgroups: Dict[str, List[str]] = getattr(
-        spec_model, "specialty_to_subgroups", {}
+    specialty_to_subgroups: Dict[str, List[str]] = (
+        getattr(spec_model, "specialty_to_subgroups", {})
+        if spec_model is not None
+        else {}
     )
 
     # Precompute subgroup/function masks once for ED patients
-    ed_masks_by_func: Dict[str, pd.Series] = {
-        name: ed_snapshots.apply(func, axis=1)
-        for name, func in special_func_map.items()
-    }
-    if "default" not in ed_masks_by_func:
-        ed_masks_by_func["default"] = pd.Series(True, index=ed_snapshots.index)
+    if ed_snapshots is not None:
+        ed_masks_by_func: Dict[str, pd.Series] = {
+            name: ed_snapshots.apply(func, axis=1)
+            for name, func in special_func_map.items()
+        }
+        if "default" not in ed_masks_by_func:
+            ed_masks_by_func["default"] = pd.Series(True, index=ed_snapshots.index)
+    else:
+        ed_masks_by_func = {}
 
     return {
         "ed_snapshots": ed_snapshots,
@@ -719,11 +811,11 @@ def _create_flow_inputs(
     agg_predicted_in_ed: Dict[str, np.ndarray],
     agg_predicted_elective_departures: Dict[str, np.ndarray],
     agg_predicted_emergency_departures: Dict[str, np.ndarray],
-    yet_to_arrive_model: Union[
-        ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor
+    yet_to_arrive_model: Optional[
+        Union[ParametricIncomingAdmissionPredictor, EmpiricalIncomingAdmissionPredictor]
     ],
-    non_ed_yta_model: DirectAdmissionPredictor,
-    elective_yta_model: DirectAdmissionPredictor,
+    non_ed_yta_model: Optional[DirectAdmissionPredictor],
+    elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
     x1: float,
     y1: float,
@@ -755,6 +847,8 @@ def _create_flow_inputs(
                 yet_to_arrive_model.predict_mean(
                     prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
                 )
+                if yet_to_arrive_model is not None
+                else 0.0
             ),
             display_name="ED yet-to-arrive admissions",
         ),
@@ -805,18 +899,24 @@ def _create_flow_inputs(
 
 def _build_legacy_flows(
     models: Tuple[
-        TrainedClassifier,
-        TrainedClassifier,
-        Union[
-            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        Optional[TrainedClassifier],
+        Optional[TrainedClassifier],
+        Optional[
+            Union[
+                SequenceToOutcomePredictor,
+                ValueToOutcomePredictor,
+                MultiSubgroupPredictor,
+            ]
         ],
-        Union[
-            ParametricIncomingAdmissionPredictor,
-            EmpiricalIncomingAdmissionPredictor,
+        Optional[
+            Union[
+                ParametricIncomingAdmissionPredictor,
+                EmpiricalIncomingAdmissionPredictor,
+            ]
         ],
-        DirectAdmissionPredictor,
-        DirectAdmissionPredictor,
-        TransferProbabilityEstimator,
+        Optional[DirectAdmissionPredictor],
+        Optional[DirectAdmissionPredictor],
+        Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
     ed_snapshots: pd.DataFrame,
@@ -860,23 +960,35 @@ def _build_legacy_flows(
     temp_service_data: Dict[str, Dict[str, Any]] = {}
 
     for spec in specialties:
-        # Process ED patients
-        ed_data = _process_ed_patients_for_specialty(
-            spec,
-            ed_snapshots,
-            specialty_to_subgroups,
-            ed_masks_by_func,
-            prob_admission_after_ed,
-            prob_admission_in_window,
-        )
+        if ed_snapshots is not None:
+            ed_data = _process_ed_patients_for_specialty(
+                spec,
+                ed_snapshots,
+                specialty_to_subgroups,
+                ed_masks_by_func,
+                prob_admission_after_ed,
+                prob_admission_in_window,
+            )
+        else:
+            ed_data = {
+                "agg_predicted_in_ed": {"agg_proba": np.array([1.0])}
+            }
 
         # Process inpatients
-        elective_data = _process_inpatients_for_specialty_by_admission_type(
-            spec, inpatient_snapshots, prob_departure_after_elective, "elective"
-        )
-        emergency_data = _process_inpatients_for_specialty_by_admission_type(
-            spec, inpatient_snapshots, prob_departure_after_emergency, "emergency"
-        )
+        if inpatient_snapshots is not None:
+            elective_data = _process_inpatients_for_specialty_by_admission_type(
+                spec, inpatient_snapshots, prob_departure_after_elective, "elective"
+            )
+            emergency_data = _process_inpatients_for_specialty_by_admission_type(
+                spec, inpatient_snapshots, prob_departure_after_emergency, "emergency"
+            )
+        else:
+            elective_data = {
+                "agg_predicted_elective_departures": {"agg_proba": np.array([1.0])}
+            }
+            emergency_data = {
+                "agg_predicted_emergency_departures": {"agg_proba": np.array([1.0])}
+            }
 
         # Create flow inputs
         flow_data = _create_flow_inputs(
@@ -902,7 +1014,7 @@ def _build_legacy_flows(
 
 def _finalise_service_data(
     temp_service_data: Dict[str, Dict[str, Any]],
-    transfer_model: TransferProbabilityEstimator,
+    transfer_model: Optional[TransferProbabilityEstimator],
     specialties: List[str],
     prediction_window,
 ) -> Dict[str, ServicePredictionInputs]:
@@ -914,9 +1026,16 @@ def _finalise_service_data(
         Dictionary mapping service_id to ServicePredictionInputs
     """
     # Compute transfer arrivals using the departure PMFs from temporary data
-    transfer_arrivals = compute_transfer_arrivals(
-        temp_service_data, transfer_model, specialties
-    )
+    if transfer_model is not None:
+        transfer_arrivals = compute_transfer_arrivals(
+            temp_service_data, transfer_model, specialties
+        )
+    else:
+        # If no transfer model, assume 0 transfers
+        transfer_arrivals = {
+            "elective": {spec: np.array([1.0]) for spec in specialties},
+            "emergency": {spec: np.array([1.0]) for spec in specialties},
+        }
 
     # Second pass: Add transfer arrivals to inflows and create final immutable dataclass objects
     service_data: Dict[str, ServicePredictionInputs] = {}
@@ -949,18 +1068,24 @@ def _finalise_service_data(
 
 def build_service_data(
     models: Tuple[
-        TrainedClassifier,
-        TrainedClassifier,
-        Union[
-            SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor
+        Optional[TrainedClassifier],
+        Optional[TrainedClassifier],
+        Optional[
+            Union[
+                SequenceToOutcomePredictor,
+                ValueToOutcomePredictor,
+                MultiSubgroupPredictor,
+            ]
         ],
-        Union[
-            ParametricIncomingAdmissionPredictor,
-            EmpiricalIncomingAdmissionPredictor,
+        Optional[
+            Union[
+                ParametricIncomingAdmissionPredictor,
+                EmpiricalIncomingAdmissionPredictor,
+            ]
         ],
-        DirectAdmissionPredictor,
-        DirectAdmissionPredictor,
-        TransferProbabilityEstimator,
+        Optional[DirectAdmissionPredictor],
+        Optional[DirectAdmissionPredictor],
+        Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
     ed_snapshots: pd.DataFrame,
@@ -984,7 +1109,7 @@ def build_service_data(
     Parameters
     ----------
     models : tuple
-        Tuple of seven trained models:
+        Tuple of seven trained models (or None if not used):
 
         - ed_classifier: TrainedClassifier for ED admission probability prediction
         - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
@@ -997,12 +1122,12 @@ def build_service_data(
         - transfer_model: TransferProbabilityEstimator for internal transfer predictions
     prediction_time : tuple of (int, int)
         Hour and minute for inference time
-    ed_snapshots : pandas.DataFrame
+    ed_snapshots : pandas.DataFrame or None
         DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in the ED.
-    inpatient_snapshots : pandas.DataFrame
+        Each row represents a patient currently in the ED. If None, assumes no ED patients.
+    inpatient_snapshots : pandas.DataFrame or None
         DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in a service ward.
+        Each row represents a patient currently in a service ward. If None, assumes no inpatients.
     specialties : list of str
         List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta

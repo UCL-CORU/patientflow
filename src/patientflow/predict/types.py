@@ -32,6 +32,9 @@ class DemandPrediction:
         Probability mass function for bed demand (probability of 0, 1, 2, ... beds)
     expected_value : float
         Expected number of beds needed (mean of the distribution)
+    mode : int
+        Mode of the distribution (most likely number of beds).
+        Calculated as the value (index + offset) where the probability mass is maximal.
     percentiles : dict[int, int]
         Dictionary mapping percentile values (50, 75, 90, 95, 99) to bed counts
     offset : int, optional
@@ -46,27 +49,23 @@ class DemandPrediction:
         Type of entity
     probabilities : numpy.ndarray
         Probability mass function for bed demand
-    expected_value : float
+    expectation : float
         Expected number of beds needed
+    mode : int
+        Mode of the distribution
     percentiles : dict[int, int]
         Percentile values for bed demand
     offset : int
         Offset for the support (index 0 corresponds to value = offset)
     max_beds : int
         Maximum number of beds in the probability distribution
-
-    Notes
-    -----
-    The probabilities array represents P(X=k) where X is the number of beds needed
-    and k ranges from offset to (offset + max_beds). The sum of all probabilities should equal 1.0.
-    For non-negative distributions (arrivals, departures), offset=0.
-    For net flow distributions, offset can be negative (e.g., -10 means support starts at -10).
     """
 
     entity_id: str
     entity_type: str
     probabilities: np.ndarray
-    expected_value: float
+    expectation: float
+    mode: int
     percentiles: Dict[int, int]
     offset: int = 0
 
@@ -80,6 +79,28 @@ class DemandPrediction:
             Maximum bed count (length of probabilities array minus 1)
         """
         return len(self.probabilities) - 1
+
+    def min_beds_with_probability(self, probability: float) -> int:
+        """Calculate minimum beds needed with at least the given probability.
+        
+        Calculates k such that P(X >= k) >= probability.
+        
+        Parameters
+        ----------
+        probability : float
+            Probability threshold (e.g. 0.9 for 90%)
+            
+        Returns
+        -------
+        int
+            Minimum number of beds needed
+        """
+        cumulative_sum = 0.0
+        for i, value in enumerate(self.probabilities):
+            cumulative_sum += value
+            if cumulative_sum >= 1.0 - probability:
+                return int(i + self.offset)
+        return int(len(self.probabilities) - 1 + self.offset)
 
     def to_pretty(
         self, max_probs: int = DEFAULT_MAX_PROBS, precision: int = DEFAULT_PRECISION
@@ -124,7 +145,8 @@ class DemandPrediction:
         pmf_label = f"PMF[{start_idx}:{end_idx}]:"
         return (
             f"{self.entity_type}: {self.entity_id}\n"
-            f"  {'Expectation:':<16} {self.expected_value:.{precision}f}\n"
+            f"  {'Expectation:':<16} {self.expectation:.{precision}f}\n"
+            f"  {'Mode:':<16} {self.mode}\n"
             f"  {'Percentiles:':<16} {pct_items}\n"
             f"  {pmf_label:<16} [{head}]{tail_note}"
         )
@@ -308,7 +330,7 @@ class PredictionBundle:
             """Format PMF similar to ServicePredictionInputs."""
             arr = pred.probabilities
             offset = pred.offset
-            expectation = pred.expected_value
+            expectation = pred.expectation
 
             if len(arr) <= max_display:
                 values = ", ".join(f"{v:.3f}" for v in arr)
