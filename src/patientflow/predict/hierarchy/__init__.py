@@ -66,9 +66,10 @@ The typical workflow is:
    ...     k_sigma=8.0
    ... )
    >>> # Or create manually:
-   >>> from patientflow.predict.hierarchy import DemandPredictor, HierarchicalPredictor
+   >>> from patientflow.predict.hierarchy import HierarchyPredictor
+   >>> from patientflow.predict.demand import DemandPredictor
    >>> demand_predictor = DemandPredictor(k_sigma=8.0)
-   >>> predictor = HierarchicalPredictor(hierarchy, demand_predictor)
+   >>> predictor = HierarchyPredictor(hierarchy, demand_predictor)
    >>> 
    >>> # Run predictions
    >>> results = predictor.predict_all_levels(
@@ -93,10 +94,10 @@ Components
 
 - **DemandPredictor**: Core calculation engine for probability distributions.
   Performs convolution of distributions and statistical capping. Typically used
-  indirectly through HierarchicalPredictor, but can be used directly for
+  indirectly through HierarchyPredictor, but can be used directly for
   single-level predictions.
 
-- **HierarchicalPredictor**: Orchestrates predictions across all hierarchy levels.
+- **HierarchyPredictor**: Orchestrates predictions across all hierarchy levels.
   This is the main entry point for hierarchical predictions. Manages the 3-phase
   algorithm (capping, bottom-level prediction, aggregation).
 
@@ -120,7 +121,7 @@ Understanding when to use each component and how they relate:
     
     Hierarchy (structure)
         ↓
-    HierarchicalPredictor (orchestration)
+    HierarchyPredictor (orchestration)
         ↓
     DemandPredictor (calculations)
         ↓
@@ -145,12 +146,13 @@ Understanding when to use each component and how they relate:
      - Example manual construction:
        ::
        
-           from patientflow.predict.hierarchy import DemandPredictor, HierarchicalPredictor
+           from patientflow.predict.hierarchy import HierarchyPredictor
+           from patientflow.predict.demand import DemandPredictor
            demand_predictor = DemandPredictor(k_sigma=10.0)  # Custom k_sigma
-           predictor = HierarchicalPredictor(hierarchy, demand_predictor)
+           predictor = HierarchyPredictor(hierarchy, demand_predictor)
 
-3. **`DemandPredictor` vs `HierarchicalPredictor`:**
-   - **Use `HierarchicalPredictor`** (recommended) when:
+3. **`DemandPredictor` vs `HierarchyPredictor`:**
+   - **Use `HierarchyPredictor`** (recommended) when:
      - You need predictions across multiple organizational levels
      - You want automatic aggregation from bottom to top
      - You're working with a complete hierarchy structure
@@ -161,7 +163,7 @@ Understanding when to use each component and how they relate:
 
 **Prediction Flow (3-Phase Algorithm):**
 
-The prediction process follows a strict 3-phase algorithm managed by `HierarchicalPredictor`:
+The prediction process follows a strict 3-phase algorithm managed by `HierarchyPredictor`:
 
 1. **Phase 1: Bottom-up Stats & Top-down Capping**
    - Recursively traverses the hierarchy from bottom to top
@@ -225,8 +227,8 @@ from .structure import (
     HierarchyLevel,
     populate_hierarchy_from_dataframe,
 )
-from .calculation import DemandPredictor
-from .orchestrator import HierarchicalPredictor, create_hierarchical_predictor
+from .calculate import calculate_hierarchical_stats
+from .orchestrate import HierarchicalPredictor, create_hierarchical_predictor
 
 __all__ = [
     "DEFAULT_PERCENTILES",
@@ -239,7 +241,7 @@ __all__ = [
     "EntityType",
     "HierarchyLevel",
     "populate_hierarchy_from_dataframe",
-    "DemandPredictor",
+    "calculate_hierarchical_stats",
     "HierarchicalPredictor",
     "create_hierarchical_predictor",
 ]

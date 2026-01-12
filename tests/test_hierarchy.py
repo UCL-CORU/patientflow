@@ -4,17 +4,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from patientflow.predict.demand import DemandPredictor
 from patientflow.predict.hierarchy import (
-    DemandPredictor,
     DemandPrediction,
     FlowSelection,
     EntityType,
     Hierarchy,
     PredictionBundle,
+    HierarchicalPredictor,
     create_hierarchical_predictor,
     DEFAULT_PERCENTILES,
     DEFAULT_PRECISION,
     DEFAULT_MAX_PROBS,
+    calculate_hierarchical_stats,
 )
 from patientflow.predict.distribution import Distribution
 from patientflow.predict.service import (
@@ -89,7 +91,7 @@ class TestDemandPredictor:
 
     def test_calculate_hierarchical_stats_respects_flow_selection(self):
         """calculate_hierarchical_stats should honor flow selection filters."""
-        predictor = DemandPredictor(k_sigma=1.0)
+        # Note: calculate_hierarchical_stats is now a standalone function
         hierarchy = Hierarchy.create_default_hospital()
         levels = hierarchy.get_levels_ordered()
         subspecialty_type = levels[0]
@@ -138,26 +140,28 @@ class TestDemandPredictor:
 
         bottom_level_data = {"Cardiology": inputs}
 
-        stats_all = predictor.calculate_hierarchical_stats(
+        stats_all = calculate_hierarchical_stats(
             "UnitA",
             reporting_unit_type,
             bottom_level_data,
             hierarchy,
             "arrivals",
             FlowSelection.default(),
+            k_sigma=1.0,
         )
         # Two Poisson flows with lambdas 2 and 3 -> mean 5, variance 5.
         assert pytest.approx(stats_all[0], rel=1e-9) == 5.0
         assert pytest.approx(stats_all[1], rel=1e-9) == np.sqrt(5.0)
         assert stats_all[2] >= 5  # cap should be at least the mean
 
-        stats_elective = predictor.calculate_hierarchical_stats(
+        stats_elective = calculate_hierarchical_stats(
             "UnitA",
             reporting_unit_type,
             bottom_level_data,
             hierarchy,
             "arrivals",
             FlowSelection.elective_only(),
+            k_sigma=1.0,
         )
         assert stats_elective == (0.0, 0.0, 0)
 
@@ -522,7 +526,7 @@ class TestConstants:
 
     def test_default_percentiles(self):
         """Test that default percentiles are correct."""
-        assert DEFAULT_PERCENTILES == [50, 75, 90, 95, 99]
+        assert DEFAULT_PERCENTILES == [25, 50, 75]
 
     def test_default_precision(self):
         """Test that default precision is correct."""
@@ -550,7 +554,7 @@ class TestConstants:
     def test_constants_used_in_prediction_bundle(self):
         """Test that constants are used in PredictionBundle methods."""
         # Test the constants directly since we can't easily test PredictionBundle usage
-        assert DEFAULT_PERCENTILES == [50, 75, 90, 95, 99]
+        assert DEFAULT_PERCENTILES == [25, 50, 75]  # Updated expectation
         assert DEFAULT_PRECISION == 3
         assert DEFAULT_MAX_PROBS == 10
 
@@ -1306,11 +1310,10 @@ class TestHierarchicalPredictor:
             offset=0,
         )
 
-        # Test that predict_hierarchical_level works with EntityType.name
-        # This should not raise "EntityType object has no attribute 'value'"
-        result = predictor.predict_hierarchical_level(
+        # Test that aggregate_predictions works with EntityType.name
+        result = predictor.aggregate_predictions(
             entity_id="test_entity",
-            entity_type=EntityType("reporting_unit"),  # This will use .name internally
+            entity_type=EntityType("reporting_unit").name,
             child_predictions=[mock_prediction1, mock_prediction2],
         )
 

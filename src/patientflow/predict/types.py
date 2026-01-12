@@ -9,7 +9,7 @@ from typing import Dict, Any, Tuple
 import numpy as np
 
 # Constants for magic numbers
-DEFAULT_PERCENTILES = [50, 75, 90, 95, 99]
+DEFAULT_PERCENTILES = [25, 50, 75]
 DEFAULT_PRECISION = 3
 DEFAULT_MAX_PROBS = 10
 

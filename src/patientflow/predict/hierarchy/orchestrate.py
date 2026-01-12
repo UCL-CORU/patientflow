@@ -1,15 +1,18 @@
 """Hierarchical prediction orchestrator.
 
-This module provides HierarchicalPredictor, which orchestrates the 3-phase
+This module provides HierarchyPredictor, which orchestrates the 3-phase
 prediction algorithm across all levels of the organizational hierarchy.
 """
 
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Optional, Any
 
 from patientflow.predict.service import ServicePredictionInputs
-from .structure import Hierarchy
+from patientflow.predict.hierarchy.structure import Hierarchy, populate_hierarchy_from_dataframe
 from patientflow.predict.types import PredictionBundle, FlowSelection
-from .calculation import DemandPredictor
+from patientflow.predict.demand import DemandPredictor
+from patientflow.predict.hierarchy.calculate import calculate_hierarchical_stats
+
+import pandas as pd
 
 
 class HierarchicalPredictor:
@@ -252,21 +255,23 @@ class HierarchicalPredictor:
 
         # PHASE 1: Calculate caps top-down
         # We calculate max_support for this node based on the statistics of its subtree
-        _, _, arrivals_max_support = self.predictor.calculate_hierarchical_stats(
+        _, _, arrivals_max_support = calculate_hierarchical_stats(
             entity_id,
             entity_type,
             bottom_level_data,
             self.hierarchy,
             "arrivals",
             flow_selection,
+            self.predictor.k_sigma,
         )
-        _, _, departures_max_support = self.predictor.calculate_hierarchical_stats(
+        _, _, departures_max_support = calculate_hierarchical_stats(
             entity_id,
             entity_type,
             bottom_level_data,
             self.hierarchy,
             "departures",
             flow_selection,
+            self.predictor.k_sigma,
         )
 
         # Iterate children
@@ -332,9 +337,6 @@ class HierarchicalPredictor:
         """
         return self.predictor.get_truncated_mass_stats()
 
-
-import pandas as pd
-from .structure import populate_hierarchy_from_dataframe
 
 def create_hierarchical_predictor(
     hierarchy_df: Optional[pd.DataFrame] = None,
