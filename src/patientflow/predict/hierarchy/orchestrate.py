@@ -241,7 +241,8 @@ class HierarchicalPredictor:
         else:
             self._predict_subtree(top_level_id, bottom_level_data, flow_selection)
 
-        return self.prediction_results
+        # Return a copy to avoid caller's results being overwritten by subsequent calls
+        return self.prediction_results.copy()
 
     def _predict_subtree(
         self,
