@@ -216,7 +216,6 @@ convolution, ensuring bounded array sizes while maintaining statistical accuracy
 from patientflow.predict.types import (
     DemandPrediction,
     PredictionBundle,
-    FlowSelection,
     DEFAULT_PERCENTILES,
     DEFAULT_PRECISION,
     DEFAULT_MAX_PROBS,
@@ -236,7 +235,6 @@ __all__ = [
     "DEFAULT_MAX_PROBS",
     "DemandPrediction",
     "PredictionBundle",
-    "FlowSelection",
     "Hierarchy",
     "EntityType",
     "HierarchyLevel",

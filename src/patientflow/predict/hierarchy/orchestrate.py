@@ -149,7 +149,7 @@ class HierarchicalPredictor:
 
         Run predictions with custom flow selection (ED inflows only):
 
-        >>> from patientflow.predict.hierarchy import FlowSelection
+        >>> from patientflow.predict.types import FlowSelection
         >>> flow_selection = FlowSelection.custom(
         ...     include_ed_current=True,
         ...     include_ed_yta=True,

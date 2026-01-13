@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 
 from patientflow.predict.demand import DemandPredictor
+from patientflow.predict.types import FlowSelection
 from patientflow.predict.hierarchy import (
     DemandPrediction,
-    FlowSelection,
     EntityType,
     Hierarchy,
     PredictionBundle,
