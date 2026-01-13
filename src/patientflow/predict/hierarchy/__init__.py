@@ -227,7 +227,11 @@ from .structure import (
     populate_hierarchy_from_dataframe,
 )
 from .calculate import calculate_hierarchical_stats
-from .orchestrate import HierarchicalPredictor, create_hierarchical_predictor
+from .orchestrate import (
+    HierarchicalPredictor,
+    create_hierarchical_predictor,
+    PredictionResults,
+)
 
 __all__ = [
     "DEFAULT_PERCENTILES",
@@ -242,4 +246,5 @@ __all__ = [
     "calculate_hierarchical_stats",
     "HierarchicalPredictor",
     "create_hierarchical_predictor",
+    "PredictionResults",
 ]

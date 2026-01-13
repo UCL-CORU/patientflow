@@ -1267,8 +1267,8 @@ class TestHierarchicalPredictor:
             bottom_level_data, flow_selection=FlowSelection.default()
         )
 
-        assert "UCLH" in results
-        hospital_bundle = results["UCLH"]
+        assert "hospital:UCLH" in results
+        hospital_bundle = results["hospital:UCLH"]
 
         # Two subspecialties with lambda=1 -> mean=2, so cap (k_sigma=0) should be 2.
         assert len(hospital_bundle.arrivals.probabilities) == 3
