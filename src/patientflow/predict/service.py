@@ -1307,7 +1307,7 @@ def compute_transfer_arrivals(
     for admission_type in ["elective", "emergency"]:
         for target_service in services:
             # Initialize with zero arrivals: P(0 arrivals) = 1.0
-            arrival_dist = Distribution.from_pmf(np.array([1.0, 0.0]))
+            arrival_dist = Distribution.from_pmf(np.array([1.0]))
 
             for source_service in services:
                 # Skip self-transfers
