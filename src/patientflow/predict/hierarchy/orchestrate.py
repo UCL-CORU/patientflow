@@ -37,9 +37,10 @@ class PredictionResults(dict):
     
     Notes
     -----
-    Standard dict methods (get(), keys(), items(), values(), in operator)
-    work as expected. The get() method uses standard dict behavior (returns
-    None or default if key not found).
+    All dict access methods (get(), keys(), items(), values(), in operator, [])
+    support flexible key lookup using either prefixed IDs or original names.
+    The get() method and 'in' operator use the same flexible lookup logic as
+    bracket access.
     """
     
     def __init__(self, data: Dict[str, PredictionBundle]):
@@ -97,6 +98,74 @@ class PredictionResults(dict):
         
         # Not found
         raise KeyError(f"Entity '{key}' not found in results")
+    
+    def __contains__(self, key: object) -> bool:
+        """Check if key exists using flexible lookup.
+        
+        Parameters
+        ----------
+        key : object
+            Prefixed ID ("hospital:UCLH"), original name ("UCLH"), or other
+        
+        Returns
+        -------
+        bool
+            True if key exists (either as prefixed ID or unambiguous original name),
+            False otherwise
+        """
+        if not isinstance(key, str):
+            return False
+        
+        # Prefixed ID (contains ':')
+        if ':' in key:
+            return super().__contains__(key)
+        
+        # Original name - check if unambiguous
+        if key in self._name_to_prefixed:
+            matching_ids = self._name_to_prefixed[key]
+            # Return True only if unique (ambiguous keys are not considered "in")
+            return len(matching_ids) == 1
+        
+        return False
+    
+    def get(self, key: str, default: Optional[PredictionBundle] = None) -> Optional[PredictionBundle]:
+        """Get prediction bundle using flexible lookup, returning default if not found.
+        
+        Parameters
+        ----------
+        key : str
+            Prefixed ID ("hospital:UCLH") or original name ("UCLH")
+        default : PredictionBundle, optional
+            Value to return if key not found (default: None)
+        
+        Returns
+        -------
+        PredictionBundle or None
+            The prediction bundle if found, otherwise default value
+        
+        Notes
+        -----
+        For ambiguous original names (appearing at multiple levels), returns
+        the default value rather than raising an error (unlike __getitem__).
+        """
+        if not isinstance(key, str):
+            return default
+        
+        # Prefixed ID (contains ':')
+        if ':' in key:
+            return super().get(key, default)
+        
+        # Original name - check if unambiguous
+        if key in self._name_to_prefixed:
+            matching_ids = self._name_to_prefixed[key]
+            if len(matching_ids) == 1:
+                # Unique match
+                return super().get(matching_ids[0], default)
+            # Ambiguous - return default (don't raise error for get())
+            return default
+        
+        # Not found
+        return default
 
 
 class HierarchicalPredictor:
