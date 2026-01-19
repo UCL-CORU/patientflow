@@ -352,16 +352,20 @@ def _plot_madcap_by_group_single(
     * A MADCAP plot showing predicted vs observed cumulative counts
     * Optionally, a difference plot showing predicted minus observed counts
     """
-    # Remove those with unknown age
-    mask_known = group != "unknown"
-    predict_proba = predict_proba[mask_known]
-    label = label[mask_known]
-    group = group[mask_known]
+    # Remove those with unknown or missing group values
+    group_series = pd.Series(group)
+    mask_known = group_series.ne("unknown") & group_series.notna()
+    # Use a NumPy boolean array for safe indexing even with nullable dtypes
+    mask_known_np = mask_known.to_numpy(dtype=bool, na_value=False)
+
+    predict_proba = np.asarray(predict_proba)[mask_known_np]
+    label = np.asarray(label)[mask_known_np]
+    group = group_series.to_numpy()[mask_known_np]
 
     hour, minutes = _prediction_time
 
     predict_proba, label, group = map(np.array, (predict_proba, label, group))
-    unique_groups = [grp for grp in np.unique(group) if grp != "unknown"]
+    unique_groups = list(np.unique(group))
 
     fig_size = (10, 8) if plot_difference else (9, 3)
     fig, ax = plt.subplots(
