@@ -18,12 +18,14 @@ class TestClassifiers(unittest.TestCase):
             {
                 "visit_number": range(n_samples),
                 "age": np.random.randint(0, 100, n_samples),
+                # Use object dtype for categoricals so they are handled by the
+                # column transformer as intended (one-hot encoded where appropriate).
                 "sex": pd.Series(
-                    np.random.choice(["M", "F"], n_samples), dtype="string"
+                    np.random.choice(["M", "F"], n_samples), dtype="object"
                 ),
                 "arrival_method": pd.Series(
                     np.random.choice(["ambulance", "walk-in", "referral"], n_samples),
-                    dtype="string",
+                    dtype="object",
                 ),
                 "is_admitted": np.random.choice([0, 1], n_samples, p=[0.7, 0.3]),
                 "snapshot_time": pd.date_range(

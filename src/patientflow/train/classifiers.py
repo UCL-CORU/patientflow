@@ -205,10 +205,15 @@ def create_column_transformer(
                     [col],
                 )
             )
-        elif df[col].dtype == "object" or (
-            df[col].dtype == "bool" or df[col].nunique() == 2
-        ):
+        # Keep boolean columns as single 0/1 features rather than one-hot encoding
+        elif df[col].dtype == "bool":
+            transformers.append((col, "passthrough", [col]))
+        # One-hot encode string/object categoricals
+        elif df[col].dtype == "object":
             transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
+        # Keep non-boolean binary (0/1) columns as single features
+        elif df[col].nunique() == 2:
+            transformers.append((col, "passthrough", [col]))
         else:
             transformers.append((col, StandardScaler(), [col]))
 
@@ -471,6 +476,24 @@ def train_classifier(
 
     if evaluate_on_test and test_visits is None:
         raise ValueError("test_visits must be provided when evaluate_on_test=True")
+
+    # All datasets used here must include a `prediction_time` column, as it is
+    # required by prepare_patient_snapshots for time-of-day filtering.
+    missing_prediction_time = [
+        name
+        for name, df in [
+            ("train_visits", train_visits),
+            ("valid_visits", valid_visits),
+            ("test_visits", test_visits if evaluate_on_test else None),
+        ]
+        if df is not None and "prediction_time" not in df.columns
+    ]
+    if missing_prediction_time:
+        raise ValueError(
+            "The following datasets are missing the required "
+            "`prediction_time` column, which is needed for training: "
+            f"{missing_prediction_time}"
+        )
 
     # Get snapshots for each set
     X_train, y_train = prepare_patient_snapshots(
