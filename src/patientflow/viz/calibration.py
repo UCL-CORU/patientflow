@@ -111,7 +111,9 @@ def plot_calibration(
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Add missing columns if pipeline doesn't already handle it
+        if "add_missing_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
 
         prob_true, prob_pred = calibration_curve(
             y_test, pipeline.predict_proba(X_test)[:, 1], n_bins=10, strategy=strategy

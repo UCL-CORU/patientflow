@@ -86,7 +86,9 @@ def plot_shap(
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Add missing columns if pipeline doesn't already handle it
+        if "add_missing_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
         transformed_cols = pipeline.named_steps[
             "feature_transformer"
         ].get_feature_names_out()

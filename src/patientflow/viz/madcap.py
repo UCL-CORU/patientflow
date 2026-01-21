@@ -184,7 +184,9 @@ def plot_madcap(
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Add missing columns if pipeline doesn't already handle it
+        if "add_missing_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Plot directly on the single axes
@@ -215,7 +217,9 @@ def plot_madcap(
                 label_col=label_col,
             )
 
-            X_test = add_missing_columns(pipeline, X_test)
+            # Add missing columns if pipeline doesn't already handle it
+            if "add_missing_columns" not in pipeline.named_steps:
+                X_test = add_missing_columns(pipeline, X_test)
             predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
             row = i // num_cols
@@ -512,7 +516,9 @@ def plot_madcap_by_group(
         if grouping_var not in X_test.columns:
             raise ValueError(f"'{grouping_var}' not found in the dataset columns.")
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Add missing columns if pipeline doesn't already handle it
+        if "add_missing_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Apply classification based on the grouping variable

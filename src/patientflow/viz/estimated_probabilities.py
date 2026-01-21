@@ -100,7 +100,9 @@ def plot_estimated_probabilities(
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Add missing columns if pipeline doesn't already handle it
+        if "add_missing_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
 
         # Get predictions
         y_pred_proba = pipeline.predict_proba(X_test)[:, 1]

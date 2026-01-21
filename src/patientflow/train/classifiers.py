@@ -38,6 +38,7 @@ import numpy.typing as npt
 from xgboost import XGBClassifier
 from pandas import DataFrame, Series
 from collections import Counter
+import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
@@ -46,6 +47,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn import __version__ as sk_version
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 from patientflow.prepare import prepare_patient_snapshots
@@ -56,6 +58,94 @@ from patientflow.model_artifacts import (
     TrainingResults,
     TrainedClassifier,
 )
+
+
+class AddMissingColumnsTransformer(BaseEstimator, TransformerMixin):
+    """
+    Ensure that all columns seen during training are present at transform time.
+
+    This transformer learns the set of input columns and per-column default values
+    from the training data. At transform time, it:
+    - Adds any missing columns with the learned defaults.
+    - Preserves any extra columns present in the input.
+    - Reorders columns so that training-time columns come first, in the original order.
+
+    Defaults are derived from the training data rather than from hard-coded
+    name-based rules:
+    - Boolean columns -> False
+    - Numeric columns -> 0.0
+    - Datetime columns -> pd.NaT
+    - Object/categorical columns -> mode (most frequent non-null value), or "Unknown"
+      if no such value exists
+    - Other dtypes -> pd.NA
+    """
+
+    def __init__(
+        self, explicit_defaults: Optional[Dict[str, Any]] = None, verbose: bool = False
+    ):
+        """
+        Parameters
+        ----------
+        explicit_defaults : Dict[str, Any], optional
+            Optional mapping of column name -> default value. These values take
+            precedence over heuristics learned from the training data.
+        verbose : bool, default=False
+            If True, prints which columns were added at transform time.
+        """
+        self.explicit_defaults = explicit_defaults or {}
+        self.verbose = verbose
+
+    def fit(
+        self, X: DataFrame, y: Optional[Series] = None
+    ) -> "AddMissingColumnsTransformer":
+        if not isinstance(X, DataFrame):
+            X = DataFrame(X)
+
+        self.columns_: List[str] = list(X.columns)
+        self.column_defaults_: Dict[str, Any] = {}
+
+        for col in self.columns_:
+            if col in self.explicit_defaults:
+                self.column_defaults_[col] = self.explicit_defaults[col]
+                continue
+
+            series = X[col]
+            default: Any
+
+            if series.dtype == "bool":
+                default = False
+            elif pd.api.types.is_numeric_dtype(series):
+                default = 0.0
+            elif pd.api.types.is_datetime64_any_dtype(series):
+                default = pd.NaT
+            elif series.dtype == "object":
+                mode = series.mode(dropna=True)
+                default = mode.iloc[0] if not mode.empty else "Unknown"
+            else:
+                default = pd.NA
+
+            self.column_defaults_[col] = default
+
+        return self
+
+    def transform(self, X: DataFrame) -> DataFrame:
+        if not isinstance(X, DataFrame):
+            X = DataFrame(X)
+
+        missing_cols = [col for col in self.columns_ if col not in X.columns]
+        for col in missing_cols:
+            X[col] = self.column_defaults_.get(col, pd.NA)
+
+        if missing_cols and self.verbose:
+            print(
+                "AddMissingColumnsTransformer: added missing columns: "
+                + ", ".join(missing_cols)
+            )
+
+        # Preserve training-time column order, followed by any extra columns
+        ordered_cols = [col for col in self.columns_ if col in X.columns]
+        extra_cols = [col for col in X.columns if col not in self.columns_]
+        return X[ordered_cols + extra_cols]
 
 
 def evaluate_predictions(
@@ -586,8 +676,13 @@ def train_classifier(
         model = initialise_model(model_class, params)
 
         column_transformer = create_column_transformer(X_train, ordinal_mappings)
+        missing_columns = AddMissingColumnsTransformer()
         pipeline = Pipeline(
-            [("feature_transformer", column_transformer), ("classifier", model)]
+            [
+                ("add_missing_columns", missing_columns),
+                ("feature_transformer", column_transformer),
+                ("classifier", model),
+            ]
         )
 
         cv_results = chronological_cross_validation(
@@ -632,12 +727,18 @@ def train_classifier(
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
+        best_add_missing = best_model.pipeline.named_steps.get("add_missing_columns")
         best_feature_transformer = best_model.pipeline.named_steps[
             "feature_transformer"
         ]
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
-        X_valid_transformed = best_feature_transformer.transform(X_valid)
+        if best_add_missing is not None:
+            X_valid_preprocessed = best_add_missing.transform(X_valid)
+        else:
+            X_valid_preprocessed = X_valid
+
+        X_valid_transformed = best_feature_transformer.transform(X_valid_preprocessed)
 
         if sk_version >= "1.6.0":
             from sklearn.frozen import FrozenEstimator
@@ -652,12 +753,17 @@ def train_classifier(
             )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 
-        calibrated_pipeline = Pipeline(
+        calibrated_steps = []
+        if best_add_missing is not None:
+            calibrated_steps.append(("add_missing_columns", best_add_missing))
+        calibrated_steps.extend(
             [
                 ("feature_transformer", best_feature_transformer),
                 ("classifier", calibrated_classifier),
             ]
         )
+
+        calibrated_pipeline = Pipeline(calibrated_steps)
 
         best_model.calibrated_pipeline = calibrated_pipeline
 

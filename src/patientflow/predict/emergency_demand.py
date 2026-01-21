@@ -58,6 +58,10 @@ warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 def add_missing_columns(pipeline, df):
     """Add missing columns required by the prediction pipeline from the training data.
 
+    This is a legacy function for older model artifacts that don't include
+    AddMissingColumnsTransformer in their pipeline. For newer models, the pipeline
+    handles missing columns automatically via the transformer step.
+
     Parameters
     ----------
     pipeline : sklearn.pipeline.Pipeline
@@ -78,6 +82,9 @@ def add_missing_columns(pipeline, df):
     - latest_ : pd.NA
     - arrival_method : "None"
     - others : pd.NA
+
+    For newer models with AddMissingColumnsTransformer in the pipeline, this function
+    is not needed as the transformer handles missing columns automatically.
     """
     # check input data for missing columns
     column_transformer = pipeline.named_steps["feature_transformer"]
@@ -435,9 +442,18 @@ def create_predictions(
         pipeline = classifier.pipeline
 
     # Add missing columns expected by the model
-    prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
+    # Check if pipeline already includes AddMissingColumnsTransformer
+    if "add_missing_columns" in pipeline.named_steps:
+        # Pipeline handles missing columns internally via the transformer step
+        # The transformer will run automatically when predict_proba is called
+        pass
+    else:
+        # Legacy path: use external helper for older model artifacts
+        prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 
-    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds
+    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds.
+    # In the training data, elapsed_los is stored as seconds, so this conversion ensures
+    # the model sees the same representation at inference time.
     prediction_snapshots_temp = prediction_snapshots.copy()
     prediction_snapshots_temp["elapsed_los"] = prediction_snapshots_temp[
         "elapsed_los"
