@@ -1857,32 +1857,36 @@ plot_features(
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_32_0.png" /></p>
 <p>Note that shap package is not loaded by default, due to dependency issues. You will need to pip install it here to generate the shap plots.</p>
-<pre><code class="language-python">!pip install shap
+<pre><code class="language-python"># !pip install shap
 </code></pre>
 <pre><code class="language-python">from patientflow.viz.shap import plot_shap
 
 plot_shap(
     trained_models, 
     test_visits,
-    exclude_from_training_data)
+    exclude_from_training_data=exclude_from_training_data)
 
 
 </code></pre>
-<pre><code>Predicted classification (not admitted, admitted):  [1663  955]
+<pre><code>/Users/zellaking/miniconda3/envs/test_python/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
+  from .autonotebook import tqdm as notebook_tqdm
+
+
+Predicted classification (not admitted, admitted):  [1663  955]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_1.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_2.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [2843 1306]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_3.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_4.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [4858 2376]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_5.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_6.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [5795 2728]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_7.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_8.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [4301 2309]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_9.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_10.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>

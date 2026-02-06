@@ -1284,9 +1284,6 @@
 %load_ext autoreload 
 %autoreload 2
 </code></pre>
-<pre><code>The autoreload extension is already loaded. To reload it, use:
-  %reload_ext autoreload
-</code></pre>
 <h2 id="generate-fake-snapshots">Generate fake snapshots</h2>
 <p>See <a href="../2a_Create_patient_snapshots/">a previous notebook</a> for more background on this. </p>
 <pre><code class="language-python">from patientflow.generate import create_fake_snapshots
@@ -2034,10 +2031,11 @@ ax.legend();
     df=snapshots_df, 
     prediction_time=(9,30), 
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data, 
+    # exclude_columns=exclude_from_training_data, now deprecated; 
     visit_col='visit_number'
 )
 </code></pre>
+<p>Note - the exclude_from_training_data parameter in the above is not needed, as the information relating to which columns should be excluded has been retained within the model object</p>
 <p>The <code>get_prob_dist</code> function is set up to receive as input a dictionary of group snapshots, created using the <code>prepare_group_snapshot_dict</code> function demonstrated above. It calls <code>get_prob_dist_for_prediction_moment()</code> for each entry in the dictionary. The arguments to <code>get_prob_dist</code> are: </p>
 <ul>
 <li><code>snapshots_dict</code> - a snapshots dictionary</li>
@@ -2072,7 +2070,7 @@ ax = fig.gca()
 ax.axvline(x=prob_dists_for_group_snapshots[random_snapshot_date]['agg_observed'], color='red', linestyle='--', label='Observed')
 ax.legend();
 </code></pre>
-<p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_34_0.png" /></p>
+<p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_35_0.png" /></p>
 <p>The returned object is now ready for evaluation, which I cover in the next notebook. </p>
 <h2 id="summary">Summary</h2>
 <p>In this notebook I have demonstrated the functions in <code>patientflow</code> that handle the preparation of group snapshots. These include: </p>
