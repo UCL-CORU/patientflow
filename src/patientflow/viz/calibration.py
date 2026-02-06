@@ -25,13 +25,14 @@ secondary_color = "#aec7e8"
 def plot_calibration(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
-    exclude_from_training_data: Optional[List[str]] = None,
     strategy="uniform",
     media_file_path: Optional[Path] = None,
     file_name=None,
     suptitle=None,
     return_figure=False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ):
     """Plot calibration curves for multiple models.
 
@@ -45,9 +46,6 @@ def plot_calibration(
         List of TrainedClassifier objects or dictionary with TrainedClassifier values.
     test_visits : pandas.DataFrame
         DataFrame containing test visit data.
-    exclude_from_training_data : List[str], optional, deprecated
-        This parameter is deprecated and ignored. Column selection is now handled
-        automatically by the pipeline's FeatureColumnTransformer.
     strategy : {'uniform', 'quantile'}, default='uniform'
         Strategy for calibration curve binning.
         - 'uniform': Bins are of equal width
@@ -62,6 +60,9 @@ def plot_calibration(
         If True, returns the figure instead of displaying it.
     label_col : str, default='is_admitted'
         Name of the column containing the target labels.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------

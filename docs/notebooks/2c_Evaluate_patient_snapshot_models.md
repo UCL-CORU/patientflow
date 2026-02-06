@@ -512,7 +512,7 @@ from patientflow.viz.shap import plot_shap
 plot_shap(
     trained_models,
     test_visits,
-    exclude_from_training_data)
+    exclude_from_training_data=exclude_from_training_data)
 
 
 ```

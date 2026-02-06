@@ -25,13 +25,14 @@ secondary_color = "#ff7f0e"
 def plot_estimated_probabilities(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
-    exclude_from_training_data: Optional[List[str]] = None,
     bins=30,
     media_file_path: Optional[Path] = None,
     file_name=None,
     suptitle: Optional[str] = None,
     return_figure=False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ):
     """Plot estimated probability distributions for multiple models.
 
@@ -41,9 +42,6 @@ def plot_estimated_probabilities(
         List of TrainedClassifier objects or dict with TrainedClassifier values
     test_visits : pandas.DataFrame
         DataFrame containing test visit data
-    exclude_from_training_data : List[str], optional, deprecated
-        This parameter is deprecated and ignored. Column selection is now handled
-        automatically by the pipeline's FeatureColumnTransformer.
     bins : int, default=30
         Number of bins for the histograms
     media_file_path : Path, optional
@@ -56,6 +54,9 @@ def plot_estimated_probabilities(
         If True, returns the figure instead of displaying it
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------

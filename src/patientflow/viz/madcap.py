@@ -108,12 +108,13 @@ def classify_age(age, age_categories=None):
 def plot_madcap(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
-    exclude_from_training_data: Optional[List[str]] = None,
     media_file_path: Optional[Path] = None,
     file_name: Optional[str] = None,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ) -> Optional[plt.Figure]:
     """Generate MADCAP plots for a list of trained models.
 
@@ -123,9 +124,6 @@ def plot_madcap(
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
         DataFrame containing test visit data.
-    exclude_from_training_data : List[str], optional, deprecated
-        This parameter is deprecated and ignored. Column selection is now handled
-        automatically by the pipeline's FeatureColumnTransformer.
     media_file_path : Path, optional
         Directory path where the generated plots will be saved.
     file_name : str, optional
@@ -136,6 +134,9 @@ def plot_madcap(
         If True, returns the figure object instead of displaying it.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------
@@ -443,12 +444,13 @@ def plot_madcap_by_group(
     test_visits: pd.DataFrame,
     grouping_var: str,
     grouping_var_name: str,
-    exclude_from_training_data: Optional[List[str]] = None,
     media_file_path: Optional[Path] = None,
     file_name: Optional[str] = None,
     plot_difference: bool = False,
     return_figure: bool = False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -472,6 +474,9 @@ def plot_madcap_by_group(
         If True, returns a list of figure objects instead of displaying them.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------
