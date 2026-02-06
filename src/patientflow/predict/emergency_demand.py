@@ -52,7 +52,9 @@ from patientflow.predictors.incoming_admission_predictors import (
 )
 from patientflow.model_artifacts import TrainedClassifier
 
-warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
+# SettingWithCopyWarning was removed in pandas 3.0 (CoW is now default)
+if hasattr(pd.errors, "SettingWithCopyWarning"):
+    warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def add_missing_columns(pipeline, df):
