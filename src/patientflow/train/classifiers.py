@@ -38,6 +38,7 @@ import numpy.typing as npt
 from xgboost import XGBClassifier
 from pandas import DataFrame, Series
 from collections import Counter
+import pandas as pd
 
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
@@ -46,6 +47,7 @@ from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn import __version__ as sk_version
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 from patientflow.prepare import prepare_patient_snapshots
@@ -56,6 +58,124 @@ from patientflow.model_artifacts import (
     TrainingResults,
     TrainedClassifier,
 )
+
+
+class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
+    """
+    Ensure that input data has exactly the columns seen during training.
+
+    This transformer learns the set of input columns and per-column default values
+    from the training data. At transform time, it:
+    - Adds any missing columns with the learned defaults.
+    - Drops any extra columns that weren't in training.
+    - Returns only the columns that match the training feature set, in the original order.
+
+    Defaults are derived from the training data rather than from hard-coded
+    name-based rules:
+    - Boolean columns -> False
+    - Numeric columns -> 0.0
+    - Datetime columns -> pd.NaT
+    - Object/categorical columns -> mode (most frequent non-null value), or "Unknown"
+      if no such value exists
+    - Other dtypes -> pd.NA
+    """
+
+    def __init__(
+        self, explicit_defaults: Optional[Dict[str, Any]] = None, verbose: bool = False
+    ):
+        """
+        Parameters
+        ----------
+        explicit_defaults : Dict[str, Any], optional
+            Optional mapping of column name -> default value. These values take
+            precedence over heuristics learned from the training data.
+        verbose : bool, default=False
+            If True, prints which columns were added at transform time.
+        """
+        self.explicit_defaults = explicit_defaults or {}
+        self.verbose = verbose
+
+    def fit(
+        self, X: DataFrame, y: Optional[Series] = None
+    ) -> "FeatureColumnTransformer":
+        if not isinstance(X, DataFrame):
+            X = DataFrame(X)
+
+        self.columns_: List[str] = list(X.columns)
+        self.column_defaults_: Dict[str, Any] = {}
+
+        for col in self.columns_:
+            if col in self.explicit_defaults:
+                self.column_defaults_[col] = self.explicit_defaults[col]
+                continue
+
+            series = X[col]
+            default: Any
+
+            if series.dtype == "bool":
+                default = False
+            elif pd.api.types.is_numeric_dtype(series):
+                default = 0.0
+            elif pd.api.types.is_datetime64_any_dtype(series):
+                default = pd.NaT
+            elif series.dtype == "object":
+                mode = series.mode(dropna=True)
+                default = mode.iloc[0] if not mode.empty else "Unknown"
+            else:
+                default = pd.NA
+
+            self.column_defaults_[col] = default
+
+        return self
+
+    def transform(self, X: DataFrame) -> DataFrame:
+        if not isinstance(X, DataFrame):
+            X = DataFrame(X)
+
+        missing_cols = [col for col in self.columns_ if col not in X.columns]
+        for col in missing_cols:
+            X[col] = self.column_defaults_.get(col, pd.NA)
+
+        if missing_cols and self.verbose:
+            print(
+                "FeatureColumnTransformer: added missing columns: "
+                + ", ".join(missing_cols)
+            )
+
+        # Drop extra columns and return only training-time columns in original order
+        extra_cols = [col for col in X.columns if col not in self.columns_]
+        if extra_cols and self.verbose:
+            print(
+                "FeatureColumnTransformer: dropped extra columns: "
+                + ", ".join(extra_cols)
+            )
+
+        return X[self.columns_]
+
+
+def get_used_columns(trained_classifier: TrainedClassifier) -> List[str]:
+    """Get the original input column names used during training.
+
+    For new models with FeatureColumnTransformer, extracts from the transformer.
+    For legacy models without the transformer, returns empty list.
+
+    Parameters
+    ----------
+    trained_classifier : TrainedClassifier
+        The trained classifier to extract feature columns from
+
+    Returns
+    -------
+    List[str]
+        List of original input column names used during training, or empty list
+        if the transformer is not present (legacy models)
+    """
+    pipeline = trained_classifier.calibrated_pipeline or trained_classifier.pipeline
+    if pipeline and "feature_columns" in pipeline.named_steps:
+        transformer = pipeline.named_steps["feature_columns"]
+        if hasattr(transformer, "columns_"):
+            return list(transformer.columns_)
+    return []
 
 
 def evaluate_predictions(
@@ -205,10 +325,15 @@ def create_column_transformer(
                     [col],
                 )
             )
-        elif df[col].dtype == "object" or (
-            df[col].dtype == "bool" or df[col].nunique() == 2
-        ):
+        # Keep boolean columns as single 0/1 features rather than one-hot encoding
+        elif df[col].dtype == "bool":
+            transformers.append((col, "passthrough", [col]))
+        # One-hot encode string/object categoricals
+        elif df[col].dtype == "object":
             transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
+        # Keep non-boolean binary (0/1) columns as single features
+        elif df[col].nunique() == 2:
+            transformers.append((col, "passthrough", [col]))
         else:
             transformers.append((col, StandardScaler(), [col]))
 
@@ -472,6 +597,24 @@ def train_classifier(
     if evaluate_on_test and test_visits is None:
         raise ValueError("test_visits must be provided when evaluate_on_test=True")
 
+    # All datasets used here must include a `prediction_time` column, as it is
+    # required by prepare_patient_snapshots for time-of-day filtering.
+    missing_prediction_time = [
+        name
+        for name, df in [
+            ("train_visits", train_visits),
+            ("valid_visits", valid_visits),
+            ("test_visits", test_visits if evaluate_on_test else None),
+        ]
+        if df is not None and "prediction_time" not in df.columns
+    ]
+    if missing_prediction_time:
+        raise ValueError(
+            "The following datasets are missing the required "
+            "`prediction_time` column, which is needed for training: "
+            f"{missing_prediction_time}"
+        )
+
     # Get snapshots for each set
     X_train, y_train = prepare_patient_snapshots(
         train_visits,
@@ -563,8 +706,13 @@ def train_classifier(
         model = initialise_model(model_class, params)
 
         column_transformer = create_column_transformer(X_train, ordinal_mappings)
+        feature_columns = FeatureColumnTransformer()
         pipeline = Pipeline(
-            [("feature_transformer", column_transformer), ("classifier", model)]
+            [
+                ("feature_columns", feature_columns),
+                ("feature_transformer", column_transformer),
+                ("classifier", model),
+            ]
         )
 
         cv_results = chronological_cross_validation(
@@ -609,12 +757,18 @@ def train_classifier(
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
+        best_feature_columns = best_model.pipeline.named_steps.get("feature_columns")
         best_feature_transformer = best_model.pipeline.named_steps[
             "feature_transformer"
         ]
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
-        X_valid_transformed = best_feature_transformer.transform(X_valid)
+        if best_feature_columns is not None:
+            X_valid_preprocessed = best_feature_columns.transform(X_valid)
+        else:
+            X_valid_preprocessed = X_valid
+
+        X_valid_transformed = best_feature_transformer.transform(X_valid_preprocessed)
 
         if sk_version >= "1.6.0":
             from sklearn.frozen import FrozenEstimator
@@ -629,12 +783,17 @@ def train_classifier(
             )
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 
-        calibrated_pipeline = Pipeline(
+        calibrated_steps = []
+        if best_feature_columns is not None:
+            calibrated_steps.append(("feature_columns", best_feature_columns))
+        calibrated_steps.extend(
             [
                 ("feature_transformer", best_feature_transformer),
                 ("classifier", calibrated_classifier),
             ]
         )
+
+        calibrated_pipeline = Pipeline(calibrated_steps)
 
         best_model.calibrated_pipeline = calibrated_pipeline
 

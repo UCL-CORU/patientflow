@@ -567,6 +567,25 @@ def prepare_patient_snapshots(
     # Filter by the time of day while keeping the original index
     df_tod = df[df["prediction_time"] == prediction_time].copy()
 
+    # Provide a helpful error message if no snapshots match the requested
+    # prediction_time. Downstream model training (e.g. time-series CV) fails
+    # with a less informative error when given an empty dataset.
+    if df_tod.empty:
+        available_times = sorted(df["prediction_time"].unique())
+        arg_type = type(prediction_time).__name__
+        col_dtype = df["prediction_time"].dtype
+        raise ValueError(
+            "No patient snapshots found for prediction_time "
+            f"{prediction_time}. "
+            "A common cause is a type/format mismatch between the inputs: "
+            f"(type of `prediction_time` argument: {arg_type}; "
+            f"dtype of `df['prediction_time']` column: {col_dtype}). "
+            "Check that the value you passed matches one of the "
+            f"available `prediction_time` values in the dataset: {available_times}. "
+            "If the types and formats match, another possibility is that there are "
+            "no visits with a snapshot at this time of day."
+        )
+
     if single_snapshot_per_visit:
         # Select one row for each visit
         df_single = select_one_snapshot_per_visit(df_tod, visit_col)

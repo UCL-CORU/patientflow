@@ -108,12 +108,13 @@ def classify_age(age, age_categories=None):
 def plot_madcap(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
-    exclude_from_training_data: List[str],
     media_file_path: Optional[Path] = None,
     file_name: Optional[str] = None,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ) -> Optional[plt.Figure]:
     """Generate MADCAP plots for a list of trained models.
 
@@ -123,8 +124,6 @@ def plot_madcap(
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
         DataFrame containing test visit data.
-    exclude_from_training_data : List[str]
-        List of columns to exclude from training data.
     media_file_path : Path, optional
         Directory path where the generated plots will be saved.
     file_name : str, optional
@@ -135,6 +134,9 @@ def plot_madcap(
         If True, returns the figure object instead of displaying it.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------
@@ -179,12 +181,14 @@ def plot_madcap(
         X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
-            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Pipeline handles column selection automatically via FeatureColumnTransformer
+        # For legacy models, add_missing_columns is called internally if needed
+        if "feature_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Plot directly on the single axes
@@ -210,12 +214,14 @@ def plot_madcap(
             X_test, y_test = prepare_patient_snapshots(
                 df=test_visits,
                 prediction_time=prediction_time,
-                exclude_columns=exclude_from_training_data,
                 single_snapshot_per_visit=False,
                 label_col=label_col,
             )
 
-            X_test = add_missing_columns(pipeline, X_test)
+            # Pipeline handles column selection automatically via FeatureColumnTransformer
+            # For legacy models, add_missing_columns is called internally if needed
+            if "add_missing_columns" not in pipeline.named_steps:
+                X_test = add_missing_columns(pipeline, X_test)
             predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
             row = i // num_cols
@@ -436,7 +442,6 @@ def _plot_madcap_by_group_single(
 def plot_madcap_by_group(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits: pd.DataFrame,
-    exclude_from_training_data: List[str],
     grouping_var: str,
     grouping_var_name: str,
     media_file_path: Optional[Path] = None,
@@ -444,6 +449,8 @@ def plot_madcap_by_group(
     plot_difference: bool = False,
     return_figure: bool = False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -453,8 +460,6 @@ def plot_madcap_by_group(
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pd.DataFrame
         DataFrame containing the test visit data.
-    exclude_from_training_data : List[str]
-        List of columns to exclude from training data.
     grouping_var : str
         The column name in the dataset that defines the grouping variable.
     grouping_var_name : str
@@ -469,6 +474,9 @@ def plot_madcap_by_group(
         If True, returns a list of figure objects instead of displaying them.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------
@@ -503,7 +511,6 @@ def plot_madcap_by_group(
         X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
-            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
             label_col=label_col,
         )
@@ -512,7 +519,10 @@ def plot_madcap_by_group(
         if grouping_var not in X_test.columns:
             raise ValueError(f"'{grouping_var}' not found in the dataset columns.")
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Pipeline handles column selection automatically via FeatureColumnTransformer
+        # For legacy models, add_missing_columns is called internally if needed
+        if "feature_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
         predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
         # Apply classification based on the grouping variable

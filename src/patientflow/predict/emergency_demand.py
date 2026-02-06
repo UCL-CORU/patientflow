@@ -52,11 +52,17 @@ from patientflow.predictors.incoming_admission_predictors import (
 )
 from patientflow.model_artifacts import TrainedClassifier
 
-warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
+# SettingWithCopyWarning was removed in pandas 3.0 (CoW is now default)
+if hasattr(pd.errors, "SettingWithCopyWarning"):
+    warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
 def add_missing_columns(pipeline, df):
     """Add missing columns required by the prediction pipeline from the training data.
+
+    This is a legacy function for older model artifacts that don't include
+    FeatureColumnTransformer in their pipeline. For newer models, the pipeline
+    handles column selection automatically via the transformer step.
 
     Parameters
     ----------
@@ -78,6 +84,9 @@ def add_missing_columns(pipeline, df):
     - latest_ : pd.NA
     - arrival_method : "None"
     - others : pd.NA
+
+    For newer models with FeatureColumnTransformer in the pipeline, this function
+    is not needed as the transformer handles column selection automatically.
     """
     # check input data for missing columns
     column_transformer = pipeline.named_steps["feature_transformer"]
@@ -435,9 +444,15 @@ def create_predictions(
         pipeline = classifier.pipeline
 
     # Add missing columns expected by the model
-    prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
+    # For new models with FeatureColumnTransformer, the pipeline handles column selection automatically.
+    # For legacy models without the transformer, use the external helper function.
+    if "feature_columns" not in pipeline.named_steps:
+        # Legacy path: use external helper for older model artifacts
+        prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 
-    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds
+    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds.
+    # In the training data, elapsed_los is stored as seconds, so this conversion ensures
+    # the model sees the same representation at inference time.
     prediction_snapshots_temp = prediction_snapshots.copy()
     prediction_snapshots_temp["elapsed_los"] = prediction_snapshots_temp[
         "elapsed_los"

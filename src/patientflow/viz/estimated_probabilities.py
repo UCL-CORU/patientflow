@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
-from typing import Optional
+from typing import List, Optional
 from pathlib import Path
 
 
@@ -25,13 +25,14 @@ secondary_color = "#ff7f0e"
 def plot_estimated_probabilities(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
-    exclude_from_training_data,
     bins=30,
     media_file_path: Optional[Path] = None,
     file_name=None,
     suptitle: Optional[str] = None,
     return_figure=False,
     label_col: str = "is_admitted",
+    *,
+    exclude_from_training_data: Optional[List[str]] = None,
 ):
     """Plot estimated probability distributions for multiple models.
 
@@ -41,8 +42,6 @@ def plot_estimated_probabilities(
         List of TrainedClassifier objects or dict with TrainedClassifier values
     test_visits : pandas.DataFrame
         DataFrame containing test visit data
-    exclude_from_training_data : list
-        Columns to exclude from the test data
     bins : int, default=30
         Number of bins for the histograms
     media_file_path : Path, optional
@@ -55,6 +54,9 @@ def plot_estimated_probabilities(
         If True, returns the figure instead of displaying it
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
 
     Returns
     -------
@@ -95,12 +97,14 @@ def plot_estimated_probabilities(
         X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
-            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
             label_col=label_col,
         )
 
-        X_test = add_missing_columns(pipeline, X_test)
+        # Pipeline handles column selection automatically via FeatureColumnTransformer
+        # For legacy models, add_missing_columns is called internally if needed
+        if "feature_columns" not in pipeline.named_steps:
+            X_test = add_missing_columns(pipeline, X_test)
 
         # Get predictions
         y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
