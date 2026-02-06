@@ -59,8 +59,8 @@ def add_missing_columns(pipeline, df):
     """Add missing columns required by the prediction pipeline from the training data.
 
     This is a legacy function for older model artifacts that don't include
-    AddMissingColumnsTransformer in their pipeline. For newer models, the pipeline
-    handles missing columns automatically via the transformer step.
+    FeatureColumnTransformer in their pipeline. For newer models, the pipeline
+    handles column selection automatically via the transformer step.
 
     Parameters
     ----------
@@ -83,8 +83,8 @@ def add_missing_columns(pipeline, df):
     - arrival_method : "None"
     - others : pd.NA
 
-    For newer models with AddMissingColumnsTransformer in the pipeline, this function
-    is not needed as the transformer handles missing columns automatically.
+    For newer models with FeatureColumnTransformer in the pipeline, this function
+    is not needed as the transformer handles column selection automatically.
     """
     # check input data for missing columns
     column_transformer = pipeline.named_steps["feature_transformer"]
@@ -442,12 +442,9 @@ def create_predictions(
         pipeline = classifier.pipeline
 
     # Add missing columns expected by the model
-    # Check if pipeline already includes AddMissingColumnsTransformer
-    if "add_missing_columns" in pipeline.named_steps:
-        # Pipeline handles missing columns internally via the transformer step
-        # The transformer will run automatically when predict_proba is called
-        pass
-    else:
+    # For new models with FeatureColumnTransformer, the pipeline handles column selection automatically.
+    # For legacy models without the transformer, use the external helper function.
+    if "feature_columns" not in pipeline.named_steps:
         # Legacy path: use external helper for older model artifacts
         prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 

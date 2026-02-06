@@ -60,15 +60,15 @@ from patientflow.model_artifacts import (
 )
 
 
-class AddMissingColumnsTransformer(BaseEstimator, TransformerMixin):
+class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
     """
-    Ensure that all columns seen during training are present at transform time.
+    Ensure that input data has exactly the columns seen during training.
 
     This transformer learns the set of input columns and per-column default values
     from the training data. At transform time, it:
     - Adds any missing columns with the learned defaults.
-    - Preserves any extra columns present in the input.
-    - Reorders columns so that training-time columns come first, in the original order.
+    - Drops any extra columns that weren't in training.
+    - Returns only the columns that match the training feature set, in the original order.
 
     Defaults are derived from the training data rather than from hard-coded
     name-based rules:
@@ -97,7 +97,7 @@ class AddMissingColumnsTransformer(BaseEstimator, TransformerMixin):
 
     def fit(
         self, X: DataFrame, y: Optional[Series] = None
-    ) -> "AddMissingColumnsTransformer":
+    ) -> "FeatureColumnTransformer":
         if not isinstance(X, DataFrame):
             X = DataFrame(X)
 
@@ -138,14 +138,44 @@ class AddMissingColumnsTransformer(BaseEstimator, TransformerMixin):
 
         if missing_cols and self.verbose:
             print(
-                "AddMissingColumnsTransformer: added missing columns: "
+                "FeatureColumnTransformer: added missing columns: "
                 + ", ".join(missing_cols)
             )
 
-        # Preserve training-time column order, followed by any extra columns
-        ordered_cols = [col for col in self.columns_ if col in X.columns]
+        # Drop extra columns and return only training-time columns in original order
         extra_cols = [col for col in X.columns if col not in self.columns_]
-        return X[ordered_cols + extra_cols]
+        if extra_cols and self.verbose:
+            print(
+                "FeatureColumnTransformer: dropped extra columns: "
+                + ", ".join(extra_cols)
+            )
+
+        return X[self.columns_]
+
+
+def get_used_columns(trained_classifier: TrainedClassifier) -> List[str]:
+    """Get the original input column names used during training.
+
+    For new models with FeatureColumnTransformer, extracts from the transformer.
+    For legacy models without the transformer, returns empty list.
+
+    Parameters
+    ----------
+    trained_classifier : TrainedClassifier
+        The trained classifier to extract feature columns from
+
+    Returns
+    -------
+    List[str]
+        List of original input column names used during training, or empty list
+        if the transformer is not present (legacy models)
+    """
+    pipeline = trained_classifier.calibrated_pipeline or trained_classifier.pipeline
+    if pipeline and "feature_columns" in pipeline.named_steps:
+        transformer = pipeline.named_steps["feature_columns"]
+        if hasattr(transformer, "columns_"):
+            return list(transformer.columns_)
+    return []
 
 
 def evaluate_predictions(
@@ -676,10 +706,10 @@ def train_classifier(
         model = initialise_model(model_class, params)
 
         column_transformer = create_column_transformer(X_train, ordinal_mappings)
-        missing_columns = AddMissingColumnsTransformer()
+        feature_columns = FeatureColumnTransformer()
         pipeline = Pipeline(
             [
-                ("add_missing_columns", missing_columns),
+                ("feature_columns", feature_columns),
                 ("feature_transformer", column_transformer),
                 ("classifier", model),
             ]
@@ -727,14 +757,14 @@ def train_classifier(
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
-        best_add_missing = best_model.pipeline.named_steps.get("add_missing_columns")
+        best_feature_columns = best_model.pipeline.named_steps.get("feature_columns")
         best_feature_transformer = best_model.pipeline.named_steps[
             "feature_transformer"
         ]
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
-        if best_add_missing is not None:
-            X_valid_preprocessed = best_add_missing.transform(X_valid)
+        if best_feature_columns is not None:
+            X_valid_preprocessed = best_feature_columns.transform(X_valid)
         else:
             X_valid_preprocessed = X_valid
 
@@ -754,8 +784,8 @@ def train_classifier(
         calibrated_classifier.fit(X_valid_transformed, y_valid)
 
         calibrated_steps = []
-        if best_add_missing is not None:
-            calibrated_steps.append(("add_missing_columns", best_add_missing))
+        if best_feature_columns is not None:
+            calibrated_steps.append(("feature_columns", best_feature_columns))
         calibrated_steps.extend(
             [
                 ("feature_transformer", best_feature_transformer),

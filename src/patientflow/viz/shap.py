@@ -17,14 +17,14 @@ import shap
 import scipy.sparse
 import numpy as np
 from sklearn.pipeline import Pipeline
-from typing import Optional
+from typing import List, Optional
 from pathlib import Path
 
 
 def plot_shap(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
-    exclude_from_training_data,
+    exclude_from_training_data: Optional[List[str]] = None,
     media_file_path: Optional[Path] = None,
     file_name: Optional[str] = None,
     return_figure=False,
@@ -42,8 +42,9 @@ def plot_shap(
         List of trained classifier objects or dictionary with TrainedClassifier values.
     test_visits : pandas.DataFrame
         DataFrame containing the test visit data.
-    exclude_from_training_data : list[str]
-        List of columns to exclude from training data.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
     media_file_path : Path, optional
         Directory path where the generated plots will be saved. If None, plots are
         only displayed.
@@ -81,13 +82,13 @@ def plot_shap(
         X_test, _ = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
-            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
             label_col=label_col,
         )
 
-        # Add missing columns if pipeline doesn't already handle it
-        if "add_missing_columns" not in pipeline.named_steps:
+        # Pipeline handles column selection automatically via FeatureColumnTransformer
+        # For legacy models, add_missing_columns is called internally if needed
+        if "feature_columns" not in pipeline.named_steps:
             X_test = add_missing_columns(pipeline, X_test)
         transformed_cols = pipeline.named_steps[
             "feature_transformer"

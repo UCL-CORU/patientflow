@@ -14,7 +14,7 @@ from sklearn.calibration import calibration_curve
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
-from typing import Optional
+from typing import List, Optional
 from pathlib import Path
 
 # Define the color scheme
@@ -25,7 +25,7 @@ secondary_color = "#aec7e8"
 def plot_calibration(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
     test_visits,
-    exclude_from_training_data,
+    exclude_from_training_data: Optional[List[str]] = None,
     strategy="uniform",
     media_file_path: Optional[Path] = None,
     file_name=None,
@@ -45,8 +45,9 @@ def plot_calibration(
         List of TrainedClassifier objects or dictionary with TrainedClassifier values.
     test_visits : pandas.DataFrame
         DataFrame containing test visit data.
-    exclude_from_training_data : list
-        Columns to exclude from the test data.
+    exclude_from_training_data : List[str], optional, deprecated
+        This parameter is deprecated and ignored. Column selection is now handled
+        automatically by the pipeline's FeatureColumnTransformer.
     strategy : {'uniform', 'quantile'}, default='uniform'
         Strategy for calibration curve binning.
         - 'uniform': Bins are of equal width
@@ -106,13 +107,13 @@ def plot_calibration(
         X_test, y_test = prepare_patient_snapshots(
             df=test_visits,
             prediction_time=prediction_time,
-            exclude_columns=exclude_from_training_data,
             single_snapshot_per_visit=False,
             label_col=label_col,
         )
 
-        # Add missing columns if pipeline doesn't already handle it
-        if "add_missing_columns" not in pipeline.named_steps:
+        # Pipeline handles column selection automatically via FeatureColumnTransformer
+        # For legacy models, add_missing_columns is called internally if needed
+        if "feature_columns" not in pipeline.named_steps:
             X_test = add_missing_columns(pipeline, X_test)
 
         prob_true, prob_pred = calibration_curve(
