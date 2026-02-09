@@ -11,7 +11,6 @@ from patientflow.predict.hierarchy import (
     EntityType,
     Hierarchy,
     PredictionBundle,
-    HierarchicalPredictor,
     create_hierarchical_predictor,
     DEFAULT_PERCENTILES,
     DEFAULT_PRECISION,
@@ -306,9 +305,7 @@ class TestDemandPredictor:
         assert bundle.entity_type == "service"
 
         # Net flow expected should match arrivals - departures
-        expected_diff = (
-            bundle.arrivals.expectation - bundle.departures.expectation
-        )
+        expected_diff = bundle.arrivals.expectation - bundle.departures.expectation
         assert np.isclose(bundle.net_flow.expectation, expected_diff, atol=1e-6)
 
     def test_predict_service_with_custom_flow_selection(self):

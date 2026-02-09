@@ -193,9 +193,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                 f")"
             )
 
-        n_services = (
-            len(self.services) if self.services is not None else 0
-        )
+        n_services = len(self.services) if self.services is not None else 0
         n_cohorts = len(self.cohorts) if self.cohorts is not None else 0
         n_subgroups = len(self.subgroups) if self.subgroups is not None else 0
 
@@ -277,8 +275,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                             f"{subgroup_name} ({subspec_count}/{patient_count})"
                         )
                     lines.append(
-                        f"    {cohort_name} (services/snapshots): "
-                        + "; ".join(entries)
+                        f"    {cohort_name} (services/snapshots): " + "; ".join(entries)
                     )
                 subgroup_info = "\n".join(lines)
             else:
@@ -403,9 +400,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
                 # Train global model for this cohort (all data) - store directly at cohort level
                 self.transfer_probabilities[cohort] = (
-                    self._prepare_transfer_probabilities(
-                        self.services, cohort_data
-                    )
+                    self._prepare_transfer_probabilities(self.services, cohort_data)
                 )
 
                 # Train subgroup models for this cohort
@@ -722,9 +717,7 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
                     f"Available services: {sorted(subgroup_probabilities.keys())}"
                 )
 
-            return subgroup_probabilities[source_service][
-                "destination_distribution"
-            ]
+            return subgroup_probabilities[source_service]["destination_distribution"]
 
     def predict(
         self,

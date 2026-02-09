@@ -5,7 +5,7 @@ DemandPrediction, PredictionBundle, and FlowSelection.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Dict, Any
 import numpy as np
 
 # Constants for magic numbers
@@ -30,7 +30,7 @@ class DemandPrediction:
         Type of entity
     probabilities : numpy.ndarray
         Probability mass function for bed demand (probability of 0, 1, 2, ... beds)
-    expected_value : float
+    expectation : float
         Expected number of beds needed (mean of the distribution)
     mode : int
         Mode of the distribution (most likely number of beds).
@@ -82,14 +82,14 @@ class DemandPrediction:
 
     def min_beds_with_probability(self, probability: float) -> int:
         """Calculate minimum beds needed with at least the given probability.
-        
+
         Calculates k such that P(X >= k) >= probability.
-        
+
         Parameters
         ----------
         probability : float
             Probability threshold (e.g. 0.9 for 90%)
-            
+
         Returns
         -------
         int

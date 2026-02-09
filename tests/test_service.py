@@ -617,9 +617,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.services))
 
-        result = compute_transfer_arrivals(
-            service_data, transfer_model, self.services
-        )
+        result = compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         # Surgery should receive 2 emergency arrivals with certainty
         self.assertAlmostEqual(result["emergency"]["surgery"][2], 1.0, places=5)
@@ -696,9 +694,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.services))
 
-        result = compute_transfer_arrivals(
-            service_data, transfer_model, self.services
-        )
+        result = compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         # Check cardiology stats for emergency patients
         prob_transfer = transfer_model.get_transfer_prob("cardiology", "emergency")
@@ -788,9 +784,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.services))
 
-        result = compute_transfer_arrivals(
-            service_data, transfer_model, self.services
-        )
+        result = compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         # Medicine should receive 2 emergency arrivals (convolution of two Bernoulli)
         self.assertAlmostEqual(result["emergency"]["medicine"][2], 1.0, places=5)
@@ -859,9 +853,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.services))
 
-        result = compute_transfer_arrivals(
-            service_data, transfer_model, self.services
-        )
+        result = compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         # All subspecialties should receive emergency arrivals and sum to 1
         for subspecialty in self.services:
@@ -907,9 +899,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model = TransferProbabilityEstimator(cohort_col="admission_type")
         transfer_model.fit(X, set(self.services))
 
-        result = compute_transfer_arrivals(
-            service_data, transfer_model, self.services
-        )
+        result = compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         for subspecialty in self.services:
             # Check emergency arrivals
@@ -966,9 +956,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         transfer_model.fit(X, set(self.services))
 
         with self.assertRaises(KeyError):
-            compute_transfer_arrivals(
-                service_data, transfer_model, self.services
-            )
+            compute_transfer_arrivals(service_data, transfer_model, self.services)
 
         # Unfitted transfer model
         service_data_valid = {
@@ -991,9 +979,7 @@ class TestComputeTransferArrivals(unittest.TestCase):
         unfitted_model = TransferProbabilityEstimator(cohort_col="admission_type")
 
         with self.assertRaises(ValueError):
-            compute_transfer_arrivals(
-                service_data_valid, unfitted_model, self.services
-            )
+            compute_transfer_arrivals(service_data_valid, unfitted_model, self.services)
 
 
 if __name__ == "__main__":

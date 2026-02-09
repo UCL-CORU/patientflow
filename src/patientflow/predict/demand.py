@@ -568,7 +568,7 @@ class DemandPredictor:
             if expected_override is not None
             else float(self._expected_value(probabilities, offset))
         )
-        
+
         # Calculate mode
         if len(probabilities) > 0:
             mode_idx = int(np.argmax(probabilities))

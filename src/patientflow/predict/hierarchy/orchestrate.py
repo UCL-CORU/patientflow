@@ -1,13 +1,17 @@
 """Hierarchical prediction orchestrator.
 
-This module provides HierarchyPredictor, which orchestrates the 3-phase
-prediction algorithm across all levels of the organizational hierarchy.
+This module provides HierarchicalPredictor, which orchestrates the 3-phase
+prediction algorithm across all levels of the organisational hierarchy.
 """
 
 from typing import Dict, Optional, Any, List
 
 from patientflow.predict.service import ServicePredictionInputs
-from patientflow.predict.hierarchy.structure import Hierarchy, populate_hierarchy_from_dataframe, EntityType
+from patientflow.predict.hierarchy.structure import (
+    Hierarchy,
+    populate_hierarchy_from_dataframe,
+    EntityType,
+)
 from patientflow.predict.types import PredictionBundle, FlowSelection
 from patientflow.predict.demand import DemandPredictor
 from patientflow.predict.hierarchy.calculate import calculate_hierarchical_stats
@@ -17,72 +21,48 @@ import pandas as pd
 
 class PredictionResults(dict):
     """Dictionary-like container for prediction results with flexible key access.
-    
+
     Supports two key formats:
     1. Prefixed ID: "hospital:UCLH" (always works)
     2. Original name: "UCLH" (works if unique, raises KeyError if ambiguous)
-    
+
     This class prevents data loss from name collisions while allowing convenient
     access using original entity names when they are unambiguous.
-    
+
     Examples
     --------
     >>> results = predictor.predict_all_levels(bottom_level_data)
     >>> # Prefixed ID (always works)
     >>> bundle = results["hospital:UCLH"]
-    >>> 
+    >>>
     >>> # Original name (only if unique)
     >>> bundle = results["UCLH"]  # Works if "UCLH" appears only once
     >>> bundle = results["Acute Medicine"]  # Raises KeyError if ambiguous
-    
+
     Notes
     -----
-    All dict access methods (get(), keys(), items(), values(), in operator, [])
-    support flexible key lookup using either prefixed IDs or original names.
-    The get() method and 'in' operator use the same flexible lookup logic as
-    bracket access.
+    All dict access methods support flexible key lookup using either prefixed
+    IDs or original names. For ambiguous original names (appearing at multiple
+    levels), bracket access raises ``KeyError`` while ``get()`` returns the
+    default value.
     """
-    
+
     def __init__(self, data: Dict[str, PredictionBundle]):
-        """Initialize PredictionResults.
-        
-        Parameters
-        ----------
-        data : Dict[str, PredictionBundle]
-            Dictionary keyed by prefixed IDs (e.g., "hospital:UCLH")
-        """
         super().__init__(data)
         # Build cache: original_name -> [list of prefixed_ids]
         self._name_to_prefixed: Dict[str, List[str]] = {}
         for prefixed_id in data.keys():
-            if ':' in prefixed_id:
-                _, original_name = prefixed_id.split(':', 1)
+            if ":" in prefixed_id:
+                _, original_name = prefixed_id.split(":", 1)
                 if original_name not in self._name_to_prefixed:
                     self._name_to_prefixed[original_name] = []
                 self._name_to_prefixed[original_name].append(prefixed_id)
-    
+
     def __getitem__(self, key: str) -> PredictionBundle:
-        """Get prediction bundle using prefixed ID or original name.
-        
-        Parameters
-        ----------
-        key : str
-            Prefixed ID ("hospital:UCLH") or original name ("UCLH")
-        
-        Returns
-        -------
-        PredictionBundle
-            The prediction bundle
-        
-        Raises
-        ------
-        KeyError
-            If key not found or ambiguous (with helpful message)
-        """
         # Prefixed ID (contains ':')
-        if ':' in key:
+        if ":" in key:
             return super().__getitem__(key)
-        
+
         # Original name - check if unambiguous
         if key in self._name_to_prefixed:
             matching_ids = self._name_to_prefixed[key]
@@ -95,66 +75,36 @@ class PredictionResults(dict):
                     f"Ambiguous entity name '{key}'. Found at multiple levels: "
                     f"{', '.join(matching_ids)}. Use prefixed ID instead."
                 )
-        
+
         # Not found
         raise KeyError(f"Entity '{key}' not found in results")
-    
+
     def __contains__(self, key: object) -> bool:
-        """Check if key exists using flexible lookup.
-        
-        Parameters
-        ----------
-        key : object
-            Prefixed ID ("hospital:UCLH"), original name ("UCLH"), or other
-        
-        Returns
-        -------
-        bool
-            True if key exists (either as prefixed ID or unambiguous original name),
-            False otherwise
-        """
         if not isinstance(key, str):
             return False
-        
+
         # Prefixed ID (contains ':')
-        if ':' in key:
+        if ":" in key:
             return super().__contains__(key)
-        
+
         # Original name - check if unambiguous
         if key in self._name_to_prefixed:
             matching_ids = self._name_to_prefixed[key]
             # Return True only if unique (ambiguous keys are not considered "in")
             return len(matching_ids) == 1
-        
+
         return False
-    
-    def get(self, key: str, default: Optional[PredictionBundle] = None) -> Optional[PredictionBundle]:
-        """Get prediction bundle using flexible lookup, returning default if not found.
-        
-        Parameters
-        ----------
-        key : str
-            Prefixed ID ("hospital:UCLH") or original name ("UCLH")
-        default : PredictionBundle, optional
-            Value to return if key not found (default: None)
-        
-        Returns
-        -------
-        PredictionBundle or None
-            The prediction bundle if found, otherwise default value
-        
-        Notes
-        -----
-        For ambiguous original names (appearing at multiple levels), returns
-        the default value rather than raising an error (unlike __getitem__).
-        """
+
+    def get(  # type: ignore[override]
+        self, key: str, default: Optional[PredictionBundle] = None
+    ) -> Optional[PredictionBundle]:
         if not isinstance(key, str):
             return default
-        
+
         # Prefixed ID (contains ':')
-        if ':' in key:
+        if ":" in key:
             return super().get(key, default)
-        
+
         # Original name - check if unambiguous
         if key in self._name_to_prefixed:
             matching_ids = self._name_to_prefixed[key]
@@ -163,7 +113,7 @@ class PredictionResults(dict):
                 return super().get(matching_ids[0], default)
             # Ambiguous - return default (don't raise error for get())
             return default
-        
+
         # Not found
         return default
 
@@ -221,20 +171,20 @@ class HierarchicalPredictor:
         bottom_level_data : Dict[str, ServicePredictionInputs]
             Dictionary mapping bottom-level entity IDs to their prediction inputs.
             Each value is a `ServicePredictionInputs` object containing:
-            
+
             - ``service_id``: Identifier for the service (must match the key)
             - ``prediction_window``: Time window for predictions (typically a timedelta)
-            - ``inflows``: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta', 
+            - ``inflows``: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta',
               'non_ed_yta', 'elective_yta', 'elective_transfers', 'emergency_transfers')
-            - ``outflows``: Dictionary of departure flows (e.g., 'elective_departures', 
+            - ``outflows``: Dictionary of departure flows (e.g., 'elective_departures',
               'emergency_departures')
-            
+
             **Key Requirements:**
             - Keys must exactly match the entity IDs in the hierarchy at the bottom level.
               For example, if your bottom level is 'subspecialty', the keys should be
-              subspecialty names like 'Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', etc., 
+              subspecialty names like 'Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', etc.,
               exactly as they appear in the hierarchy (case-sensitive).
-            - Typically created using `build_service_data()` from the 
+            - Typically created using `build_service_data()` from the
               `patientflow.predict.service` module.
             - Only entities that exist in the hierarchy and are reachable from the
               specified `top_level_id` will have predictions generated.
@@ -250,143 +200,46 @@ class HierarchicalPredictor:
         Returns
         -------
         PredictionResults
-            Dictionary-like container (subclass of dict) containing prediction
-            bundles for all entities in the hierarchy (bottom-level and aggregated),
-            keyed by prefixed entity ID. Supports access using either prefixed IDs
-            (e.g., "hospital:UCLH") or original names (e.g., "UCLH") when unambiguous.
-            
-            **Dictionary Structure:**
-            - Keys are prefixed entity IDs (format: "entity_type:entity_name") for all entities
-              in the hierarchy that were processed, including:
-              - Bottom-level entities (services) that had data in `bottom_level_data`
-              - All intermediate-level entities (reporting units, divisions, etc.)
-              - Top-level entities (hospital, board, etc.)
-            - Values are `PredictionBundle` objects containing:
-              - ``arrivals``: `DemandPrediction` with PMF, expected value, percentiles
-              - ``departures``: `DemandPrediction` with PMF, expected value, percentiles
-              - ``net_flow``: `DemandPrediction` with PMF, expected value, percentiles
-            
-            **Prefixed ID Format:**
-            Prefixed IDs use the format "entity_type:entity_name" (e.g., "subspecialty:Acute Medicine",
-            "reporting_unit:Gastrointestinal Surgery"). This ensures unique identification even when
-            entities at different levels have the same name.
-            
-            **Example structure:**
-            ::
-            
-                {
-                    'subspecialty:Gsurg LowGI': PredictionBundle(...),              # Bottom-level
-                    'subspecialty:Gsurg UppGI': PredictionBundle(...),              # Bottom-level
-                    'reporting_unit:Gastrointestinal Surgery': PredictionBundle(...), # Aggregated
-                    'division:Surgery Division': PredictionBundle(...),          # Aggregated
-                    'hospital:uclh': PredictionBundle(...)                       # Top-level aggregated
-                }
-            
-            **Note:** Entities in the hierarchy that don't have corresponding entries
-            in `bottom_level_data` will not appear in the results dictionary, even if
-            they are part of the hierarchy structure.
+            Dictionary-like container keyed by prefixed entity ID
+            (e.g. ``"specialty:medical"``, ``"division:Medical Division"``).
+            Supports access by original name when unambiguous. Values are
+            ``PredictionBundle`` objects with ``arrivals``, ``departures``,
+            and ``net_flow`` predictions. Entities without data in
+            ``bottom_level_data`` are excluded.
 
         Examples
         --------
-        Run predictions for entire hierarchy with default flow selection:
+        >>> results = predictor.predict_all_levels(prediction_inputs)
+        >>> bundle = results["medical"]
+        >>> print(f"Expected arrivals: {bundle.arrivals.expectation:.1f}")
 
-        >>> from patientflow.predict.service import build_service_data
-        >>> bottom_level_data = build_service_data(
-        ...     models=(...),
-        ...     prediction_time=(12, 0),
-        ...     ed_snapshots=ed_snapshots_df,
-        ...     inpatient_snapshots=inpatient_snapshots_df,
-        ...     specialties=['Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', 'Older Gen'],
-        ...     prediction_window=timedelta(hours=8),
-        ...     x1=4.0, y1=0.95, x2=8.0, y2=0.99
-        ... )
-        >>> results = predictor.predict_all_levels(bottom_level_data)
-        >>> # Access service-level prediction using prefixed ID
-        >>> gsurg_bundle = results['subspecialty:Gsurg LowGI']
-        >>> print(f"Expected arrivals: {gsurg_bundle.arrivals.expectation:.1f}")
-        >>> # Access hospital-level aggregated prediction using prefixed ID
-        >>> hospital_bundle = results['hospital:uclh']
-        >>> print(f"Hospital expected arrivals: {hospital_bundle.arrivals.expectation:.1f}")
+        With custom flow selection (ED inflows only, no departures):
 
-        Run predictions with custom flow selection (ED inflows only):
-
-        >>> from patientflow.predict.types import FlowSelection
-        >>> flow_selection = FlowSelection.custom(
-        ...     include_ed_current=True,
-        ...     include_ed_yta=True,
-        ...     include_non_ed_yta=False,
-        ...     include_elective_yta=False,
-        ...     include_transfers_in=False,
-        ...     include_departures=False,
-        ...     cohort="emergency"
-        ... )
         >>> results = predictor.predict_all_levels(
-        ...     bottom_level_data,
-        ...     flow_selection=flow_selection
+        ...     prediction_inputs,
+        ...     flow_selection=FlowSelection.custom(
+        ...         include_ed_current=True,
+        ...         include_ed_yta=True,
+        ...         include_non_ed_yta=False,
+        ...         include_elective_yta=False,
+        ...         include_transfers_in=False,
+        ...         include_departures=False,
+        ...         cohort="emergency",
+        ...     ),
         ... )
-
-        Run predictions for a specific subtree:
-
-        >>> # Predict only for entities under 'Surgery Division'
-        >>> results = predictor.predict_all_levels(
-        ...     bottom_level_data,
-        ...     top_level_id="Surgery Division"
-        ... )
-        >>> # Results will only contain entities under 'Surgery Division' (prefixed IDs)
-        >>> print(list(results.keys()))
-        ['subspecialty:Gsurg LowGI', 'subspecialty:Gsurg UppGI', 'reporting_unit:Gastrointestinal Surgery', 'division:Surgery Division']
 
         Notes
         -----
-        **Data Format Requirements:**
+        ``bottom_level_data`` is typically created using
+        ``build_service_data()`` from ``patientflow.predict.service``.
 
-        The `bottom_level_data` dictionary should be created using `build_service_data()`
-        from `patientflow.predict.service`. Each `ServicePredictionInputs` object
-        contains probability distributions (PMFs) for current patients and Poisson parameters
-        for yet-to-arrive patients, organized by flow type (inflows/outflows).
-
-        **Entity ID Matching:**
-
-        - Service IDs in `bottom_level_data` keys **must exactly match** (case-sensitive)
-          the entity IDs at the bottom level of the hierarchy.
-        - If a service ID in `bottom_level_data` doesn't exist in the hierarchy:
-          - It will be silently ignored during prediction (no error raised)
-          - It won't appear in the results dictionary
-          - This is typically not an error condition, as you may have data for subspecialties
-            that aren't part of the current hierarchy structure
-        - If a service exists in the hierarchy but not in `bottom_level_data`:
-          - No prediction will be generated for that service
-          - It won't appear in the results dictionary
-          - Aggregated predictions at higher levels will exclude this service
-          - This is the expected behavior when you don't have data for all services
-
-        **Error Handling:**
-
-        - ``ValueError``: Raised if `top_level_id` is provided but doesn't exist in the hierarchy
-        - ``ValueError``: Raised if `flow_selection` is invalid (e.g., conflicting settings)
-        - Missing services in `bottom_level_data` are handled gracefully (no error)
-        - Extra services in `bottom_level_data` (not in hierarchy) are ignored (no error)
-
-        **Prediction Process:**
-
-        The method follows a 3-phase algorithm:
-
-        1. **Phase 1 (Capping)**: Calculate statistical caps for each entity based on
-           the sum of means and combined variance of all distributions in its subtree
-        2. **Phase 2 (Bottom-level Prediction)**: Generate full PMF predictions for
-           all bottom-level entities that have data
-        3. **Phase 3 (Aggregation)**: Aggregate predictions upward through the hierarchy
-           using convolution, applying caps at each level
-
-        **Performance Considerations:**
-
-        - Predictions are computed recursively from the specified `top_level_id` downward
-        - Only entities in the subtree rooted at `top_level_id` are processed
-        - Intermediate results are cached in `self.prediction_results` for efficient access
+        Keys in ``bottom_level_data`` must exactly match (case-sensitive) the
+        entity IDs at the bottom level of the hierarchy. Unmatched keys on
+        either side are silently skipped.
         """
         if flow_selection is None:
             flow_selection = FlowSelection.default()
-        
+
         # Validate flow selection configuration
         flow_selection.validate()
 
@@ -448,9 +301,7 @@ class HierarchicalPredictor:
             if entity_id in bottom_level_data:
                 # Prediction logic for base level (leaf nodes)
                 inputs = bottom_level_data[entity_id]
-                bundle = self.predictor.predict_service(
-                    inputs, flow_selection
-                )
+                bundle = self.predictor.predict_service(inputs, flow_selection)
                 self.prediction_results[prefixed_id] = bundle
             return
 
@@ -473,7 +324,7 @@ class HierarchicalPredictor:
         child_bundles = []
         for child_id in children:
             child_prefixed_id = f"{child_entity_type.name}:{child_id}"
-            
+
             # Verify child is in hierarchy (should be guaranteed by get_children)
             self._predict_subtree(child_id, bottom_level_data, flow_selection)
             if child_prefixed_id in self.prediction_results:
@@ -499,7 +350,7 @@ class HierarchicalPredictor:
         Parameters
         ----------
         entity_id : str
-            Entity ID to retrieve (prefixed ID like "subspecialty:Acute Medicine" 
+            Entity ID to retrieve (prefixed ID like "subspecialty:Acute Medicine"
             or original name if entity_type is provided)
         entity_type : EntityType, optional
             Entity type of the entity. If provided, entity_id is treated as an

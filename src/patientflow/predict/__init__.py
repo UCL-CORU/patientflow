@@ -5,4 +5,4 @@ including emergency demand forecasting and other predictive analytics.
 """
 
 # No exports - users import directly from submodules
-__all__ = []
+__all__: list[str] = []

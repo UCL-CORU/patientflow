@@ -174,9 +174,7 @@ def calculate_hierarchical_stats(
     # Calculate combined statistics
     sum_of_means = float(np.sum(means)) if means else 0.0
     combined_variance = float(np.sum(variances)) if variances else 0.0
-    combined_sd = (
-        float(np.sqrt(combined_variance)) if combined_variance > 0 else 0.0
-    )
+    combined_sd = float(np.sqrt(combined_variance)) if combined_variance > 0 else 0.0
 
     # Statistical cap: mean + k_sigma * SD
     statistical_cap = sum_of_means + k_sigma * combined_sd

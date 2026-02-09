@@ -144,48 +144,17 @@ class Hierarchy:
 
         Examples
         --------
-        Create hierarchy from YAML file:
-
         >>> hierarchy = Hierarchy.from_yaml("hierarchy_config.yaml")
-
-        Example YAML file structure:
-
-        .. code-block:: yaml
-
-            levels:
-              - entity_type: subspecialty
-                parent_type: reporting_unit
-                level_order: 0
-              - entity_type: reporting_unit
-                parent_type: division
-                level_order: 1
-              - entity_type: division
-                parent_type: board
-                level_order: 2
-              - entity_type: board
-                parent_type: hospital
-                level_order: 3
-              - entity_type: hospital
-                parent_type: null
-                level_order: 4
 
         Notes
         -----
-        - The YAML file defines the **structure** (entity types and their relationships),
-          not the actual entity IDs. The entity IDs come from the DataFrame when you
-          call `populate_hierarchy_from_dataframe()`, using the column_mapping parameter 
-          to match DataFrame columns to entity types.
-        - The YAML must define a proper tree structure with exactly one top-level entity
-          type (parent_type: null)
-        - level_order should start at 0 for the bottom level and increase for each
-          higher level
-        - Entity type names (like 'subspecialty', 'hospital') are case-sensitive and
-          must match those used in column_mapping when populating the hierarchy
-        - **Consistent approach**: All entity IDs come from the DataFrame columns specified
-          in column_mapping. If an entity type has no column mapping, no entities of that
-          type are created from the DataFrame. The `top_level_id` parameter in
-          `populate_hierarchy_from_dataframe()` ensures a single top-level entity exists
-          (consolidating from DataFrame if present, or creating if not)
+        The YAML file defines **structure only** (entity types and their
+        parent-child relationships), not the actual entity IDs. Entity IDs are
+        populated later via ``populate_hierarchy_from_dataframe()``.
+
+        The YAML must define a proper tree with exactly one top-level entity
+        type (``parent_type: null``). Level order starts at 0 for the bottom
+        level and increases upward. Entity type names are case-sensitive.
         """
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -229,15 +198,12 @@ class Hierarchy:
         return cls(levels)
 
     def add_entity(self, entity_id: str, entity_type: EntityType):
-        """Add an entity to the hierarchy with type-prefixed unique ID.
-
-        This method is used in Pass 1 to create entities without relationships.
-        Relationships are established separately in Pass 2.
+        """Add an entity to the hierarchy.
 
         Parameters
         ----------
         entity_id : str
-            Original identifier for the entity (will be prefixed with entity type)
+            Original identifier for the entity
         entity_type : EntityType
             Type of the entity
         """
@@ -503,177 +469,61 @@ def populate_hierarchy_from_dataframe(
     column_mapping: Dict[str, str],
     top_level_id: str,
 ) -> None:
-    """Populate hierarchy from a pandas DataFrame with explicit column mapping.
+    """Populate a hierarchy with entities and relationships from a DataFrame.
 
-    This function extracts the organizational hierarchy from a DataFrame using
-    an explicit mapping of DataFrame columns to entity type names. It works
-    with any hierarchy structure defined in the YAML configuration.
-
-    **Consistent Approach:**
-    All entity IDs come from the DataFrame columns specified in column_mapping.
-    For each entity type in the hierarchy, if there's a column mapping, entities
-    are created from that column's values. If there's no column mapping for an
-    entity type, no entities of that type are created from the DataFrame.
-
-    The function uses a two-pass approach:
-    1. **Pass 1**: Creates all entities from DataFrame columns (for entity types
-       that have column mappings)
-    2. **Pass 2**: Establishes parent-child relationships based on the DataFrame
+    Each row of the DataFrame represents one path through the hierarchy from
+    bottom to top. The ``column_mapping`` maps DataFrame column names to entity
+    type names defined in the hierarchy.
 
     Parameters
     ----------
     hierarchy : Hierarchy
-        Hierarchy instance to populate. Must already have levels defined
-        (e.g., from Hierarchy.create_default_hospital() or Hierarchy.from_yaml()).
+        Hierarchy instance with levels already defined (e.g. from
+        ``Hierarchy.from_yaml()`` or ``Hierarchy.create_default_hospital()``).
     hierarchy_df : pandas.DataFrame
-        DataFrame containing organizational structure. Each row represents
-        one path through the hierarchy from bottom to top. The DataFrame
-        must form a proper tree structure where each child entity has
-        exactly one parent. Include a column for each entity type you want
-        to populate from the DataFrame.
+        Organisational structure where each row is one bottom-to-top path.
+        Must form a proper tree (each child has exactly one parent).
     column_mapping : Dict[str, str]
-        Mapping from DataFrame column names to entity type names. Only entity
-        types with a column mapping will have entities created from the DataFrame.
-        Example: {'sub_specialty': 'subspecialty', 'reporting_unit': 'reporting_unit'}
-        If you don't include a mapping for the top-level entity type (e.g., 'hospital'),
-        no top-level entities will be created from the DataFrame.
+        Mapping from DataFrame column names to entity type names.
+        Only entity types with a mapping will be populated from the DataFrame.
     top_level_id : str
-        Identifier for the top-level entity. This parameter ensures a single
-        top-level entity exists:
-        - If top-level entities exist in the DataFrame (via column_mapping), all
-          are consolidated to this ID
-        - If no top-level entities exist (no column_mapping for top-level type),
-          this ID is used to create the top-level entity
-        All entities without parents will be linked to this top-level entity.
+        Identifier for the single top-level entity. Created automatically
+        if absent from the DataFrame; consolidates multiple top-level
+        entries if present.
 
     Raises
     ------
     ValueError
-        If required columns are missing, entity types don't match hierarchy,
-        or parent entities are not found for children.
+        If required columns are missing, entity types are invalid, or parent
+        entities cannot be found.
 
     Examples
     --------
-    Populate hierarchy from DataFrame (top-level entity created separately):
-
     >>> import pandas as pd
-    >>> hierarchy = Hierarchy.create_default_hospital()
+    >>> hierarchy = Hierarchy.from_yaml("config.yaml")
     >>> hierarchy_df = pd.DataFrame({
-    ...     'subspecialty': ['Gsurg LowGI', 'Gsurg UppGI', 'Older Acute', 'Older Gen'],
-    ...     'reporting_unit': ['Gastrointestinal Surgery', 'Gastrointestinal Surgery', 'Care Of the Elderly', 'Care Of the Elderly'],
-    ...     'division': ['Surgery Division', 'Surgery Division', 'Medicine Division', 'Medicine Division'],
-    ... })
-    >>> # Note: 'hospital' is not in column_mapping, so top-level entity will be created
-    >>> column_mapping = {
-    ...     'subspecialty': 'subspecialty',
-    ...     'reporting_unit': 'reporting_unit',
-    ...     'division': 'division',
-    ... }
-    >>> populate_hierarchy_from_dataframe(
-    ...     hierarchy, hierarchy_df, column_mapping, top_level_id="uclh"
-    ... )
-    >>> # Verify hierarchy structure
-    >>> print(hierarchy.get_children("Gastrointestinal Surgery"))
-    ['Gsurg LowGI', 'Gsurg UppGI']
-
-    Populate hierarchy with top-level entity from DataFrame:
-
-    >>> hierarchy_df_with_hospital = pd.DataFrame({
-    ...     'subspecialty': ['Gsurg LowGI', 'Gsurg UppGI'],
-    ...     'reporting_unit': ['Gastrointestinal Surgery', 'Gastrointestinal Surgery'],
-    ...     'division': ['Surgery Division', 'Surgery Division'],
-    ...     'hospital': ['uclh', 'uclh'],  # Top-level entity in DataFrame
+    ...     'specialty_names': ['medical', 'surgical', 'haem/onc', 'paediatric'],
+    ...     'division_names': ['Medical', 'Surgical', 'Medical', 'Specialist'],
     ... })
     >>> column_mapping = {
-    ...     'subspecialty': 'subspecialty',
-    ...     'reporting_unit': 'reporting_unit',
-    ...     'division': 'division',
-    ...     'hospital': 'hospital',  # Include top-level in mapping
+    ...     'specialty_names': 'specialty',
+    ...     'division_names': 'division',
     ... }
     >>> populate_hierarchy_from_dataframe(
-    ...     hierarchy, hierarchy_df_with_hospital, column_mapping, top_level_id="uclh"
+    ...     hierarchy, hierarchy_df, column_mapping, top_level_id="Hospital"
     ... )
+    >>> hierarchy.get_children("Medical")
+    ['haem/onc', 'medical']
 
     Notes
     -----
-    The function follows a consistent approach with a two-pass process:
+    The DataFrame must represent a tree structure. If the same child appears
+    with different parents across rows, the last relationship processed
+    overwrites earlier ones, which may silently produce an invalid hierarchy.
 
-    1. **Entity Creation (Pass 1)**:
-       - Iterates through hierarchy levels from bottom to top
-       - For each entity type that has a column mapping:
-         * Extracts unique values from the corresponding DataFrame column
-         * Creates entities using `hierarchy.add_entity()` for each unique value
-         * Entities are created **without relationships** at this stage
-       - Entity types without column mappings are skipped (no entities created)
-       - This pass ensures all entities exist before relationships are established
-
-    2. **Relationship Establishment (Pass 2)**:
-       - Iterates through each row of the DataFrame
-       - For each row, establishes parent-child relationships between adjacent levels:
-         * Bottom level → Parent level (e.g., subspecialty → reporting_unit)
-         * Parent level → Grandparent level (e.g., reporting_unit → division)
-         * And so on up the hierarchy
-       - Relationships are stored in `hierarchy.relationships` dictionary
-       - If a child entity appears with different parents in different rows:
-         * The **last relationship processed** will overwrite previous ones
-         * This can create an invalid hierarchy if not careful
-         * Ensure your DataFrame represents a proper tree structure
-
-    3. **Top-Level Entity Handling**:
-       - After Pass 2, the function ensures a single top-level entity exists:
-         * If top-level entities exist in DataFrame (via column_mapping):
-           - All top-level entities are consolidated to `top_level_id`
-           - Any top-level entities with different IDs are linked to `top_level_id`
-         * If no top-level entities exist (no column_mapping for top-level type):
-           - A new top-level entity is created with ID `top_level_id`
-       - All entities without parents (orphaned entities) are linked to the top-level entity
-       - This ensures the hierarchy is fully connected
-
-    4. **What Happens If Relationships Are Missing**:
-       - If a parent entity referenced in a row doesn't exist:
-         * A `ValueError` is raised: "Parent entity 'X' not found for child 'Y'"
-         * This typically means:
-           - The parent entity wasn't created in Pass 1 (missing from DataFrame)
-           - The parent entity type doesn't have a column mapping
-           - There's a mismatch between entity IDs in the DataFrame
-       - If a child entity has no parent after Pass 2:
-         * The child is automatically linked to the top-level entity
-         * This ensures no orphaned entities remain
-
-    5. **Validation and Cleanup**:
-       - **Before processing**: Validates required columns exist in DataFrame
-       - **Before processing**: Validates mapped entity types exist in hierarchy structure
-       - **During processing**: Removes duplicate rows (same relationships)
-       - **During processing**: Drops rows with missing values (NaN) in any column
-       - **After processing**: Ensures all entities are connected (no orphans)
-
-    **Important Requirements:**
-
-    - The DataFrame must represent a **tree structure**: each child entity has exactly
-      one parent. If the same child appears with different parents in different rows,
-      the last relationship processed will overwrite previous ones, potentially creating
-      an invalid hierarchy.
-    - All entity IDs in the DataFrame must be strings (or convertible to strings)
-    - Entity IDs are case-sensitive and must match exactly when referenced
-    - Duplicate rows with the same relationships are automatically handled (no error)
-    - Missing values (NaN) in any column will cause that entire row to be dropped
-
-    **Example of Two-Pass Process:**
-
-    Given a DataFrame with one row:
-    ::
-
-        subspecialty='Gsurg LowGI', reporting_unit='Gastrointestinal Surgery', division='Surgery Division'
-
-    **Pass 1** creates entities (no relationships yet):
-    - Creates entity "subspecialty:Gsurg LowGI"
-    - Creates entity "reporting_unit:Gastrointestinal Surgery"
-    - Creates entity "division:Surgery Division"
-
-    **Pass 2** establishes relationships:
-    - Links "subspecialty:Gsurg LowGI" → "reporting_unit:Gastrointestinal Surgery"
-    - Links "reporting_unit:Gastrointestinal Surgery" → "division:Surgery Division"
-    - Links "division:Surgery Division" → "hospital:uclh" (top-level, created/consolidated)
+    Duplicate rows and rows with missing values are dropped before processing.
+    Any entities left without a parent are automatically linked to the
+    top-level entity.
     """
     # Validate that all required columns exist
     required_columns = list(column_mapping.keys())

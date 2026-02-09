@@ -621,14 +621,16 @@ def _prepare_base_probabilities(
         )
 
     # Specialty probabilities per row for ED patients
-    if spec_model is not None and hasattr(spec_model, "predict_dataframe") and ed_snapshots is not None:
+    if (
+        spec_model is not None
+        and hasattr(spec_model, "predict_dataframe")
+        and ed_snapshots is not None
+    ):
         ed_snapshots.loc[:, "specialty_prob"] = spec_model.predict_dataframe(
             ed_snapshots
         )
     elif ed_snapshots is not None:
-        special_params = (
-            spec_model.special_params if spec_model is not None else None
-        )
+        special_params = spec_model.special_params if spec_model is not None else None
         if special_params:
             special_category_func = special_params["special_category_func"]
             special_category_dict = special_params["special_category_dict"]
@@ -646,10 +648,16 @@ def _prepare_base_probabilities(
         else:
             # If no spec model, assuming 0 probability for all specialties
             # This is effectively "unknown"
-            ed_snapshots.loc[:, "specialty_prob"] = [{} for _ in range(len(ed_snapshots))]
+            ed_snapshots.loc[:, "specialty_prob"] = [
+                {} for _ in range(len(ed_snapshots))
+            ]
 
     # Probability of being admitted within window (per row) for ED patients
-    if use_admission_in_window_prob and yet_to_arrive_model is not None and ed_snapshots is not None:
+    if (
+        use_admission_in_window_prob
+        and yet_to_arrive_model is not None
+        and ed_snapshots is not None
+    ):
         if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
             prob_admission_in_window = ed_snapshots.apply(
                 lambda row: calculate_admission_probability_from_survival_curve(
@@ -970,9 +978,7 @@ def _build_legacy_flows(
                 prob_admission_in_window,
             )
         else:
-            ed_data = {
-                "agg_predicted_in_ed": {"agg_proba": np.array([1.0])}
-            }
+            ed_data = {"agg_predicted_in_ed": {"agg_proba": np.array([1.0])}}
 
         # Process inpatients
         if inpatient_snapshots is not None:
@@ -1213,9 +1219,7 @@ def build_service_data(
 
 
 def compute_transfer_arrivals(
-    service_data: Union[
-        Dict[str, Dict[str, Any]], Dict[str, ServicePredictionInputs]
-    ],
+    service_data: Union[Dict[str, Dict[str, Any]], Dict[str, ServicePredictionInputs]],
     transfer_model: Any,
     services: List[str],
 ) -> Dict[str, Dict[str, np.ndarray]]:
