@@ -34,6 +34,7 @@ A set of notebooks follow, that show how we have used the functions in `patientf
 - **[4b_Predict_emergency_demand](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_emergency_demand.ipynb):** Shows a full implementation of the functions covered up to this point, to predict emergency demand at UCLH.
 - **[4c_Evaluate_emergency_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_demand_from_patients_in_ED.ipynb)** Shows an evaluation of the emergency demand predictions generated using the public data provided with this repo.
 - **[4d_Predict_emergency_demand_with_special_categories](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Predict_emergency_demand_with_special_categories.ipynb)** Develops the logic shown in the previous notebook to include the handling of particular sub-groups of patients differently.
+- **[4e_Generate_predictions_using_hierarchy](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4e_Generate_predictions_using_hierarchy.ipynb)** Shows the use of a hierarchical approach to generate demand predictions at different levels of a hospital's reporting hierarchy.
 
 ## Preparing your notebook environment
 
