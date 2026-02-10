@@ -1037,6 +1037,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
         
   
@@ -1065,14 +1093,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../explore_prediction_bundles/" class="md-nav__link">
+      <a href="../4e_Generate_predictions_using_hierarchy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Explore Prediction Bundles
+    4e. Generate predictions using a customisable hospital hierarchy.
   
 
     
@@ -1471,6 +1499,9 @@
 %load_ext autoreload 
 %autoreload 2
 </code></pre>
+<pre><code>The autoreload extension is already loaded. To reload it, use:
+  %reload_ext autoreload
+</code></pre>
 <h2 id="loading-real-patient-data">Loading real patient data</h2>
 <p>I load the data using a <code>load_data</code> function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the <code>data_folder_name</code> or (better, since it will solve the problem for all notebooks) copy the synthetic data from <code>data-synthetic</code> to <code>data-public</code>. </p>
 <pre><code class="language-python">from patientflow.load import set_file_paths, load_data
@@ -1600,6 +1631,7 @@ Name: count, dtype: int64
 
 </code></pre>
 <p>In the real data, there are some columns that will be used for predicting admission to specialty, if admitted. I exclude them here.</p>
+<p>This list will be saved with the model, so that any calling function using the model for inference can pass the original dataset with needing to specify which columns to exclude.</p>
 <pre><code class="language-python">exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
 </code></pre>
 <p>We loop through each prediction time, training a model. To start with, we will not balance the dataset. </p>
@@ -1660,9 +1692,7 @@ Training model for (9, 30)
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
 plot_estimated_probabilities(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
-)
+    test_visits=test_visits)
 
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_18_0.png" /></p>
@@ -1682,8 +1712,7 @@ from patientflow.viz.calibration import plot_calibration
 
 plot_calibration(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy=&quot;quantile&quot;,  # optional
     # suptitle=&quot;Base model with imbalanced training data&quot;  # optional
 )
@@ -1699,8 +1728,7 @@ The orange line represents the cumulative observed outcomes, calculated based on
 from patientflow.viz.madcap import plot_madcap
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_22_0.png" /></p>
@@ -1748,21 +1776,18 @@ from patientflow.viz.madcap import plot_madcap
 
 plot_estimated_probabilities(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 plot_calibration(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy=&quot;quantile&quot;,  # optional
     # suptitle=&quot;Base model with balanced training data&quot;  # optional
 )
 
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 </code></pre>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_26_0.png" /></p>
@@ -1802,21 +1827,18 @@ for prediction_time in prediction_times:
 
 plot_estimated_probabilities(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 plot_calibration(
     trained_models=trained_models,  
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy=&quot;quantile&quot;,  # optional
     # suptitle=&quot;Base model with balanced training data&quot;  # optional
 )
 
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 </code></pre>
 <pre><code>Training model for (22, 0)
@@ -1836,7 +1858,6 @@ Training model for (9, 30)
 plot_madcap_by_group(
     trained_models=trained_models,
     test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
     grouping_var=&quot;age_group&quot;,
     grouping_var_name=&quot;Age Group&quot;,
     plot_difference=False
@@ -1863,30 +1884,25 @@ plot_features(
 
 plot_shap(
     trained_models, 
-    test_visits,
-    exclude_from_training_data=exclude_from_training_data)
+    test_visits)
 
 
 </code></pre>
-<pre><code>/Users/zellaking/miniconda3/envs/test_python/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
-  from .autonotebook import tqdm as notebook_tqdm
-
-
-Predicted classification (not admitted, admitted):  [1663  955]
+<pre><code>Predicted classification (not admitted, admitted):  [1663  955]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_2.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_1.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [2843 1306]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_4.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_3.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [4858 2376]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_6.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_5.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [5795 2728]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_8.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_7.png" /></p>
 <pre><code>Predicted classification (not admitted, admitted):  [4301 2309]
 </code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_10.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_35_9.png" /></p>
 <h2 id="conclusion">Conclusion</h2>
 <p>Here I have shown how visualations within <code>patientflow</code> can help you</p>
 <ul>

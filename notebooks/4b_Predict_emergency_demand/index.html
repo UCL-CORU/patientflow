@@ -828,10 +828,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+  <a href="#load-data-and-prepare-for-model-training" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set up the notebook environment
+        Load data and prepare for model training
       
     </span>
   </a>
@@ -839,10 +839,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#set-file-paths-and-load-data" class="md-nav__link">
+  <a href="#train-models" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set file paths and load data
+        Train models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Train models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#train-models-for-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for patients currently in the ED
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#train-models-for-patients-yet-to-arrive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for patients yet to arrive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-make-predictions-for-the-group-of-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Make predictions for the group of patients currently in the ED
       
     </span>
   </a>
@@ -850,10 +889,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#set-modelling-parameters" class="md-nav__link">
+  <a href="#2-make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set modelling parameters
+        2. Make predictions for patients yet-to-arrive to the ED who will need admission
       
     </span>
   </a>
@@ -861,10 +900,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prediction-times" class="md-nav__link">
+  <a href="#3-helper-functions-for-predicting-real-time-inference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prediction times
+        3. Helper functions for predicting real-time inference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Helper functions for predicting real-time inference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-approach-at-uclh-use-of-the-predictservice-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current approach at UCLH - use of the predict.service module
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-time-inference-legacy-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-time inference (legacy processing)
       
     </span>
   </a>
@@ -872,87 +939,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#apply-temporal-splits" class="md-nav__link">
+  <a href="#4-make-predictions-using-empirical-survival-curve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Apply temporal splits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train models to predict bed count distributions for patients currently in the ED
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-specialty-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train specialty model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-for-the-group-of-patients-currently-in-the-ed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions for the group of patients currently in the ED
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-model-to-predict-bed-count-distributions-for-patients-yet-to-arrive" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train model to predict bed count distributions for patients yet to arrive
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions for patients yet-to-arrive to the ED who will need admission
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#combining-the-predictions-into-one-function-for-use-in-real-time-inference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining the predictions into one function for use in real-time inference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-using-empirical-survival-curve" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions using empirical survival curve
+        4. Make predictions using empirical survival curve
       
     </span>
   </a>
@@ -1014,6 +1004,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
         
   
@@ -1042,14 +1060,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../explore_prediction_bundles/" class="md-nav__link">
+      <a href="../4e_Generate_predictions_using_hierarchy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Explore Prediction Bundles
+    4e. Generate predictions using a customisable hospital hierarchy.
   
 
     
@@ -1234,10 +1252,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+  <a href="#load-data-and-prepare-for-model-training" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set up the notebook environment
+        Load data and prepare for model training
       
     </span>
   </a>
@@ -1245,10 +1263,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#set-file-paths-and-load-data" class="md-nav__link">
+  <a href="#train-models" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set file paths and load data
+        Train models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Train models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#train-models-for-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for patients currently in the ED
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#train-models-for-patients-yet-to-arrive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for patients yet to arrive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-make-predictions-for-the-group-of-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Make predictions for the group of patients currently in the ED
       
     </span>
   </a>
@@ -1256,10 +1313,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#set-modelling-parameters" class="md-nav__link">
+  <a href="#2-make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Set modelling parameters
+        2. Make predictions for patients yet-to-arrive to the ED who will need admission
       
     </span>
   </a>
@@ -1267,10 +1324,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prediction-times" class="md-nav__link">
+  <a href="#3-helper-functions-for-predicting-real-time-inference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prediction times
+        3. Helper functions for predicting real-time inference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Helper functions for predicting real-time inference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-approach-at-uclh-use-of-the-predictservice-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current approach at UCLH - use of the predict.service module
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-time-inference-legacy-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-time inference (legacy processing)
       
     </span>
   </a>
@@ -1278,87 +1363,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#apply-temporal-splits" class="md-nav__link">
+  <a href="#4-make-predictions-using-empirical-survival-curve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Apply temporal splits
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train models to predict bed count distributions for patients currently in the ED
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-specialty-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train specialty model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-for-the-group-of-patients-currently-in-the-ed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions for the group of patients currently in the ED
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#train-model-to-predict-bed-count-distributions-for-patients-yet-to-arrive" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Train model to predict bed count distributions for patients yet to arrive
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions for patients yet-to-arrive to the ED who will need admission
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#combining-the-predictions-into-one-function-for-use-in-real-time-inference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Combining the predictions into one function for use in real-time inference
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#make-predictions-using-empirical-survival-curve" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Make predictions using empirical survival curve
+        4. Make predictions using empirical survival curve
       
     </span>
   </a>
@@ -1402,27 +1410,41 @@
 
 
 <h1 id="4b-predict-emergency-demand">4b. Predict emergency demand</h1>
-<p>This notebook demonstrates the full implementation in code. I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by specialty, over the next 8 hours. The predictions are aspirational; they assume that ED four-hour targets are met. </p>
-<h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
-<pre><code class="language-python"># Reload functions every time
-%load_ext autoreload 
-%autoreload 2
-</code></pre>
-<pre><code>The autoreload extension is already loaded. To reload it, use:
-  %reload_ext autoreload
-</code></pre>
-<pre><code class="language-python">from patientflow.load import set_project_root
-project_root = set_project_root()
-
-</code></pre>
-<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
-</code></pre>
-<h2 id="set-file-paths-and-load-data">Set file paths and load data</h2>
+<p>This notebook demonstrates the full implementation in code. I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by service, over the next 8 hours.</p>
+<p>The notebook first loads data and trains models. This code is repeated from previous notebooks. It then demonstrates the logic used to generate predictions for real-time inference.</p>
+<p>The predictions combine two sources of demand:</p>
+<p><strong>Section 1: Patients currently in the ED</strong> - We predict the probability that each patient will be admitted, which service they will be admitted to, and whether they will be admitted within the prediction window. This section includes <strong>s step-through in Python</strong> demonstrating the real-time inference steps, showing how predictions are generated for current ED patients by combining admission probabilities, specialty assignments, and admission window probabilities.</p>
+<p><strong>Section 2: Patients yet to arrive</strong> - We predict the expected number of patients who will arrive at the ED and need admission within the prediction window, by service. Again, this section includes <strong>s step-through in Python</strong> demonstrating the real-time inference steps.</p>
+<p><strong>Section 3: Helper functions for predicting real-time inference</strong> - I show two approaches provided in <code>patientflow</code> that move the logic shown above into the package.</p>
+<ul>
+<li><strong>The current approach at UCLH</strong>, which encapsulates the logic from the step-through using a function called <code>build_prediction_inputs</code>. By using data classes (such as <code>ServicePredictionInputs</code> and <code>FlowInputs</code>), this approach provides a structured, type-safe way to organise prediction inputs.</li>
+<li><strong>The legacy approach</strong> (using <code>create_predictions</code>), which was the original implementation at UCLH and is maintained for backward compatibility.</li>
+</ul>
+<p>I show two approaches for predicting demand for beds within the prediction window:</p>
+<ul>
+<li>
+<p><strong>Aspirational approach</strong> - Demand for beds, assuming that ED four-hour targets are met. This uses parametric curves based on specified ED performance targets. (<strong>Sections 1-3</strong>)</p>
+</li>
+<li>
+<p><strong>Informed by past performance</strong> - Demand for beds assuming that the ED performs as it has in the past, using empirical survival curves to calculate the probability of admission within the prediction window. (<strong>Section 4</strong>)</p>
+</li>
+</ul>
+<h2 id="load-data-and-prepare-for-model-training">Load data and prepare for model training</h2>
 <p>I'm going to use real patient data from UCLH to demonstrate the implementation. </p>
 <p>You can request the datasets that are used here on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from <code>data_folder_name='data-public'</code> to <code>data_folder_name='data-synthetic'</code>.</p>
-<pre><code class="language-python">from patientflow.load import set_file_paths
+<p>The parameters used in training and inference are set in config.json in the root of the repository and loaded by <code>load_config_file()</code></p>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 
+</code></pre>
+<pre><code class="language-python">import pandas as pd
+from patientflow.load import load_data, set_project_root
+from patientflow.load import set_file_paths
+from patientflow.prepare import create_temporal_splits
+from patientflow.load import load_config_file
 
 # set file paths
+project_root = set_project_root()
 data_folder_name = 'data-public'
 data_file_path = project_root / data_folder_name
 
@@ -1430,9 +1452,7 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
     project_root, 
     data_folder_name=data_folder_name,
     config_file = 'config.yaml', verbose=False)
-</code></pre>
-<pre><code class="language-python">import pandas as pd
-from patientflow.load import load_data
+
 
 # load ED snapshots data
 ed_visits = load_data(data_file_path, 
@@ -1441,6 +1461,7 @@ ed_visits = load_data(data_file_path,
                     sort_columns = [&quot;visit_number&quot;, &quot;snapshot_date&quot;, &quot;prediction_time&quot;], 
                     eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
+ed_visits.elapsed_los = pd.to_timedelta(ed_visits.elapsed_los, 'seconds')
 
 # load data on inpatient arrivals
 inpatient_arrivals = inpatient_arrivals = load_data(data_file_path, 
@@ -1448,11 +1469,7 @@ inpatient_arrivals = inpatient_arrivals = load_data(data_file_path,
 inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'], utc = True)
 
 
-</code></pre>
-<h2 id="set-modelling-parameters">Set modelling parameters</h2>
-<p>The parameters are used in training or inference. They are set in config.json in the root of the repository and loaded by <code>load_config_file()</code></p>
-<pre><code class="language-python"># load params
-from patientflow.load import load_config_file
+#  Set modelling parameters
 params = load_config_file(config_path)
 
 start_training_set, start_validation_set, start_test_set, end_test_set = params[&quot;start_training_set&quot;], params[&quot;start_validation_set&quot;], params[&quot;start_test_set&quot;], params[&quot;end_test_set&quot;]
@@ -1460,12 +1477,34 @@ start_training_set, start_validation_set, start_test_set, end_test_set = params[
 print(f'\nTraining set starts {start_training_set} and ends on {start_validation_set - pd.Timedelta(days=1)} inclusive')
 print(f'Validation set starts on {start_validation_set} and ends on {start_test_set - pd.Timedelta(days=1)} inclusive' )
 print(f'Test set starts on {start_test_set} and ends on {end_test_set- pd.Timedelta(days=1)} inclusive' )
+
+# Split data into training, validation and test sets
+train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
+    ed_visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;,
+)
+
+train_inpatient_arrivals_df, _, _ = create_temporal_splits(
+    inpatient_arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;arrival_datetime&quot;,
+)
 </code></pre>
-<pre><code>Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+
+Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
 Validation set starts on 2031-09-01 and ends on 2031-09-30 inclusive
 Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
+Split sizes: [62071, 10415, 29134]
+Split sizes: [7716, 1285, 3898]
 </code></pre>
-<h2 id="prediction-times">Prediction times</h2>
 <p>The data has been prepared as a series of snapshots of each patient's data at five moments during the day. These five moments are the times when the bed managers wish to receive predictive models of emergency demand. If a patient arrives in the ED at 4 am, and leaves at 11 am, they will be represented in the 06:00 and 09:30 prediction times. Everything known about a patient is included up until that moment is included in that snapshot.</p>
 <p>The predition times are presented as tuples in the form (hour, minute). </p>
 <p>From the output below we can see that there are most snapshots at 15:30 - since afternoons are typically the busiest times in the ED - and least at 06:00. </p>
@@ -1487,31 +1526,8 @@ prediction_time
 (6, 0)      11984
 Name: count, dtype: int64
 </code></pre>
-<h2 id="apply-temporal-splits">Apply temporal splits</h2>
-<pre><code class="language-python">from patientflow.prepare import create_temporal_splits
-
-train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
-    ed_visits,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name=&quot;snapshot_date&quot;,
-)
-
-train_inpatient_arrivals_df, _, _ = create_temporal_splits(
-    inpatient_arrivals,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name=&quot;arrival_datetime&quot;,
-)
-</code></pre>
-<pre><code>Split sizes: [62071, 10415, 29134]
-Split sizes: [7716, 1285, 3898]
-</code></pre>
-<h2 id="train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed">Train models to predict bed count distributions for patients currently in the ED</h2>
+<h2 id="train-models">Train models</h2>
+<h3 id="train-models-for-patients-currently-in-the-ed">Train models for patients currently in the ED</h3>
 <pre><code class="language-python">
 from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
@@ -1568,22 +1584,71 @@ Training model for (6, 0)
 Training model for (12, 0)
 Training model for (9, 30)
 </code></pre>
-<h2 id="train-specialty-model">Train specialty model</h2>
 <p>The <code>SequencePredictor</code> is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model. </p>
-<p>Here the <code>apply_special_category_filtering</code> parameter has been set to True. If set to True, there will be customised treatment for particular categories of patient; for example, at UCLH, it is assumed that all patients under 18 on arrival will be admitted to a paediatric specialty. I will demonstrate this further down.</p>
+<p>Here a <code>MultieSubgroupPredictor</code> wrapper is applied. This will train multiple instances of the <code>SequencePredictor</code>, for subgroups of patients. We will train the model to handle paediatric patients as special cases; at UCLH, it is assumed that all patients under 18 on arrival will be admitted to a paediatric specialty.</p>
 <pre><code class="language-python">from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
 
-spec_model = SequenceToOutcomePredictor(
+def create_subgroup_functions_from_age_group():
+    &quot;&quot;&quot;Create subgroup functions that work with age_group categorical variable.&quot;&quot;&quot;
+
+    def is_paediatric(row):
+        return row.get(&quot;age_group&quot;) == &quot;0-17&quot;
+
+    def is_adult(row):
+        # All non-paediatric patients are adults
+        return row.get(&quot;age_group&quot;) != &quot;0-17&quot;
+
+    return {
+        &quot;paediatric&quot;: is_paediatric,
+        &quot;adult&quot;: is_adult,
+    }
+
+subgroup_functions = create_subgroup_functions_from_age_group()
+
+spec_model = MultiSubgroupPredictor(
+    subgroup_functions=subgroup_functions,
+    base_predictor_class=SequenceToOutcomePredictor,
     input_var=&quot;consultation_sequence&quot;,
     grouping_var=&quot;final_sequence&quot;,
     outcome_var=&quot;specialty&quot;,
-    apply_special_category_filtering=False,
+    min_samples=50,  # Minimum samples required per subgroup
 )
-
 spec_model = spec_model.fit(train_visits_df)
 </code></pre>
-<h2 id="make-predictions-for-the-group-of-patients-currently-in-the-ed">Make predictions for the group of patients currently in the ED</h2>
-<p>We now have models trained that we can use to create predicted probability distributions. Here is an example of how we could use those model to generate predictions at a particular moment. </p>
+<h3 id="train-models-for-patients-yet-to-arrive">Train models for patients yet to arrive</h3>
+<p>As we are predicting by clinical area we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. A dictionary, here called <code>specialty_filters</code>, is used to tell the <code>ParametricIncomingAdmissionPredictor</code> which column contains the outcome we want to split by. </p>
+<pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+from datetime import timedelta
+
+# set the ED targets
+x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
+prediction_window = timedelta(minutes=params[&quot;prediction_window&quot;])
+yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;])
+
+specialty_filters = filters={
+    'medical': {'specialty': 'medical'},
+    'surgical': {'specialty': 'surgical'},
+    'haem/onc': {'specialty': 'haem/onc'},
+    'paediatric': {'specialty': 'paediatric'}
+    }
+yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
+
+# calculate the number of days between the start of the training and validation sets; 
+# this is used to calculate daily arrival rates
+num_days = (start_validation_set - start_training_set).days
+
+if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
+    train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
+
+yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df, 
+              prediction_window=prediction_window, 
+              yta_time_interval=yta_time_interval, 
+              prediction_times=ed_visits.prediction_time.unique(), 
+              num_days=num_days )
+</code></pre>
+<h2 id="1-make-predictions-for-the-group-of-patients-currently-in-the-ed">1. Make predictions for the group of patients currently in the ED</h2>
+<p>We now have models trained that we can use to create predicted probability distributions. Here is a detailed step-through of how to use those models to generate predictions at a particular moment. </p>
 <p>To illustrate, I'll pick a random prediction date and time from the test set. </p>
 <pre><code class="language-python">from patientflow.viz.utils import format_prediction_time
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -1611,7 +1676,6 @@ X_test, y_test = prepare_patient_snapshots(
     df=prediction_snapshots, 
     prediction_time=random_prediction_time, 
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data, 
     visit_col='visit_number'
 )
 
@@ -1635,22 +1699,35 @@ Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 <p>To set the ED targets, we use the parameters set in the config file. The config file also specifies the length of the prediction, and (for use later) the length of the discrete intervals used to calculate arrival rates for yet-to-arrive patients.</p>
 <pre><code class="language-python"># set the ED targets
 x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
-prediction_window = params[&quot;prediction_window&quot;]
-yta_time_interval = params[&quot;yta_time_interval&quot;]
+prediction_window = timedelta(minutes=params[&quot;prediction_window&quot;])
+yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;])
 </code></pre>
 <p>In the cell below I first calculate <code>prob_admission_in_window</code>, the probability of being admitted within the prediction window, given the elapsed time since each patient arrived, and the specified ED targets. </p>
 <p>Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the probability of admission to specialty if admitted, by applying the specialty model trained earlier. </p>
 <p>These two probabilities for each patient snapshot are multiplied and the result passed to <code>get_prob_dist</code> function as weights. </p>
 <pre><code class="language-python">from patientflow.viz.probability_distribution import plot_prob_dist
-from patientflow.aggregate import get_prob_dist
+from patientflow.aggregate import get_prob_dist, model_input_to_pred_proba
 from patientflow.calculate.admission_in_prediction_window import calculate_probability
 from datetime import timedelta
+
+
+# Extract pipeline if model is a TrainedClassifier
+if hasattr(admission_model, &quot;calibrated_pipeline&quot;) and admission_model.calibrated_pipeline is not None:
+    ed_pipeline = admission_model.calibrated_pipeline
+elif hasattr(admission_model, &quot;pipeline&quot;):
+    ed_pipeline = admission_model.pipeline
+else:
+    ed_pipeline = admission_model
+
+# Get probability of admission after ED
+prob_admission_after_ed = model_input_to_pred_proba(prediction_snapshots, ed_pipeline)
+
 
 # Calculate probability of admission within prediction window using ED targets
 prob_admission_in_window = prediction_snapshots.apply(
     lambda row: calculate_probability(
-        elapsed_los = timedelta(seconds=row[&quot;elapsed_los&quot;]), 
-        prediction_window = timedelta(minutes=prediction_window),
+        elapsed_los = row[&quot;elapsed_los&quot;], 
+        prediction_window = prediction_window,
         x1 = x1,
         y1 = y1,
         x2 = x2,
@@ -1659,15 +1736,57 @@ prob_admission_in_window = prediction_snapshots.apply(
     axis=1,
 )
 
+</code></pre>
+<p>With these probabilities prepared, I now iterate through the specialties to generate predictions for each in turn, and plot them in the charts shown.</p>
+<pre><code class="language-python">
+# Get specialty probabilities for all patients 
+specialty_probs_all = spec_model.predict_dataframe(prediction_snapshots)
+
 # generate and plot predicted bed count distributions for each specialty
 for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
-    prob_admission_to_specialty = prediction_snapshots['consultation_sequence'].apply(spec_model.predict).apply(lambda x: x[specialty])
+# Use predict_dataframe for MultiSubgroupPredictor (handles subgroup routing automatically)
+    # Extract probability for this specialty from the pre-computed dictionaries
+    prob_admission_to_specialty = specialty_probs_all.apply(
+        lambda d: d.get(specialty, 0.0) if isinstance(d, dict) else 0.0
+    )
 
-    # get probability distribution weighted by probability of admission to specialty and probability of admission within prediction window
-    prob_dist_dict = get_prob_dist(
-            group_snapshots_dict, X_test, y_test, admission_model, 
-            weights=prob_admission_to_specialty*prob_admission_in_window
+    # Filter patients: only process those with non-zero specialty probability
+    non_zero_mask = prob_admission_to_specialty &gt; 0.0
+    filtered_indices = prediction_snapshots[non_zero_mask].index
+
+    if len(filtered_indices) == 0:
+        # No patients for this specialty - create zero PMF
+        prob_dist_dict = {
+            random_prediction_date: {
+                'agg_predicted': pd.DataFrame({&quot;agg_proba&quot;: [1.0]}, index=[0]),
+                'agg_observed': 0
+            }
+        }
+    else:
+        # Filter all probabilities and data for this specialty
+        filtered_prob_admission_after_ed = prob_admission_after_ed.loc[filtered_indices]
+        filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[filtered_indices]
+        filtered_prob_admission_in_window = prob_admission_in_window.loc[filtered_indices]
+
+        # Compute weights for filtered patients
+        filtered_weights = (
+            filtered_prob_admission_to_specialty * filtered_prob_admission_in_window
+        )
+
+        # Create filtered group_snapshots_dict for this specialty
+        filtered_group_snapshots_dict = {
+            random_prediction_date: [idx for idx in group_snapshots_dict[random_prediction_date] 
+                                   if idx in filtered_indices]
+        }
+
+        # Get probability distribution using filtered data
+        prob_dist_dict = get_prob_dist(
+            filtered_group_snapshots_dict, 
+            X_test.loc[filtered_indices], 
+            y_test.loc[filtered_indices], 
+            admission_model, 
+            weights=filtered_weights
         )
 
     title = (
@@ -1676,47 +1795,21 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
         f'in the ED at {format_prediction_time(random_prediction_time)} '
         f'on {random_prediction_date} '
     )
-    plot_prob_dist(prob_dist_dict[random_prediction_date]['agg_predicted'], title, 
-        include_titles=True, truncate_at_beds=20,
-        probability_levels=[0.7,0.9],
-        show_probability_thresholds=True, bar_colour='orange')
+    plot_prob_dist(
+        prob_dist_dict[random_prediction_date]['agg_predicted'], 
+        title, 
+        include_titles=True, 
+        truncate_at_beds=20,
+        probability_levels=[0.7, 0.9],
+        show_probability_thresholds=True, 
+        bar_colour='orange'
+    )
 </code></pre>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_0.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_1.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_2.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_23_3.png" /></p>
-<h2 id="train-model-to-predict-bed-count-distributions-for-patients-yet-to-arrive">Train model to predict bed count distributions for patients yet to arrive</h2>
-<p>As we are predicting by clinical area we will want the predicted bed counts for patients yet to arrive to be calculated for each separately. A dictionary, here called <code>specialty_filters</code>, is used to tell the <code>ParametricIncomingAdmissionPredictor</code> which column contains the outcome we want to split by. </p>
-<pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
-
-# set the ED targets
-x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
-prediction_window = timedelta(minutes=params[&quot;prediction_window&quot;])
-yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;])
-
-specialty_filters = filters={
-    'medical': {'specialty': 'medical'},
-    'surgical': {'specialty': 'surgical'},
-    'haem/onc': {'specialty': 'haem/onc'},
-    'paediatric': {'specialty': 'paediatric'}
-    }
-yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
-
-# calculate the number of days between the start of the training and validation sets; 
-# this is used to calculate daily arrival rates
-num_days = (start_validation_set - start_training_set).days
-
-if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
-    train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
-
-yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df, 
-              prediction_window=prediction_window, 
-              yta_time_interval=yta_time_interval, 
-              prediction_times=ed_visits.prediction_time.unique(), 
-              num_days=num_days )
-
-</code></pre>
-<h2 id="make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission">Make predictions for patients yet-to-arrive to the ED who will need admission</h2>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_20_0.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_20_1.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_20_2.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_20_3.png" /></p>
+<h2 id="2-make-predictions-for-patients-yet-to-arrive-to-the-ed-who-will-need-admission">2. Make predictions for patients yet-to-arrive to the ED who will need admission</h2>
 <p>The trained yet-to-arrive model generates the same distribution for each prediction time, irrespective of day of week, for each specialty. Passing the randomly chosen prediction time, for each specialty, will return the required distributions.</p>
 <pre><code class="language-python">for specialty in [ 'medical', 'surgical', 'haem/onc', 'paediatric']:
 
@@ -1740,24 +1833,152 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
         show_probability_thresholds=True,
         figsize=(6, 4) , bar_colour='green')
 </code></pre>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_0.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_1.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_2.png" /></p>
-<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_27_3.png" /></p>
-<h2 id="combining-the-predictions-into-one-function-for-use-in-real-time-inference">Combining the predictions into one function for use in real-time inference</h2>
-<p>The function shown below is the one used for real-time prediction at UCLH. It returns the probability distributions with the lower threshold set at the requested level using the <code>cdf_cut_points</code> argument.</p>
-<p>The function returns a dictionary, which is inserted into cells in a spreadsheet (via a process not shown here, as this is not done by the <code>patientflow</code> repo) to create the output requested by the users.</p>
-<pre><code class="language-python">from patientflow.predict.emergency_demand import create_predictions
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_22_0.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_22_1.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_22_2.png" /></p>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_22_3.png" /></p>
+<h2 id="3-helper-functions-for-predicting-real-time-inference">3. Helper functions for predicting real-time inference</h2>
+<p>In place of the length code shown above, I show two different approaches provided in <code>patientflow</code> that move the logic shown above into the package.</p>
+<ul>
+<li><strong>The current approach at UCLH</strong>, which encapsulates the logic from the step-through using a function called <code>build_prediction_inputs</code>. By using data classes (such as <code>ServicePredictionInputs</code> and <code>FlowInputs</code>), this approach provides a structured, type-safe way to organise prediction inputs that can be used with the hierarchical prediction system shown in a following notebook.</li>
+<li><strong>The legacy approach</strong> (using <code>create_predictions</code>), which was the original implementation at UCLH and is maintained for backward compatibility.</li>
+</ul>
+<h3 id="current-approach-at-uclh-use-of-the-predictservice-module">Current approach at UCLH - use of the <code>predict.service</code> module</h3>
+<p>To make demand predictions at a given prediction moment, we use a function from the <code>predict.service</code> module to prepare the prediction inputs (the trained models, the input data for that prediction moment, the yet-to-arrive parameters and the requested prediction window)</p>
+<pre><code class="language-python">from patientflow.predict.service import build_service_data
 
-models = (admission_model, spec_model, yta_model_by_spec)
+# select the relevant ED admissions model based on the prediction time
+admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
 
 # convert elapsed_los to timedelta to ensure correct calculation of probability of admission within prediction window
-prediction_snapshots['elapsed_los'] = pd.to_timedelta(prediction_snapshots['elapsed_los'], unit='s')
+prediction_snapshots_processed = prediction_snapshots.copy(deep=True)
+prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snapshots_processed['elapsed_los'], unit='s')
+
+# generate the prediction inputs
+prediction_inputs = build_service_data(
+    models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
+    prediction_time=random_prediction_time,
+    ed_snapshots=prediction_snapshots_processed,
+    inpatient_snapshots=None,  
+    specialties=specialty_filters.keys(),
+    prediction_window=timedelta(hours=8),
+    x1=x1, y1=y1, x2=x2, y2=y2
+)
+
+</code></pre>
+<p>The returned object is a dictionary, with keys for each speciality. Below I show the resulting object for one of the specialties. The class has been created to handle different types of flow, including elective inflows and discharges. It contains an set of attributes that will be used to generate a prediction, including both inflows via the ED (used here), and (not used here) elective admissions, transfers and outflows. The latter group all show inflow and outflow predictions of zero patients when no models are trained. </p>
+<pre><code class="language-python">prediction_inputs['medical']
+</code></pre>
+<pre><code>ServicePredictionInputs(service='medical')
+  INFLOWS:
+    Admissions from current ED               PMF[3:13]: [0.015, 0.037, 0.073, 0.119, 0.159, 0.176, 0.160, 0.120, 0.074, 0.037] (E=8.0 of 79 patients in ED)
+    ED yet-to-arrive admissions              λ = 2.090
+    Non-ED emergency admissions              λ = 0.000
+    Elective admissions                      λ = 0.000
+    Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
+    Emergency transfers from other services  PMF[0:1]: [1.000] (E=0.0)
+  OUTFLOWS:
+    Emergency inpatient departures           PMF[0:1]: [1.000] (E=0.0 of 0 emergency patients in service)
+    Elective inpatient departures            PMF[0:1]: [1.000] (E=0.0 of 0 elective patients in service)
+</code></pre>
+<p>The <code>DemandPredictor</code> class has also been created to handle different types of flow, including elective inflows and discharges.</p>
+<p>The <code>FlowSelection</code> parameter controls what prediction output we want. Here I have specified to include patients currently in the ED and to exclude all other flows.</p>
+<p>The <code>k_sigma</code> parameter is used to control truncation of probability mass. It specifies the maximum level of support (maximum number of beds in our case) to return. This is useful when convolving multiple distributions. For example, we might want to combining inflows of yet-to-arrive emergency patients from different sources; if some of these flows are modelled as Poisson distributions, which are by definition unbounded, the parameter controls where they are capped.  </p>
+<p>We use the <code>DemandPredictor</code> to create a bundle of predictions for all the relevant flows.</p>
+<pre><code class="language-python">from patientflow.predict.demand import DemandPredictor
+from patientflow.predict.demand import FlowSelection 
+predictor = DemandPredictor(k_sigma=8.0)
+
+current_ed_bundle = predictor.predict_service(
+    inputs=prediction_inputs['medical'],
+   flow_selection=FlowSelection.custom(
+        include_ed_current=True, # only include patients currently in the ED
+        include_ed_yta=False,
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,  
+        cohort=&quot;emergency&quot;
+    ))
+
+</code></pre>
+<p>To view the consitutent elements of the bundle, we can print it to get pretty output. A pmf range of 10 values is included in the printed output, centred around the mode. The output also records which flows were included. </p>
+<pre><code class="language-python">print(current_ed_bundle)
+</code></pre>
+<pre><code>PredictionBundle(service: medical)
+  Arrivals:    PMF[3:13]: [0.015, 0.037, 0.073, 0.119, 0.159, 0.176, 0.160, 0.120, 0.074, 0.037] (E=8.0)
+  Departures:  PMF[0:1]: [1.000] (E=0.0)
+  Net flow:    PMF[3:13]: [0.015, 0.037, 0.073, 0.119, 0.159, 0.176, 0.160, 0.120, 0.074, 0.037] (E=8.0)
+  Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=False, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
+</code></pre>
+<p>From the bundle, we can extract a probability distribution for the number of beds needed for patients currently in the ED. We can view the expectation, or view the percentiles of the distribution as shown below.</p>
+<pre><code class="language-python">print('For patients currently in the ED:\n')
+print(f'Most likely number of beds needed for the medical specialty: {current_ed_bundle.arrivals.mode}')
+print(f&quot;Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability&quot;)
+print(f&quot;Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability&quot;)
+</code></pre>
+<pre><code>For patients currently in the ED:
+
+Most likely number of beds needed for the medical specialty: 8
+Need at least 5 beds with 90% probability
+Need at least 7 beds with 70% probability
+</code></pre>
+<p>To derive the yet-to-arrive predictions, we can set the FlowSelection accordingly. </p>
+<pre><code class="language-python">yet_to_arrive_to_ed_bundle = predictor.predict_service(
+    inputs=prediction_inputs['medical'],
+   flow_selection=FlowSelection.custom(
+        include_ed_current=False,
+        include_ed_yta=True, # only include yet-to-arrive patients
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,  
+        cohort=&quot;emergency&quot;
+    ))
+</code></pre>
+<pre><code class="language-python">print('For patients yet-to-arrive to the ED:\n')
+print(f'Most likely number of beds needed for the medical specialty: {yet_to_arrive_to_ed_bundle.arrivals.mode}')
+print(f&quot;Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability&quot;)
+print(f&quot;Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability&quot;)
+</code></pre>
+<pre><code>For patients yet-to-arrive to the ED:
+
+Most likely number of beds needed for the medical specialty: 2
+Need at least 0 beds with 90% probability
+Need at least 1 beds with 70% probability
+</code></pre>
+<pre><code class="language-python">title = (
+    f'Probability distribution for number of medical beds needed within {int(prediction_window.total_seconds()/3600)} hours\n'
+    f' by the patients in the ED at {format_prediction_time(random_prediction_time)} '
+    f'on {random_prediction_date} and those yet to arrive'
+)
+
+bundle = predictor.predict_service(
+    inputs=prediction_inputs['medical'],
+    flow_selection=FlowSelection.custom(
+        include_ed_current=True,
+        include_ed_yta=True, #only change is setting include_ed_yta to True
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,  # No departures
+        cohort=&quot;emergency&quot;
+    ))
+
+plot_prob_dist(bundle.arrivals.probabilities, title, 
+    include_titles=True, truncate_at_beds=20,
+    probability_levels=[0.7,0.9],
+    show_probability_thresholds=True, bar_colour='orange')
+</code></pre>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_37_0.png" /></p>
+<h2 id="real-time-inference-legacy-processing">Real-time inference (legacy processing)</h2>
+<p>The legacy approach (the first version at UCLH) used a single function shown below for completeness.</p>
+<pre><code class="language-python">from patientflow.predict.emergency_demand import create_predictions
 
 create_predictions(
-    models = models,
+    models = (admission_model, spec_model, yta_model_by_spec),
     prediction_time = random_prediction_time,
-    prediction_snapshots = prediction_snapshots,
+    prediction_snapshots = prediction_snapshots_processed,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window = timedelta(hours=8),
     cdf_cut_points =  [0.7, 0.9], 
@@ -1767,11 +1988,11 @@ create_predictions(
     y2 = y2)
 </code></pre>
 <pre><code>{'medical': {'in_ed': [7, 5], 'yet_to_arrive': [1, 0]},
- 'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
- 'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
- 'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
+ 'surgical': {'in_ed': [3, 1], 'yet_to_arrive': [0, 0]},
+ 'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+ 'paediatric': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]}}
 </code></pre>
-<h2 id="make-predictions-using-empirical-survival-curve">Make predictions using empirical survival curve</h2>
+<h2 id="4-make-predictions-using-empirical-survival-curve">4. Make predictions using empirical survival curve</h2>
 <p>If your implementation does not use ED targets, the predictions can be generated using empirical data to calculate the probability that a patient to be admitted within the prediction window. </p>
 <p>First, I show how a survival curve would be used to calculate this probability of admission within the window. Then I re-implement the creation of predictions</p>
 <pre><code class="language-python">## Add synthetic value for admitted_to_ward_datetime to the dataset, if not available
@@ -1807,6 +2028,7 @@ survival_df = plot_admission_time_survival_curve(train_inpatient_arrivals_df.res
                                    return_figure=False
 )
 </code></pre>
+<p><img alt="png" src="../4b_Predict_emergency_demand_files/4b_Predict_emergency_demand_42_0.png" /></p>
 <p><code>patientflow</code> includes a function to look up the probability of admission within a prediction window, using the survival curve. This is demonstrated below. It is used in the <code>create_predictions</code> function if the optional parameter <code>use_admission_in_window_prob</code> is set.</p>
 <pre><code class="language-python">from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
 
@@ -1817,6 +2039,8 @@ prob_admission_in_window_from_survival_curve = calculate_admission_probability_f
 )
 
 print(f'Probability of admission in prediction window of {prediction_window.total_seconds() / 3600:.0f} hours, assuming patient has been in ED for 1 hour: {prob_admission_in_window_from_survival_curve:.2}')
+</code></pre>
+<pre><code>Probability of admission in prediction window of 8 hours, assuming patient has been in ED for 1 hour: 0.48
 </code></pre>
 <p>For an array of patients, the probability of admission within the window would be created as shown below.</p>
 <pre><code class="language-python">from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
@@ -1832,7 +2056,7 @@ prob_admission_in_window_from_survival_curve = prediction_snapshots.apply(
 )
 
 </code></pre>
-<p>Predictions are created exactly as before. </p>
+<p>Predictions are created using the legacy appraoch. </p>
 <pre><code class="language-python">from patientflow.predict.emergency_demand import create_predictions
 from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
@@ -1879,9 +2103,9 @@ create_predictions(
     y2 = y2,
     use_admission_in_window_prob = True)
 </code></pre>
-<pre><code>{'medical': {'in_ed': [7, 5], 'yet_to_arrive': [0, 0]},
- 'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
- 'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+<pre><code>{'medical': {'in_ed': [3, 2], 'yet_to_arrive': [0, 0]},
+ 'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+ 'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
  'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 </code></pre>
 <h2 id="summary">Summary</h2>
@@ -1892,6 +2116,7 @@ create_predictions(
 </ul>
 <p>Both sets of predictions assume specified ED targets are met. </p>
 <p>I also showed an alternative approach, in which predictions used past data to calculate probability of admission within a prediction window; in this case no assumption is made about ED targets being met.</p>
+<p>I showed a full step-through in code, and also two functions that you can use if your logic flow is similar to that at UCLH. </p>
 <p>In the next notebook, I show how to evaluate the predictions against the numbers of patients actually admitted. </p>
 
 

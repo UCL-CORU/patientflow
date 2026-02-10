@@ -976,6 +976,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
         
   
@@ -1004,14 +1032,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../explore_prediction_bundles/" class="md-nav__link">
+      <a href="../4e_Generate_predictions_using_hierarchy/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Explore Prediction Bundles
+    4e. Generate predictions using a customisable hospital hierarchy.
   
 
     
@@ -1570,7 +1598,7 @@ The metadata from the training process are returned in the `training_results` at
 
 
 
-TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.2345235821107298), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401688701863), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304359858095), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622072494462), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291934975475), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921775214785), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders_0', 'num_urinalysis_orders_1', 'num_troponin_orders_0', 'num_troponin_orders_1', 'num_bmp_orders_0', 'num_bmp_orders_1', 'num_cbc_orders_0', 'num_cbc_orders_1', 'num_d-dimer_orders_0', 'num_d-dimer_orders_1'], 'importances': [0.07901821285486221, 0.50030118227005, 0.10778335481882095, 0.0, 0.06226950138807297, 0.0, 0.08132454752922058, 0.0, 0.049338143318891525, 0.0, 0.11996506154537201, 0.0], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}}}, calibration_info={'method': 'sigmoid'}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
+TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.23452358103155707), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401687873552), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304380613956), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622070024668), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291733590328), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921767090972), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders', 'num_troponin_orders', 'num_bmp_orders', 'num_cbc_orders', 'num_d-dimer_orders'], 'importances': [0.07901820540428162, 0.50030118227005, 0.10778335481882095, 0.06226950138807297, 0.08132454752922058, 0.049338143318891525, 0.11996506154537201], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}}}, calibration_info={'method': 'sigmoid'}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
 </code></pre>
 <p>To get a better view of what is included within the results, here is a list of the fields returned: </p>
 <pre><code class="language-python">from dataclasses import fields
@@ -1633,9 +1661,9 @@ test: None
 <pre><code class="language-python"># results are stored in a HyperParameterTrial object
 results['cv_trials']
 </code></pre>
-<pre><code>[HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.2345235821107298), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401688701863), 'valid_auprc': np.float64(0.732305765806727)}),
- HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304359858095), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622072494462), 'valid_auprc': np.float64(0.739694204530856)}),
- HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291934975475), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921775214785), 'valid_auprc': np.float64(0.7319157690354547)})]
+<pre><code>[HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.23452358103155707), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401687873552), 'valid_auprc': np.float64(0.732305765806727)}),
+ HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304380613956), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622070024668), 'valid_auprc': np.float64(0.739694204530856)}),
+ HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291733590328), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921767090972), 'valid_auprc': np.float64(0.7319157690354547)})]
 </code></pre>
 <pre><code class="language-python">
 # Find the trial with the lowest validation logloss

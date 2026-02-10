@@ -1,0 +1,2595 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../4c_Evaluate_emergency_demand_predictions/">
+      
+      
+        <link rel="next" href="../4d_Predict_emergency_demand_with_special_categories/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>4d. Evaluate predictions with special categories - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#4d-evaluate-predictions-with-special-categories" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              4d. Evaluate predictions with special categories
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MIT License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Notebooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Notebooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the notebooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. Set up your environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Introducing our users
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2a. Create patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2b_Predict_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2b. Make predictions using patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2c_Evaluate_patient_snapshot_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2c. Evaluate models trained on patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2d. Explore the datasets provided
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3a. Prepare group snapshots from patient snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3b_Evaluate_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3b. Evaluate group snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3c. Predict bed counts without using patient snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d. Predict bed count distributions for subgroups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Specify requirements for emergency demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_emergency_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Evaluate predictions of emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set up the notebook environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-file-paths-and-load-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set file paths and load data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-modelling-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set modelling parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-temporal-splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply temporal splits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models to predict bed count distributions for patients currently in the ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model-using-cohort-aware-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train specialty model using cohort-aware prediction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model-legacy-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train specialty model - legacy code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-models-for-yet-to-arrive-patients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for yet-to-arrive patients
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Train models for yet-to-arrive patients">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#saving-of-special-category-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving of special category information
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changes-required-in-your-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes required in your implementation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate predicted distributions for each specialty and prediction time for patients in ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualise the performance of emergency demand prediction models for patients in the ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4e_Generate_predictions_using_hierarchy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4e. Generate predictions using a customisable hospital hierarchy.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Src
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Src
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patientflow
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Patientflow
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PatientFlow: A Python package for converting patient-level predictions into output that is useful for bed managers in hospitals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#set-up-the-notebook-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set up the notebook environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-file-paths-and-load-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set file paths and load data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#set-modelling-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set modelling parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-temporal-splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply temporal splits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models to predict bed count distributions for patients currently in the ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model-using-cohort-aware-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train specialty model using cohort-aware prediction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-specialty-model-legacy-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train specialty model - legacy code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train-models-for-yet-to-arrive-patients" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Train models for yet-to-arrive patients
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Train models for yet-to-arrive patients">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#saving-of-special-category-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving of special category information
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changes-required-in-your-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes required in your implementation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate predicted distributions for each specialty and prediction time for patients in ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visualise the performance of emergency demand prediction models for patients in the ED
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/4d_Predict_emergency_demand_for_sub-groups.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="4d-evaluate-predictions-with-special-categories">4d. Evaluate predictions with special categories</h1>
+<p>In the previous notebook I demonstrated how we evaluate the models used at UCLH. As a final step, I now show the same implementation in code, but including extra functionality to handle certain sub-groups differently from others. </p>
+<p>At UCLH, it is standard practice to admit paediatric patients (defined as patients under 18 on the day of arrival at the ED) to paediatric wards, and not to admit adult patients (18 or over) to paediatric wards. </p>
+<p>The two models that enable prediction by sub-groups (specialty of admission, and yet-to-arrive by specialty) offer parameters that allow you to specify that certain groups are handled differently. In the UCLH example, this means disregarding any consult requests for patients in the ED when predicting which specialty they will be admitted to, and counting all yet-to-arrive patients under 18 as paediatric admissions. </p>
+<p>Most of the code below is the same as in the previous notebook. I limit the narrative here to pointing out how the special sub-groups are handled. </p>
+<h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload 
+%autoreload 2
+</code></pre>
+<pre><code class="language-python">from patientflow.load import set_project_root
+project_root = set_project_root()
+
+</code></pre>
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+</code></pre>
+<h2 id="set-file-paths-and-load-data">Set file paths and load data</h2>
+<p>I'm going to use real patient data from UCLH to demonstrate the implementation. </p>
+<p>As noted previously, you can request the datasets that are used here on <a href="https://zenodo.org/records/14866057">Zenodo</a>. Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from <code>data_folder_name='data-public'</code> to <code>data_folder_name='data-synthetic'</code>.</p>
+<pre><code class="language-python">from patientflow.load import set_file_paths
+
+# set file paths
+data_folder_name = 'data-public'
+data_file_path = project_root / data_folder_name
+
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
+    project_root, 
+    data_folder_name=data_folder_name,
+    config_file = 'config.yaml', verbose=False)
+</code></pre>
+<pre><code class="language-python">import pandas as pd
+from patientflow.load import load_data
+
+# load ED snapshots data
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
+                    index_column = 'snapshot_id',
+                    sort_columns = [&quot;visit_number&quot;, &quot;snapshot_date&quot;, &quot;prediction_time&quot;], 
+                    eval_columns = [&quot;prediction_time&quot;, &quot;consultation_sequence&quot;, &quot;final_sequence&quot;])
+ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
+
+# load data on inpatient arrivals
+inpatient_arrivals = inpatient_arrivals = load_data(data_file_path, 
+                    file_name='inpatient_arrivals.csv')
+inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'], utc = True)
+
+</code></pre>
+<h2 id="set-modelling-parameters">Set modelling parameters</h2>
+<p>The parameters are used in training or inference. They are set in config.json in the root of the repository and loaded by <code>load_config_file()</code></p>
+<pre><code class="language-python"># load params
+from patientflow.load import load_config_file
+params = load_config_file(config_path)
+
+start_training_set, start_validation_set, start_test_set, end_test_set = params[&quot;start_training_set&quot;], params[&quot;start_validation_set&quot;], params[&quot;start_test_set&quot;], params[&quot;end_test_set&quot;]
+
+</code></pre>
+<h2 id="apply-temporal-splits">Apply temporal splits</h2>
+<pre><code class="language-python">from patientflow.prepare import create_temporal_splits
+
+train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
+    ed_visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;,
+)
+
+train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_splits(
+    inpatient_arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;arrival_datetime&quot;,
+)
+</code></pre>
+<pre><code>Split sizes: [62071, 10415, 29134]
+Split sizes: [7716, 1285, 3898]
+</code></pre>
+<h2 id="train-models-to-predict-bed-count-distributions-for-patients-currently-in-the-ed">Train models to predict bed count distributions for patients currently in the ED</h2>
+<p>This time I'll use a larger parameter grid, while still limiting the search space to a few hyperparameters for expediency.</p>
+<pre><code class="language-python">
+from patientflow.train.classifiers import train_classifier
+from patientflow.load import get_model_key
+
+grid = { # Current parameters
+    'n_estimators': [30, 40, 50],  # Number of trees
+    'subsample': [0.7, 0.8, 0.9],  # Sample ratio of training instances
+    'colsample_bytree': [0.7, 0.8, 0.9],  # Sample ratio of columns for each tree
+   } 
+
+exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
+
+ordinal_mappings = {
+    &quot;latest_acvpu&quot;: [&quot;A&quot;, &quot;C&quot;, &quot;V&quot;, &quot;P&quot;, &quot;U&quot;],
+    &quot;latest_obs_manchester_triage_acuity&quot;: [
+        &quot;Blue&quot;,
+        &quot;Green&quot;,
+        &quot;Yellow&quot;,
+        &quot;Orange&quot;,
+        &quot;Red&quot;,
+    ],
+    &quot;latest_obs_objective_pain_score&quot;: [
+        &quot;Nil&quot;,
+        &quot;Mild&quot;,
+        &quot;Moderate&quot;,
+        &quot;Severe\\E\\Very Severe&quot;,
+    ],
+    &quot;latest_obs_level_of_consciousness&quot;: [&quot;A&quot;, &quot;C&quot;, &quot;V&quot;, &quot;P&quot;, &quot;U&quot;],
+}
+
+# create a dictionary to store the trained models
+admissions_models = {}
+model_name = 'admissions'
+
+# Loop through each prediction time
+for prediction_time in ed_visits.prediction_time.unique():
+    print(f&quot;Training model for {prediction_time}&quot;)
+    model = train_classifier(
+        train_visits=train_visits_df,
+        valid_visits=valid_visits_df,
+        test_visits=test_visits_df,
+        grid=grid,
+        exclude_from_training_data=exclude_from_training_data,
+        ordinal_mappings=ordinal_mappings,
+        prediction_time=prediction_time,
+        visit_col=&quot;visit_number&quot;,
+        calibrate_probabilities=True,
+        calibration_method=&quot;isotonic&quot;,
+        use_balanced_training=True,
+    )
+    model_key = get_model_key(model_name, prediction_time)
+
+    admissions_models[model_key] = model
+</code></pre>
+<pre><code>Training model for (22, 0)
+Training model for (15, 30)
+Training model for (6, 0)
+Training model for (12, 0)
+Training model for (9, 30)
+</code></pre>
+<h2 id="train-specialty-model-using-cohort-aware-prediction">Train specialty model using cohort-aware prediction</h2>
+<p>MultiSubgroupPredictor creates separate models for different patient subgroups (for example different age/sex combinations). This makes it possible to ensure that a model never predicts that an adult be admitted to a paediatric specialty, for example. As we move towards predicting by subspecialty at UCLH, we want to ensure that some of male sex would have zero probability of being admitted to wards dedicated to women's health, for example. </p>
+<p>Here I demonstrate a simple case ensuing that children and adults are treated separately.</p>
+<pre><code class="language-python">from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
+from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
+
+def create_subgroup_functions_from_age_group():
+    &quot;&quot;&quot;Create subgroup functions that work with age_group categorical variable.&quot;&quot;&quot;
+
+    def is_paediatric(row):
+        return row.get(&quot;age_group&quot;) == &quot;0-17&quot;
+
+    def is_adult(row):
+        # All non-paediatric patients are adults
+        return row.get(&quot;age_group&quot;) != &quot;0-17&quot;
+
+    return {
+        &quot;paediatric&quot;: is_paediatric,
+        &quot;adult&quot;: is_adult,
+    }
+
+subgroup_functions = create_subgroup_functions_from_age_group()
+
+spec_model = MultiSubgroupPredictor(
+    subgroup_functions=subgroup_functions,
+    base_predictor_class=SequenceToOutcomePredictor,
+    input_var=&quot;consultation_sequence&quot;,
+    grouping_var=&quot;final_sequence&quot;,
+    outcome_var=&quot;specialty&quot;,
+    min_samples=50,  # Minimum samples required per subgroup
+)
+spec_model = spec_model.fit(train_visits_df)
+</code></pre>
+<p>By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults form paediatric specialties did not work as intended. That is because <code>infer_specialty_to_subgroups</code> function includes any subgroup that appears <strong>at least once</strong> for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy), both subgroups will be included.</p>
+<pre><code class="language-python">spec_model.specialty_to_subgroups
+</code></pre>
+<pre><code>{'medical': ['paediatric', 'adult'],
+ 'surgical': ['paediatric', 'adult'],
+ 'paediatric': ['paediatric', 'adult'],
+ 'haem/onc': ['paediatric', 'adult']}
+</code></pre>
+<p>Looking at the actual subgroup mapping in the data, we see that some children do go to adult specialties and vice versa. From the data below, 3% of children were admitted to surgical specialties; these might be genuine decisions rather than coding errors.</p>
+<pre><code class="language-python">
+for specialty in spec_model.specialty_to_subgroups.keys():
+    spec_mask = train_visits_df['specialty'] == specialty
+    spec_data = train_visits_df[spec_mask]
+
+    paediatric_count = spec_data.apply(subgroup_functions['paediatric'], axis=1).sum()
+    adult_count = spec_data.apply(subgroup_functions['adult'], axis=1).sum()
+    total = len(spec_data)
+
+    print(f&quot;\n{specialty} specialty:&quot;)
+    print(f&quot;  Total patients: {total}&quot;)
+    print(f&quot;  Paediatric (age_group == '0-17'): {paediatric_count} ({paediatric_count/total*100:.1f}%)&quot;)
+    print(f&quot;  Adult (age_group != '0-17'): {adult_count} ({adult_count/total*100:.1f}%)&quot;)
+
+    # Check for missing age_group values
+    missing_age = spec_data['age_group'].isna().sum()
+    if missing_age &gt; 0:
+        print(f&quot;  Missing age_group: {missing_age} ({missing_age/total*100:.1f}%)&quot;)
+</code></pre>
+<pre><code>medical specialty:
+  Total patients: 5392
+  Paediatric (age_group == '0-17'): 12 (0.2%)
+  Adult (age_group != '0-17'): 5380 (99.8%)
+
+surgical specialty:
+  Total patients: 2185
+  Paediatric (age_group == '0-17'): 70 (3.2%)
+  Adult (age_group != '0-17'): 2115 (96.8%)
+
+paediatric specialty:
+  Total patients: 528
+  Paediatric (age_group == '0-17'): 513 (97.2%)
+  Adult (age_group != '0-17'): 15 (2.8%)
+
+haem/onc specialty:
+  Total patients: 707
+  Paediatric (age_group == '0-17'): 1 (0.1%)
+  Adult (age_group != '0-17'): 706 (99.9%)
+</code></pre>
+<p>We can override this mapping if we wished to enforce stricter policy rules, as shown below.</p>
+<pre><code class="language-python">expected_mapping = {
+    'paediatric': ['paediatric'],
+    'medical': ['adult'],
+    'surgical': ['adult'],
+    'haem/onc': ['adult'],
+}
+
+# Override the inferred mapping
+spec_model.specialty_to_subgroups = expected_mapping
+
+print(&quot;Updated specialty_to_subgroups mapping:&quot;)
+spec_model.specialty_to_subgroups
+</code></pre>
+<pre><code>Updated specialty_to_subgroups mapping:
+
+
+
+
+
+{'paediatric': ['paediatric'],
+ 'medical': ['adult'],
+ 'surgical': ['adult'],
+ 'haem/onc': ['adult']}
+</code></pre>
+<h2 id="train-specialty-model-legacy-code">Train specialty model - legacy code</h2>
+<p>The legacy approach, prior to implementing the MultiSubgroupPredictor was, when training the model predicting specialty of admission, to set a <code>apply_special_category_filtering</code> parameter to True. The legacy approach has been included here for completeness.</p>
+<pre><code class="language-python">from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
+
+spec_model = SequenceToOutcomePredictor(
+    input_var=&quot;consultation_sequence&quot;,
+    grouping_var=&quot;final_sequence&quot;,
+    outcome_var=&quot;specialty&quot;,
+    apply_special_category_filtering=True,
+)
+
+spec_model = spec_model.fit(train_visits_df)
+
+spec_model
+</code></pre>
+<style>#sk-container-id-1 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-1 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-1 pre {
+  padding: 0;
+}
+
+#sk-container-id-1 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-1 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-1 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-1 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-1 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-1 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-1 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-1 label.sk-toggleable__label {
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#sk-container-id-1 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-1 div.sk-toggleable__content {
+  max-height: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-1 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-1 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-1 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-1 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 0.5em;
+  text-align: center;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-1 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-1 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+</style>
+<div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequenceToOutcomePredictor(
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=True,
+    admit_col=&#x27;is_admitted&#x27;
+)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>SequenceToOutcomePredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>SequenceToOutcomePredictor(
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=True,
+    admit_col=&#x27;is_admitted&#x27;
+)</pre></div> </div></div></div></div>
+
+<p>Under the hood, the <code>SequenceToOutcomePredictor</code> will call a <code>create_special_category_objects()</code> function that returns rules for how to handle each subgroup. The implementation here is primarily designed to handle paediatric patients (under 18) as a special category. A <code>SpecialCategoryParams</code> class generates a dictionary mapping specialties to flags (1.0 for paediatric, 0.0 for others) and functions to identify paediatric patients based on age data. It provides methods to handle both age formats (age_on_arrival or age_group). </p>
+<p>The <code>SequenceToOutcomePredictor</code> applies these rules during both training and prediction, ensuring consistent handling of special categories across the entire prediction pipeline</p>
+<p>The <code>SpecialCategoryParams</code> class is designed to be picklable, which is necessary for saving the specialty predictor model to disk.</p>
+<p>The output from <code>create_special_category_objects</code> is shown below. Note that the output is specific to the UCLH implementation, and that its use has been deprecated in favour of a more generalisable approach. </p>
+<p>See below for notes about how to change this for your implementation. </p>
+<pre><code class="language-python">from patientflow.prepare import create_special_category_objects
+create_special_category_objects(train_visits_df.columns)
+</code></pre>
+<pre><code>{'special_category_func': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_paediatric(row)&gt;,
+ 'special_category_dict': {'medical': 0.0,
+  'surgical': 0.0,
+  'haem/onc': 0.0,
+  'paediatric': 1.0},
+ 'special_func_map': {'paediatric': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_paediatric(row)&gt;,
+  'default': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_not_paediatric(row)&gt;}}
+</code></pre>
+<h2 id="train-models-for-yet-to-arrive-patients">Train models for yet-to-arrive patients</h2>
+<p>Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See  <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/">3c_Predict_bed_counts_without_using_patient_snapshots.md</a> for more information. When making predictions by specialty, arrival rates are learned for each specialty separately. </p>
+<p>The <code>create_yta_filters()</code> function generates a dictionary of filters for the <code>ParametricIncomingAdmissionPredictor</code> to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in <code>create_special_category_objects</code>) to create two types of filters:</p>
+<ul>
+<li>For paediatric patients: {"is_child": True}</li>
+<li>For other specialties: {"specialty": specialty_name, "is_child": False}</li>
+</ul>
+<p>This allows the predictor to 
+* Train separate models for each specialty
+* Handle sub-groups differently
+* Apply appropriate filtering during both training and prediction</p>
+<pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+from patientflow.prepare import create_yta_filters
+from datetime import timedelta
+
+x1, y1, x2, y2 = params[&quot;x1&quot;], params[&quot;y1&quot;], params[&quot;x2&quot;], params[&quot;y2&quot;]
+
+specialty_filters = create_yta_filters(ed_visits)
+yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
+
+# calculate the number of days between the start of the training and validation sets; used for working out daily arrival rates
+num_days = (start_validation_set - start_training_set).days
+
+if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
+    train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
+
+yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df, 
+              prediction_window=timedelta(hours=params[&quot;prediction_window&quot;]), 
+              yta_time_interval=timedelta(minutes=params[&quot;yta_time_interval&quot;]), 
+              prediction_times=ed_visits.prediction_time.unique(), 
+              num_days=num_days )
+</code></pre>
+<h3 id="saving-of-special-category-information">Saving of special category information</h3>
+<p>The <code>ParametricIncomingAdmissionPredictor</code> class uses the special category objects during initialisation to create static filters that map specialties to their configurations (e.g., {'is_child': True} for paediatric cases), but does not need them in the predict method. The filters are saved with the instance. </p>
+<pre><code class="language-python">yta_model_by_spec.filters
+</code></pre>
+<pre><code>{'medical': {'specialty': 'medical', 'is_child': False},
+ 'surgical': {'specialty': 'surgical', 'is_child': False},
+ 'haem/onc': {'specialty': 'haem/onc', 'is_child': False},
+ 'paediatric': {'is_child': True}}
+</code></pre>
+<p>In contrast, the <code>SequenceToOutcomePredictor</code> save the special parameters as a function, which is used by the predict method to filter and categorise patients based on their characteristics.</p>
+<pre><code class="language-python">spec_model.special_params
+</code></pre>
+<pre><code>{'special_category_func': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_paediatric(row)&gt;,
+ 'special_category_dict': {'medical': 0.0,
+  'surgical': 0.0,
+  'haem/onc': 0.0,
+  'paediatric': 1.0},
+ 'special_func_map': {'paediatric': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_paediatric(row)&gt;,
+  'default': &lt;function patientflow.predictors.legacy_compatibility.create_special_category_objects.&lt;locals&gt;.is_not_paediatric(row)&gt;}}
+</code></pre>
+<h2 id="changes-required-in-your-implementation">Changes required in your implementation</h2>
+<p>Listed below are the functions that relate to this special handling. However, note that the way this is handled has been deprecated, in favour of a more generalisable approach. </p>
+<ol>
+<li><strong>SpecialCategoryParams Class</strong> (<code>src/patientflow/prepare.py</code>):</li>
+<li>Specialty names and flags in <code>special_category_dict</code></li>
+<li>Age detection logic in <code>special_category_func</code></li>
+<li>
+<p>Category mapping in <code>special_func_map</code></p>
+</li>
+<li>
+<p><strong>SequenceToOutcomePredictor Class</strong> (<code>src/patientflow/predictors/sequence_to_outcome_predictor.py</code>):</p>
+</li>
+<li>Uses <code>create_special_category_objects</code> in <code>_preprocess_data</code></li>
+<li>Filters data based on special categories</li>
+<li>
+<p>Handles specialty predictions differently for special categories</p>
+</li>
+<li>
+<p><strong>ValueToOutcomePredictor Class</strong> (<code>src/patientflow/predictors/value_to_outcome_predictor.py</code>):</p>
+</li>
+<li>Similar to SequenceToOutcomePredictor, uses special category filtering</li>
+<li>
+<p>Applies the same filtering logic in <code>_preprocess_data</code></p>
+</li>
+<li>
+<p><strong>create_yta_filters Function</strong> (<code>src/patientflow/prepare.py</code>):</p>
+</li>
+<li>Creates specialty filters based on special category parameters</li>
+<li>
+<p>Generates filter configurations for each specialty</p>
+</li>
+<li>
+<p><strong>get_specialty_probs Function</strong> (<code>src/patientflow/predict/emergency_demand.py</code>):</p>
+</li>
+<li>Uses special category functions to determine specialty probabilities</li>
+<li>
+<p>Applies different probability distributions for special categories</p>
+</li>
+<li>
+<p><strong>create_predictions Function</strong> (<code>src/patientflow/predict/emergency_demand.py</code>):</p>
+</li>
+<li>Validates that requested specialties match special category dictionary</li>
+<li>Uses special function map for filtering predictions</li>
+<li>
+<p>Applies different prediction logic for special categories</p>
+</li>
+<li>
+<p><strong>WeightedPoissonPredictor Class</strong> (<code>src/patientflow/predictors/weighted_poisson_predictor.py</code>):</p>
+</li>
+<li>Uses specialty filters for predictions</li>
+<li>
+<p>Handles different prediction logic for special categories</p>
+</li>
+<li>
+<p><strong>Tests</strong> (<code>tests/test_create_predictions.py</code>):</p>
+</li>
+<li>Test cases for special category handling</li>
+<li>Validation of special category predictions</li>
+</ol>
+<p>To modify your implementation for different specialty names and rules, you would need to:</p>
+<ol>
+<li>Create a new class that inherits from <code>SpecialCategoryParams</code> with your custom logic</li>
+<li>Update all the specialty names and flags in the special category dictionary</li>
+<li>Modify the detection functions for your special categories</li>
+<li>Update the filter configurations in <code>create_yta_filters</code></li>
+<li>Ensure all test cases are updated to reflect your new specialty structure</li>
+<li>Update any documentation or examples that reference the specialty names</li>
+</ol>
+<h2 id="generate-predicted-distributions-for-each-specialty-and-prediction-time-for-patients-in-ed">Generate predicted distributions for each specialty and prediction time for patients in ED</h2>
+<p>Now that the models have been trained with the special parameters, we proceed with generating and evaluating predictions. The approach below uses a similar function to the <code>get_specialty_probability_distributions</code> function shown in the previous notebook, with some additional logic to identify sub-groups that need special processing. </p>
+<p>The function </p>
+<ul>
+<li>retrieves the special parameters than were saved with the specialty predictor</li>
+<li>ensures that only eligible patient snapshots are included in the predictions for each specialty. A temporary version of the test set, called <code>test_df_eligible</code> is created for each iteration through the various specialties using only the eligible visits </li>
+</ul>
+<p>Why is this necessary? Imagine an ED that currently has 75 adult patients and 25 children. Tje maximum number of beds that could be needed in the paediatric specialties is 25 and the maximum number of beds that could be needed in the adult specialties is 75. Without filtering a probabilty distribution for 100 beds would be produced. The logic below means that adult patients are excluded from the predicted distribution for the paediatric specialty, and children from the predicted distributions for the adult specialty. </p>
+<pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
+from patientflow.aggregate import get_prob_dist
+from patientflow.predict.emergency_demand import get_specialty_probs
+from patientflow.load import get_model_key
+
+
+def get_specialty_probability_distributions_with_special_categories(
+    test_visits_df,
+    spec_model,
+    admissions_models,
+    model_name,
+    exclude_from_training_data,
+    specialties=['medical', 'surgical', 'haem/onc', 'paediatric'],
+    baseline_prob_dict=None,
+):
+    &quot;&quot;&quot;
+    Calculate probability distributions for emergency department patients by specialty and prediction time.
+
+    Args:
+        test_visits_df: DataFrame containing test visit data
+        spec_model: Model for specialty predictions (SequenceToOutcomePredictor)
+        admissions_models: Dictionary of admission prediction models
+        model_name: Name of the model to use
+        specialties: List of specialties to consider
+        exclude_from_training_data: List of columns to exclude from training data
+        baseline_prob_dict: Optional dict of baseline probabilities to use instead of spec_model predictions
+
+    Returns:
+        Dictionary containing probability distributions for each specialty and prediction time
+    &quot;&quot;&quot;
+    # Get specialty prediction parameters
+    special_params = spec_model.special_params
+    special_category_func = special_params[&quot;special_category_func&quot;]
+    special_category_dict = special_params[&quot;special_category_dict&quot;]
+    special_func_map = special_params[&quot;special_func_map&quot;]
+
+    # Get predictions of admission to specialty
+    if baseline_prob_dict is not None:
+        # Use baseline probabilities instead of model predictions
+        # Create paediatric dictionary for age group 0-17
+        paediatric_dict = {key: 0 for key in baseline_prob_dict.keys()}
+        paediatric_dict['paediatric'] = 1
+
+        # Apply different dictionaries based specialty category function
+        test_visits_df.loc[:, &quot;specialty_prob&quot;] = test_visits_df.apply(
+            lambda row: paediatric_dict if special_category_func(row) else baseline_prob_dict,
+            axis=1
+        )
+    else:
+        # Use spec_model to get predictions
+        test_visits_df.loc[:, &quot;specialty_prob&quot;] = get_specialty_probs(
+            specialties,
+            spec_model,
+            test_visits_df,
+            special_category_func=special_category_func,
+            special_category_dict=special_category_dict,
+        )
+
+    # Initialize dictionary to store probability distributions
+    prob_dist_dict_all = {}
+
+    # Process each time of day
+    for _prediction_time in test_visits_df.prediction_time.unique():
+        prob_dist_dict_for_pats_in_ED = {}
+        print(&quot;\nProcessing :&quot; + str(_prediction_time))
+        model_key = get_model_key(model_name, _prediction_time)
+
+        for specialty in specialties:
+            print(f&quot;Predicting bed counts for {specialty} specialty, for all snapshots in the test set&quot;)
+
+            # Get indices of patients who are eligible for this specialty
+            func = special_func_map.get(specialty, special_func_map[&quot;default&quot;])
+            non_zero_indices = test_visits_df[
+                test_visits_df.apply(func, axis=1)
+            ].index
+
+            test_df_eligible = test_visits_df.copy()
+            test_df_eligible = test_df_eligible.loc[non_zero_indices]
+
+            # Get probability of admission to specialty for eligible patients
+            prob_admission_to_specialty = test_df_eligible[&quot;specialty_prob&quot;].apply(
+                lambda x: x[specialty]
+            )
+
+            # Prepare patient snapshots
+            X_test, y_test = prepare_patient_snapshots(
+                df=test_df_eligible, 
+                prediction_time=_prediction_time, 
+                single_snapshot_per_visit=False,
+                exclude_columns=exclude_from_training_data, 
+                visit_col='visit_number'
+            )
+
+            # Filter probabilities for eligible patients
+            filtered_prob_admission_to_specialty = prob_admission_to_specialty.loc[
+                non_zero_indices
+            ]
+
+            # Prepare group snapshots
+            group_snapshots_dict = prepare_group_snapshot_dict(
+                test_df_eligible[test_df_eligible.prediction_time == _prediction_time]
+            )
+
+            admitted_to_specialty = test_df_eligible['specialty'] == specialty
+
+            # Get probability distribution for this time and specialty
+            prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
+                group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
+                weights=filtered_prob_admission_to_specialty,
+                category_filter=admitted_to_specialty, 
+                normal_approx_threshold=30
+            )
+
+        prob_dist_dict_all[f'{model_key}'] = prob_dist_dict_for_pats_in_ED
+
+    return prob_dist_dict_all
+</code></pre>
+<pre><code class="language-python">prob_dist_dict_all = get_specialty_probability_distributions_with_special_categories(
+    test_visits_df=test_visits_df,
+    spec_model=spec_model,      
+    admissions_models=admissions_models,
+    model_name=model_name,
+    exclude_from_training_data=exclude_from_training_data,
+)
+</code></pre>
+<pre><code>Processing :(22, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(6, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(15, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(9, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(12, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+</code></pre>
+<h2 id="visualise-the-performance-of-emergency-demand-prediction-models-for-patients-in-the-ed">Visualise the performance of emergency demand prediction models for patients in the ED</h2>
+<p>Below I generate Adjusted QQ plots for each specialties, using both the baseline predictions, and the sequence predictor. The plots are very similar to the previous notebook. Using age as a fixed category for identifying patients destined for paediatric or adult wards yields similar results.</p>
+<pre><code class="language-python">baseline_probs = train_inpatient_arrivals_df[~(train_inpatient_arrivals_df.is_child) &amp; 
+                                             (train_inpatient_arrivals_df.specialty.isin(['medical', 'surgical', 'haem/onc']))]['specialty'].value_counts(normalize=True).to_dict()
+baseline_probs['paediatric'] = 0
+
+prob_dist_dict_all_baseline = get_specialty_probability_distributions_with_special_categories(
+    test_visits_df=test_visits_df,
+    spec_model=spec_model,      
+    admissions_models=admissions_models,
+    model_name=model_name,
+    exclude_from_training_data=exclude_from_training_data,
+    baseline_prob_dict=baseline_probs
+)
+</code></pre>
+<pre><code>Processing :(22, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(6, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(15, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(9, 30)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+
+Processing :(12, 0)
+Predicting bed counts for medical specialty, for all snapshots in the test set
+Predicting bed counts for surgical specialty, for all snapshots in the test set
+Predicting bed counts for haem/onc specialty, for all snapshots in the test set
+Predicting bed counts for paediatric specialty, for all snapshots in the test set
+</code></pre>
+<pre><code class="language-python">from patientflow.viz.epudd import plot_epudd
+
+for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
+
+    print(f'\nEPUDD plots for {specialty} specialty: baseline vs sequence predictor')
+
+    specialty_prob_dist_baseline = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all_baseline.items()}
+    specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
+
+    plot_epudd(ed_visits.prediction_time.unique(), 
+        specialty_prob_dist_baseline,
+        model_name=&quot;admissions&quot;,
+        suptitle=f&quot;EPUDD plots for {specialty} specialty using baseline probability&quot;)
+
+    plot_epudd(ed_visits.prediction_time.unique(), 
+        specialty_prob_dist,
+        model_name=&quot;admissions&quot;,
+        suptitle=f&quot;EPUDD plots for {specialty} specialty using sequence predictor&quot;)
+</code></pre>
+<pre><code>EPUDD plots for medical specialty: baseline vs sequence predictor
+</code></pre>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_1.png" /></p>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_2.png" /></p>
+<pre><code>EPUDD plots for surgical specialty: baseline vs sequence predictor
+</code></pre>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_4.png" /></p>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_5.png" /></p>
+<pre><code>EPUDD plots for haem/onc specialty: baseline vs sequence predictor
+</code></pre>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_7.png" /></p>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_8.png" /></p>
+<pre><code>EPUDD plots for paediatric specialty: baseline vs sequence predictor
+</code></pre>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_10.png" /></p>
+<p><img alt="png" src="../4d_Predict_emergency_demand_for_sub-groups_files/4d_Predict_emergency_demand_for_sub-groups_37_11.png" /></p>
+<h2 id="summary">Summary</h2>
+<p>In this notebook I have shown how to specify that certain groups are handled differently. In the UCLH case, we assume that all patients under 18 will be admitted to a paediatric specialty. I have demonstrated how you can use the functions in patientflow to handle such special cases. </p>
+<p>Note: the approach illustrated here had been deprecated. The code will still work, but this notebook will be replaced in due course. </p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
