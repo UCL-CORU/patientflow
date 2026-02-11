@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def set_project_root(env_var: Optional[str] = None) -> Path:
+def set_project_root(env_var: Optional[str] = None, verbose: bool = True) -> Path:
     """
     Sets project root path from environment variable or infers it from current path.
 
@@ -78,6 +78,7 @@ def set_project_root(env_var: Optional[str] = None) -> Path:
 
     Args:
         env_var (Optional[str]): Name of environment variable containing project root path
+        verbose (bool): Whether to print status messages. Default True.
 
     Returns:
         Path: Validated project root path
@@ -97,7 +98,8 @@ def set_project_root(env_var: Optional[str] = None) -> Path:
             project_root = Path(env_path)
             if not project_root.is_dir():
                 raise NotADirectoryError(f"Path does not exist: {project_root}")
-            print(f"Project root from environment: {project_root}")
+            if verbose:
+                print(f"Project root from environment: {project_root}")
             return project_root
         except (TypeError, ValueError) as e:
             print(f"Error converting {env_path} to Path: {e}")
@@ -113,7 +115,8 @@ def set_project_root(env_var: Optional[str] = None) -> Path:
                 # Continue searching to find highest level
 
         if project_root:
-            print(f"Inferred project root: {project_root}")
+            if verbose:
+                print(f"Inferred project root: {project_root}")
             return project_root
 
         print(

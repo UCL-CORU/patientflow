@@ -71,6 +71,7 @@ def plot_prob_dist(
     plot_bed_base=None,
     xlabel="Number of beds",
     return_figure=False,
+    ax=None,
 ):
     """Plot a probability distribution as a bar chart with enhanced plotting options.
 
@@ -130,11 +131,17 @@ def plot_prob_dist(
     return_figure : bool, optional
         If True, returns the matplotlib figure instead of displaying it.
         Default is False
+    ax : matplotlib.axes.Axes or None, optional
+        An existing Axes to draw into.  When provided, *figsize*,
+        *media_file_path*, *file_name*, and *return_figure* are ignored
+        and the function draws directly into *ax* (useful for subplots).
+        Default is None (creates a new figure).
 
     Returns
     -------
-    matplotlib.figure.Figure or None
-        Returns the figure if return_figure is True, otherwise displays the plot
+    matplotlib.axes.Axes or matplotlib.figure.Figure or None
+        Returns *ax* when an external Axes is provided, the figure when
+        *return_figure* is True, or None otherwise.
 
     Examples
     --------
@@ -216,16 +223,23 @@ def plot_prob_dist(
             filtered_data["agg_proba"].values, probability_levels
         )
 
-    # Create the plot
-    fig = plt.figure(figsize=figsize)
+    # When an external Axes is provided, draw into it and return early
+    use_external_ax = ax is not None
 
-    if not file_name:
-        file_name = (
-            title.replace(" ", "_").replace("/n", "_").replace("%", "percent") + ".png"
-        )
+    if use_external_ax:
+        target_ax = ax
+    else:
+        fig = plt.figure(figsize=figsize)
+        target_ax = fig.gca()
+
+        if not file_name:
+            file_name = (
+                title.replace(" ", "_").replace("/n", "_").replace("%", "percent")
+                + ".png"
+            )
 
     # Plot bars
-    plt.bar(
+    target_ax.bar(
         filtered_data.index,
         filtered_data["agg_proba"].values,
         color=bar_colour,
@@ -246,7 +260,7 @@ def plot_prob_dist(
 
         tick_start = (data_min // tick_step) * tick_step
         tick_end = data_max + 1
-        plt.xticks(np.arange(tick_start, tick_end, tick_step))
+        target_ax.set_xticks(np.arange(tick_start, tick_end, tick_step))
 
     # Plot probability threshold lines
     if show_probability_thresholds and probability_thresholds:
@@ -254,40 +268,44 @@ def plot_prob_dist(
             plt.cm.gray(np.linspace(0.3, 0.7, len(probability_thresholds)))
         )
         for probability, bed_count in probability_thresholds.items():
-            plt.axvline(
+            target_ax.axvline(
                 x=bed_count,
                 linestyle="--",
                 linewidth=2,
                 color=next(colors),
                 label=f"{probability*100:.0f}% probability of needing ≥ {bed_count} beds",
             )
-        plt.legend(loc="upper right")
+        target_ax.legend(loc="upper right")
 
     # Add bed balance lines
     if plot_bed_base:
         for point in plot_bed_base:
-            plt.axvline(
+            target_ax.axvline(
                 x=plot_bed_base[point],
                 linewidth=2,
                 color="red",
                 label=f"bed balance: {point}",
             )
-        plt.legend(loc="upper right")
+        target_ax.legend(loc="upper right")
 
     # Add text and labels
     if text_size:
-        plt.tick_params(axis="both", which="major", labelsize=text_size)
-        plt.xlabel(xlabel, fontsize=text_size)
+        target_ax.tick_params(axis="both", which="major", labelsize=text_size)
+        target_ax.set_xlabel(xlabel, fontsize=text_size)
         if include_titles:
-            plt.title(title, fontsize=text_size)
-            plt.ylabel("Probability", fontsize=text_size)
+            target_ax.set_title(title, fontsize=text_size)
+            target_ax.set_ylabel("Probability", fontsize=text_size)
     else:
-        plt.xlabel(xlabel)
+        target_ax.set_xlabel(xlabel)
         if include_titles:
-            plt.title(title)
-            plt.ylabel("Probability")
+            target_ax.set_title(title)
+            target_ax.set_ylabel("Probability")
 
-    plt.tight_layout()
+    # If using an external Axes, skip figure-level operations and return the Axes
+    if use_external_ax:
+        return target_ax
+
+    fig.tight_layout()
 
     # Save or display the figure
     if media_file_path:
