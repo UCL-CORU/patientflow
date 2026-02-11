@@ -10,32 +10,66 @@ import pandas as pd
 from patientflow.predictors.legacy_compatibility import get_age
 
 
+def _is_paediatric(row):
+    """Return True if the patient is paediatric (age < 18)."""
+    return get_age(row) < 18
+
+
+def _is_adult(row):
+    """Return True if the patient is an adult (age >= 18)."""
+    return get_age(row) >= 18
+
+
+def _is_adult_male_young(row):
+    """Return True if the patient is a young adult male (18 <= age < 65)."""
+    age = get_age(row)
+    return 18 <= age < 65 and row.get("sex") == "M"
+
+
+def _is_adult_female_young(row):
+    """Return True if the patient is a young adult female (18 <= age < 65)."""
+    age = get_age(row)
+    return 18 <= age < 65 and row.get("sex") == "F"
+
+
+def _is_adult_male_senior(row):
+    """Return True if the patient is a senior male (age >= 65)."""
+    age = get_age(row)
+    return age >= 65 and row.get("sex") == "M"
+
+
+def _is_adult_female_senior(row):
+    """Return True if the patient is a senior female (age >= 65)."""
+    age = get_age(row)
+    return age >= 65 and row.get("sex") == "F"
+
+
+def create_paediatric_adult_subgroup_functions() -> (
+    Dict[str, Callable[[Union[pd.Series, dict]], bool]]
+):
+    """Create a simple paediatric/adult subgroup split.
+
+    Uses :func:`~patientflow.predictors.legacy_compatibility.get_age` so
+    the functions work with both ``age_on_arrival`` (numeric) and
+    ``age_group`` (categorical) columns.
+
+    Returns
+    -------
+    dict
+        ``{"paediatric": <func>, "adult": <func>}``
+    """
+    return {
+        "paediatric": _is_paediatric,
+        "adult": _is_adult,
+    }
+
+
 def create_subgroup_functions() -> Dict[str, Callable[[Union[pd.Series, dict]], bool]]:
     """Create the 5 standard subgroup identification functions."""
-
-    def is_paediatric(row):
-        return get_age(row) < 18
-
-    def is_adult_male_young(row):
-        age = get_age(row)
-        return 18 <= age < 65 and row.get("sex") == "M"
-
-    def is_adult_female_young(row):
-        age = get_age(row)
-        return 18 <= age < 65 and row.get("sex") == "F"
-
-    def is_adult_male_senior(row):
-        age = get_age(row)
-        return age >= 65 and row.get("sex") == "M"
-
-    def is_adult_female_senior(row):
-        age = get_age(row)
-        return age >= 65 and row.get("sex") == "F"
-
     return {
-        "paediatric": is_paediatric,
-        "adult_male_young": is_adult_male_young,
-        "adult_female_young": is_adult_female_young,
-        "adult_male_senior": is_adult_male_senior,
-        "adult_female_senior": is_adult_female_senior,
+        "paediatric": _is_paediatric,
+        "adult_male_young": _is_adult_male_young,
+        "adult_female_young": _is_adult_female_young,
+        "adult_male_senior": _is_adult_male_senior,
+        "adult_female_senior": _is_adult_female_senior,
     }

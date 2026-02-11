@@ -18,7 +18,13 @@ test_real_time_predictions : Test real-time prediction functionality
 
 train_all_models : Complete training pipeline
     Trains all three model types (admissions, specialty, yet-to-arrive)
-    with proper validation and optional model saving.
+    with proper validation and optional model saving. Returns the trained
+    models as a dictionary.
+
+prepare_prediction_inputs : Convenience wrapper for interactive use
+    Loads configuration and data, then calls ``train_all_models`` and
+    returns everything needed for inference. Designed for notebook /
+    pipeline use.
 
 main : Entry point for training pipeline
     Loads configuration, data, and runs the complete training process.
@@ -45,24 +51,28 @@ from patientflow.train.utils import save_model
 from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
+from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
+from patientflow.predictors.subgroup_definitions import (
+    create_paediatric_adult_subgroup_functions,
+)
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
 from patientflow.predict.emergency_demand import create_predictions
 
 from patientflow.train.classifiers import train_multiple_classifiers
-from patientflow.train.sequence_predictor import train_sequence_predictor
 from patientflow.train.incoming_admission_predictor import (
     train_parametric_admission_predictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.prepare import select_one_snapshot_per_visit
 
 
 def test_real_time_predictions(
     visits,
     models: Tuple[
         Dict[str, TrainedClassifier],
-        SequenceToOutcomePredictor,
+        "SequenceToOutcomePredictor | MultiSubgroupPredictor",
         ParametricIncomingAdmissionPredictor,
     ],
     prediction_window,
@@ -229,7 +239,12 @@ def train_all_models(
 
     Returns
     -------
-    None
+    dict
+        Dictionary containing the trained models with keys:
+
+        - ``"admission_models"`` : dict of str to TrainedClassifier
+        - ``"specialty_model"`` : MultiSubgroupPredictor
+        - ``"yta_model"`` : ParametricIncomingAdmissionPredictor
 
     Raises
     ------
@@ -313,15 +328,25 @@ def train_all_models(
     if save_models:
         save_model(admission_models, model_names["admissions"], model_file_path)
 
-    # Train specialty model
-    specialty_model = train_sequence_predictor(
-        train_visits=train_visits,
-        model_name=model_names["specialty"],
+    # Train specialty model using MultiSubgroupPredictor
+    # This trains separate SequenceToOutcomePredictor instances per subgroup
+    # (e.g. paediatric vs adult) for more accurate specialty prediction
+
+    # Select one snapshot per visit for specialty training
+    visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
+    admitted = visits_single[
+        (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
+    ]
+
+    specialty_model = MultiSubgroupPredictor(
+        subgroup_functions=create_paediatric_adult_subgroup_functions(),
+        base_predictor_class=SequenceToOutcomePredictor,
         input_var="consultation_sequence",
         grouping_var="final_sequence",
         outcome_var="specialty",
-        visit_col=visit_col,
+        min_samples=50,
     )
+    specialty_model = specialty_model.fit(admitted)
 
     # Save specialty model if requested
     if save_models:
@@ -362,7 +387,163 @@ def train_all_models(
             random_seed=random_seed,
         )
 
-    return
+    return {
+        "admission_models": admission_models,
+        "specialty_model": specialty_model,
+        "yta_model": yta_model,
+    }
+
+
+def prepare_prediction_inputs(
+    data_folder_name,
+    save_models=False,
+    test_realtime=False,
+):
+    """
+    Prepare all inputs needed for emergency demand prediction.
+
+    Loads configuration and data, trains all models, and bundles
+    everything into a single dictionary that can be passed directly to
+    :func:`~patientflow.viz.pipeline_plots.build_pipeline_prediction_inputs`.
+
+    Parameters
+    ----------
+    data_folder_name : str
+        Name of the data folder containing the training datasets.
+    save_models : bool, optional
+        Whether to persist the trained models to disk. Defaults to False.
+    test_realtime : bool, optional
+        Whether to run the real-time prediction smoke test after training.
+        Defaults to False.
+
+    Returns
+    -------
+    dict
+        Prediction inputs dictionary with keys:
+
+        - ``"admission_models"`` : dict of str to TrainedClassifier
+        - ``"specialty_model"`` : MultiSubgroupPredictor
+        - ``"yta_model"`` : ParametricIncomingAdmissionPredictor
+        - ``"ed_visits"`` : pandas.DataFrame – the loaded and date-parsed
+          ED visits (useful for selecting prediction snapshots downstream)
+        - ``"specialties"`` : list of str – specialty names used during
+          training
+        - ``"config"`` : dict – the loaded configuration (includes curve
+          parameters ``x1``, ``y1``, ``x2``, ``y2``, etc.)
+    """
+    project_root = set_project_root(verbose=False)
+
+    data_file_path, _, model_file_path, config_path = set_file_paths(
+        project_root=project_root,
+        inference_time=False,
+        train_dttm=None,
+        data_folder_name=data_folder_name,
+        config_file="config.yaml",
+        verbose=False,
+    )
+
+    config = load_config_file(config_path)
+
+    prediction_times = config["prediction_times"]
+    start_training_set = config["start_training_set"]
+    start_validation_set = config["start_validation_set"]
+    start_test_set = config["start_test_set"]
+    end_test_set = config["end_test_set"]
+    prediction_window = timedelta(minutes=config["prediction_window"])
+    epsilon = float(config["epsilon"])
+    yta_time_interval = timedelta(minutes=config["yta_time_interval"])
+    x1, y1, x2, y2 = config["x1"], config["y1"], config["x2"], config["y2"]
+
+    ed_visits = load_data(
+        data_file_path=data_file_path,
+        file_name="ed_visits.csv",
+        index_column="snapshot_id",
+        sort_columns=["visit_number", "snapshot_date", "prediction_time"],
+        eval_columns=["prediction_time", "consultation_sequence", "final_sequence"],
+    )
+    inpatient_arrivals = load_data(
+        data_file_path=data_file_path, file_name="inpatient_arrivals.csv"
+    )
+
+    ed_visits["snapshot_date"] = pd.to_datetime(
+        ed_visits["snapshot_date"], dayfirst=True
+    ).dt.date
+
+    inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
+        inpatient_arrivals["arrival_datetime"], utc=True
+    )
+
+    grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}
+
+    exclude_columns = [
+        "visit_number",
+        "snapshot_date",
+        "prediction_time",
+        "specialty",
+        "consultation_sequence",
+        "final_sequence",
+    ]
+
+    ordinal_mappings = {
+        "age_group": [
+            "0-17",
+            "18-24",
+            "25-34",
+            "35-44",
+            "45-54",
+            "55-64",
+            "65-74",
+            "75-115",
+        ],
+        "latest_acvpu": ["A", "C", "V", "P", "U"],
+        "latest_obs_manchester_triage_acuity": [
+            "Blue",
+            "Green",
+            "Yellow",
+            "Orange",
+            "Red",
+        ],
+        "latest_obs_objective_pain_score": [
+            "Nil",
+            "Mild",
+            "Moderate",
+            "Severe\\E\\Very Severe",
+        ],
+        "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"],
+    }
+
+    specialties = ["surgical", "haem/onc", "medical", "paediatric"]
+    cdf_cut_points = [0.9, 0.7]
+    curve_params = (x1, y1, x2, y2)
+    random_seed = 42
+
+    prediction_inputs = train_all_models(
+        visits=ed_visits,
+        start_training_set=start_training_set,
+        start_validation_set=start_validation_set,
+        start_test_set=start_test_set,
+        end_test_set=end_test_set,
+        yta=inpatient_arrivals,
+        prediction_times=prediction_times,
+        prediction_window=prediction_window,
+        yta_time_interval=yta_time_interval,
+        epsilon=epsilon,
+        grid_params=grid_params,
+        exclude_columns=exclude_columns,
+        ordinal_mappings=ordinal_mappings,
+        specialties=specialties,
+        cdf_cut_points=cdf_cut_points,
+        curve_params=curve_params,
+        random_seed=random_seed,
+        model_file_path=model_file_path if save_models else None,
+        save_models=save_models,
+        test_realtime=test_realtime,
+    )
+
+    prediction_inputs["ed_visits"] = ed_visits
+    prediction_inputs["specialties"] = specialties
+    prediction_inputs["config"] = config
+    return prediction_inputs
 
 
 def main(data_folder_name=None):
@@ -448,6 +629,10 @@ def main(data_folder_name=None):
     ed_visits["snapshot_date"] = pd.to_datetime(
         ed_visits["snapshot_date"], dayfirst=True
     ).dt.date
+
+    inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
+        inpatient_arrivals["arrival_datetime"], utc=True
+    )
 
     # Set up model parameters
     grid_params = {"n_estimators": [30], "subsample": [0.7], "colsample_bytree": [0.7]}

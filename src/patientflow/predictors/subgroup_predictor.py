@@ -29,6 +29,21 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
 from patientflow.predictors.subgroup_definitions import create_subgroup_functions
 
 
+def _paediatric_noop(row):
+    """Fallback paediatric function that always returns False."""
+    return False
+
+
+class _NegateFunction:
+    """Picklable callable that negates another function's result."""
+
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, row):
+        return not self.func(row)
+
+
 class MultiSubgroupPredictor:
     """Manages multiple SequenceToOutcomePredictor models, one per subgroup.
 
@@ -217,19 +232,11 @@ class MultiSubgroupPredictor:
         if "paediatric" in self.subgroup_functions:
             paediatric_func = self.subgroup_functions["paediatric"]
         else:
-            # Fallback: no paediatric indicator available; use a no-op (always False)
-            def _paediatric_noop(row):
-                return False
-
             paediatric_func = _paediatric_noop
-
-        # Create function map for all subgroups plus legacy keys
-        def _default_non_paediatric(row):
-            return not paediatric_func(row)
 
         func_map = {
             "paediatric": paediatric_func,
-            "default": _default_non_paediatric,
+            "default": _NegateFunction(paediatric_func),
         }
         func_map.update(self.subgroup_functions)
 
@@ -298,7 +305,7 @@ def create_subgroup_system(
         },
         "special_func_map": {
             "paediatric": paediatric_func,
-            "default": lambda row: not paediatric_func(row),
+            "default": _NegateFunction(paediatric_func),
             **subgroup_functions,
         },
     }
