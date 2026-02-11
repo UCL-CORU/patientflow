@@ -56,17 +56,14 @@ def create_special_category_objects(
         DeprecationWarning,
     )
 
-    def is_paediatric(row):
-        age = get_age(row)
-        return age < 18
-
-    def is_not_paediatric(row):
-        age = get_age(row)
-        return age >= 18
+    from patientflow.predictors.subgroup_definitions import (
+        _is_paediatric,
+        _is_adult,
+    )
 
     # Return ONLY the original legacy structure
     return {
-        "special_category_func": is_paediatric,
+        "special_category_func": _is_paediatric,
         "special_category_dict": {
             "medical": 0.0,
             "surgical": 0.0,
@@ -74,8 +71,8 @@ def create_special_category_objects(
             "paediatric": 1.0,
         },
         "special_func_map": {
-            "paediatric": is_paediatric,
-            "default": is_not_paediatric,
+            "paediatric": _is_paediatric,
+            "default": _is_adult,
             # NO adult subgroup functions here!
         },
     }
