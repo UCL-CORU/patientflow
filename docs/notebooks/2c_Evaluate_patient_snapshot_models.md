@@ -34,6 +34,9 @@ You can request the datasets that are used here on [Zenodo](https://zenodo.org/r
 %autoreload 2
 ```
 
+    The autoreload extension is already loaded. To reload it, use:
+      %reload_ext autoreload
+
 ## Loading real patient data
 
 I load the data using a `load_data` function that will sort the data and return the tuple columns as tuples rather than strings or lists. If you run the cell below without the public dataset, you will need to change the `data_folder_name` or (better, since it will solve the problem for all notebooks) copy the synthetic data from `data-synthetic` to `data-public`.
@@ -181,6 +184,8 @@ ordinal_mappings = {
 
 In the real data, there are some columns that will be used for predicting admission to specialty, if admitted. I exclude them here.
 
+This list will be saved with the model, so that any calling function using the model for inference can pass the original dataset with needing to specify which columns to exclude.
+
 ```python
 exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
 ```
@@ -252,9 +257,7 @@ From the plot below, we see that the model is discriminating poorly, with a high
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
 plot_estimated_probabilities(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
-)
+    test_visits=test_visits)
 
 ```
 
@@ -282,8 +285,7 @@ from patientflow.viz.calibration import plot_calibration
 
 plot_calibration(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy="quantile",  # optional
     # suptitle="Base model with imbalanced training data"  # optional
 )
@@ -307,8 +309,7 @@ Below, we see that some models under-predict the likelihood of admissions, as th
 from patientflow.viz.madcap import plot_madcap
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 ```
 
@@ -365,21 +366,18 @@ from patientflow.viz.madcap import plot_madcap
 
 plot_estimated_probabilities(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 plot_calibration(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy="quantile",  # optional
     # suptitle="Base model with balanced training data"  # optional
 )
 
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 ```
 
@@ -426,21 +424,18 @@ for prediction_time in prediction_times:
 
 plot_estimated_probabilities(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 plot_calibration(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
+    test_visits=test_visits
     # strategy="quantile",  # optional
     # suptitle="Base model with balanced training data"  # optional
 )
 
 plot_madcap(
     trained_models=trained_models,
-    test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data
+    test_visits=test_visits
 )
 ```
 
@@ -469,7 +464,6 @@ from patientflow.viz.madcap import plot_madcap_by_group
 plot_madcap_by_group(
     trained_models=trained_models,
     test_visits=test_visits,
-    exclude_from_training_data=exclude_from_training_data,
     grouping_var="age_group",
     grouping_var_name="Age Group",
     plot_difference=False
@@ -503,7 +497,7 @@ plot_features(
 Note that shap package is not loaded by default, due to dependency issues. You will need to pip install it here to generate the shap plots.
 
 ```python
-!pip install shap
+# !pip install shap
 ```
 
 ```python
@@ -511,8 +505,7 @@ from patientflow.viz.shap import plot_shap
 
 plot_shap(
     trained_models,
-    test_visits,
-    exclude_from_training_data=exclude_from_training_data)
+    test_visits)
 
 
 ```

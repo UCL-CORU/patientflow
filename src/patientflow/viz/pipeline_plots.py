@@ -47,12 +47,12 @@ DEFAULT_LOCATION_MAPPING = {
     "resus": "Majors/Resus",
     "taf": "Other",
 }
-"""dict : Default mapping from raw ``current_location_type`` values to
-simplified display categories used on the y-axis of pipeline plots."""
+#: Default mapping from raw ``current_location_type`` values to
+#: simplified display categories used on the y-axis of pipeline plots.
 
 DEFAULT_CATEGORY_ORDER = ["Majors/Resus", "Minors", "Other"]
-"""list of str : Default ordered list of display category names for the
-y-axis of pipeline plots."""
+#: Default ordered list of display category names for the
+#: y-axis of pipeline plots.
 
 
 def create_colour_dict():
@@ -62,7 +62,7 @@ def create_colour_dict():
 
     * ``"single"`` – maps each specialty name to a single hex colour.
     * ``"spectrum"`` – maps each specialty name to a
-      :class:`~matplotlib.colors.LinearSegmentedColormap` that runs from
+      `matplotlib.colors.LinearSegmentedColormap` that runs from
       a pale tint to the corresponding single colour at full intensity.
 
     Returns
@@ -174,20 +174,20 @@ def add_specialty_predictions(
     """Attach a per-row specialty probability dict to a snapshot DataFrame.
 
     For each row the trained *specialty_model* is called with the full row
-    (as a :class:`pandas.Series`) so that models which need additional
-    context (e.g. :class:`~patientflow.predictors.subgroup_predictor.MultiSubgroupPredictor`)
+    (as a `pandas.Series`) so that models which need additional
+    context (e.g. [MultiSubgroupPredictor][patientflow.predictors.subgroup_predictor.MultiSubgroupPredictor])
     can determine the correct sub-model.  The result is stored in a new
     ``specialty_prob`` column whose values are ``dict[str, float]``.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        Snapshot data – typically the output of :func:`prepare_snapshot_data`.
+        Snapshot data – typically the output of [prepare_snapshot_data][patientflow.viz.pipeline_plots.prepare_snapshot_data].
         Must contain at least the column used by
         ``specialty_model.input_var`` (usually ``consultation_sequence``).
     specialty_model : object
         Trained specialty prediction model.  Must expose ``input_var``
-        (str) and ``predict(row)`` where *row* is a :class:`pandas.Series`.
+        (str) and ``predict(row)`` where *row* is a `pandas.Series`.
     specialties : list of str or None, optional
         Specialty names to ensure are present in every returned dict
         (missing keys are filled with ``0``).
@@ -239,9 +239,9 @@ def build_pipeline_prediction_inputs(
     """Build per-service prediction inputs for a snapshot.
 
     This is a convenience wrapper around
-    :func:`~patientflow.predict.service.build_service_data` that unpacks
+    [build_service_data][patientflow.predict.service.build_service_data] that unpacks
     the prediction inputs dictionary returned by
-    :func:`~patientflow.train.emergency_demand.prepare_prediction_inputs`
+    [prepare_prediction_inputs][patientflow.train.emergency_demand.prepare_prediction_inputs]
     and retrieves the appropriate admission classifier for the given
     *prediction_time*.
 
@@ -256,7 +256,7 @@ def build_pipeline_prediction_inputs(
     prediction_snapshots : pandas.DataFrame
         Snapshot of patients currently in the ED at the prediction moment.
         Must contain an ``elapsed_los`` column (in seconds – it will be
-        converted to :class:`~datetime.timedelta` internally).
+        converted to [timedelta][datetime.timedelta] internally).
     prediction_window : datetime.timedelta
         Horizon over which to predict demand.
     use_admission_in_window_prob : bool, default=True
@@ -289,16 +289,12 @@ def build_pipeline_prediction_inputs(
 
     if admission_model is None:
         # Fall back to key-based lookup
-        admission_model = admission_models[
-            get_model_key("admissions", prediction_time)
-        ]
+        admission_model = admission_models[get_model_key("admissions", prediction_time)]
 
     # Ensure elapsed_los is timedelta
     snapshots = prediction_snapshots.copy(deep=True)
     if not pd.api.types.is_timedelta64_dtype(snapshots["elapsed_los"]):
-        snapshots["elapsed_los"] = pd.to_timedelta(
-            snapshots["elapsed_los"], unit="s"
-        )
+        snapshots["elapsed_los"] = pd.to_timedelta(snapshots["elapsed_los"], unit="s")
 
     x1, y1 = config["x1"], config["y1"]
     x2, y2 = config["x2"], config["y2"]
@@ -590,9 +586,9 @@ def main(
     # ------------------------------------------------------------------
     # 2. Pick a random snapshot date
     # ------------------------------------------------------------------
-    snapshot_date = ed_visits["snapshot_date"].sample(
-        n=1, random_state=random_state
-    ).iloc[0]
+    snapshot_date = (
+        ed_visits["snapshot_date"].sample(n=1, random_state=random_state).iloc[0]
+    )
     print(f"Selected snapshot date: {snapshot_date}")
 
     # ------------------------------------------------------------------
@@ -706,9 +702,7 @@ def main(
             ex_with_specialty,
             title=specialty.title(),
             colour=True,
-            colour_map=spec_colour_dict["spectrum"].get(
-                specialty, "Spectral_r"
-            ),
+            colour_map=spec_colour_dict["spectrum"].get(specialty, "Spectral_r"),
             include_titles=include_titles,
             ax=ax,
             text_size=14,
@@ -719,9 +713,7 @@ def main(
             fontsize=16,
         )
     fig_e.tight_layout()
-    _save_fig(
-        fig_e, save_dir, "figure_e_specialty_scatter.png", "e"
-    )
+    _save_fig(fig_e, save_dir, "figure_e_specialty_scatter.png", "e")
 
     # ------------------------------------------------------------------
     # Figure (f) – per-specialty bed demand (no admission-in-window prob)
@@ -754,9 +746,7 @@ def main(
             bundle.arrivals.probabilities,
             title=specialty.title(),
             truncate_at_beds=15,
-            bar_colour=spec_colour_dict["single"].get(
-                specialty, "#5B9BD5"
-            ),
+            bar_colour=spec_colour_dict["single"].get(specialty, "#5B9BD5"),
             include_titles=include_titles,
             ax=ax,
             text_size=14,
@@ -767,9 +757,7 @@ def main(
             fontsize=16,
         )
     fig_f.tight_layout()
-    _save_fig(
-        fig_f, save_dir, "figure_f_per_specialty_bed_demand.png", "f"
-    )
+    _save_fig(fig_f, save_dir, "figure_f_per_specialty_bed_demand.png", "f")
 
     # ------------------------------------------------------------------
     # Figure (g) – aspirational curve for admission in prediction window
@@ -777,10 +765,7 @@ def main(
     from patientflow.viz.aspirational_curve import plot_curve
 
     fig_g = plot_curve(
-        title=(
-            f"Aspirational curve for admission\n"
-            f"within prediction window"
-        ),
+        title=("Aspirational curve for admission\n" "within prediction window"),
         x1=config["x1"],
         y1=config["y1"],
         x2=config["x2"],
@@ -790,9 +775,7 @@ def main(
         legend_loc="lower right",
         return_figure=True,
     )
-    _save_fig(
-        fig_g, save_dir, "figure_g_aspirational_curve.png", "g"
-    )
+    _save_fig(fig_g, save_dir, "figure_g_aspirational_curve.png", "g")
 
     # ------------------------------------------------------------------
     # Figure (h) – patients coloured by prob of admission in window
@@ -821,9 +804,7 @@ def main(
         include_titles=include_titles,
         return_figure=True,
     )
-    _save_fig(
-        fig_h, save_dir, "figure_h_admission_in_window.png", "h"
-    )
+    _save_fig(fig_h, save_dir, "figure_h_admission_in_window.png", "h")
 
     # ------------------------------------------------------------------
     # Figure (i) – per-specialty bed demand WITH admission-in-window prob
@@ -854,17 +835,14 @@ def main(
             bundle.arrivals.probabilities,
             title=specialty.title(),
             truncate_at_beds=15,
-            bar_colour=spec_colour_dict["single"].get(
-                specialty, "#5B9BD5"
-            ),
+            bar_colour=spec_colour_dict["single"].get(specialty, "#5B9BD5"),
             include_titles=include_titles,
             ax=ax,
             text_size=14,
         )
     if include_titles:
         fig_i.suptitle(
-            f"Beds needed by specialty (within prediction window)\n"
-            f"{title_base}",
+            f"Beds needed by specialty (within prediction window)\n" f"{title_base}",
             fontsize=16,
         )
     fig_i.tight_layout()
@@ -896,9 +874,7 @@ def main(
             bundle.arrivals.probabilities,
             title=specialty.title(),
             truncate_at_beds=15,
-            bar_colour=spec_colour_dict["single"].get(
-                specialty, "#5B9BD5"
-            ),
+            bar_colour=spec_colour_dict["single"].get(specialty, "#5B9BD5"),
             include_titles=include_titles,
             ax=ax,
             text_size=14,
@@ -937,9 +913,7 @@ def main(
             bundle.arrivals.probabilities,
             title=specialty.title(),
             truncate_at_beds=20,
-            bar_colour=spec_colour_dict["single"].get(
-                specialty, "#5B9BD5"
-            ),
+            bar_colour=spec_colour_dict["single"].get(specialty, "#5B9BD5"),
             include_titles=include_titles,
             ax=ax,
             text_size=14,
@@ -1017,9 +991,7 @@ if __name__ == "__main__":
     # Parse prediction_time from "H,M" string to tuple
     parts = args.prediction_time.split(",")
     if len(parts) != 2:
-        parser.error(
-            "prediction-time must be in 'HOUR,MINUTE' format (e.g. '9,30')"
-        )
+        parser.error("prediction-time must be in 'HOUR,MINUTE' format (e.g. '9,30')")
     prediction_time_tuple = (int(parts[0]), int(parts[1]))
 
     main(

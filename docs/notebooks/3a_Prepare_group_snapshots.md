@@ -824,7 +824,6 @@ X_test, y_test = prepare_patient_snapshots(
     df=snapshots_df,
     prediction_time=(9,30),
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data,
     visit_col='visit_number'
 )
 ```

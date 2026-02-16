@@ -35,9 +35,6 @@ I recorded a webinar to demonstrate how we converted data from the UCLH Electron
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
 ```python
 from patientflow.load import set_project_root
 project_root = set_project_root()
@@ -47,7 +44,7 @@ project_root = set_project_root()
 
 ## Load parameters and set file paths
 
-Parameters are set in config.json and (for UCLH implementation in config-uclh.yaml). You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defned training, validation and test set dates.
+Parameters are set in config.yaml. You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defined training, validation and test set dates.
 
 ```python
 from patientflow.load import set_file_paths

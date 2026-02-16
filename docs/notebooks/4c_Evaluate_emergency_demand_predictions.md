@@ -14,205 +14,89 @@ We can, however, evaluate the predictions in a slightly different way.
 - For the patients in ED, we can compare the predicted bed counts needed for each specialty against observed numbers admitted to each specialty from among patients comprising each group snapshot in the test set period, without taking into account how long it takes each patient to be admitted.
 - For the yet-to-arrive patients, we can compare the predicted with the observed arrival rates within the prediction window.
 
-## Loading data and parameters
-
-### Set up the notebook environment
-
 ```python
 # Reload functions every time
 %load_ext autoreload
 %autoreload 2
 ```
 
-```python
-from patientflow.load import set_project_root
-project_root = set_project_root()
+## Load data and train models
 
-```
+The data loading, configuration, and model training steps are identical to those demonstrated in detail in [notebook 4b](4b_Predict_emergency_demand.md). Here we use `prepare_prediction_inputs` to perform all of these steps in a single call.
 
-    Inferred project root: /Users/zellaking/Repos/patientflow
-
-### Set file paths and load data
-
-I'm going to use real patient data from UCLH to demonstrate the implementation.
-
-As noted previously, you can request the datasets that are used here on [Zenodo](https://zenodo.org/records/14866057). Alternatively you can use the synthetic data that has been created from the distributions of real patient data. If you don't have the public data, change the argument in the cell below from `data_folder_name='data-public'` to `data_folder_name='data-synthetic'`.
+You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
 
 ```python
-from patientflow.load import set_file_paths
+from patientflow.train.emergency_demand import prepare_prediction_inputs
 
-# set file paths
 data_folder_name = 'data-public'
-data_file_path = project_root / data_folder_name
+prediction_inputs = prepare_prediction_inputs(data_folder_name)
 
-data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-    project_root,
-    data_folder_name=data_folder_name,
-    config_file = 'config.yaml', verbose=False)
+# Unpack the results
+admissions_models = prediction_inputs['admission_models']
+spec_model = prediction_inputs['specialty_model']
+yta_model_by_spec = prediction_inputs['yta_model']
+ed_visits = prediction_inputs['ed_visits']
+inpatient_arrivals = prediction_inputs['inpatient_arrivals']
+specialties = prediction_inputs['specialties']
+params = prediction_inputs['config']
 ```
 
-```python
-import pandas as pd
-from patientflow.load import load_data
+    /Users/zellaking/Repos/patientflow/src/patientflow/train/emergency_demand.py:470: UserWarning: Parsing dates in %Y-%m-%d format when dayfirst=True was specified. Pass `dayfirst=False` or specify a format to silence this warning.
+      ed_visits["snapshot_date"] = pd.to_datetime(
 
-# load ED snapshots data
-ed_visits = load_data(data_file_path,
-                    file_name='ed_visits.csv',
-                    index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
-                    eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
-ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
-
-# load data on inpatient arrivals
-inpatient_arrivals = inpatient_arrivals = load_data(data_file_path,
-                    file_name='inpatient_arrivals.csv')
-inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'], utc = True)
-
-```
-
-### Set modelling parameters
-
-The parameters are used in training or inference. They are set in config.json in the root of the repository and loaded by `load_config_file()`
-
-```python
-# load params
-from patientflow.load import load_config_file
-params = load_config_file(config_path)
-
-start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
-
-```
-
-### Apply temporal splits
-
-```python
-from patientflow.prepare import create_temporal_splits
-
-train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
-    ed_visits,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name="snapshot_date",
-)
-
-train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_splits(
-    inpatient_arrivals,
-    start_training_set,
-    start_validation_set,
-    start_test_set,
-    end_test_set,
-    col_name="arrival_datetime",
-)
-```
 
     Split sizes: [62071, 10415, 29134]
     Split sizes: [7716, 1285, 3898]
 
-## Evaluating models that predict demand for patients current in the ED
+    Processing: (6, 0)
 
-The demand predictions for patients current in the ED bring together the admissions and specialty models. First we train each model, with a separate admissions model for each prediction time, and a single model to predict specialty of admission, if admitted.
+    Processing: (9, 30)
 
-### Train admissions models
+    Processing: (12, 0)
 
-This process has already been shown in previous notebooks. This time I'll use a larger parameter grid, while still limiting the search space to a few hyperparameters for expediency.
+    Processing: (15, 30)
+
+    Processing: (22, 0)
+
+Below we use the training, validation and test sets dates set in config.yaml to retrieve the portion of the data that is the test set.
 
 ```python
-
-from patientflow.train.classifiers import train_classifier
+import pandas as pd
+from datetime import timedelta
+from patientflow.prepare import create_temporal_splits
 from patientflow.load import get_model_key
 
-grid = { # Current parameters
-    'n_estimators': [30, 40, 50],  # Number of trees
-    'subsample': [0.7, 0.8, 0.9],  # Sample ratio of training instances
-    'colsample_bytree': [0.7, 0.8, 0.9],  # Sample ratio of columns for each tree
-   }
-
-exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
-
-ordinal_mappings = {
-    "latest_acvpu": ["A", "C", "V", "P", "U"],
-    "latest_obs_manchester_triage_acuity": [
-        "Blue",
-        "Green",
-        "Yellow",
-        "Orange",
-        "Red",
-    ],
-    "latest_obs_objective_pain_score": [
-        "Nil",
-        "Mild",
-        "Moderate",
-        "Severe\\E\\Very Severe",
-    ],
-    "latest_obs_level_of_consciousness": ["A", "C", "V", "P", "U"],
-}
-
-# create a dictionary to store the trained models
-admissions_models = {}
 model_name = 'admissions'
 
-# Loop through each prediction time
-for prediction_time in ed_visits.prediction_time.unique():
-    print(f"Training model for {prediction_time}")
-    model = train_classifier(
-        train_visits=train_visits_df,
-        valid_visits=valid_visits_df,
-        test_visits=test_visits_df,
-        grid=grid,
-        exclude_from_training_data=exclude_from_training_data,
-        ordinal_mappings=ordinal_mappings,
-        prediction_time=prediction_time,
-        visit_col="visit_number",
-        calibrate_probabilities=True,
-        calibration_method="isotonic",
-        use_balanced_training=True,
-    )
-    model_key = get_model_key(model_name, prediction_time)
+# Extract config parameters
+start_training_set = params['start_training_set']
+start_validation_set = params['start_validation_set']
+start_test_set = params['start_test_set']
+end_test_set = params['end_test_set']
+prediction_window = timedelta(minutes=params['prediction_window'])
+x1, y1, x2, y2 = params['x1'], params['y1'], params['x2'], params['y2']
+yta_time_interval = timedelta(minutes=params['yta_time_interval'])
 
-    admissions_models[model_key] = model
-```
-
-    Training model for (22, 0)
-    Training model for (15, 30)
-    Training model for (6, 0)
-    Training model for (12, 0)
-    Training model for (9, 30)
-
-## Train specialty model
-
-```python
-from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
-from patientflow.predictors.subgroup_predictor import MultiSubgroupPredictor
-
-def create_subgroup_functions_from_age_group():
-    """Create subgroup functions that work with age_group categorical variable."""
-
-    def is_paediatric(row):
-        return row.get("age_group") == "0-17"
-
-    def is_adult(row):
-        # All non-paediatric patients are adults
-        return row.get("age_group") != "0-17"
-
-    return {
-        "paediatric": is_paediatric,
-        "adult": is_adult,
-    }
-
-subgroup_functions = create_subgroup_functions_from_age_group()
-
-spec_model = MultiSubgroupPredictor(
-    subgroup_functions=subgroup_functions,
-    base_predictor_class=SequenceToOutcomePredictor,
-    input_var="consultation_sequence",
-    grouping_var="final_sequence",
-    outcome_var="specialty",
-    min_samples=50,  # Minimum samples required per subgroup
+# Create temporal splits for the ED visits
+_, _, test_visits_df = create_temporal_splits(
+    ed_visits, start_training_set, start_validation_set,
+    start_test_set, end_test_set, col_name='snapshot_date',
 )
-spec_model = spec_model.fit(train_visits_df)
+
+# Create temporal splits for inpatient arrivals
+inpatient_arrivals['arrival_datetime'] = pd.to_datetime(
+    inpatient_arrivals['arrival_datetime'], utc=True
+)
+train_inpatient_arrivals_df, _, test_inpatient_arrivals_df = create_temporal_splits(
+    inpatient_arrivals, start_training_set, start_validation_set,
+    start_test_set, end_test_set, col_name='arrival_datetime',
+)
+
 ```
+
+    Split sizes: [62071, 10415, 29134]
+    Split sizes: [7716, 1285, 3898]
 
 ### Generate predicted distributions for each specialty and prediction time for patients in ED
 
@@ -231,7 +115,6 @@ def get_specialty_probability_distributions(
     spec_model,
     admissions_models,
     model_name,
-    exclude_from_training_data,
     specialties=['medical', 'surgical', 'haem/onc', 'paediatric'],
     baseline_prob_dict=None,
 ):
@@ -244,7 +127,6 @@ def get_specialty_probability_distributions(
         admissions_models: Dictionary of admission prediction models
         model_name: Name of the model to use
         specialties: List of specialties to consider
-        exclude_from_training_data: List of columns to exclude from training data
         baseline_prob_dict: Optional dict of baseline probabilities to use instead of spec_model predictions
 
     Returns:
@@ -292,7 +174,6 @@ def get_specialty_probability_distributions(
                 df=test_visits_df,
                 prediction_time=_prediction_time,
                 single_snapshot_per_visit=False,
-                exclude_columns=exclude_from_training_data,
                 visit_col='visit_number'
             )
 
@@ -321,9 +202,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     test_visits_df,
     spec_model,
     admissions_models,
-    model_name,
-    exclude_from_training_data
-)
+    model_name)
 ```
 
     Processing :(22, 0)
@@ -378,13 +257,13 @@ for specialty in specialties:
 
 ```
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_0.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_10_0.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_1.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_10_1.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_2.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_10_2.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_3.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_10_3.png)
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -400,13 +279,13 @@ for specialty in specialties:
             suptitle=f"EPUDD plots for {specialty} specialty")
 ```
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_0.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_11_0.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_1.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_11_1.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_2.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_11_2.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_20_3.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_11_3.png)
 
 In medical specialties (which have the highest numbers of admissions, accounting for significant majority) the model performance is similar to that seen when not sub-divided by specialty. (See [a previous notebook](3b_Evaluate_group_snapshots.md) for more on this.) The model underestimates beds needed for patients in the ED at 22:00 and overestimates at 12:00 and 15:30.
 
@@ -426,7 +305,6 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     spec_model=spec_model,
     admissions_models=admissions_models,
     model_name=model_name,
-    exclude_from_training_data=exclude_from_training_data,
     baseline_prob_dict=baseline_probs
 )
 ```
@@ -486,27 +364,27 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
     EPUDD plots for medical specialty: baseline vs sequence predictor
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_1.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_1.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_2.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_2.png)
 
     EPUDD plots for surgical specialty: baseline vs sequence predictor
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_4.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_4.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_5.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_5.png)
 
     EPUDD plots for haem/onc specialty: baseline vs sequence predictor
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_7.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_7.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_8.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_8.png)
 
     EPUDD plots for paediatric specialty: baseline vs sequence predictor
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_10.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_10.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_24_11.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_15_11.png)
 
 ## Evaluate predictions for patients yet-to-arrive to the ED
 
@@ -542,7 +420,7 @@ plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
 # plt.show()
 ```
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_26_0.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_17_0.png)
 
 The chart below shows multiple version of the delta for each date in the test set, for each prediction time, with the average delta shown in red.
 
@@ -575,15 +453,15 @@ for prediction_time in prediction_times_sorted:
                          )
 ```
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_28_0.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_0.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_28_1.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_1.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_28_2.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_2.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_28_3.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_3.png)
 
-![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_28_4.png)
+![png](4c_Evaluate_emergency_demand_predictions_files/4c_Evaluate_emergency_demand_predictions_19_4.png)
 
 ## Summary
 

@@ -218,6 +218,10 @@ def get_specialty_probs(
     def determine_specialty(row):
         if special_category_func and special_category_func(row):
             return special_category_dict
+        # MultiSubgroupPredictor needs the full row to determine the subgroup;
+        # plain SequenceToOutcomePredictor expects just the input tuple.
+        elif isinstance(specialty_model, MultiSubgroupPredictor):
+            return specialty_model.predict(row)
         else:
             return specialty_model.predict(row[specialty_model.input_var])
 

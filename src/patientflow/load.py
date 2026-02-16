@@ -535,16 +535,20 @@ def get_model_key(model_name, prediction_time):
     ----------
     model_name : str
         The base name of the model.
-    prediction_time : tuple of int
-        A tuple representing the time of day (hour, minute).
+    prediction_time : tuple of int or datetime.time
+        A tuple representing the time of day (hour, minute), or a datetime.time object.
 
     Returns
     -------
     str
         A string representing the model name based on the time of day.
     """
+    import datetime
 
-    hour_, min_ = prediction_time
+    if isinstance(prediction_time, datetime.time):
+        hour_, min_ = prediction_time.hour, prediction_time.minute
+    else:
+        hour_, min_ = prediction_time
     min_ = f"{min_}0" if min_ % 60 == 0 else str(min_)
     model_name = model_name + "_" + f"{hour_:02}" + min_
     return model_name

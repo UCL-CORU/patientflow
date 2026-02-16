@@ -49,7 +49,7 @@ def create_paediatric_adult_subgroup_functions() -> (
 ):
     """Create a simple paediatric/adult subgroup split.
 
-    Uses :func:`~patientflow.predictors.legacy_compatibility.get_age` so
+    Uses [get_age][patientflow.predictors.legacy_compatibility.get_age] so
     the functions work with both ``age_on_arrival`` (numeric) and
     ``age_group`` (categorical) columns.
 

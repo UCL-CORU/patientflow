@@ -404,7 +404,7 @@ def prepare_prediction_inputs(
 
     Loads configuration and data, trains all models, and bundles
     everything into a single dictionary that can be passed directly to
-    :func:`~patientflow.viz.pipeline_plots.build_pipeline_prediction_inputs`.
+    [build_pipeline_prediction_inputs][patientflow.viz.pipeline_plots.build_pipeline_prediction_inputs].
 
     Parameters
     ----------
@@ -419,17 +419,24 @@ def prepare_prediction_inputs(
     Returns
     -------
     dict
-        Prediction inputs dictionary with keys:
+        Prediction inputs dictionary with the following keys:
 
-        - ``"admission_models"`` : dict of str to TrainedClassifier
-        - ``"specialty_model"`` : MultiSubgroupPredictor
-        - ``"yta_model"`` : ParametricIncomingAdmissionPredictor
-        - ``"ed_visits"`` : pandas.DataFrame – the loaded and date-parsed
-          ED visits (useful for selecting prediction snapshots downstream)
-        - ``"specialties"`` : list of str – specialty names used during
-          training
-        - ``"config"`` : dict – the loaded configuration (includes curve
-          parameters ``x1``, ``y1``, ``x2``, ``y2``, etc.)
+        - **admission_models** (*dict of str to TrainedClassifier*) --
+          The trained admission probability models.
+        - **specialty_model** (*MultiSubgroupPredictor*) --
+          The specialty prediction model.
+        - **yta_model** (*ParametricIncomingAdmissionPredictor*) --
+          The yet-to-arrive model.
+        - **ed_visits** (*pandas.DataFrame*) --
+          The loaded and date-parsed ED visits (useful for selecting
+          prediction snapshots downstream).
+        - **inpatient_arrivals** (*pandas.DataFrame*) --
+          The loaded inpatient arrivals data.
+        - **specialties** (*list of str*) --
+          Specialty names used during training.
+        - **config** (*dict*) --
+          The loaded configuration (includes curve parameters
+          `x1`, `y1`, `x2`, `y2`, etc.).
     """
     project_root = set_project_root(verbose=False)
 
@@ -541,6 +548,7 @@ def prepare_prediction_inputs(
     )
 
     prediction_inputs["ed_visits"] = ed_visits
+    prediction_inputs["inpatient_arrivals"] = inpatient_arrivals
     prediction_inputs["specialties"] = specialties
     prediction_inputs["config"] = config
     return prediction_inputs
