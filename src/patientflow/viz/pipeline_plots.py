@@ -21,7 +21,7 @@ in_ed_now_plot : function
     predicted probability of admission.
 main : function
     End-to-end pipeline that trains models, selects a random snapshot,
-    and generates all overview plots (a, b, c, e, f, h, i, j, k) to a
+    and generates all overview plots (a, b, c, e, f, g, h, i, j, k) to a
     timestamped output folder.
 """
 
@@ -506,6 +506,7 @@ def main(
     data_folder_name="data-public",
     random_state=0,
     include_titles=False,
+    show_observed=False,
 ):
     """Run the full pipeline-overview plot generation.
 
@@ -525,6 +526,8 @@ def main(
     * **(f)** Per-specialty (2×2) probability distributions for beds
       needed from current ED patients (without admission-in-window
       probability).
+    * **(g)** Aspirational curve showing the probability of admission
+      within the prediction window as a function of elapsed time.
     * **(h)** Patients coloured by probability of admission within the
       prediction window.
     * **(i)** Per-specialty (2×2) probability distributions for beds
@@ -553,6 +556,10 @@ def main(
         on every plot.  The output folder name is also suffixed with
         ``_with_titles`` so titled and untitled runs do not overwrite
         each other.  Default ``False``.
+    show_observed : bool, optional
+        If ``True``, draw a vertical line on probability distribution
+        plots to indicate the actual observed value.
+        Default ``False``.
 
     Returns
     -------
@@ -670,6 +677,18 @@ def main(
         include_titles=include_titles,
         return_figure=True,
     )
+    if show_observed:
+        observed_admissions = int(ex["is_admitted"].sum())
+        ax_c = fig_c.gca()
+        ax_c.axvline(
+            x=observed_admissions,
+            linewidth=2,
+            linestyle="--",
+            color="red",
+            label=f"Observed: {observed_admissions}",
+        )
+        ax_c.legend(loc="upper right")
+        fig_c.tight_layout()
     _save_fig(fig_c, save_dir, "figure_c_aggregate_bed_demand.png", "c")
 
     # ------------------------------------------------------------------
@@ -734,7 +753,7 @@ def main(
         plot_prob_dist(
             bundle.arrivals.probabilities,
             title=specialty.title(),
-            truncate_at_beds=10,
+            truncate_at_beds=15,
             bar_colour=spec_colour_dict["single"].get(
                 specialty, "#5B9BD5"
             ),
@@ -750,6 +769,29 @@ def main(
     fig_f.tight_layout()
     _save_fig(
         fig_f, save_dir, "figure_f_per_specialty_bed_demand.png", "f"
+    )
+
+    # ------------------------------------------------------------------
+    # Figure (g) – aspirational curve for admission in prediction window
+    # ------------------------------------------------------------------
+    from patientflow.viz.aspirational_curve import plot_curve
+
+    fig_g = plot_curve(
+        title=(
+            f"Aspirational curve for admission\n"
+            f"within prediction window"
+        ),
+        x1=config["x1"],
+        y1=config["y1"],
+        x2=config["x2"],
+        y2=config["y2"],
+        figsize=(6, 3) if not include_titles else (10, 5),
+        include_titles=include_titles,
+        legend_loc="lower right",
+        return_figure=True,
+    )
+    _save_fig(
+        fig_g, save_dir, "figure_g_aspirational_curve.png", "g"
     )
 
     # ------------------------------------------------------------------
@@ -811,7 +853,7 @@ def main(
         plot_prob_dist(
             bundle.arrivals.probabilities,
             title=specialty.title(),
-            truncate_at_beds=10,
+            truncate_at_beds=15,
             bar_colour=spec_colour_dict["single"].get(
                 specialty, "#5B9BD5"
             ),
@@ -853,7 +895,7 @@ def main(
         plot_prob_dist(
             bundle.arrivals.probabilities,
             title=specialty.title(),
-            truncate_at_beds=10,
+            truncate_at_beds=15,
             bar_colour=spec_colour_dict["single"].get(
                 specialty, "#5B9BD5"
             ),
@@ -964,6 +1006,12 @@ if __name__ == "__main__":
             "Appends '_with_titles' to the output folder name."
         ),
     )
+    parser.add_argument(
+        "--show-observed",
+        action="store_true",
+        default=False,
+        help="Show observed values as vertical lines on distribution plots.",
+    )
     args = parser.parse_args()
 
     # Parse prediction_time from "H,M" string to tuple
@@ -980,4 +1028,5 @@ if __name__ == "__main__":
         data_folder_name=args.data_folder,
         random_state=args.random_state,
         include_titles=args.include_titles,
+        show_observed=args.show_observed,
     )
