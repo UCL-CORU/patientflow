@@ -1,4 +1,4 @@
-# 3c. Predict bed counts without using patient snapshots
+# 3e. Predict demand from patients yet to arrive
 
 There are situations where we might want to predict bed count distributions without having details of the patients, for example when predicting the number of beds needed for incoming patients such as:
 
@@ -297,7 +297,7 @@ plot_prob_dist(prob_dist_data, title,
     include_titles=True, truncate_at_beds=40)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_15_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_15_0.png)
 
 ### Approach 2: Using an empirical survival curve
 
@@ -322,7 +322,7 @@ survival_df = plot_admission_time_survival_curve(train_visits,
 )
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_17_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_17_0.png)
 
 The function has an option to return the survival curve.
 
@@ -471,7 +471,7 @@ plot_prob_dist(combined_dist, title,
     include_titles=True, truncate_at_beds=40)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_27_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_27_0.png)
 
 ### Using the `EmpiricalIncomingAdmissionPredictor` class
 
@@ -1066,7 +1066,7 @@ plot_prob_dist(weighted_poisson_empirical['unfiltered'], title,
     include_titles=True, truncate_at_beds=40)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_34_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_34_0.png)
 
 It is also possible to generate predictions by specialty, by passing a dictionary comprised of the required subgroups (the key) and a nested dictionary (the value) specifying how to identify them, with a column name (the nested key) and the values to filter from that column.
 
@@ -1553,13 +1553,13 @@ for specialty in train_visits.specialty.unique():
         include_titles=True, truncate_at_beds=20)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_0.png)
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_1.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_1.png)
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_2.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_2.png)
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_3.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_37_3.png)
 
 ## Train a weighted Poisson model using an aspirational approach
 
@@ -1576,7 +1576,7 @@ from IPython.display import Image
 Image(filename='img/thumbnail_KingsFund_AE_performance.png')
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_39_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_39_0.png)
 
 `patientflow` offers an aspirational weighted Poisson model, that will calculate each patient's probability of being admitted within the prediction window, if targets are met. Targets are set using the parameters set in config.yaml, as shown below.
 
@@ -1617,7 +1617,7 @@ plot_curve(
 
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_43_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_43_0.png)
 
 Below I demonstrate the use of a Weighted Poisson predictor.
 
@@ -2126,9 +2126,9 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
     truncate_at_beds=40)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_51_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_51_0.png)
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_51_1.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_51_1.png)
 
 ## Summary
 
@@ -2156,7 +2156,7 @@ survival_df = plot_admission_time_survival_curve([train_visits, valid_visits, te
 )
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_54_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_54_0.png)
 
 The function below can be used to compare the predicted with the observed bed counts. This function will retrieve the observed counts and save them alongside their predicted distribution from the model.
 
@@ -2195,7 +2195,7 @@ plot_epudd(prediction_times,
                  plot_all_bounds=False)
 ```
 
-![png](3c_Predict_bed_counts_without_using_patient_snapshots_files/3c_Predict_bed_counts_without_using_patient_snapshots_58_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3c_Predict_bed_counts_without_using_patient_snapshots_58_0.png)
 
 ```python
 

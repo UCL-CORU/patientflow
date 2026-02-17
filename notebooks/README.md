@@ -25,8 +25,10 @@ Next is a series of notebooks on preparing group snapshots, generating predictio
 
 - **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Create_group_snapshots.ipynb):** Show how to create group snapshots from patient snapshots.
 - **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.ipynb):** Show how to evaluate predicted bed count distribution generated form group snapshots.
-- **[3c_Predict_bed_counts_without_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_counts_without_using_patient_snapshots.ipynb):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
-- **[3d_Predict_bed_counts_for_subgroups](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Predict_bed_counts_for_subgroups.ipynb):** Show how to disaggregate bed count distributions by subgroups such as age or specialty of admission.
+- **[3c_Predict_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_demand_by_hospital_service.ipynb):** Show how to disaggregate bed count distributions by hospital service, such as medical or paediatric beds.
+- **[3d_Evaluate_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Evaluate_bed_demand_by_hospital_service.ipynb):** Evaluate bed demand predictions by hospital service, and compare with a baseline.
+- **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.ipynb):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
+- **[3f_Evaluate_demand_predictions_for_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.ipynb):** Evaluate arrival rate predictions for patients yet to arrive against observed arrivals in the test set.
 
 A set of notebooks follow, that show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
 

@@ -646,7 +646,7 @@ create_special_category_objects(train_visits_df.columns)
 
 ## Train models for yet-to-arrive patients
 
-Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See [3c_Predict_bed_counts_without_using_patient_snapshots.md](3c_Predict_bed_counts_without_using_patient_snapshots.md) for more information. When making predictions by specialty, arrival rates are learned for each specialty separately.
+Predictions for patients who are yet-to-arrive models are based on arrival rates learned from past data. See [3e_Predict_demand_from_patients_yet_to_arrive.md](3e_Predict_demand_from_patients_yet_to_arrive.md) for more information. When making predictions by specialty, arrival rates are learned for each specialty separately.
 
 The `create_yta_filters()` function generates a dictionary of filters for the `ParametricIncomingAdmissionPredictor` to enable separate prediction models for each specialty. It uses the same special category configuration (as defined in `create_special_category_objects`) to create two types of filters:
 

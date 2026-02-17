@@ -1,4 +1,4 @@
-# 3d. Predict bed count distributions for subgroups
+# 3c. Predict bed demand by hospital service
 
 It is often the case that pressures build up on certain areas of the hospital, or for subgroups of patients, due to random fluctuations. Sometimes one demographic group seems to be showing up more than usual, such as older males, putting pressure on male geriatric beds.
 
@@ -1995,13 +1995,13 @@ for specialty in ['medical', 'surgical', 'haem/onc', 'paediatric']:
 
 ```
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_0.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_30_0.png)
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_1.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_30_1.png)
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_2.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_30_2.png)
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_30_3.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_30_3.png)
 
 To compare these with the predictions overall (not by specialty) uses the same function without weighting the probability for each specialty.
 
@@ -2023,7 +2023,7 @@ plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
     include_titles=True, truncate_at_beds=20)
 ```
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_32_0.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_32_0.png)
 
 ## Stratifying by observed characteristics
 
@@ -2054,9 +2054,9 @@ for sex in ['M', 'F']:
         include_titles=True, truncate_at_beds=20)
 ```
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_34_0.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_34_0.png)
 
-![png](3d_Predict_bed_counts_for_subgroups_files/3d_Predict_bed_counts_for_subgroups_34_1.png)
+![png](3c_Predict_bed_demand_by_hospital_service_files/3d_Predict_bed_counts_for_subgroups_34_1.png)
 
 ## Summary
 
