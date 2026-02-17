@@ -30,7 +30,8 @@ Next is a series of notebooks on preparing group snapshots, generating predictio
 
 A set of notebooks follow, that show how we have used the functions in `patientflow` at UCLH to predict number of beds needed for emergency demand.
 
-- **[4a_Specify_emergency_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Specify_emergency_demand_model.md):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
+- **[4_Specify_emergency_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4_Specify_emergency_demand_model.md):** Explains design choices that were made to develop a practical model, and shows an example of the output that is sent five times a day at UCLH.
+- **[4a_Organise_predictions_for_a_production_pipeline](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Organise_predictions_for_a_production_pipeline.md):** Introduces the structured data classes (`FlowInputs`, `ServicePredictionInputs`, `DemandPredictor`, `FlowSelection`, `PredictionBundle`) that organise predictions for production use.
 - **[4b_Predict_emergency_demand](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Predict_emergency_demand.md):** Shows a full implementation of the functions covered up to this point, to predict emergency demand at UCLH.
 - **[4c_Evaluate_emergency_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4c_Evaluate_emergency_demand_predictions.md):** Shows an evaluation of the emergency demand predictions generated using the public data provided with this repo.
 - **[4d_Predict_emergency_demand_for_sub-groups](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Predict_emergency_demand_for_sub-groups.ipynb)** Develops the logic shown in the previous notebook to include the handling of particular sub-groups of patients differently.

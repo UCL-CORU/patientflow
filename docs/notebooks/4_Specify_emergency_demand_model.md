@@ -31,7 +31,7 @@ from IPython.display import Image
 Image(filename='img/thumbnail_UCLH_application.jpg')
 ```
 
-![jpeg](4a_Specify_emergency_demand_model_files/4a_Specify_emergency_demand_model_1_0.jpg)
+![jpeg](4_Specify_emergency_demand_model_files/4a_Specify_emergency_demand_model_1_0.jpg)
 
 The modelling output
 
