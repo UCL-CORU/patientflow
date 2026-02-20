@@ -22,6 +22,7 @@ create_predictions : function
 
 """
 
+import warnings
 from typing import List, Dict, Tuple, Union, Optional, Any
 from datetime import timedelta
 import pandas as pd
@@ -38,9 +39,6 @@ from patientflow.aggregate import (
     pred_proba_to_agg_predicted,
 )
 
-
-import warnings
-
 from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
@@ -51,6 +49,7 @@ from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.predict.validation import warn_specialty_mismatch
 
 # SettingWithCopyWarning was removed in pandas 3.0 (CoW is now default)
 if hasattr(pd.errors, "SettingWithCopyWarning"):
@@ -407,10 +406,11 @@ def create_predictions(
             f"Requested prediction window {prediction_window} does not match the prediction window of the trained yet-to-arrive model {yet_to_arrive_model.prediction_window}"
         )
 
-    if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
-        raise ValueError(
-            f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
-        )
+    warn_specialty_mismatch(
+        set(specialties),
+        set(yet_to_arrive_model.filters.keys()),
+        "yet-to-arrive model",
+    )
 
     special_params = spec_model.special_params
 
@@ -424,15 +424,16 @@ def create_predictions(
     if special_category_dict is not None and not set(specialties) == set(
         special_category_dict.keys()
     ):
-        # Only enforce the legacy check if there is no subgroup mapping available
         has_mapping = (
             hasattr(spec_model, "specialty_to_subgroups")
             and isinstance(getattr(spec_model, "specialty_to_subgroups"), dict)
             and len(getattr(spec_model, "specialty_to_subgroups")) > 0
         )
         if not has_mapping:
-            raise ValueError(
-                "Requested specialties do not match the specialty dictionary defined in special_params"
+            warn_specialty_mismatch(
+                set(specialties),
+                set(special_category_dict.keys()),
+                "special_category_dict",
             )
 
     predictions: Dict[str, Dict[str, Any]] = {
