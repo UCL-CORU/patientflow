@@ -5,7 +5,15 @@ description: Clears and re-runs Jupyter notebooks using the project's uv environ
 
 # Notebook Refresh Skill
 
+## Model Preference
+
+- **IMPORTANT**: This is a high-token/repetitive task.
+- **DO NOT** use Claude Opus or expensive reasoning models for this task.
+- **PREFER**: Claude 3.5/3.7 Sonnet or "Auto" mode to save credits.
+- If the user has Claude Opus selected, ask for confirmation or suggest switching to a cheaper model before proceeding.
+
 ## Instructions
+
 1. **Locate Notebooks**: Find the target `.ipynb` files in the specified directory.
 2. **Prerequisites**: Ensure the `uv` environment has `nbconvert` and `ipykernel` installed. If not, prompt to run `uv add --dev nbconvert ipykernel`.
 3. **Execution**: For each notebook, run the following commands from the project root:

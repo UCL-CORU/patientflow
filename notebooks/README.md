@@ -30,18 +30,18 @@ Next is a series of notebooks on preparing group snapshots, generating predictio
 - **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.ipynb):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
 - **[3f_Evaluate_demand_predictions_for_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.ipynb):** Evaluate arrival rate predictions for patients yet to arrive against observed arrivals in the test set.
 
-A set of notebooks follow, that show how we assembled the building blocks from the 3x_ notebooks into a production system at UCLH to predict demand for beds.
+A set of notebooks follow, that show how we assembled the building blocks from the 3x\_ notebooks into a production system at UCLH to predict demand for beds.
 
-- **[4_Specify_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4_Specify_demand_model.ipynb):** Specifies the operational requirements for demand predictions at UCLH, bridges from the 3x_ notebooks, and provides an overview of the notebooks that follow.
+- **[4_Specify_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4_Specify_demand_model.ipynb):** Specifies the operational requirements for demand predictions at UCLH, bridges from the 3x\_ notebooks, and provides an overview of the notebooks that follow.
 - **[4a_Organise_predictions_for_a_production_pipeline](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Organise_predictions_for_a_production_pipeline.ipynb):** Introduces the structured data classes (`FlowInputs`, `ServicePredictionInputs`, `DemandPredictor`, `FlowSelection`, `PredictionBundle`) that organise predictions for production use.
 - **[4b_Stratify_predictions_by_patient_subgroups](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Stratify_predictions_by_patient_subgroups.ipynb):** Shows how to stratify predictions by observable patient characteristics (e.g. children vs adults vs older adults, men vs women) using `MultiSubgroupPredictor`.
 - **[4c_Predict_demand](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4c_Predict_demand.ipynb):** Shows the full prediction pipeline, combining patients currently in the ED with those yet to arrive, to predict demand at UCLH.
-- **[4d_Evaluate_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Evaluate_demand_predictions.ipynb):** Evaluates all production model components systematically across the test set, using the evaluation methods introduced in the 3x_ notebooks.
+- **[4d_Evaluate_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Evaluate_demand_predictions.ipynb):** Evaluates all production model components systematically across the test set, using the evaluation methods introduced in the 3x\_ notebooks.
 - **[4e_Generate_predictions_using_hierarchy](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4e_Generate_predictions_using_hierarchy.ipynb):** Shows the use of a hierarchical approach to generate demand predictions at different levels of a hospital's reporting hierarchy.
 
 ## Data used in the notebooks
 
-The early notebooks (2a_, 2b_, 3a_, 3e_) generate fake data on-the-fly so you can run them immediately without any external files. From notebook 2c_ onwards, most notebooks use real data from University College London Hospital (UCLH), available on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'` to use the bundled synthetic dataset instead. Notebook 4a_ also generates fake data on-the-fly, to introduce the production data classes without requiring external data.
+The early notebooks (2a*, 2b*, 3a*, 3e*) generate fake data on-the-fly so you can run them immediately without any external files. From notebook 2c* onwards, most notebooks use real data from University College London Hospital (UCLH), available on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'` to use the bundled synthetic dataset instead. Notebook 4a* also generates fake data on-the-fly, to introduce the production data classes without requiring external data.
 
 ## Preparing your notebook environment
 

@@ -481,9 +481,7 @@ def prepare_prediction_inputs(
         data_file_path=data_file_path, file_name="inpatient_arrivals.csv"
     )
 
-    ed_visits["snapshot_date"] = pd.to_datetime(
-        ed_visits["snapshot_date"]
-    ).dt.date
+    ed_visits["snapshot_date"] = pd.to_datetime(ed_visits["snapshot_date"]).dt.date
 
     inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
         inpatient_arrivals["arrival_datetime"], utc=True
@@ -644,9 +642,7 @@ def main(data_folder_name=None):
     )
 
     # Create snapshot date
-    ed_visits["snapshot_date"] = pd.to_datetime(
-        ed_visits["snapshot_date"]
-    ).dt.date
+    ed_visits["snapshot_date"] = pd.to_datetime(ed_visits["snapshot_date"]).dt.date
 
     inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
         inpatient_arrivals["arrival_datetime"], utc=True
