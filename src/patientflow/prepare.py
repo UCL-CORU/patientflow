@@ -254,6 +254,7 @@ def create_temporal_splits(
     patient_id: str = "mrn",
     visit_col: str = "encounter",
     seed: int = 42,
+    verbose: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Split dataset into temporal train/validation/test sets.
 
@@ -277,6 +278,8 @@ def create_temporal_splits(
         Column name for visit identifier, by default "encounter"
     seed : int, optional
         Random seed for reproducible results, by default 42
+    verbose : bool, optional
+        Whether to print split sizes, by default True
 
     Returns
     -------
@@ -344,7 +347,8 @@ def create_temporal_splits(
 
         splits.append(df[mask].copy())
 
-    print(f"Split sizes: {[len(split) for split in splits]}")
+    if verbose:
+        print(f"Split sizes: {[len(split) for split in splits]}")
     return tuple(splits)
 
 

@@ -196,6 +196,7 @@ def train_all_models(
     model_file_path=None,
     save_models=True,
     test_realtime=True,
+    verbose=True,
 ):
     """
     Train and evaluate patient flow models.
@@ -236,6 +237,8 @@ def train_all_models(
         Whether to save the trained models to disk. Defaults to True.
     test_realtime : bool, optional
         Whether to run real-time prediction tests. Defaults to True.
+    verbose : bool, optional
+        Whether to print progress messages during training. Defaults to True.
 
     Returns
     -------
@@ -295,6 +298,7 @@ def train_all_models(
         start_test_set,
         end_test_set,
         col_name=col_name,
+        verbose=verbose,
     )
 
     train_yta, _, _ = create_temporal_splits(
@@ -304,6 +308,7 @@ def train_all_models(
         start_test_set,
         end_test_set,
         col_name="arrival_datetime",
+        verbose=verbose,
     )
 
     # Use predicted_times from visits if not explicitly provided
@@ -321,6 +326,7 @@ def train_all_models(
         prediction_times=prediction_times,
         model_name=model_names["admissions"],
         visit_col=visit_col,
+        verbose=verbose,
     )
 
     # Save admission models if requested
@@ -398,6 +404,7 @@ def prepare_prediction_inputs(
     data_folder_name,
     save_models=False,
     test_realtime=False,
+    verbose=True,
 ):
     """
     Prepare all inputs needed for emergency demand prediction.
@@ -415,6 +422,8 @@ def prepare_prediction_inputs(
     test_realtime : bool, optional
         Whether to run the real-time prediction smoke test after training.
         Defaults to False.
+    verbose : bool, optional
+        Whether to print progress messages during training. Defaults to True.
 
     Returns
     -------
@@ -473,7 +482,7 @@ def prepare_prediction_inputs(
     )
 
     ed_visits["snapshot_date"] = pd.to_datetime(
-        ed_visits["snapshot_date"], dayfirst=True
+        ed_visits["snapshot_date"]
     ).dt.date
 
     inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
@@ -545,6 +554,7 @@ def prepare_prediction_inputs(
         model_file_path=model_file_path if save_models else None,
         save_models=save_models,
         test_realtime=test_realtime,
+        verbose=verbose,
     )
 
     prediction_inputs["ed_visits"] = ed_visits
@@ -635,7 +645,7 @@ def main(data_folder_name=None):
 
     # Create snapshot date
     ed_visits["snapshot_date"] = pd.to_datetime(
-        ed_visits["snapshot_date"], dayfirst=True
+        ed_visits["snapshot_date"]
     ).dt.date
 
     inpatient_arrivals["arrival_datetime"] = pd.to_datetime(

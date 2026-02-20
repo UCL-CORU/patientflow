@@ -833,6 +833,7 @@ def train_multiple_classifiers(
     majority_to_minority_ratio: float = 1.0,
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
+    verbose: bool = True,
 ) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times.
 
@@ -868,6 +869,8 @@ def train_multiple_classifiers(
         Name of the label column, by default "is_admitted"
     evaluate_on_test : bool, optional
         Whether to evaluate on test set, by default False
+    verbose : bool, optional
+        Whether to print progress messages, by default True
 
     Returns
     -------
@@ -880,7 +883,8 @@ def train_multiple_classifiers(
     trained_models: Dict[str, TrainedClassifier] = {}
 
     for prediction_time in prediction_times:
-        print(f"\nProcessing: {prediction_time}")
+        if verbose:
+            print(f"\nProcessing: {prediction_time}")
         model_key = get_model_key(model_name, prediction_time)
 
         # Train model with the new simplified interface
