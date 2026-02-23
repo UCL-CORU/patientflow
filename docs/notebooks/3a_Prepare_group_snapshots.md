@@ -2,7 +2,7 @@
 
 Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a specific prediction time.
 
-In this notebook, I show how `patientflow` can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as dictionary with:
+In this notebook, I show how `patientflow` can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as a dictionary with:
 
 - `snapshot_date` as the key
 - `snapshot_ids` of each patient snapshot as the values
@@ -11,7 +11,7 @@ This structure is a convenient way to organise the data when making bed count pr
 
 ## About the examples in this notebook
 
-In this notebook I use fake data that resemble visits to the Emergency Department (ED). The dataset covers mutiple snapshot dates and prediction times.
+In this notebook I use fake data that resemble visits to the Emergency Department (ED). The dataset covers multiple snapshot dates and prediction times.
 
 To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution reflecting the sum of these trials. In that simple example, every patient has the same probability of the outcome.
 
@@ -710,9 +710,9 @@ from patientflow.train.classifiers import train_classifier
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6 week training set
-start_test_set = date(2023, 3, 1) # 2 week validation set
-end_test_set = date(2023, 4, 1) # 1 month test set
+start_validation_set = date(2023, 2, 15) # 6-week training set
+start_test_set = date(2023, 3, 1) # 2-week validation set
+end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
 train_visits, valid_visits, test_visits = create_temporal_splits(
@@ -757,7 +757,7 @@ Now, using the trained model, I will predict a bed count distribution for one sn
 - `X_test` - the dataset of patient snapshots to be passed to the model
 - `y_test` - the vector containing the outcome for each patient snapshot (if these are known)
 - `model` - a trained model
-- `inference_time` (defaults to True) - if set to False, the function will calculate the observed outcome for the group snapshot; set this to True if the outcomes for each patient as as yet unknown
+- `inference_time` (defaults to True) - if set to False, the function will calculate the observed outcome for the group snapshot; set this to True if the outcomes for each patient are as yet unknown
 - `weights` - an optional parameter to weight the probabilities returned by the model. This will be demonstrated in later examples
 
 The function returns a dictionary with two keys:

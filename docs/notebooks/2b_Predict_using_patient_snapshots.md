@@ -185,9 +185,9 @@ from patientflow.prepare import create_temporal_splits
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6 week training set
-start_test_set = date(2023, 3, 1) # 2 week validation set
-end_test_set = date(2023, 4, 1) # 1 month test set
+start_validation_set = date(2023, 2, 15) # 6-week training set
+start_test_set = date(2023, 3, 1) # 2-week validation set
+end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
 train_visits, valid_visits, test_visits = create_temporal_splits(
@@ -228,7 +228,7 @@ Below I'm using `train_classifier()`, which is a wrapper on standard scikit-lear
 - `prediction_time`: is used to identify which patient snapshots to use for training.
 - `single_snapshot_per_visit`: if this is True, the function will randomly pick one snapshot for any visit, using `visit_col` as the column name that identifies the visit identifier.
 - `exclude_from_training_data`: certain columns in the data should not be used for training, including visit numbers and dates.
-- `ordinal_mappings`: the function makes use of SKLearn's Ordinal Mapping encoder.
+- `ordinal_mappings`: the function makes use of sklearn's OrdinalEncoder.
 - `use_balanced_training`: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class.
 - `calibrate_probabilities`: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will use a sigmoid function to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.
 - `calibration_method`: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.
@@ -266,7 +266,7 @@ model = train_classifier(
 
 ## Inspecting the object returned by `train_classifier()`
 
-The function returns an object of type TrainedClassifer(). Meta data and metrics from the training process are returned with it.
+The function returns an object of type TrainedClassifier(). Metadata and metrics from the training process are returned with it.
 
 ```python
 print(f'Object returned is of type: {type(model)}')
@@ -301,7 +301,7 @@ for field in fields(model.training_results):
     test_results
     balance_info
 
-The prediction time has been saved with the model. When the model's predict method is used, the method will that the requested prediction time and that of the model align.
+The prediction time has been saved with the model. When the model's predict method is used, the method will check that the requested prediction time and that of the model align.
 
 ```python
 print(f'The prediction time is: {model.training_results.prediction_time}')
@@ -395,7 +395,7 @@ Note that each record in the snapshots dataframe is indexed by a unique snapshot
 
 The following function enables you to plot the results of hyperparameter trials, which have been saved with the trained model. The input to the plot is a list of `HyperParameterTrial` instances containing validation set results and hyperparameter settings. Each trial's `cv_results` dictionary contains 'valid_auc' and 'valid_logloss' metrics, which have been computed for each hyperparameter configuration using the validation set.
 
-As I only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
+As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
 
 ```python
 from patientflow.viz.trial_results import plot_trial_results
@@ -415,4 +415,4 @@ Here I have shown how `patientflow` can help you
 - access various attributes of the model, that are saved as part of the model object
 - plot the results of hyperparameter tuning
 
-In the next notebook, I show how to evaluate models applied to patient snapshots. It is good practice to use your validation set results for the evaluations shown in this notebook and the next one, and to use the test set for evaluation only once you are satisified with your model.
+In the next notebook, I show how to evaluate models applied to patient snapshots. It is good practice to use your validation set results for the evaluations shown in this notebook and the next one, and to use the test set for evaluation only once you are satisfied with your model.

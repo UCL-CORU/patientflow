@@ -11,12 +11,12 @@
 
 To use `patientflow` your data should be in snapshot form.
 
-In this notebook I suggest how to you might prepare your data, starting from data on finished hospital visits. I start with fake data on Emergency Department visits, and demonstrate how to convert it into snapshots. There are two examples
+In this notebook I suggest how you might prepare your data, starting from data on finished hospital visits. I start with fake data on Emergency Department visits, and demonstrate how to convert it into snapshots. There are two examples
 
 - A simple example of creating snapshots assuming you have one flat table of hospital visits
 - An example of creating snapshots from data structured as a relational database.
 
-## A note on creating your own shapshots
+## A note on creating your own snapshots
 
 The snapshot creation shown here is designed to work with fake data generated below. You would need to create your own version of this process, to handle the data you have.
 
@@ -174,7 +174,7 @@ snapshot_dates[0:10]
      datetime.date(2023, 1, 9),
      datetime.date(2023, 1, 10)]
 
-Next I iterate through the date array, using the arrival and departure times from the hospital visits table to identify any patients who were in the ED at each prediction time (eg 09:30 or 12.00) on each date.
+Next I iterate through the date array, using the arrival and departure times from the hospital visits table to identify any patients who were in the ED at each prediction time (eg 09:30 or 12:00) on each date.
 
 ```python
 import pandas as pd
@@ -324,7 +324,7 @@ snapshots_df.head()
 </table>
 </div>
 
-Some patients are present at more than one of the prediction times, given them more than one entry in snapshots_df
+Some patients are present at more than one of the prediction times, giving them more than one entry in snapshots_df
 
 ```python
 # Count the number of snapshots per visit and show top five

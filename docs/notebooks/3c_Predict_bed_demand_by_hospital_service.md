@@ -646,7 +646,7 @@ print(
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
     {'medical': 0.611, 'surgical': 0.248, 'paediatric': 0.061, 'haem/onc': 0.08}
 
-Similar we can view the probability of being admitted to each specialty after a consultation request to acute medicine
+Similarly, we can view the probability of being admitted to each specialty after a consultation request to acute medicine
 
 ```python
 print(
@@ -873,7 +873,7 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
     207071    {'medical': 0.6107109665427509, 'surgical': 0....
     Name: consultation_sequence, dtype: object
 
-A dictionary is returned for each patient, with probabilites summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
+A dictionary is returned for each patient, with probabilities summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
 
 ```python
 print("Probability of admission to medical specialty for the first five patients:")
@@ -1859,7 +1859,7 @@ spec_model_simple.input_to_grouping_probs
 
 ## Combining specialty prediction with admission prediction
 
-I now have a model I can use to predict a patient's probability of admission to each of the four specialties: medical, surgical, haematology/oncology or paediatric, if admitted. I'll use this these probabilities, with each patient's probability of admission after ED, to generate predicted bed count distributions for each specialty.
+I now have a model I can use to predict a patient's probability of admission to each of the four specialties: medical, surgical, haematology/oncology or paediatric, if admitted. I'll use these probabilities, with each patient's probability of admission after ED, to generate predicted bed count distributions for each specialty.
 
 For that I'll also need an admission prediction model, which is set up below.
 

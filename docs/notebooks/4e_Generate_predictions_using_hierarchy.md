@@ -1,12 +1,12 @@
 # 4e. Generate predictions using a customisable hospital hierarchy.
 
-In previous notebooks I have shown the prediction of demand by service, using a hard-coded list of specialties (medical, surgical, haem/onc and pediatric).
+In previous notebooks I have shown the prediction of demand by service, using a hard-coded list of specialties (medical, surgical, haem/onc and paediatric).
 
 In the real UCLH application, our users are interested in multiple levels of prediction. For example, within the medical division, the Medical Director might want high level information about pressure on the division as a whole, while a ward manager might want to know specifically about the pressures of their clinical area.
 
 To support prediction at a fine-grained level at UCLH, where there are approximately 50 reporting units and 500+ subspecialties, a hard-coded list is unsuitable. Instead, we want the list of specialties to be dynamic, and we want to be able to map these to the hospital's standard reporting groupings.
 
-This notebooks shows code to set up hospital hierarchy to achieve this.
+This notebook shows code to set up hospital hierarchy to achieve this.
 
 A typical workflow is:
 
@@ -38,7 +38,7 @@ project_root = set_project_root()
 
 ## 1. Create the hierarchy
 
-Here I create a very simple hierarchy comprising only two levels. In the public dataset we only have four specialites available, so we'll pretend that these fall within three hospital divisions: medical, surgical and specialist.
+Here I create a very simple hierarchy comprising only two levels. In the public dataset we only have four specialties available, so we'll pretend that these fall within three hospital divisions: medical, surgical and specialist.
 
 The first step is to create an entry in config.yaml specifying the names of each level and their relationship in the hierarchy. These names could be anything (eg 'specialty' could be 'clinical area' or 'firm'). It should look something like this:
 
@@ -73,7 +73,7 @@ print(hierarchy.levels)
 
 ## 2. Populate the hierarchy with organisational data
 
-Thus far, we only know the names of the levels (specialty, division), but not their contents. We can specify these in using a dataframe. The `column_mapping`parameter maps the column names in the dataframe to those specified in the hierarchy object.
+Thus far, we only know the names of the levels (specialty, division), but not their contents. We can specify these using a dataframe. The `column_mapping` parameter maps the column names in the dataframe to those specified in the hierarchy object.
 
 ```python
 hierarchy_df = pd.DataFrame({
@@ -328,7 +328,7 @@ Below we can see the results for different levels of the hierarchy
 ```python
 print('Results for medical specialty')
 print(results['medical'])
-print('\nResults for Medicine Division')
+print('\nResults for Medical Division')
 print(results['Medical Division'])
 print('\nResults for Hospital')
 print(results['Hospital'])
@@ -341,7 +341,7 @@ print(results['Hospital'])
       Net flow:    PMF[3:13]: [0.018, 0.039, 0.070, 0.107, 0.139, 0.153, 0.146, 0.120, 0.086, 0.055] (E=8.3)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
-    Results for Medicine Division
+    Results for Medical Division
     PredictionBundle(division: Medical Division)
       Arrivals:    PMF[6:16]: [0.032, 0.055, 0.084, 0.112, 0.131, 0.136, 0.126, 0.104, 0.077, 0.052] (E=11.0)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
@@ -404,7 +404,7 @@ from patientflow.predict.hierarchy import EntityType
 
 divisions = hierarchical_predictor.hierarchy.get_entities_by_type(EntityType("division"))
 print(f'Get a list of entities of a certain type')
-print(f'hierarchical_predictor.hierarchy.get_entities_by_type(EntityType("division") returns: {divisions}')
+print(f'hierarchical_predictor.hierarchy.get_entities_by_type(EntityType("division")) returns: {divisions}')
 
 print(f'\nNote that excluding EntityType will return nothing')
 print(f'hierarchical_predictor.hierarchy.get_entities_by_type("division") returns: {hierarchical_predictor.hierarchy.get_entities_by_type("division")}')
@@ -415,7 +415,7 @@ print(f"hierarchical_predictor.hierarchy.get_children('Medical Division') return
 ```
 
     Get a list of entities of a certain type
-    hierarchical_predictor.hierarchy.get_entities_by_type(EntityType("division") returns: ['Medical Division', 'Surgical Division', 'Specialist Hospitals Division']
+    hierarchical_predictor.hierarchy.get_entities_by_type(EntityType("division")) returns: ['Medical Division', 'Surgical Division', 'Specialist Hospitals Division']
 
     Note that excluding EntityType will return nothing
     hierarchical_predictor.hierarchy.get_entities_by_type("division") returns: []

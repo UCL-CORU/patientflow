@@ -2,7 +2,7 @@
 
 In notebook 3e, I showed how to predict demand from patients yet to arrive, using models that learn arrival rates from past data. In this notebook, I evaluate those arrival rate predictions against observed arrivals in the test set.
 
-Predictions for patients yet-to-arrive are made up of two components:
+Predictions for patients yet to arrive are made up of two components:
 
 - Arrival rates calculated from past data, prepared for a series of time intervals within a prediction window after the moment of prediction
 - A probability of admission for any patient arriving within one of these time intervals being admitted within the prediction window. The probability of admission is generated using either an empirical survival curve, or an aspirational approach.

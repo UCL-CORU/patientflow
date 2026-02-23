@@ -11,7 +11,7 @@ This notebook does some data exploration by plotting charts of all relevant vari
 
 The `inpatient_arrivals` dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and which specialty they were admitted to.
 
-The `ed_visits` database contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve a 'labels' for model training. These are:
+The `ed_visits` dataset contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve as 'labels' for model training. These are:
 
 - `is_admitted` - whether the visit ended in admission to a ward
 - `final_sequence` - the sequence of consultations the patient had during the visit
@@ -957,7 +957,7 @@ for col_name in [item for item in dict_cols['observations'] if str(item).startsw
 
 ### Lab variables
 
-The lab variables include boolean values for whether a lab battery was ordered, and the results of certain lab test. The data include only a small a subset of the lab battery orders and test results that might be requested for a patient in the ED.
+The lab variables include boolean values for whether a lab battery was ordered, and the results of certain lab tests. The data include only a small subset of the lab battery orders and test results that might be requested for a patient in the ED.
 
 ```python
 dict_cols['lab orders and results']
@@ -1040,7 +1040,7 @@ for col_name in [item for item in dict_cols['lab orders and results'] if str(ite
 
 The `has_consultation` variable records whether a referral request was made to another service or specialty up to the point of the snapshot. The sequence of referrals up to that point is recorded in `consultation_sequence` and the final sequence, at the end of the ED visit in `final_sequence`. `specialty` records the specialty that the patient was admitted under, if admitted.
 
-The first plot shows that the number of admitted patients with consult requests at the time of the snapshots is about the same as those without. The group without consult requests will have their later in the visit, after the snapshot was recorded.
+The first plot shows that the number of admitted patients with consult requests at the time of the snapshots is about the same as those without. The group without consult requests will have theirs later in the visit, after the snapshot was recorded.
 
 ```python
 plot_data_distribution(ed_visits, 'has_consultation', 'is_admitted', 'whether patient admitted', plot_type='hist')
@@ -1058,7 +1058,7 @@ plot_data_distribution(ed_visits, 'specialty', 'is_admitted', 'whether patient a
 
 ## Explore inpatient arrivals dataset
 
-The inpatient_arrivals dataset records all of the arrival dates and and times of patients who were later admitted to a ward. Other information is also recorded, such as sex and child status, as will as specialty of admission. This dataset will be used to predict the number of patients yet-to-arrive at the time of prediction.
+The inpatient_arrivals dataset records all of the arrival dates and times of patients who were later admitted to a ward. Other information is also recorded, such as sex and child status, as well as specialty of admission. This dataset will be used to predict the number of patients yet-to-arrive at the time of prediction.
 
 ```python
 inpatient_arrivals.head()

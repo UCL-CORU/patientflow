@@ -18,16 +18,16 @@ There is then a series of notebooks on preparing patient snapshots, training mod
 
 - **[2a_Create_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2a_Create_patient_snapshots.md):** Shows how to convert finished hospital visits into patient snapshots.
 - **[2b_Predict_using_patient_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2b_Predict_using_patient_snapshots.md):** Shows how to make predictions using patient snapshots, handling multiple visits for a single patient, and multiple snapshots in a single visit.
-- **[2c_Evaluate_patient_snapshot_models](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2c_Evaluate_patient_snapshot_models.md):** Demonstrates the use of convenient function to help you evaluate predictive models trained on patient snapshots.
+- **[2c_Evaluate_patient_snapshot_models](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2c_Evaluate_patient_snapshot_models.md):** Demonstrates the use of convenient functions to help you evaluate predictive models trained on patient snapshots.
 - **[2d_Explore_the_datasets_provided](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/2d_Explore_the_datasets_provided.md):** Provides exploratory plots of the two datasets that accompany this repository.
 
 Next is a series of notebooks on preparing group snapshots, generating predictions for group snapshots, and evaluating the predictions.
 
-- **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Prepare_group_snapshots.md):** Show how to create group snapshots from patient snapshots.
-- **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.md):** Show how to evaluate predicted bed count distribution generated form group snapshots.
-- **[3c_Predict_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_demand_by_hospital_service.md):** Show how to disaggregate bed count distributions by hospital service, such as medical or paediatric beds.
+- **[3a_Prepare_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Prepare_group_snapshots.md):** Shows how to create group snapshots from patient snapshots.
+- **[3b_Evaluate_group_snapshots](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.md):** Shows how to evaluate predicted bed count distribution generated from group snapshots.
+- **[3c_Predict_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_demand_by_hospital_service.md):** Shows how to disaggregate bed count distributions by hospital service, such as medical or paediatric beds.
 - **[3d_Evaluate_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Evaluate_bed_demand_by_hospital_service.md):** Evaluate bed demand predictions by hospital service, and compare with a baseline.
-- **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.md):** Show how to predict demand, using historical data, when patient snapshots are not appropriate
+- **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.md):** Shows how to predict demand, using historical data, when patient snapshots are not appropriate.
 - **[3f_Evaluate_demand_predictions_for_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.md):** Evaluate arrival rate predictions for patients yet to arrive against observed arrivals in the test set.
 
 A set of notebooks follow, that show how we assembled the building blocks from the 3x\_ notebooks into a production system at UCLH to predict demand for beds.

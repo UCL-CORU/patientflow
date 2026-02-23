@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from patientflow.predict.emergency_demand import find_probability_threshold_index
+from patientflow.viz.pipeline_plots import create_colour_dict
 
 
 def _calculate_probability_thresholds(
@@ -63,7 +64,7 @@ def plot_prob_dist(
     include_titles=False,
     truncate_at_beds=None,
     text_size=None,
-    bar_colour="#5B9BD5",
+    bar_colour=None,
     file_name=None,
     probability_thresholds=None,
     show_probability_thresholds=True,
@@ -108,7 +109,7 @@ def plot_prob_dist(
         Font size for plot text, including titles and tick labels.
     bar_colour : str, optional
         The color of the bars in the plot.
-        Default is "#5B9BD5"
+        Default is the "all" colour from ``create_colour_dict``.
     file_name : str, optional
         Custom filename to use when saving the plot. If not provided, defaults to a generated name based on the title.
     probability_thresholds : dict, optional
@@ -163,6 +164,9 @@ def plot_prob_dist(
     >>> plot_prob_dist(poisson_dist, "Poisson Distribution (μ=5)",
     ...                truncate_at_beds=(0, 15))
     """
+
+    if bar_colour is None:
+        bar_colour = create_colour_dict()["single"]["all"]
 
     # Handle array-like input
     if isinstance(prob_dist_data, (np.ndarray, list)):

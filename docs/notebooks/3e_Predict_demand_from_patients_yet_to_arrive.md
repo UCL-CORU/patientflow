@@ -11,8 +11,8 @@ For these situations, we can use `patientflow` to learn patterns from past data,
 In this notebook, I'll use the example of predicting the number of beds needed for incoming patients (patients yet to arrive to the Emergency Department who will need a bed within a prediction window). I'll show three approaches:
 
 - a Poisson model trained on past arrival rates of patients who both arrived and were admitted within a prediction window
-- a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned form past data
-- a weighted Poisson model using an aspirational approach; instead of using a survival curve learned form past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
+- a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data
+- a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
 
 I also demonstrate making predictions by specialty for demand from incoming patients.
 
@@ -168,7 +168,7 @@ When predicting how many patients will arrive after a prediction time, and be ad
 
 The first two approaches, shown in this section, use past data to determine how long a patient will be in the ED before admission.
 
-- A Poisson model based on counts of patients who arrived and were admitted within in a prediction window (eg arrived after 06:00 and were admitted before 14:00) during the training set period
+- A Poisson model based on counts of patients who arrived and were admitted within a prediction window (eg arrived after 06:00 and were admitted before 14:00) during the training set period
 - A survival curve based on empirical data from the training set period
 
 As in previous notebooks, I'll apply a temporal split to the data.
@@ -179,9 +179,9 @@ from patientflow.prepare import create_temporal_splits
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6 week training set
-start_test_set = date(2023, 3, 1) # 2 week validation set
-end_test_set = date(2023, 4, 1) # 1 month test set
+start_validation_set = date(2023, 2, 15) # 6-week training set
+start_test_set = date(2023, 3, 1) # 2-week validation set
+end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
 train_visits, valid_visits, test_visits = create_temporal_splits(
@@ -282,7 +282,7 @@ poisson_mean = yet_to_arrive_counts[yet_to_arrive_counts['prediction_time'] == (
 poisson_model = stats.poisson(poisson_mean)
 ```
 
-I use the Poisson model to predict a bed count distribution for the patients yet-to-arrive.
+I use the Poisson model to predict a bed count distribution for the patients yet to arrive.
 
 ```python
 prob_dist_data = [poisson_model.pmf(k) for k in range(20)]
@@ -306,7 +306,7 @@ plot_prob_dist(prob_dist_data, title,
 
 Another approach is to learn from past data about how long it takes patients to be admitted. To illustrate this, the `plot_admission_time_survival_curve` function will take a dataset of start and end times, and draw a survival curve.
 
-(Note - survival curves are often used for time to mortality or an adverse event; here 'survival' here means how long the patient remained in the ED prior to admission.)
+(Note - survival curves are often used for time to mortality or an adverse event; here 'survival' means how long the patient remained in the ED prior to admission.)
 
 In the fake data I'm using here, I've deliberately set the mean length of stay to be longer than 4 hours, to illustrate the differences between learning from the past data and (later in the notebook) taking an aspirational approach and assuming the ED meets its 4-hour targets.
 
@@ -481,7 +481,7 @@ plot_prob_dist(combined_dist, title,
 
 A custom class `EmpiricalIncomingAdmissionPredictor` has been created, for this purpose, that follows the same logic as the code snippet above.
 
-A survival curve is generated from the training data, and used determine the probability of admission before the end of the prediction window, for a patient who arrives at a particular moment in the window.
+A survival curve is generated from the training data, and used to determine the probability of admission before the end of the prediction window, for a patient who arrives at a particular moment in the window.
 
 To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time segments based on the `yta_time_interval` parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 segments.
 
@@ -938,7 +938,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 }
 </style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
-The survival curve that was calculated from the training set is saved with the object returned
+The survival curve that was calculated from the training set is saved with the returned object
 
 ```python
 yta_model_empirical.survival_df
@@ -1620,7 +1620,7 @@ print(f'The aspiration is that within {str(x1)} hours of arrival, {str(y1*100)}%
     Inferred project root: /Users/zellaking/Repos/patientflow
     The aspiration is that within 4.0 hours of arrival, 80.0% of patients will have been admitted, and that witin 12.0 hours of arrival, 99.0% of patients will have been admitted
 
-The aspiration can be plotted as a parameterised curve, as shown below. It is the equivalent of a survival curve that has been inverted. However, unless the empirical survival curve above, this curve is defined by parameters that can be changed according to the aspirational targets set.
+The aspiration can be plotted as a parameterised curve, as shown below. It is the equivalent of a survival curve that has been inverted. However, unlike the empirical survival curve above, this curve is defined by parameters that can be changed according to the aspirational targets set.
 
 To change the targets, you can vary the values of x1, y1, x2 and y2.
 
@@ -1658,7 +1658,7 @@ The `predict()` method will:
 - for each discrete time interval, using the aspirational curve introduced above, and taking into account the time remaining before end of window, calculate a probability of admission in prediction window
 - weight the arrival rates for each time interval by this probability
 - generate a Poisson distribution for each time interval
-- convolute the distributions to return a single distribution for admissions within the prediction window of patients yet-to-arrive
+- convolve the distributions to return a single distribution for admissions within the prediction window of patients yet to arrive
 
 ```python
 from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
@@ -2112,7 +2112,7 @@ print(
 
     The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 
-To use the weighted poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.
+To use the weighted Poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.
 
 ```python
 from patientflow.viz.probability_distribution import plot_prob_dist
@@ -2128,7 +2128,7 @@ aspirational_prediction = yta_model_parametric.predict(prediction_context, x1=x1
 
 ```
 
-The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet-to-arrive, if the ED meets the 4-hour target for 95% of patients. The numbers are higher than the equivalent chart above.
+The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 95% of patients. The numbers are higher than the equivalent chart above.
 
 ```python
 colour_dict = create_colour_dict()
