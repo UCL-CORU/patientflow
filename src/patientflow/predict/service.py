@@ -23,6 +23,7 @@ from patientflow.predict.emergency_demand import (
     add_missing_columns,
     get_specialty_probs,
 )
+from patientflow.predict.validation import warn_specialty_mismatch
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
@@ -451,12 +452,20 @@ def _validate_models_and_data(
     ):
         raise ValueError("Transfer model has not been fit")
 
+    # Validate that a specialty model is provided when needed
+    if spec_model is None and specialties and ed_snapshots is not None:
+        raise ValueError(
+            "Specialty model (spec_model) is required when specialties are requested "
+            "and ED snapshots are provided, but spec_model is None"
+        )
+
     # Validate specialties alignment
     if yet_to_arrive_model is not None and hasattr(yet_to_arrive_model, "filters"):
-        if not set(yet_to_arrive_model.filters.keys()) == set(specialties):
-            raise ValueError(
-                f"Requested specialties {set(specialties)} do not match the specialties of the trained yet-to-arrive model {set(yet_to_arrive_model.filters.keys())}"
-            )
+        warn_specialty_mismatch(
+            set(specialties),
+            set(yet_to_arrive_model.filters.keys()),
+            "yet-to-arrive model",
+        )
 
     special_params = spec_model.special_params if spec_model is not None else None
 
@@ -468,15 +477,16 @@ def _validate_models_and_data(
     if special_category_dict is not None and not set(specialties) == set(
         special_category_dict.keys()
     ):
-        # Only enforce the legacy check if there is no subgroup mapping available
         has_mapping = (
             hasattr(spec_model, "specialty_to_subgroups")
             and isinstance(getattr(spec_model, "specialty_to_subgroups"), dict)
             and len(getattr(spec_model, "specialty_to_subgroups")) > 0
         )
         if not has_mapping:
-            raise ValueError(
-                "Requested specialties do not match the specialty dictionary defined in special_params"
+            warn_specialty_mismatch(
+                set(specialties),
+                set(special_category_dict.keys()),
+                "special_category_dict",
             )
 
 
@@ -646,11 +656,11 @@ def _prepare_base_probabilities(
                 special_category_dict=special_category_dict,
             )
         else:
-            # If no spec model, assuming 0 probability for all specialties
-            # This is effectively "unknown"
-            ed_snapshots.loc[:, "specialty_prob"] = [
-                {} for _ in range(len(ed_snapshots))
-            ]
+            raise ValueError(
+                "Cannot compute specialty probabilities: spec_model is None "
+                "but ED snapshots are present. This should have been caught "
+                "by validation — ensure _validate_models_and_data is called first."
+            )
 
     # Probability of being admitted within window (per row) for ED patients
     if (

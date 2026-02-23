@@ -6,7 +6,7 @@ There are various approaches. Here I demonstrate two approaches.
 
 ### Comparing observed values with expected
 
-A common approach is to express the difference between the expectation of a probability distrubion, and the observed value in terms of Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
+A common approach is to express the difference between the expectation of a probability distribution, and the observed value in terms of Mean Absolute Error (MAE), which avoids positive and negative deviations cancelling each other out. The error can also be expressed as a percentage of observed admissions to derive a mean percentage error (MPE).
 
 I also plot the difference between expected and observed, which is more revealing than calculating a single number, as it gives a sense of the spread of errors, and whether the model tends to over- or underestimate.
 
@@ -16,9 +16,9 @@ Other methods, such as Quantile-Quantile (QQ) Plots appraise the performance of 
 
 Using such methods with discrete variables (such as bed counts) is nuanced because the Cumulative Distribution Function (CDF) of a discrete distribution is not continuous. A QQ plot can be difficult to interpret if values are often low or zero. Moreover, in our case, we want to evaluate each observed value for a snapshot against the predicted distribution for that particular snapshot; we are using a different predicted distribution each time.
 
-I show two approaches to evaluating the performance of models that predict discrete distributions when each observations lies on its own CDF:
+I show two approaches to evaluating the performance of models that predict discrete distributions when each observation lies on its own CDF:
 
-- Randomised Probabilility Integral Tansform (PIT) Histogram
+- Randomised Probability Integral Transform (PIT) Histogram
 - QQ plots adjusted to handle discrete distributions
 
 More information is given below.
@@ -182,9 +182,17 @@ for prediction_time in prediction_times:
 ```
 
     Training model for (22, 0)
+
+
     Training model for (15, 30)
+
+
     Training model for (6, 0)
+
+
     Training model for (12, 0)
+
+
     Training model for (9, 30)
 
 ## Prepare group snapshots
@@ -209,7 +217,6 @@ for _prediction_time in prediction_times:
         df=test_visits,
         prediction_time=_prediction_time,
         single_snapshot_per_visit=False,
-        exclude_columns=exclude_from_training_data,
         visit_col='visit_number'
     )
 
@@ -224,11 +231,19 @@ for _prediction_time in prediction_times:
 
     Processing :(22, 0)
 
+
+
     Processing :(15, 30)
+
+
 
     Processing :(6, 0)
 
+
+
     Processing :(12, 0)
+
+
 
     Processing :(9, 30)
 
@@ -236,7 +251,7 @@ for _prediction_time in prediction_times:
 
 ### Comparing observed with expected values
 
-The mean difference between observed and expected values are reported below.
+The mean difference between observed and expected values is reported below.
 
 ```python
 from patientflow.evaluate import calc_mae_mpe
@@ -280,11 +295,11 @@ From the plots above:
 
 ## Visual approaches that evaluate the whole distribution
 
-### Randomised Probabilility Integral Tansform (PIT) Histogram
+### Randomised Probability Integral Transform (PIT) Histogram
 
 As noted in the introduction, we want to evaluate each observed value against the predicted distribution for that snapshot; thus we are using a different predicted distribution each time. We have a model that determines a Cumulative Distribution Function (CDF) Fi(x) specific to the discrete random variable associated with the ith observation in a series of counts and we want to assess the accuracy of the underlying model.
 
-For continuous variables, there's an elegant solution called the Probability Integral Transform (PIT) developed by [Czado et al, 2009](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1541-0420.2009.01191.x). Each observation can be mapped to the corresponding value of its CDF; this is referred to as a a probability integral transform (PIT). If the underlying model is well calibrated, a histogram of these PIT values would be uniform, and a cumulative plot of PIT values would have a slope of 1.
+For continuous variables, there's an elegant solution called the Probability Integral Transform (PIT) developed by [Czado et al, 2009](https://onlinelibrary.wiley.com/doi/full/10.1111/j.1541-0420.2009.01191.x). Each observation can be mapped to the corresponding value of its CDF; this is referred to as a probability integral transform (PIT). If the underlying model is well calibrated, a histogram of these PIT values would be uniform, and a cumulative plot of PIT values would have a slope of 1.
 
 For a discrete random variable, instead of a single point, each observation corresponds to a range on the CDF. We identify the range of the cdf Fi(x) associated with the observation oi. For discrete integer variables, this has a lower limit, upper limit and mid-points given by
 li = Fi(oi-1), ui = Fi(oi) and mi = 𝑙𝑖+𝑢𝑖2.
@@ -301,16 +316,16 @@ plot_randomised_pit(prediction_times,
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_19_0.png)
 
-### Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
+### Evaluating Predictions for Unique Discrete Distributions (EPUDD) Plot
 
-In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418). We call this a Evaluating Predictions for Unique Discrete Distributions (EPUDD) plot
+In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in [Pagel et al (2017)](https://www.sciencedirect.com/science/article/pii/S2211692316300418). We call this an Evaluating Predictions for Unique Discrete Distributions (EPUDD) Plot
 
-In the EPUDD Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that fall at or below each CDF threshold.
+In the EPUDD Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that falls at or below each CDF threshold.
 
 Both sets of points are plotted with the predicted CDF values on the x axis. The difference is:
 
 - Grey points: Show the full predicted CDF curve
-- Colored points: Show only where the actual observations fall along that their predicted CDF
+- Coloured points: Show only where the actual observations fall along their predicted CDF
 
 If the observed cdf points track the model cdfs, the model is well calibrated.
 
@@ -328,9 +343,9 @@ plot_epudd(prediction_times,
 
 ![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_21_0.png)
 
-In the two sets of plot above, the 06:00 and 09:30 perform reasonably well. At 12:00 and 15:30 the predicted probabilities are lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.
+In the two sets of plots above, the 06:00 and 09:30 perform reasonably well. At 12:00 and 15:30 the predicted probabilities are lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.
 
-From these plots, there appears to be some bias introduded at the aggregation to group snapshots, that has not been propogated through from the patient-level predictions.
+From these plots, there appears to be some bias introduced at the aggregation to group snapshots, that has not been propagated through from the patient-level predictions.
 
 Further work is needed to isolate the reason for this bias.
 
@@ -340,4 +355,4 @@ Here I have demonstrated some methods for evaluating predicted distributions, in
 
 We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure. This helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further.
 
-I demonstrated two approaches to such plots. We prefer the EPUDD to the Randomised PIT approach because is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.
+I demonstrated two approaches to such plots. We prefer the EPUDD to the Randomised PIT approach because it is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.

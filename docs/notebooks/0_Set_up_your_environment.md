@@ -33,7 +33,7 @@ except Exception as e:
    print(f"❌ Error: {e}")
 ```
 
-    ✓ patientflow 0.2.0 imported successfully
+    ✓ patientflow 1.2.1.dev12 imported successfully
 
 ## Set `project_root` variable
 
@@ -64,13 +64,13 @@ else:
     print("Synthetic data not found - check repository structure")
 ```
 
-    patientflow version: 0.2.0
+    patientflow version: 1.2.1.dev12
     Repository root: /Users/zellaking/Repos/patientflow
     ✓ Synthetic data found
 
-The`set_file_paths` function will set file paths to default values within the `patientflow` folder, as shown below. File paths for saving media and models are derived from the name of the data folder.
+The `set_file_paths` function will set file paths to default values within the `patientflow` folder, as shown below. File paths for saving media and models are derived from the name of the data folder.
 
-In the notebooks that follow, no trained models are saved by default. All notebooks load data from `data_file_path` and train models from scratch. However, you may want to make use of `model_file_path` to save a model locally, especially they are time-consuming to run in your environment.
+In the notebooks that follow, no trained models are saved by default. All notebooks load data from `data_file_path` and train models from scratch. However, you may want to make use of `model_file_path` to save a model locally, especially if they are time-consuming to run in your environment.
 
 The config.yaml file will be loaded from the root directory. It specifies training, validation and test set dates, and some other parameters that will be discussed later.
 
@@ -90,4 +90,4 @@ data_file_path, media_file_path, model_file_path, config_path = set_file_paths(p
 In this notebook I have shown:
 
 - How to configure your environment to run these notebooks
-- Where the notebooks expect to find data, and where they will save media file, by default
+- Where the notebooks expect to find data, and where they will save media files, by default

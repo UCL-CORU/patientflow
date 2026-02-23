@@ -21,7 +21,7 @@ And various ways people leave a hospital specialty:
 
 If patient flow works well, each patient will receive timely and appropriate care from the right specialty team, without undue delays. Unfortunately, delays are not uncommon, and they can result in poor patient flow. An example of poor patient flow is when incoming patients wait for many hours in the ED because inpatients who are ready to leave are not being discharged, so no bed is available.
 
-Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward ie a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals.
+Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward i.e. a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals.
 
 Hospitals strive to have good patient flow, across all specialties, so far as they are able.
 

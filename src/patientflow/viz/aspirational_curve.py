@@ -44,6 +44,7 @@ def plot_curve(
     file_name=None,
     return_figure=False,
     annotate_points=False,
+    legend_loc="best",
 ):
     """Plot an aspirational curve with specified points and optional annotations.
 
@@ -127,9 +128,9 @@ def plot_curve(
         plt.xlabel("Hours since admission", fontsize=text_size)
         plt.ylabel("Probability of admission by this point", fontsize=text_size)
 
-    plt.axhline(y=y1, color="green", linestyle="--", label=f"y ={int(y1*100)}%")
-    plt.axvline(x=x1, color="gray", linestyle="--", label="x = 4 hours")
-    plt.legend(fontsize=text_size)
+    plt.axhline(y=y1, color="green", linestyle="--", label=f"y = {int(y1*100)}%")
+    plt.axvline(x=x1, color="gray", linestyle="--", label=f"x = {x1} hours")
+    plt.legend(fontsize=text_size, loc=legend_loc)
 
     plt.tight_layout()
 

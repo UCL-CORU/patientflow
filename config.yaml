@@ -26,7 +26,7 @@ prediction_window: 480
 x1: 4
 
 # Target proportion of patients admitted by time x1.
-y1: .76
+y1: .80
 
 # Target number of hours by which all but a small minority of patients will have been admitted (must be > x1)
 x2: 12

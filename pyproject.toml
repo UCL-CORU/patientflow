@@ -8,6 +8,7 @@ requires = [
 [dependency-groups]
 dev = [
     "patientflow",
+    "shap",
 ]
 
 [project]
@@ -53,6 +54,7 @@ optional-dependencies = {dev = [
     "twine",
 ], docs = [
     "griffe",
+    "ipykernel",
     "mkdocs",
     "mkdocs-autorefs",
     "mkdocs-awesome-pages-plugin",
