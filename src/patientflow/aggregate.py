@@ -687,7 +687,7 @@ def get_prob_dist_by_service(
     services: Optional[List[str]] = None,
     inpatient_visits: Optional[pd.DataFrame] = None,
     flow_selection: Optional[Any] = None,
-    prediction_component: str = "arrivals",
+    component: str = "arrivals",
     verbose: bool = False,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
@@ -750,7 +750,7 @@ def get_prob_dist_by_service(
     flow_selection : FlowSelection, optional
         Which flows to include in the prediction.  If ``None``,
         ``FlowSelection.default()`` is used.
-    prediction_component : str, default ``"arrivals"``
+    component : str, default ``"arrivals"``
         Which component of the ``PredictionBundle`` to extract for
         evaluation.  One of ``"arrivals"``, ``"departures"``, or
         ``"net_flow"``.
@@ -769,17 +769,17 @@ def get_prob_dist_by_service(
     Raises
     ------
     ValueError
-        If ``prediction_component`` is not one of the recognised values, or
+        If ``component`` is not one of the recognised values, or
         if any entry in *services* is not found in *specialties*.
     """
     from patientflow.predict.service import build_service_data
     from patientflow.predict.demand import DemandPredictor, FlowSelection
 
     valid_components = ("arrivals", "departures", "net_flow")
-    if prediction_component not in valid_components:
+    if component not in valid_components:
         raise ValueError(
-            f"prediction_component must be one of {valid_components}, "
-            f"got '{prediction_component}'"
+            f"component must be one of {valid_components}, "
+            f"got '{component}'"
         )
 
     if services is None:
@@ -855,7 +855,7 @@ def get_prob_dist_by_service(
                 flow_selection=flow_selection,
             )
 
-            demand_prediction = getattr(bundle, prediction_component)
+            demand_prediction = getattr(bundle, component)
 
             observed = _count_observed_admissions(
                 ed_visits, dt, prediction_time, prediction_window,

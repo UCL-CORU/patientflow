@@ -97,6 +97,7 @@ class FlowInputs:
     flow_type: str
     distribution: Union[np.ndarray, float]
     display_name: Optional[str] = None
+    aspirational: bool = False
 
     def get_display_name(self) -> str:
         """Get human-readable display name.
@@ -869,6 +870,9 @@ def _create_flow_inputs(
                 else 0.0
             ),
             display_name="ED yet-to-arrive admissions",
+            aspirational=isinstance(
+                yet_to_arrive_model, ParametricIncomingAdmissionPredictor
+            ),
         ),
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",

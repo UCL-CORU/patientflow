@@ -136,6 +136,7 @@ class DemandPredictor:
             )
 
         selected_inflows = [inputs.inflows[k] for k in inflow_keys if inflow_allowed(k)]
+        is_aspirational = any(flow.aspirational for flow in selected_inflows)
         arrivals = self.predict_flow_total(selected_inflows, service_id, "arrivals")
 
         # Build outflows from families and cohort
@@ -210,6 +211,7 @@ class DemandPredictor:
             departures=departures,
             net_flow=net_flow,
             flow_selection=flow_selection,
+            is_aspirational=is_aspirational,
         )
 
     def predict_flow_total(
@@ -375,6 +377,8 @@ class DemandPredictor:
             else FlowSelection.default()
         )
 
+        is_aspirational = any(b.is_aspirational for b in child_bundles)
+
         return PredictionBundle(
             entity_id=entity_id,
             entity_type=entity_type,
@@ -382,6 +386,7 @@ class DemandPredictor:
             departures=departures,
             net_flow=net_flow,
             flow_selection=flow_selection,
+            is_aspirational=is_aspirational,
         )
 
     def convolve_multiple(

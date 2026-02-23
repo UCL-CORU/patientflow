@@ -291,6 +291,11 @@ class PredictionBundle:
         Selection specifying which flow families and cohort were included in this
         prediction. Tracks which inflows and outflows were aggregated into the
         arrivals and departures distributions.
+    is_aspirational : bool
+        True if any inflow contributing to this prediction was generated under
+        aspirational assumptions (e.g. ED performance targets) rather than from
+        empirically observed patterns. When True, comparisons against observed
+        admission counts may not be valid.
 
     Notes
     -----
@@ -309,6 +314,7 @@ class PredictionBundle:
     departures: DemandPrediction
     net_flow: DemandPrediction
     flow_selection: FlowSelection
+    is_aspirational: bool = False
 
     def to_summary(self) -> Dict[str, Any]:
         """Return human-readable summary of predictions.
@@ -376,8 +382,9 @@ class PredictionBundle:
 
     def __str__(self) -> str:
         summary = self.to_summary()
+        tag = " [aspirational]" if self.is_aspirational else ""
         return (
-            f"PredictionBundle({summary['entity']})\n"
+            f"PredictionBundle({summary['entity']}){tag}\n"
             f"  {'Arrivals:':<12} {summary['arrivals_pmf']}\n"
             f"  {'Departures:':<12} {summary['departures_pmf']}\n"
             f"  {'Net flow:':<12} {summary['net_flow_pmf']}\n"
