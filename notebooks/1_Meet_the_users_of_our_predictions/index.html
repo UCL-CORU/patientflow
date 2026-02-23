@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
@@ -786,14 +786,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
+      <a href="../3c_Predict_bed_demand_by_hospital_service/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    3c. Predict bed counts without using patient snapshots
+    3c. Predict bed demand by hospital service
   
 
     
@@ -814,14 +814,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
+      <a href="../3d_Evaluate_bed_demand_by_hospital_service/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    3d. Predict bed count distributions for subgroups
+    3d. Evaluate bed demand predictions by hospital service
   
 
     
@@ -842,7 +842,91 @@
   
   
     <li class="md-nav__item">
-      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
+      <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3e. Predict demand from patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3f. Evaluate demand predictions for patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Specify requirements for demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
         
   
   
@@ -850,6 +934,34 @@
     
   
     4a. Specify requirements for emergency demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Organise_predictions_for_a_production_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Organise predictions for a production pipeline
   
 
     
@@ -898,6 +1010,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../4b_Stratify_predictions_by_patient_subgroups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Stratify predictions by patient subgroups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
         
   
@@ -926,6 +1066,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../4c_Predict_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Evaluate_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate demand predictions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
         
   
@@ -933,7 +1129,7 @@
   <span class="md-ellipsis">
     
   
-    4d. Evaluate predictions with special categories
+    4d. Predict emergency demand for sub-groups
   
 
     
@@ -1271,7 +1467,7 @@
 <li>as a death while in hospital</li>
 </ul>
 <p>If patient flow works well, each patient will receive timely and appropriate care from the right specialty team, without undue delays. Unfortunately, delays are not uncommon, and they can result in poor patient flow. An example of poor patient flow is when incoming patients wait for many hours in the ED because inpatients who are ready to leave are not being discharged, so no bed is available.</p>
-<p>Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward ie a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals. </p>
+<p>Due to imbalances in admissions and discharges, pressures can build up in certain parts of the hospital, while other parts remain relatively less pressured. When one specialty is under pressure, new patients may be housed in the wrong ward i.e. a ward that is not dedicated to the specialty they are under. In this case they are referred to as 'outliers'. Outlying is not ideal; evidence indicates that it can lead to worse clinical outcomes and longer stays in hospitals. </p>
 <p>Hospitals strive to have good patient flow, across all specialties, so far as they are able. </p>
 <h2 id="who-is-responsible-for-managing-patient-flow">Who is responsible for managing patient flow?</h2>
 <p>Typically a team of bed managers takes primary responsibility for managing patient flow. Bed managers are usually senior nurses with a clinical understanding of each patient's likely care needs. Their work involves responding to rapidly changing situations caused by delays in patient care, infection outbreaks, excess demand for beds, and other incidents.</p>

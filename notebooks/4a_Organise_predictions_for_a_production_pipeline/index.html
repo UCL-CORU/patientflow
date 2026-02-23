@@ -1,0 +1,2616 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation website for PatientFlow">
+      
+      
+        <meta name="author" content="Zella King">
+      
+      
+      
+        <link rel="prev" href="../4_Specify_emergency_demand_model/">
+      
+      
+        <link rel="next" href="../4b_Predict_emergency_demand/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>4a. Organise predictions for a production pipeline - PatientFlow</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+<style>
+  /* Make dataframe tables scroll horizontally when they're too wide */
+  .md-typeset .dataframe {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+  }
+
+  /* Handle table containers */
+  .md-typeset div table {
+    display: table;
+    width: 100%;
+  }
+
+  /* Ensure code outputs don't overflow */
+  .md-content__inner pre {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Images should not overflow */
+  .md-typeset img {
+    max-width: 100%;
+  }
+</style>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#4a-organise-predictions-for-a-production-pipeline" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="PatientFlow" class="md-header__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            PatientFlow
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              4a. Organise predictions for a production pipeline
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="PatientFlow" class="md-nav__button md-logo" aria-label="PatientFlow" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    PatientFlow
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/zmek/patientflow/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    zmek/patientflow
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    patientflow: a Python package for real-time predictions of hospital bed demand from current and incoming patients
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LICENSE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MIT License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Notebooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Notebooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About the notebooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../0_Set_up_your_environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. Set up your environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_Meet_the_users_of_our_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Introducing our users
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2a_Create_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2a. Create patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2b_Predict_using_patient_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2b. Make predictions using patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2c_Evaluate_patient_snapshot_models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2c. Evaluate models trained on patient-level snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2d_Explore_the_datasets_provided/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2d. Explore the datasets provided
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3a_Prepare_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3a. Prepare group snapshots from patient snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3b_Evaluate_group_snapshots/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3b. Evaluate group snapshots
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3c_Predict_bed_demand_by_hospital_service/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3c. Predict bed demand by hospital service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3d_Evaluate_bed_demand_by_hospital_service/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d. Evaluate bed demand predictions by hospital service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3e. Predict demand from patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3f. Evaluate demand predictions for patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Specify requirements for demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Specify requirements for emergency demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Organise predictions for a production pipeline
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Organise predictions for a production pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#generate-fake-data-and-train-simple-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate fake data and train simple models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-start-with-a-familiar-result-a-raw-pmf-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Start with a familiar result — a raw PMF array
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-wrap-the-pmf-in-a-flowinputs-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Wrap the PMF in a FlowInputs container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-wrap-a-poisson-rate-in-a-flowinputs-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Wrap a Poisson rate in a FlowInputs container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-group-flows-into-a-servicepredictioninputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Group flows into a ServicePredictionInputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-use-demandpredictor-to-generate-a-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Use DemandPredictor to generate a prediction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-use-flowselection-to-control-which-flows-are-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Use FlowSelection to control which flows are included
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-the-predictionbundle-arrivals-departures-and-net-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7: The PredictionBundle — arrivals, departures, and net flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Predict_emergency_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4b_Stratify_predictions_by_patient_subgroups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Stratify predictions by patient subgroups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Evaluate predictions of emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4c_Predict_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Evaluate_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate demand predictions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Predict emergency demand for sub-groups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Predict_emergency_demand_with_special_categories/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate predictions with special categories
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4e_Generate_predictions_using_hierarchy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4e. Generate predictions using a customisable hospital hierarchy.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Src
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Src
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_1" id="__nav_5_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patientflow
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Patientflow
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../src/patientflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PatientFlow: A Python package for converting patient-level predictions into output that is useful for bed managers in hospitals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#generate-fake-data-and-train-simple-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate fake data and train simple models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-start-with-a-familiar-result-a-raw-pmf-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Start with a familiar result — a raw PMF array
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-wrap-the-pmf-in-a-flowinputs-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Wrap the PMF in a FlowInputs container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-wrap-a-poisson-rate-in-a-flowinputs-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Wrap a Poisson rate in a FlowInputs container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-group-flows-into-a-servicepredictioninputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Group flows into a ServicePredictionInputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-use-demandpredictor-to-generate-a-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Use DemandPredictor to generate a prediction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-use-flowselection-to-control-which-flows-are-included" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Use FlowSelection to control which flows are included
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-the-predictionbundle-arrivals-departures-and-net-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7: The PredictionBundle — arrivals, departures, and net flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/4a_Organise_predictions_for_a_production_pipeline.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="4a-organise-predictions-for-a-production-pipeline">4a. Organise predictions for a production pipeline</h1>
+<p>In the previous notebooks in this series, we worked with raw probability distributions — PMF arrays from group snapshots (3a, 3b) and Poisson-based distributions from yet-to-arrive models (3e). We used functions like <code>get_prob_dist_for_prediction_moment()</code> and <code>ParametricIncomingAdmissionPredictor.predict()</code> to generate these distributions, and <code>plot_prob_dist()</code> to visualise them.</p>
+<p>These building blocks work well for individual predictions, but a production system needs to combine multiple demand sources (current patients, yet-to-arrive patients), for multiple services (medical, surgical, paediatric, ...), at multiple times of day. How do we organise all of these predictions in a structured way?</p>
+<p>This notebook introduces the data classes that <code>patientflow</code> uses to organise prediction inputs and outputs for a production pipeline:</p>
+<ol>
+<li><strong><code>FlowInputs</code></strong> — a named container for a single source of patient flow (a PMF array or a Poisson rate)</li>
+<li><strong><code>ServicePredictionInputs</code></strong> — a grouping of all inflows and outflows for one service</li>
+<li><strong><code>DemandPredictor</code></strong> — the prediction engine that convolves flows into a combined distribution</li>
+<li><strong><code>FlowSelection</code></strong> — a toggle for which flows to include in a prediction</li>
+<li><strong><code>PredictionBundle</code></strong> — the output: arrivals, departures, and net flow bundled together</li>
+</ol>
+<p>The 4x_ notebooks use these classes extensively. By understanding them here, you will be well prepared for the full UCLH implementation that follows.</p>
+<p>This notebook generates fake data on-the-fly, so you can run it immediately without any external data.</p>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload
+%autoreload 2
+</code></pre>
+<h2 id="generate-fake-data-and-train-simple-models">Generate fake data and train simple models</h2>
+<p>We reuse the fake data generation from notebooks 3a and 3c. First, fake ED snapshots for training an admission probability model:</p>
+<pre><code class="language-python">from datetime import date, timedelta
+from patientflow.generate import create_fake_snapshots, create_fake_finished_visits
+from patientflow.prepare import create_temporal_splits
+from patientflow.train.classifiers import train_classifier
+
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+
+snapshots_df = create_fake_snapshots(
+    prediction_times=prediction_times,
+    start_date='2023-01-01',
+    end_date='2023-04-01',
+    mean_patients_per_day=100
+)
+
+# Temporal splits
+start_training_set = date(2023, 1, 1)
+start_validation_set = date(2023, 2, 15)
+start_test_set = date(2023, 3, 1)
+end_test_set = date(2023, 4, 1)
+
+train_visits, valid_visits, test_visits = create_temporal_splits(
+    snapshots_df, start_training_set, start_validation_set,
+    start_test_set, end_test_set,
+    col_name='snapshot_date', patient_id='patient_id', visit_col='visit_number'
+)
+
+# Train a simple admission probability model (as in notebook 3a)
+model = train_classifier(
+    train_visits, valid_visits, test_visits=test_visits,
+    grid={'n_estimators': [30]},
+    prediction_time=(12, 0),
+    exclude_from_training_data=['visit_number', 'snapshot_date', 'prediction_time'],
+    ordinal_mappings={'latest_triage_score': [1, 2, 3, 4, 5]},
+    visit_col='visit_number',
+    use_balanced_training=True,
+    calibrate_probabilities=True
+)
+</code></pre>
+<pre><code>Patient Set Overlaps (before random assignment):
+Train-Valid: 0 of 5318
+Valid-Test: 102 of 3690
+Train-Test: 307 of 6129
+All Sets: 0 of 7364 total patients
+Split sizes: [6406, 2122, 4304]
+</code></pre>
+<p>Next, fake arrival data for training a yet-to-arrive model (as in notebook 3e):</p>
+<pre><code class="language-python">import pandas as pd
+from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+
+visits_df, _, _ = create_fake_finished_visits(
+    '2023-01-01', '2023-04-01', mean_patients_per_day=50, admitted_only=True
+)
+inpatient_arrivals = visits_df.rename(
+    columns={'departure_datetime': 'admitted_to_ward_datetime'}
+).drop(columns='is_admitted')
+inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'])
+
+train_arrivals, _, _ = create_temporal_splits(
+    inpatient_arrivals, start_training_set, start_validation_set,
+    start_test_set, end_test_set, col_name='arrival_datetime'
+)
+
+# Train a parametric yet-to-arrive model (as in notebook 3e)
+train_arrivals_copy = train_arrivals.copy(deep=True)
+if 'arrival_datetime' in train_arrivals_copy.columns:
+    train_arrivals_copy.set_index('arrival_datetime', inplace=True)
+
+num_days = (start_validation_set - start_training_set).days
+
+yta_model = ParametricIncomingAdmissionPredictor(verbose=False)
+yta_model.fit(
+    train_arrivals_copy,
+    prediction_window=timedelta(hours=8),
+    yta_time_interval=timedelta(minutes=15),
+    prediction_times=prediction_times,
+    num_days=num_days
+)
+</code></pre>
+<pre><code>Split sizes: [2214, 710, 1584]
+</code></pre>
+<style>#sk-container-id-1 {
+  /* Definition of color scheme common for light and dark mode */
+  --sklearn-color-text: black;
+  --sklearn-color-line: gray;
+  /* Definition of color scheme for unfitted estimators */
+  --sklearn-color-unfitted-level-0: #fff5e6;
+  --sklearn-color-unfitted-level-1: #f6e4d2;
+  --sklearn-color-unfitted-level-2: #ffe0b3;
+  --sklearn-color-unfitted-level-3: chocolate;
+  /* Definition of color scheme for fitted estimators */
+  --sklearn-color-fitted-level-0: #f0f8ff;
+  --sklearn-color-fitted-level-1: #d4ebff;
+  --sklearn-color-fitted-level-2: #b3dbfd;
+  --sklearn-color-fitted-level-3: cornflowerblue;
+
+  /* Specific color for light theme */
+  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
+  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
+  --sklearn-color-icon: #696969;
+
+  @media (prefers-color-scheme: dark) {
+    /* Redefinition of color scheme for dark theme */
+    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
+    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
+    --sklearn-color-icon: #878787;
+  }
+}
+
+#sk-container-id-1 {
+  color: var(--sklearn-color-text);
+}
+
+#sk-container-id-1 pre {
+  padding: 0;
+}
+
+#sk-container-id-1 input.sk-hidden--visually {
+  border: 0;
+  clip: rect(1px 1px 1px 1px);
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
+#sk-container-id-1 div.sk-dashed-wrapped {
+  border: 1px dashed var(--sklearn-color-line);
+  margin: 0 0.4em 0.5em 0.4em;
+  box-sizing: border-box;
+  padding-bottom: 0.4em;
+  background-color: var(--sklearn-color-background);
+}
+
+#sk-container-id-1 div.sk-container {
+  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
+     but bootstrap.min.css set `[hidden] { display: none !important; }`
+     so we also need the `!important` here to be able to override the
+     default hidden behavior on the sphinx rendered scikit-learn.org.
+     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
+  display: inline-block !important;
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-text-repr-fallback {
+  display: none;
+}
+
+div.sk-parallel-item,
+div.sk-serial,
+div.sk-item {
+  /* draw centered vertical line to link estimators */
+  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
+}
+
+/* Parallel-specific style estimator block */
+
+#sk-container-id-1 div.sk-parallel-item::after {
+  content: "";
+  width: 100%;
+  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
+  flex-grow: 1;
+}
+
+#sk-container-id-1 div.sk-parallel {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--sklearn-color-background);
+  position: relative;
+}
+
+#sk-container-id-1 div.sk-parallel-item {
+  display: flex;
+  flex-direction: column;
+}
+
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
+  align-self: flex-end;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
+  align-self: flex-start;
+  width: 50%;
+}
+
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
+  width: 0;
+}
+
+/* Serial-specific style estimator block */
+
+#sk-container-id-1 div.sk-serial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--sklearn-color-background);
+  padding-right: 1em;
+  padding-left: 1em;
+}
+
+
+/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
+clickable and can be expanded/collapsed.
+- Pipeline and ColumnTransformer use this feature and define the default style
+- Estimators will overwrite some part of the style using the `sk-estimator` class
+*/
+
+/* Pipeline and ColumnTransformer style (default) */
+
+#sk-container-id-1 div.sk-toggleable {
+  /* Default theme specific background. It is overwritten whether we have a
+  specific estimator or a Pipeline/ColumnTransformer */
+  background-color: var(--sklearn-color-background);
+}
+
+/* Toggleable label */
+#sk-container-id-1 label.sk-toggleable__label {
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 0.5em;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
+  /* Arrow on the left of the label */
+  content: "▸";
+  float: left;
+  margin-right: 0.25em;
+  color: var(--sklearn-color-icon);
+}
+
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
+  color: var(--sklearn-color-text);
+}
+
+/* Toggleable content - dropdown */
+
+#sk-container-id-1 div.sk-toggleable__content {
+  max-height: 0;
+  max-width: 0;
+  overflow: hidden;
+  text-align: left;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content pre {
+  margin: 0.2em;
+  border-radius: 0.25em;
+  color: var(--sklearn-color-text);
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
+  /* unfitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+  /* Expand drop-down */
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+  content: "▾";
+}
+
+/* Pipeline/ColumnTransformer-specific style */
+
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator-specific style */
+
+/* Colorize estimator box */
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
+  /* The background is the default theme color */
+  color: var(--sklearn-color-text-on-default-background);
+}
+
+/* On hover, darken the color of the background */
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+/* Label box, darken color on hover, fitted */
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+  color: var(--sklearn-color-text);
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Estimator label */
+
+#sk-container-id-1 div.sk-label label {
+  font-family: monospace;
+  font-weight: bold;
+  display: inline-block;
+  line-height: 1.2em;
+}
+
+#sk-container-id-1 div.sk-label-container {
+  text-align: center;
+}
+
+/* Estimator-specific */
+#sk-container-id-1 div.sk-estimator {
+  font-family: monospace;
+  border: 1px dotted var(--sklearn-color-border-box);
+  border-radius: 0.25em;
+  box-sizing: border-box;
+  margin-bottom: 0.5em;
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-0);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-0);
+}
+
+/* on hover */
+#sk-container-id-1 div.sk-estimator:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-2);
+}
+
+#sk-container-id-1 div.sk-estimator.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-2);
+}
+
+/* Specification for estimator info (e.g. "i" and "?") */
+
+/* Common style for "i" and "?" */
+
+.sk-estimator-doc-link,
+a:link.sk-estimator-doc-link,
+a:visited.sk-estimator-doc-link {
+  float: right;
+  font-size: smaller;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1em;
+  height: 1em;
+  width: 1em;
+  text-decoration: none !important;
+  margin-left: 1ex;
+  /* unfitted */
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+  color: var(--sklearn-color-unfitted-level-1);
+}
+
+.sk-estimator-doc-link.fitted,
+a:link.sk-estimator-doc-link.fitted,
+a:visited.sk-estimator-doc-link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+div.sk-estimator:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover,
+div.sk-label-container:hover .sk-estimator-doc-link:hover,
+.sk-estimator-doc-link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover,
+div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
+.sk-estimator-doc-link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+/* Span, style for the box shown on hovering the info icon */
+.sk-estimator-doc-link span {
+  display: none;
+  z-index: 9999;
+  position: relative;
+  font-weight: normal;
+  right: .2ex;
+  padding: .5ex;
+  margin: .5ex;
+  width: min-content;
+  min-width: 20ex;
+  max-width: 50ex;
+  color: var(--sklearn-color-text);
+  box-shadow: 2pt 2pt 4pt #999;
+  /* unfitted */
+  background: var(--sklearn-color-unfitted-level-0);
+  border: .5pt solid var(--sklearn-color-unfitted-level-3);
+}
+
+.sk-estimator-doc-link.fitted span {
+  /* fitted */
+  background: var(--sklearn-color-fitted-level-0);
+  border: var(--sklearn-color-fitted-level-3);
+}
+
+.sk-estimator-doc-link:hover span {
+  display: block;
+}
+
+/* "?"-specific style due to the `<a>` HTML tag */
+
+#sk-container-id-1 a.estimator_doc_link {
+  float: right;
+  font-size: 1rem;
+  line-height: 1em;
+  font-family: monospace;
+  background-color: var(--sklearn-color-background);
+  border-radius: 1rem;
+  height: 1rem;
+  width: 1rem;
+  text-decoration: none;
+  /* unfitted */
+  color: var(--sklearn-color-unfitted-level-1);
+  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted {
+  /* fitted */
+  border: var(--sklearn-color-fitted-level-1) 1pt solid;
+  color: var(--sklearn-color-fitted-level-1);
+}
+
+/* On hover */
+#sk-container-id-1 a.estimator_doc_link:hover {
+  /* unfitted */
+  background-color: var(--sklearn-color-unfitted-level-3);
+  color: var(--sklearn-color-background);
+  text-decoration: none;
+}
+
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
+  /* fitted */
+  background-color: var(--sklearn-color-fitted-level-3);
+}
+</style>
+<div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
+
+<p>We also need the aspirational curve parameters for the parametric model. These are loaded from the config file in the repository:</p>
+<pre><code class="language-python">from patientflow.load import load_config_file, set_file_paths, set_project_root
+
+project_root = set_project_root()
+_, _, _, config_path = set_file_paths(project_root, data_folder_name='data-public', verbose=False)
+params = load_config_file(config_path)
+x1, y1, x2, y2 = params['x1'], params['y1'], params['x2'], params['y2']
+
+print(f'Aspirational targets: {y1*100:.0f}% admitted within {x1:.0f} hours, '
+      f'{y2*100:.0f}% within {x2:.0f} hours')
+</code></pre>
+<pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
+Aspirational targets: 80% admitted within 4 hours, 99% within 12 hours
+</code></pre>
+<h2 id="step-1-start-with-a-familiar-result-a-raw-pmf-array">Step 1: Start with a familiar result — a raw PMF array</h2>
+<p>In notebook 3a we used <code>get_prob_dist_for_prediction_moment()</code> to predict a bed count distribution for a group of patients. The result was a raw PMF array — an array where each element gives the probability of needing that many beds.</p>
+<p>Let's reproduce this here, selecting one group snapshot from the fake data and passing it through the trained model.</p>
+<pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
+from patientflow.aggregate import get_prob_dist_for_prediction_moment
+
+# Select a single group snapshot — all patients at 12:00 on a particular date
+prediction_time = (12, 0)
+group_snapshots_dict = prepare_group_snapshot_dict(
+    snapshots_df[snapshots_df.prediction_time == prediction_time]
+)
+snapshot_date = list(group_snapshots_dict.keys())[0]
+snapshot_ids = group_snapshots_dict[snapshot_date]
+
+# Prepare for the model
+X_test, y_test = prepare_patient_snapshots(
+    df=snapshots_df.loc[snapshot_ids],
+    prediction_time=prediction_time,
+    single_snapshot_per_visit=False,
+    label_col='is_admitted'
+)
+
+# Generate the probability distribution — the same approach as in notebook 3a
+bed_count_prob_dist = get_prob_dist_for_prediction_moment(
+    X_test, model, inference_time=True
+)
+
+# The result is a raw PMF: probabilities indexed by bed count
+pmf_array = bed_count_prob_dist['agg_predicted']['agg_proba'].values
+print(f'Snapshot: {len(snapshot_ids)} patients in the ED at 12:00 on {snapshot_date}')
+print(f'PMF array shape: {pmf_array.shape}')
+print(f'Sum of probabilities: {pmf_array.sum():.4f}')
+</code></pre>
+<pre><code>Snapshot: 21 patients in the ED at 12:00 on 2023-01-01
+PMF array shape: (22,)
+Sum of probabilities: 1.0000
+</code></pre>
+<pre><code class="language-python">import numpy as np
+from patientflow.viz.probability_distribution import plot_prob_dist
+from patientflow.viz.utils import format_prediction_time
+
+title = (
+    f'Probability distribution for number of beds needed by the '
+    f'{len(snapshot_ids)} patients\n'
+    f'in the ED at {format_prediction_time(prediction_time)} '
+    f'on {snapshot_date}'
+)
+plot_prob_dist(pmf_array, title, include_titles=True)
+</code></pre>
+<p><img alt="png" src="../4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_10_0.png" /></p>
+<p>This is exactly the kind of result we produced in the 3x_ notebooks — a numpy array of probabilities. Now let's see how <code>patientflow</code> wraps this in a named container.</p>
+<h2 id="step-2-wrap-the-pmf-in-a-flowinputs-container">Step 2: Wrap the PMF in a <code>FlowInputs</code> container</h2>
+<p>A <code>FlowInputs</code> object is a lightweight, immutable container that holds a single source of patient flow. It adds three pieces of metadata to the raw distribution:</p>
+<ul>
+<li><strong><code>flow_id</code></strong> — a unique identifier (e.g. <code>"ed_current"</code>)</li>
+<li><strong><code>flow_type</code></strong> — either <code>"pmf"</code> or <code>"poisson"</code>, so downstream code knows how to handle it</li>
+<li><strong><code>display_name</code></strong> — an optional human-readable label</li>
+</ul>
+<p>The distribution itself is stored in the <code>distribution</code> attribute — exactly the same numpy array we just plotted.</p>
+<pre><code class="language-python">from patientflow.predict.service import FlowInputs
+
+ed_current_flow = FlowInputs(
+    flow_id=&quot;ed_current&quot;,
+    flow_type=&quot;pmf&quot;,
+    distribution=pmf_array,
+    display_name=&quot;Admissions from current ED&quot;
+)
+
+print(f'Flow ID:       {ed_current_flow.flow_id}')
+print(f'Flow type:     {ed_current_flow.flow_type}')
+print(f'Display name:  {ed_current_flow.get_display_name()}')
+print(f'Distribution:  numpy array of shape {ed_current_flow.distribution.shape}')
+print(f'Same data?     {np.array_equal(ed_current_flow.distribution, pmf_array)}')
+</code></pre>
+<pre><code>Flow ID:       ed_current
+Flow type:     pmf
+Display name:  Admissions from current ED
+Distribution:  numpy array of shape (22,)
+Same data?     True
+</code></pre>
+<p>The data inside <code>FlowInputs</code> is exactly the same PMF array. The container simply gives it a name and a type.</p>
+<h2 id="step-3-wrap-a-poisson-rate-in-a-flowinputs-container">Step 3: Wrap a Poisson rate in a <code>FlowInputs</code> container</h2>
+<p>In notebook 3e, we used Poisson distributions to model yet-to-arrive patients. The yet-to-arrive model's <code>predict()</code> method returns a full probability distribution — a DataFrame with an <code>agg_proba</code> column, just like the bed count distributions from notebook 3a.</p>
+<p>Let's call <code>predict()</code> on the model we just trained to see the result.</p>
+<pre><code class="language-python">prediction_context = {'unfiltered': {'prediction_time': prediction_time}}
+
+# predict() returns a full probability distribution
+yta_prediction = yta_model.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+yta_distribution = yta_prediction['unfiltered']
+
+print('Yet-to-arrive distribution (first 10 rows):')
+yta_distribution.head(10)
+</code></pre>
+<pre><code>Yet-to-arrive distribution (first 10 rows):
+</code></pre>
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>agg_proba</th>
+    </tr>
+    <tr>
+      <th>sum</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>8.208667e-09</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1.528296e-07</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>1.422696e-06</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>8.829289e-06</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4.109609e-05</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>1.530260e-04</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>4.748417e-04</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>1.262948e-03</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>2.939208e-03</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>6.080267e-03</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<pre><code class="language-python">title = (
+    f'Probability distribution for number of beds needed for patients\n'
+    f'who will arrive after {format_prediction_time(prediction_time)} '
+    f'and need a bed within 8 hours'
+)
+plot_prob_dist(yta_distribution, title, include_titles=True, truncate_at_beds=40, bar_colour='green')
+</code></pre>
+<p><img alt="png" src="../4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_17_0.png" /></p>
+<p>Because this distribution is based on a Poisson model, the <code>DemandPredictor</code> can regenerate it from just the Poisson mean (lambda). The model provides a <code>predict_mean()</code> method for this purpose. This is what <code>build_service_data()</code> uses internally in the 4x_ notebooks — it stores just the Poisson rate in the <code>FlowInputs</code> container, and the <code>DemandPredictor</code> reconstructs the full distribution when needed.</p>
+<pre><code class="language-python"># predict_mean() returns just the Poisson rate (a single float)
+yta_lambda = yta_model.predict_mean(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2)
+
+print(f'Yet-to-arrive Poisson rate (lambda): {yta_lambda:.3f}')
+
+</code></pre>
+<pre><code>Yet-to-arrive Poisson rate (lambda): 18.618
+</code></pre>
+<p>We can wrap this Poisson rate in a <code>FlowInputs</code> container. The key difference from Step 2 is that <code>flow_type</code> is <code>"poisson"</code> and <code>distribution</code> is a float (the rate) rather than a numpy array.</p>
+<pre><code class="language-python">ed_yta_flow = FlowInputs(
+    flow_id=&quot;ed_yta&quot;,
+    flow_type=&quot;poisson&quot;,
+    distribution=yta_lambda,
+    display_name=&quot;ED yet-to-arrive admissions&quot;
+)
+
+print(f'Flow ID:       {ed_yta_flow.flow_id}')
+print(f'Flow type:     {ed_yta_flow.flow_type}')
+print(f'Display name:  {ed_yta_flow.get_display_name()}')
+print(f'Distribution:  {ed_yta_flow.distribution} (Poisson lambda)')
+
+</code></pre>
+<pre><code>Flow ID:       ed_yta
+Flow type:     poisson
+Display name:  ED yet-to-arrive admissions
+Distribution:  18.618075334578297 (Poisson lambda)
+</code></pre>
+<p>Both PMF and Poisson flows use the same <code>FlowInputs</code> container, distinguished only by <code>flow_type</code>. This uniform interface means downstream code can handle any flow without special-casing.</p>
+<h2 id="step-4-group-flows-into-a-servicepredictioninputs">Step 4: Group flows into a <code>ServicePredictionInputs</code></h2>
+<p>A hospital service (e.g. "medical") has multiple sources of incoming patients and potentially outgoing patients too. <code>ServicePredictionInputs</code> groups all of these into a single object, organised as <strong>inflows</strong> and <strong>outflows</strong>.</p>
+<p>Let's build one using the two flows we just created. For the departure flows, we'll create simple fake PMFs from a Poisson distribution to represent expected discharges. For transfers and other inflows where we don't have models, we use zero placeholders — a PMF of <code>[1.0]</code> (certainly zero patients) or a Poisson rate of <code>0.0</code>.</p>
+<pre><code class="language-python">from patientflow.predict.service import ServicePredictionInputs
+from scipy.stats import poisson as poisson_dist
+
+prediction_window = timedelta(hours=8)
+
+# Create fake departure PMFs from Poisson distributions
+emergency_departure_pmf = poisson_dist.pmf(np.arange(30), mu=5)  # ~5 emergency discharges expected
+elective_departure_pmf = poisson_dist.pmf(np.arange(20), mu=2)   # ~2 elective discharges expected
+
+service_inputs = ServicePredictionInputs(
+    service_id='medical',
+    prediction_window=prediction_window,
+    inflows={
+        'ed_current': ed_current_flow,
+        'ed_yta': ed_yta_flow,
+        'non_ed_yta': FlowInputs(
+            flow_id='non_ed_yta', flow_type='poisson',
+            distribution=0.0, display_name='Non-ED emergency admissions',
+        ),
+        'elective_yta': FlowInputs(
+            flow_id='elective_yta', flow_type='poisson',
+            distribution=0.0, display_name='Elective admissions',
+        ),
+        'elective_transfers': FlowInputs(
+            flow_id='elective_transfers', flow_type='pmf',
+            distribution=np.array([1.0]),
+            display_name='Elective transfers from other services',
+        ),
+        'emergency_transfers': FlowInputs(
+            flow_id='emergency_transfers', flow_type='pmf',
+            distribution=np.array([1.0]),
+            display_name='Emergency transfers from other services',
+        ),
+    },
+    outflows={
+        'emergency_departures': FlowInputs(
+            flow_id='emergency_departures', flow_type='pmf',
+            distribution=emergency_departure_pmf,
+            display_name='Emergency inpatient departures',
+        ),
+        'elective_departures': FlowInputs(
+            flow_id='elective_departures', flow_type='pmf',
+            distribution=elective_departure_pmf,
+            display_name='Elective inpatient departures',
+        ),
+    },
+)
+
+print(service_inputs)
+</code></pre>
+<pre><code>ServicePredictionInputs(service='medical')
+  INFLOWS:
+    Admissions from current ED               PMF[2:12]: [0.007, 0.026, 0.071, 0.135, 0.191, 0.204, 0.169, 0.109, 0.056, 0.022] (E=6.9 of 21 patients in ED)
+    ED yet-to-arrive admissions              λ = 18.618
+    Non-ED emergency admissions              λ = 0.000
+    Elective admissions                      λ = 0.000
+    Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
+    Emergency transfers from other services  PMF[0:1]: [1.000] (E=0.0)
+  OUTFLOWS:
+    Emergency inpatient departures           PMF[0:10]: [0.007, 0.034, 0.084, 0.140, 0.175, 0.175, 0.146, 0.104, 0.065, 0.036] (E=5.0 of 29 emergency patients in service)
+    Elective inpatient departures            PMF[0:10]: [0.135, 0.271, 0.271, 0.180, 0.090, 0.036, 0.012, 0.003, 0.001, 0.000] (E=2.0 of 19 elective patients in service)
+</code></pre>
+<p>The printed representation shows all inflows and outflows at a glance. The <code>ed_current</code> flow shows the PMF from Step 1, and the <code>ed_yta</code> flow shows the Poisson rate from Step 3. The departure flows use fake Poisson PMFs (with expected values of ~5 and ~2 respectively), and the transfer flows are zero placeholders.</p>
+<p>In a production system, these departure distributions would come from discharge prediction models, and the transfer flows would also be populated. You'll see this in the 4x_ notebooks.</p>
+<h2 id="step-5-use-demandpredictor-to-generate-a-prediction">Step 5: Use <code>DemandPredictor</code> to generate a prediction</h2>
+<p>The <code>DemandPredictor</code> takes a <code>ServicePredictionInputs</code> and convolves the selected flows into a combined probability distribution. This is the same convolution we performed manually in notebook 3e (where we convolved multiple Poisson distributions using <code>np.convolve</code>), but wrapped in a method that handles both PMF and Poisson flows automatically.</p>
+<p>Let's predict demand using only the current ED patients first.</p>
+<pre><code class="language-python">from patientflow.predict.demand import DemandPredictor
+from patientflow.predict.demand import FlowSelection
+
+predictor = DemandPredictor(k_sigma=8.0)
+
+# Predict using only the current ED patients
+current_ed_bundle = predictor.predict_service(
+    inputs=service_inputs,
+    flow_selection=FlowSelection.custom(
+        include_ed_current=True,
+        include_ed_yta=False,
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,
+        cohort='emergency'
+    )
+)
+</code></pre>
+<p>The result is a <code>PredictionBundle</code> containing a <code>DemandPrediction</code> for arrivals. Let's look at the arrivals prediction — this corresponds to the PMF we started with.</p>
+<pre><code class="language-python">arrivals = current_ed_bundle.arrivals
+
+print(f'Expectation:          {arrivals.expectation:.1f}')
+print(f'Expected value:       {arrivals.mode}')
+print(f'Percentiles:          {arrivals.percentiles}')
+print(f'PMF shape:            {arrivals.probabilities.shape}')
+</code></pre>
+<pre><code>Expectation:          6.9
+Expected value:       7
+Percentiles:          {25: 6, 50: 7, 75: 8}
+PMF shape:            (22,)
+</code></pre>
+<pre><code class="language-python">title = (
+    f'Predicted beds needed from current ED patients\n'
+    f'at {format_prediction_time(prediction_time)} '
+    f'on {snapshot_date}'
+)
+plot_prob_dist(arrivals.probabilities, title, include_titles=True)
+</code></pre>
+<p><img alt="png" src="../4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_30_0.png" /></p>
+<p>This is the same distribution as Step 1 — the <code>DemandPredictor</code> simply passes through the PMF when there is only one flow selected. The value is in what it provides: summary statistics (expectation, mode, percentiles) and the ability to combine multiple flows, as we'll see next.</p>
+<h2 id="step-6-use-flowselection-to-control-which-flows-are-included">Step 6: Use <code>FlowSelection</code> to control which flows are included</h2>
+<p>The <code>FlowSelection</code> class is a toggle for which flows to include in a prediction. It provides several presets and a <code>custom()</code> method for full control.</p>
+<p>Let's combine current ED patients with yet-to-arrive patients. This is where convolution happens — the <code>DemandPredictor</code> convolves the PMF from current patients with the Poisson distribution from yet-to-arrive patients to produce a single combined distribution.</p>
+<pre><code class="language-python"># Include both current ED and yet-to-arrive patients
+combined_bundle = predictor.predict_service(
+    inputs=service_inputs,
+    flow_selection=FlowSelection.custom(
+        include_ed_current=True,
+        include_ed_yta=True,
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,
+        cohort='emergency'
+    )
+)
+
+print(f'Current ED only — expected beds: {current_ed_bundle.arrivals.expectation:.1f}')
+print(f'Yet-to-arrive only — Poisson rate: {yta_lambda:.1f}')
+print(f'Combined — expected beds: {combined_bundle.arrivals.expectation:.1f}')
+
+</code></pre>
+<pre><code>Current ED only — expected beds: 6.9
+Yet-to-arrive only — Poisson rate: 18.6
+Combined — expected beds: 25.5
+</code></pre>
+<p>The expected value of the combined distribution equals the sum of the individual expected values — a property of convolution. But the full probability distribution captures the combined uncertainty, not just the means.</p>
+<pre><code class="language-python">title = (
+    f'Predicted beds needed from current ED and yet-to-arrive patients\n'
+    f'at {format_prediction_time(prediction_time)} '
+    f'on {snapshot_date}'
+)
+plot_prob_dist(
+    combined_bundle.arrivals.probabilities, title,
+    include_titles=True,
+    probability_levels=[0.75, 0.25],
+    show_probability_thresholds=True,
+    bar_colour='orange'
+)
+</code></pre>
+<p><img alt="png" src="../4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_35_0.png" /></p>
+<p>Now let's compare two presets — <code>FlowSelection.incoming_only()</code> includes all inflows but no departures, while <code>FlowSelection.default()</code> includes everything.</p>
+<pre><code class="language-python">incoming_bundle = predictor.predict_service(
+    inputs=service_inputs,
+    flow_selection=FlowSelection.incoming_only()
+)
+
+default_bundle = predictor.predict_service(
+    inputs=service_inputs,
+    flow_selection=FlowSelection.default()
+)
+
+print('=== FlowSelection.incoming_only() ===')
+print(f'  Expected arrivals:   {incoming_bundle.arrivals.expectation:.1f}')
+print(f'  Expected departures: {incoming_bundle.departures.expectation:.1f}')
+print(f'  Expected net flow:   {incoming_bundle.net_flow.expectation:.1f}')
+print()
+print('=== FlowSelection.default() ===')
+print(f'  Expected arrivals:   {default_bundle.arrivals.expectation:.1f}')
+print(f'  Expected departures: {default_bundle.departures.expectation:.1f}')
+print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
+</code></pre>
+<pre><code>=== FlowSelection.incoming_only() ===
+  Expected arrivals:   25.5
+  Expected departures: 0.0
+  Expected net flow:   25.5
+
+=== FlowSelection.default() ===
+  Expected arrivals:   25.5
+  Expected departures: 7.0
+  Expected net flow:   18.5
+</code></pre>
+<p>The available presets are:
+- <code>FlowSelection.default()</code> — all flows
+- <code>FlowSelection.incoming_only()</code> — all inflows, no departures
+- <code>FlowSelection.outgoing_only()</code> — only departures
+- <code>FlowSelection.emergency_only()</code> — only emergency-related flows
+- <code>FlowSelection.elective_only()</code> — only elective-related flows
+- <code>FlowSelection.custom(...)</code> — full control over individual flow families</p>
+<h2 id="step-7-the-predictionbundle-arrivals-departures-and-net-flow">Step 7: The <code>PredictionBundle</code> — arrivals, departures, and net flow</h2>
+<p>Every call to <code>predictor.predict_service()</code> returns a <code>PredictionBundle</code>. This bundles together three <code>DemandPrediction</code> objects:</p>
+<ul>
+<li><strong>arrivals</strong> — the combined inflow distribution</li>
+<li><strong>departures</strong> — the combined outflow distribution</li>
+<li><strong>net_flow</strong> — the difference (arrivals minus departures)</li>
+</ul>
+<p>It also records which <code>FlowSelection</code> was used, so you can always trace what went into the prediction.</p>
+<pre><code class="language-python">print(combined_bundle)
+</code></pre>
+<pre><code>PredictionBundle(service: medical)
+  Arrivals:    PMF[20:30]: [0.046, 0.057, 0.068, 0.077, 0.082, 0.085, 0.083, 0.078, 0.070, 0.061] (E=25.5)
+  Departures:  PMF[0:1]: [1.000] (E=0.0)
+  Net flow:    PMF[20:30]: [0.046, 0.057, 0.068, 0.077, 0.082, 0.085, 0.083, 0.078, 0.070, 0.061] (E=25.5)
+  Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
+</code></pre>
+<p>Each <code>DemandPrediction</code> carries useful summary statistics:</p>
+<pre><code class="language-python">arrivals = combined_bundle.arrivals
+
+print(f'Expected beds:       {arrivals.expectation:.1f}')
+print(f'Most likely (mode):  {arrivals.mode}')
+print(f'Percentiles:         {arrivals.percentiles}')
+print(f'90% probability:     need at least {arrivals.min_beds_with_probability(0.9)} beds')
+print(f'PMF array length:    {len(arrivals.probabilities)}')
+</code></pre>
+<pre><code>Expected beds:       25.5
+Most likely (mode):  25
+Percentiles:         {25: 22, 50: 25, 75: 29}
+90% probability:     need at least 20 beds
+PMF array length:    76
+</code></pre>
+<p>The <code>flow_selection</code> attribute records which flows were included:</p>
+<pre><code class="language-python">fs = combined_bundle.flow_selection
+print(f'ED current:       {fs.include_ed_current}')
+print(f'ED yet-to-arrive: {fs.include_ed_yta}')
+print(f'Non-ED YTA:       {fs.include_non_ed_yta}')
+print(f'Elective YTA:     {fs.include_elective_yta}')
+print(f'Transfers in:     {fs.include_transfers_in}')
+print(f'Departures:       {fs.include_departures}')
+print(f'Cohort:           {fs.cohort}')
+</code></pre>
+<pre><code>ED current:       True
+ED yet-to-arrive: True
+Non-ED YTA:       False
+Elective YTA:     False
+Transfers in:     False
+Departures:       False
+Cohort:           emergency
+</code></pre>
+<h2 id="summary">Summary</h2>
+<p>In this notebook we traced the path from familiar 3x_ outputs to the structured data classes used in the 4x_ notebooks:</p>
+<table>
+<thead>
+<tr>
+<th>3x_ concept</th>
+<th>4x_ equivalent</th>
+<th>What changed?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw PMF array from <code>get_prob_dist_for_prediction_moment()</code></td>
+<td><code>FlowInputs(flow_type="pmf", distribution=pmf_array)</code></td>
+<td>Same numbers, named container</td>
+</tr>
+<tr>
+<td>Poisson distribution from yet-to-arrive model</td>
+<td><code>FlowInputs(flow_type="poisson", distribution=lambda)</code></td>
+<td>Rate stored; full distribution regenerated when needed</td>
+</tr>
+<tr>
+<td>Manual <code>np.convolve()</code> of multiple distributions</td>
+<td><code>DemandPredictor.predict_service()</code></td>
+<td>Same maths, handled automatically</td>
+</tr>
+<tr>
+<td>Ad-hoc selection of which inputs to include</td>
+<td><code>FlowSelection.incoming_only()</code>, <code>.default()</code>, <code>.custom(...)</code></td>
+<td>Explicit, reproducible toggle</td>
+</tr>
+<tr>
+<td>Individual result arrays</td>
+<td><code>PredictionBundle</code> with arrivals, departures, net flow</td>
+<td>Structured output with summary statistics</td>
+</tr>
+</tbody>
+</table>
+<p>In notebook 4c, you'll see how <code>build_service_data()</code> constructs all of these automatically from trained models for the full UCLH implementation — building a dictionary of <code>ServicePredictionInputs</code> for every specialty in a single call.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright © 2024 Zella King
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/zmek" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

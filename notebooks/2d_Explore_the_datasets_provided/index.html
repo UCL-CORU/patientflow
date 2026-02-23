@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
     
     
       
@@ -986,14 +986,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../3c_Predict_bed_counts_without_using_patient_snapshots/" class="md-nav__link">
+      <a href="../3c_Predict_bed_demand_by_hospital_service/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    3c. Predict bed counts without using patient snapshots
+    3c. Predict bed demand by hospital service
   
 
     
@@ -1014,14 +1014,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_Predict_bed_counts_for_subgroups/" class="md-nav__link">
+      <a href="../3d_Evaluate_bed_demand_by_hospital_service/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    3d. Predict bed count distributions for subgroups
+    3d. Evaluate bed demand predictions by hospital service
   
 
     
@@ -1042,7 +1042,91 @@
   
   
     <li class="md-nav__item">
-      <a href="../4a_Specify_emergency_demand_model/" class="md-nav__link">
+      <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3e. Predict demand from patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3f. Evaluate demand predictions for patients yet to arrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_demand_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Specify requirements for demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
         
   
   
@@ -1050,6 +1134,34 @@
     
   
     4a. Specify requirements for emergency demand prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4a_Organise_predictions_for_a_production_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4a. Organise predictions for a production pipeline
   
 
     
@@ -1098,6 +1210,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../4b_Stratify_predictions_by_patient_subgroups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4b. Stratify predictions by patient subgroups
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4c_Evaluate_emergency_demand_predictions/" class="md-nav__link">
         
   
@@ -1126,6 +1266,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../4c_Predict_demand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4c. Predict emergency demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4d_Evaluate_demand_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4d. Evaluate demand predictions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4d_Predict_emergency_demand_for_sub-groups/" class="md-nav__link">
         
   
@@ -1133,7 +1329,7 @@
   <span class="md-ellipsis">
     
   
-    4d. Evaluate predictions with special categories
+    4d. Predict emergency demand for sub-groups
   
 
     
@@ -1660,7 +1856,7 @@
 <p>These accompany my fully worked example of the modelling of emergency demand for beds. And they are also useful to illustrate what patient snapshots might be made up of. </p>
 <p>This notebook does some data exploration by plotting charts of all relevant variables in each dataset. </p>
 <p>The <code>inpatient_arrivals</code> dataset contains arrival times of all patients who visited the UCLH Emergency Department (ED) and the Same Day Emergency Care (SDEC) unit, over the period of the data, and were later admitted. It includes their sex, child status (whether adult or child), and which specialty they were admitted to.</p>
-<p>The <code>ed_visits</code> database contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve a 'labels' for model training. These are: <br />
+<p>The <code>ed_visits</code> dataset contains a set of snapshots of patients who visited the ED and SDEC over the period of the data, including both admitted and discharged patients. Each snapshot includes information known at the time of the snapshot, and excludes anything that was recorded later, except the variables that serve as 'labels' for model training. These are: <br />
 - <code>is_admitted</code> - whether the visit ended in admission to a ward
 - <code>final_sequence</code> - the sequence of consultations the patient had during the visit
 - <code>specialty</code> - the specialty of the admission, if the patient was admitted</p>
@@ -1681,7 +1877,7 @@ project_root = set_project_root()
 <pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
 </code></pre>
 <h2 id="load-parameters-and-set-file-paths">Load parameters and set file paths</h2>
-<p>Parameters are set in config.json and (for UCLH implementation in config-uclh.yaml). You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defned training, validation and test set dates.  </p>
+<p>Parameters are set in config.yaml. You can change these for your own purposes. I'll talk more about the role of each parameter as it becomes relevant. Here we are loading the pre-defined training, validation and test set dates.  </p>
 <pre><code class="language-python">from patientflow.load import set_file_paths
 
 # set file paths
@@ -2464,7 +2660,7 @@ for col_name in [item for item in dict_cols['observations'] if 'news' in str(ite
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_48_1.png" /></p>
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_48_2.png" /></p>
 <h3 id="lab-variables">Lab variables</h3>
-<p>The lab variables include boolean values for whether a lab battery was ordered, and the results of certain lab test. The data include only a small a subset of the lab battery orders and test results that might be requested for a patient in the ED. </p>
+<p>The lab variables include boolean values for whether a lab battery was ordered, and the results of certain lab tests. The data include only a small subset of the lab battery orders and test results that might be requested for a patient in the ED. </p>
 <pre><code class="language-python">dict_cols['lab orders and results']
 </code></pre>
 <pre><code>['lab_orders_bc',
@@ -2516,7 +2712,7 @@ for col_name in [item for item in dict_cols['observations'] if 'news' in str(ite
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_54_9.png" /></p>
 <h3 id="consults-variables">Consults variables</h3>
 <p>The <code>has_consultation</code> variable records whether a referral request was made to another service or specialty up to the point of the snapshot. The sequence of referrals up to that point is recorded in <code>consultation_sequence</code> and the final sequence, at the end of the ED visit in <code>final_sequence</code>. <code>specialty</code> records the specialty that the patient was admitted under, if admitted. </p>
-<p>The first plot shows that the number of admitted patients with consult requests at the time of the snapshots is about the same as those without. The group without consult requests will have their later in the visit, after the snapshot was recorded.</p>
+<p>The first plot shows that the number of admitted patients with consult requests at the time of the snapshots is about the same as those without. The group without consult requests will have theirs later in the visit, after the snapshot was recorded.</p>
 <pre><code class="language-python">plot_data_distribution(ed_visits, 'has_consultation', 'is_admitted', 'whether patient admitted', plot_type='hist')
 </code></pre>
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_56_0.png" /></p>
@@ -2525,7 +2721,7 @@ for col_name in [item for item in dict_cols['observations'] if 'news' in str(ite
 </code></pre>
 <p><img alt="png" src="../2d_Explore_the_datasets_provided_files/2d_Explore_the_datasets_provided_58_0.png" /></p>
 <h2 id="explore-inpatient-arrivals-dataset">Explore inpatient arrivals dataset</h2>
-<p>The inpatient_arrivals dataset records all of the arrival dates and and times of patients who were later admitted to a ward. Other information is also recorded, such as sex and child status, as will as specialty of admission. This dataset will be used to predict the number of patients yet-to-arrive at the time of prediction. </p>
+<p>The inpatient_arrivals dataset records all of the arrival dates and times of patients who were later admitted to a ward. Other information is also recorded, such as sex and child status, as well as specialty of admission. This dataset will be used to predict the number of patients yet-to-arrive at the time of prediction. </p>
 <pre><code class="language-python">inpatient_arrivals.head()
 </code></pre>
 <div>
