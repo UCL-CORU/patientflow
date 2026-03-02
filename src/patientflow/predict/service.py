@@ -881,17 +881,13 @@ def _create_flow_inputs(
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(
-                non_ed_yta_model, prediction_context
-            ),
+            distribution=_safe_predict_mean(non_ed_yta_model, prediction_context),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(
-                elective_yta_model, prediction_context
-            ),
+            distribution=_safe_predict_mean(elective_yta_model, prediction_context),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()

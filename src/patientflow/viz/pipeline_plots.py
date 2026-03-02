@@ -426,12 +426,16 @@ def in_ed_now_plot(
             fig, target_ax = plt.subplots(figsize=(figsize_x, figsize_y))
         for location, group in ex.groupby("loc_new", observed=True):
             if jitter_offsets is None:
-                offsets = np.random.uniform(-jitter_amount, jitter_amount, size=len(group))
+                offsets = np.random.uniform(
+                    -jitter_amount, jitter_amount, size=len(group)
+                )
             else:
                 if isinstance(jitter_offsets, pd.Series):
                     offsets = jitter_offsets.reindex(group.index).fillna(0.0).to_numpy()
                 else:
-                    offsets = np.array([jitter_offsets.get(i, 0.0) for i in group.index])
+                    offsets = np.array(
+                        [jitter_offsets.get(i, 0.0) for i in group.index]
+                    )
             jittered_y = loc_to_num[location] + offsets
             target_ax.scatter(
                 group["elapsed_los"] / 3600,
@@ -456,12 +460,16 @@ def in_ed_now_plot(
             fig, target_ax = plt.subplots(figsize=(figsize_x - 1, figsize_y))
         for location, group in ex.groupby("loc_new", observed=True):
             if jitter_offsets is None:
-                offsets = np.random.uniform(-jitter_amount, jitter_amount, size=len(group))
+                offsets = np.random.uniform(
+                    -jitter_amount, jitter_amount, size=len(group)
+                )
             else:
                 if isinstance(jitter_offsets, pd.Series):
                     offsets = jitter_offsets.reindex(group.index).fillna(0.0).to_numpy()
                 else:
-                    offsets = np.array([jitter_offsets.get(i, 0.0) for i in group.index])
+                    offsets = np.array(
+                        [jitter_offsets.get(i, 0.0) for i in group.index]
+                    )
             jittered_y = loc_to_num[location] + offsets
             target_ax.scatter(
                 group["elapsed_los"] / 3600,
@@ -720,10 +728,10 @@ def main(
     )
     fig_e, axes_e = plt.subplots(2, 2, figsize=(12, 8))
     for ax, specialty in zip(axes_e.flat, plot_order):
-        ex_with_specialty["_specialty_plot_prob"] = ex_with_specialty["specialty_prob"].apply(
-            lambda probs: probs.get(specialty, 0.0)
-            if isinstance(probs, dict)
-            else 0.0
+        ex_with_specialty["_specialty_plot_prob"] = ex_with_specialty[
+            "specialty_prob"
+        ].apply(
+            lambda probs: probs.get(specialty, 0.0) if isinstance(probs, dict) else 0.0
         )
         in_ed_now_plot(
             ex_with_specialty,

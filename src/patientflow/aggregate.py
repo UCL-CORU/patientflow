@@ -778,8 +778,7 @@ def get_prob_dist_by_service(
     valid_components = ("arrivals", "departures", "net_flow")
     if component not in valid_components:
         raise ValueError(
-            f"component must be one of {valid_components}, "
-            f"got '{component}'"
+            f"component must be one of {valid_components}, " f"got '{component}'"
         )
 
     if services is None:
@@ -795,9 +794,7 @@ def get_prob_dist_by_service(
         flow_selection = FlowSelection.default()
 
     predictor = DemandPredictor(k_sigma=8.0)
-    result: Dict[str, Dict[date, Dict[str, Any]]] = {
-        svc: {} for svc in services
-    }
+    result: Dict[str, Dict[date, Dict[str, Any]]] = {svc: {} for svc in services}
 
     for dt in snapshot_dates:
         ed_snapshot = ed_visits[
@@ -807,24 +804,19 @@ def get_prob_dist_by_service(
 
         if ed_snapshot.empty:
             for svc in services:
-                result[svc][dt] = prediction_to_eval_dict(
-                    np.array([1.0]), observed=0
-                )
+                result[svc][dt] = prediction_to_eval_dict(np.array([1.0]), observed=0)
             continue
 
         ed_snapshot_processed = ed_snapshot.copy(deep=True)
-        if not pd.api.types.is_timedelta64_dtype(
-            ed_snapshot_processed["elapsed_los"]
-        ):
+        if not pd.api.types.is_timedelta64_dtype(ed_snapshot_processed["elapsed_los"]):
             ed_snapshot_processed["elapsed_los"] = pd.to_timedelta(
                 ed_snapshot_processed["elapsed_los"], unit="s"
             )
 
         inpatient_snapshot = None
         if inpatient_visits is not None:
-            ip_mask = (
-                (inpatient_visits["snapshot_date"] == dt)
-                & (inpatient_visits["prediction_time"] == prediction_time)
+            ip_mask = (inpatient_visits["snapshot_date"] == dt) & (
+                inpatient_visits["prediction_time"] == prediction_time
             )
             ip_filtered = inpatient_visits[ip_mask]
             if not ip_filtered.empty:
@@ -858,7 +850,10 @@ def get_prob_dist_by_service(
             demand_prediction = getattr(bundle, component)
 
             observed = _count_observed_admissions(
-                ed_visits, dt, prediction_time, prediction_window,
+                ed_visits,
+                dt,
+                prediction_time,
+                prediction_window,
                 specialty=svc,
             )
 
