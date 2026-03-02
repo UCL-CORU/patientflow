@@ -333,6 +333,7 @@ def in_ed_now_plot(
     colour=False,
     text_size=None,
     jitter_amount=0.1,
+    jitter_offsets=None,
     size=50,
     preds_col="preds",
     colour_map="Spectral_r",
@@ -374,6 +375,11 @@ def in_ed_now_plot(
         Font size for tick labels and (if shown) titles.
     jitter_amount : float, optional
         Vertical jitter applied to dots.  Default ``0.1``.
+    jitter_offsets : pandas.Series or dict or None, optional
+        Precomputed per-row jitter values keyed by ``ex.index``. When
+        provided, these values are used instead of generating fresh random
+        jitter, which allows consistent vertical offsets across multiple
+        related plots. Default ``None``.
     size : int, optional
         Marker size.  Default ``50``.
     preds_col : str, optional
@@ -419,9 +425,18 @@ def in_ed_now_plot(
         else:
             fig, target_ax = plt.subplots(figsize=(figsize_x, figsize_y))
         for location, group in ex.groupby("loc_new", observed=True):
-            jittered_y = loc_to_num[location] + np.random.uniform(
-                -jitter_amount, jitter_amount, size=len(group)
-            )
+            if jitter_offsets is None:
+                offsets = np.random.uniform(
+                    -jitter_amount, jitter_amount, size=len(group)
+                )
+            else:
+                if isinstance(jitter_offsets, pd.Series):
+                    offsets = jitter_offsets.reindex(group.index).fillna(0.0).to_numpy()
+                else:
+                    offsets = np.array(
+                        [jitter_offsets.get(i, 0.0) for i in group.index]
+                    )
+            jittered_y = loc_to_num[location] + offsets
             target_ax.scatter(
                 group["elapsed_los"] / 3600,
                 jittered_y,
@@ -444,9 +459,18 @@ def in_ed_now_plot(
         else:
             fig, target_ax = plt.subplots(figsize=(figsize_x - 1, figsize_y))
         for location, group in ex.groupby("loc_new", observed=True):
-            jittered_y = loc_to_num[location] + np.random.uniform(
-                -jitter_amount, jitter_amount, size=len(group)
-            )
+            if jitter_offsets is None:
+                offsets = np.random.uniform(
+                    -jitter_amount, jitter_amount, size=len(group)
+                )
+            else:
+                if isinstance(jitter_offsets, pd.Series):
+                    offsets = jitter_offsets.reindex(group.index).fillna(0.0).to_numpy()
+                else:
+                    offsets = np.array(
+                        [jitter_offsets.get(i, 0.0) for i in group.index]
+                    )
+            jittered_y = loc_to_num[location] + offsets
             target_ax.scatter(
                 group["elapsed_los"] / 3600,
                 jittered_y,
@@ -618,6 +642,11 @@ def main(
     )
     prediction_window = timedelta(minutes=config["prediction_window"])
     plot_order = ["medical", "surgical", "haem/onc", "paediatric"]
+    # Keep patient vertical jitter consistent across all scatter figures.
+    shared_jitter = pd.Series(
+        np.random.uniform(-0.1, 0.1, size=len(ex)),
+        index=ex.index,
+    )
 
     # ------------------------------------------------------------------
     # Figure (a) – patients in ED, no colour
@@ -627,6 +656,7 @@ def main(
         title=title_base,
         include_titles=include_titles,
         return_figure=True,
+        jitter_offsets=shared_jitter,
     )
     _save_fig(fig_a, save_dir, "figure_a_patients_in_ed.png", "a")
 
@@ -654,6 +684,7 @@ def main(
         colour_map="Spectral_r",
         include_titles=include_titles,
         return_figure=True,
+        jitter_offsets=shared_jitter,
     )
     _save_fig(fig_b, save_dir, "figure_b_admission_probability.png", "b")
 
@@ -695,17 +726,23 @@ def main(
         specialty_model=prediction_inputs["specialty_model"],
         specialties=prediction_inputs["specialties"],
     )
-
     fig_e, axes_e = plt.subplots(2, 2, figsize=(12, 8))
     for ax, specialty in zip(axes_e.flat, plot_order):
+        ex_with_specialty["_specialty_plot_prob"] = ex_with_specialty[
+            "specialty_prob"
+        ].apply(
+            lambda probs: probs.get(specialty, 0.0) if isinstance(probs, dict) else 0.0
+        )
         in_ed_now_plot(
             ex_with_specialty,
             title=specialty.title(),
             colour=True,
             colour_map=spec_colour_dict["spectrum"].get(specialty, "Spectral_r"),
+            preds_col="_specialty_plot_prob",
             include_titles=include_titles,
             ax=ax,
             text_size=14,
+            jitter_offsets=shared_jitter,
         )
     if include_titles:
         fig_e.suptitle(
@@ -713,7 +750,7 @@ def main(
             fontsize=16,
         )
     fig_e.tight_layout()
-    _save_fig(fig_e, save_dir, "figure_e_specialty_scatter.png", "e")
+    _save_fig(fig_e, save_dir, "figure_e_specialty_of_admission.png", "e")
 
     # ------------------------------------------------------------------
     # Figure (f) – per-specialty bed demand (no admission-in-window prob)
@@ -803,6 +840,7 @@ def main(
         preds_col="prob_adm_in_window",
         include_titles=include_titles,
         return_figure=True,
+        jitter_offsets=shared_jitter,
     )
     _save_fig(fig_h, save_dir, "figure_h_admission_in_window.png", "h")
 

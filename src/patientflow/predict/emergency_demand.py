@@ -49,11 +49,50 @@ from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
 from patientflow.model_artifacts import TrainedClassifier
-from patientflow.predict.validation import warn_specialty_mismatch
 
 # SettingWithCopyWarning was removed in pandas 3.0 (CoW is now default)
 if hasattr(pd.errors, "SettingWithCopyWarning"):
     warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
+
+
+def warn_specialty_mismatch(
+    requested: set,
+    trained: set,
+    source_label: str,
+    *,
+    stacklevel: int = 3,
+) -> None:
+    """Emit warnings when requested and trained specialty sets diverge.
+
+    Parameters
+    ----------
+    requested : set
+        Specialties coming from the current request (e.g. Clarity).
+    trained : set
+        Specialties the model was trained on.
+    source_label : str
+        Human-readable name for the trained artefact, used in messages
+        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
+    stacklevel : int, optional
+        Passed to :func:`warnings.warn` so the warning points to the
+        caller rather than this helper.  Default is 3 (caller's caller).
+    """
+    new_in_request = requested - trained
+    missing_from_request = trained - requested
+    if new_in_request:
+        warnings.warn(
+            f"{len(new_in_request)} specialties found in the request but absent "
+            f"from the trained {source_label} (models may need retraining): "
+            f"{sorted(new_in_request)}",
+            stacklevel=stacklevel,
+        )
+    if missing_from_request:
+        warnings.warn(
+            f"{len(missing_from_request)} specialties present in the trained "
+            f"{source_label} but absent from the request: "
+            f"{sorted(missing_from_request)}",
+            stacklevel=stacklevel,
+        )
 
 
 def add_missing_columns(pipeline, df):
@@ -436,6 +475,8 @@ def create_predictions(
                 "special_category_dict",
             )
 
+    trained_yta_keys = set(yet_to_arrive_model.filters.keys())
+
     predictions: Dict[str, Dict[str, Any]] = {
         specialty: {"in_ed": [], "yet_to_arrive": []} for specialty in specialties
     }
@@ -555,10 +596,14 @@ def create_predictions(
             filtered_prob_admission_after_ed, weights=filtered_weights
         )
 
-        prediction_context = {specialty: {"prediction_time": prediction_time}}
-        agg_predicted_yta = yet_to_arrive_model.predict(
-            prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-        )
+        if specialty in trained_yta_keys:
+            prediction_context = {specialty: {"prediction_time": prediction_time}}
+            agg_predicted_yta = yet_to_arrive_model.predict(
+                prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
+            )
+            yta_proba = agg_predicted_yta[specialty]["agg_proba"]
+        else:
+            yta_proba = pd.Series([1.0], name="agg_proba")
 
         if cdf_cut_points is not None:
             predictions[specialty]["in_ed"] = [
@@ -568,15 +613,11 @@ def create_predictions(
                 for cut_point in cdf_cut_points
             ]
             predictions[specialty]["yet_to_arrive"] = [
-                find_probability_threshold_index(
-                    agg_predicted_yta[specialty]["agg_proba"].values, cut_point
-                )
+                find_probability_threshold_index(yta_proba.values, cut_point)
                 for cut_point in cdf_cut_points
             ]
         else:
             predictions[specialty]["in_ed"] = agg_predicted_in_ed["agg_proba"]
-            predictions[specialty]["yet_to_arrive"] = agg_predicted_yta[specialty][
-                "agg_proba"
-            ]
+            predictions[specialty]["yet_to_arrive"] = yta_proba
 
     return predictions

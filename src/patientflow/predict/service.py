@@ -22,8 +22,8 @@ import pandas as pd
 from patientflow.predict.emergency_demand import (
     add_missing_columns,
     get_specialty_probs,
+    warn_specialty_mismatch,
 )
-from patientflow.predict.validation import warn_specialty_mismatch
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
     EmpiricalIncomingAdmissionPredictor,
@@ -97,6 +97,7 @@ class FlowInputs:
     flow_type: str
     distribution: Union[np.ndarray, float]
     display_name: Optional[str] = None
+    aspirational: bool = False
 
     def get_display_name(self) -> str:
         """Get human-readable display name.
@@ -459,7 +460,7 @@ def _validate_models_and_data(
             "and ED snapshots are provided, but spec_model is None"
         )
 
-    # Validate specialties alignment
+    # Validate specialties alignment (warn only — filtering happens at call sites)
     if yet_to_arrive_model is not None and hasattr(yet_to_arrive_model, "filters"):
         warn_specialty_mismatch(
             set(specialties),
@@ -849,6 +850,14 @@ def _create_flow_inputs(
     """
     prediction_context = {spec: {"prediction_time": prediction_time}}
 
+    def _safe_predict_mean(model, context, **kwargs) -> float:
+        # Return 0.0 when the model is None or doesn't recognise the filter key
+        if model is None:
+            return 0.0
+        if hasattr(model, "weights") and spec not in model.weights:
+            return 0.0
+        return float(model.predict_mean(context, **kwargs))
+
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
     inflows_dict = {
@@ -861,33 +870,24 @@ def _create_flow_inputs(
         "ed_yta": FlowInputs(
             flow_id="ed_yta",
             flow_type="poisson",
-            distribution=float(
-                yet_to_arrive_model.predict_mean(
-                    prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-                )
-                if yet_to_arrive_model is not None
-                else 0.0
+            distribution=_safe_predict_mean(
+                yet_to_arrive_model, prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
             ),
             display_name="ED yet-to-arrive admissions",
+            aspirational=isinstance(
+                yet_to_arrive_model, ParametricIncomingAdmissionPredictor
+            ),
         ),
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=float(
-                non_ed_yta_model.predict_mean(prediction_context)
-                if non_ed_yta_model is not None
-                else 0.0
-            ),
+            distribution=_safe_predict_mean(non_ed_yta_model, prediction_context),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=float(
-                elective_yta_model.predict_mean(prediction_context)
-                if elective_yta_model is not None
-                else 0.0
-            ),
+            distribution=_safe_predict_mean(elective_yta_model, prediction_context),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()
