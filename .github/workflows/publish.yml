@@ -36,7 +36,7 @@ jobs:
           TWINE_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
         run: |
-          twine upload --repository testpypi dist/*
+          twine upload --repository testpypi --skip-existing dist/*
 
       # Updated verification step with basic import test instead of pytest
       - name: Verify package from TestPyPI
