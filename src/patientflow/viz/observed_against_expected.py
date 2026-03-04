@@ -489,6 +489,7 @@ def plot_arrival_deltas(
     snapshot_dates,
     prediction_window: timedelta,
     yta_time_interval: timedelta = timedelta(minutes=15),
+    suptitle=None,
     media_file_path=None,
     file_name=None,
     return_figure=False,
@@ -508,6 +509,9 @@ def plot_arrival_deltas(
         Prediction window in minutes
     yta_time_interval : int, default=15
         Time interval in minutes for calculating arrival rates
+    suptitle : str, optional
+        Super title displayed above the figure. Typically the name of the
+        entity being analysed (e.g. service or specialty).
     media_file_path : Path, optional
         Path to save the plot
     file_name : str, optional
@@ -524,6 +528,8 @@ def plot_arrival_deltas(
     """
     # Create figure with subplots
     fig = plt.figure(figsize=fig_size)
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=14)
     gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
@@ -663,10 +669,19 @@ def plot_arrival_deltas(
     ax1.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
 
     # Format the main plot
+    start_time = format_prediction_time(prediction_time)
+    end_time_obj = (
+        datetime.combine(datetime.min, time(prediction_time[0], prediction_time[1]))
+        + prediction_window
+    ).time()
+    end_time = f"{end_time_obj.hour:02d}:{end_time_obj.minute:02d}"
+    interval_mins = int(yta_time_interval.total_seconds() / 60)
+
     ax1.set_xlabel("Time")
-    ax1.set_ylabel("Difference (Actual - Expected)")
+    ax1.set_ylabel("Cumulative difference (observed \u2212 expected)")
     ax1.set_title(
-        f"Difference Between Actual and Expected Arrivals in the {(int(prediction_window.total_seconds()/3600))} hours after {format_prediction_time(prediction_time)} on all dates"
+        f"Cumulative difference between observed and expected arrivals"
+        f" over {interval_mins}-min intervals, {start_time}\u2013{end_time}"
     )
 
     # Format time axis
@@ -684,9 +699,9 @@ def plot_arrival_deltas(
         # Convert numpy array of bin edges to a plain Python list for type clarity
         ax2.hist(final_deltas, bins=list(bin_edges), color="grey", alpha=0.7)
         ax2.axvline(x=0, color="gray", linestyle="--", alpha=0.5)
-        ax2.set_xlabel("Final Difference (Actual - Expected)")
+        ax2.set_xlabel("End-of-window difference")
         ax2.set_ylabel("Count")
-        ax2.set_title("Distribution of Final Differences")
+        ax2.set_title("Distribution of end-of-window differences")
 
         # Set x-axis ticks to integer values with appropriate spacing
         value_range = unique_values.max() - unique_values.min()
@@ -695,7 +710,7 @@ def plot_arrival_deltas(
             np.arange(unique_values.min(), unique_values.max() + 1, step_size)
         )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.95] if suptitle else [0, 0, 1, 1])
 
     if media_file_path:
         filename = file_name if file_name else "multiple_deltas.png"

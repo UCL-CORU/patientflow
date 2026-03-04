@@ -102,8 +102,12 @@ class TrainedClassifier:
         The scikit-learn pipeline representing the trained classifier.
     calibrated_pipeline : sklearn.pipeline.Pipeline or None, optional
         The calibrated version of the pipeline, if model calibration was performed.
+    selected_eval_metrics : dict of str to Any, optional
+        Canonical evaluation metrics selected for downstream reporting.
+        This keeps frequently used metrics at top level for simpler access.
     """
 
     training_results: TrainingResults
     pipeline: Optional[Pipeline] = None
     calibrated_pipeline: Optional[Pipeline] = None
+    selected_eval_metrics: Dict[str, Any] = field(default_factory=dict)
