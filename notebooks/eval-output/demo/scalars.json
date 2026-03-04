@@ -1,0 +1,685 @@
+{
+  "_meta": {
+    "generated_at_utc": "2026-03-04T18:13:51.924789+00:00",
+    "phase": 2,
+    "reliability_thresholds": {
+      "classifier_positive_cases": 50,
+      "distribution_snapshots": 30,
+      "transition_transfers": 10
+    },
+    "schema_version": "phase2"
+  },
+  "ed_current_admission_classifier": {
+    "aspirational": false,
+    "components": {
+      "classifier": {
+        "prediction_times": {
+          "0600": {
+            "auprc": 0.7369805769889013,
+            "auroc": 0.7606623925454966,
+            "evaluated": true,
+            "log_loss": 0.641982515936282,
+            "n_positive_cases": 210,
+            "n_samples": 1057,
+            "reliability": {
+              "basis": "positive_cases",
+              "is_reliable": true,
+              "threshold": 50
+            }
+          },
+          "0930": {
+            "auprc": 0.7673796741120288,
+            "auroc": 0.7846926056771137,
+            "evaluated": true,
+            "log_loss": 0.5985942084634889,
+            "n_positive_cases": 205,
+            "n_samples": 1539,
+            "reliability": {
+              "basis": "positive_cases",
+              "is_reliable": true,
+              "threshold": 50
+            }
+          },
+          "1200": {
+            "auprc": 0.7904890595521109,
+            "auroc": 0.8123720670390144,
+            "evaluated": true,
+            "log_loss": 0.559724250034265,
+            "n_positive_cases": 318,
+            "n_samples": 2553,
+            "reliability": {
+              "basis": "positive_cases",
+              "is_reliable": true,
+              "threshold": 50
+            }
+          },
+          "1530": {
+            "auprc": 0.8105956917372443,
+            "auroc": 0.8256486636563413,
+            "evaluated": true,
+            "log_loss": 0.5405400194369923,
+            "n_positive_cases": 436,
+            "n_samples": 2854,
+            "reliability": {
+              "basis": "positive_cases",
+              "is_reliable": true,
+              "threshold": 50
+            }
+          },
+          "2200": {
+            "auprc": 0.8022625517851681,
+            "auroc": 0.8196003054342341,
+            "evaluated": true,
+            "log_loss": 0.5432947648836659,
+            "n_positive_cases": 363,
+            "n_samples": 2386,
+            "reliability": {
+              "basis": "positive_cases",
+              "is_reliable": true,
+              "threshold": 50
+            }
+          }
+        }
+      }
+    },
+    "evaluation_mode": "classifier",
+    "flow_type": "classifier"
+  },
+  "ed_current_beds": {
+    "aspirational": false,
+    "evaluation_mode": "distribution",
+    "flow_type": "pmf",
+    "services": {
+      "haem/onc": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "mae": 0.43261088919456897,
+                "mpe": 29.05512894130556,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "mae": 0.48042112431161177,
+                "mpe": 34.434692443475384,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "mae": 0.5891492177937686,
+                "mpe": 27.476140640189143,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "mae": 0.8128930220962584,
+                "mpe": 38.35932691741708,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "mae": 0.6676901023083525,
+                "mpe": 30.623229825215226,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "medical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "mae": 1.3825326041636892,
+                "mpe": 42.912838275419205,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "mae": 1.2386094259696674,
+                "mpe": 39.81069308274215,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "mae": 1.5461351180669054,
+                "mpe": 43.90416493844395,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "mae": 2.2363179574872563,
+                "mpe": 37.86158788445241,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "mae": 2.6755952732996655,
+                "mpe": 30.90752521825848,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "paediatric": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "mae": 0.30705277106849993,
+                "mpe": 64.53260823393137,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "mae": 0.3410238626604554,
+                "mpe": 44.52088367639799,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "mae": 0.4992614922625348,
+                "mpe": 39.71786475541468,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "mae": 0.6899502429009674,
+                "mpe": 34.1361981710594,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "mae": 0.6386660525059257,
+                "mpe": 36.26977796525502,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "surgical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "mae": 0.8450803044154623,
+                "mpe": 53.11508742884291,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "mae": 0.8324367914425055,
+                "mpe": 46.942949790443706,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "mae": 1.2061812755237475,
+                "mpe": 54.68551561320627,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "mae": 1.362844451120946,
+                "mpe": 49.78754028272052,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "mae": 1.3230400824157604,
+                "mpe": 50.6564010508156,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ed_yta_arrival_rates": {
+    "aspirational": false,
+    "evaluation_mode": "arrival_deltas",
+    "flow_type": "special",
+    "services": {
+      "haem/onc": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "medical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "paediatric": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      },
+      "surgical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "0930": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "1530": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              },
+              "2200": {
+                "evaluated": true,
+                "n_snapshots": 92,
+                "reliability": {
+                  "basis": "snapshots",
+                  "is_reliable": true,
+                  "threshold": 30
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ed_yta_beds_aspirational": {
+    "aspirational": true,
+    "evaluation_mode": "aspirational_skip",
+    "flow_type": "poisson",
+    "services": {
+      "haem/onc": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "0930": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1530": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "2200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              }
+            }
+          }
+        }
+      },
+      "medical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "0930": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1530": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "2200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              }
+            }
+          }
+        }
+      },
+      "paediatric": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "0930": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1530": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "2200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              }
+            }
+          }
+        }
+      },
+      "surgical": {
+        "components": {
+          "arrivals": {
+            "prediction_times": {
+              "0600": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "0930": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "1530": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              },
+              "2200": {
+                "evaluated": false,
+                "reason": "Aspirational flow: observed-vs-predicted diagnostics skipped"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

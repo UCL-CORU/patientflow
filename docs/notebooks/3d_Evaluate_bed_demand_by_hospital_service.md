@@ -4,14 +4,15 @@ In the previous notebook, I showed how to train a model to predict which hospita
 
 In this notebook, I evaluate those predictions across the full test set, using the evaluation approaches introduced in notebook 3b:
 
-- Histograms of observed versus expected values
-- EPUDD (Evaluating Predictions for Unique Discrete Distributions) plots
+* Histograms of observed versus expected values
+* EPUDD (Evaluating Predictions for Unique Discrete Distributions) plots
 
 In the appendix, I compare the service prediction model with a baseline that uses average admission proportions by hospital service.
 
 ### About the data used in this notebook
 
 You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
+
 
 ```python
 # Reload functions every time
@@ -22,6 +23,7 @@ You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/1486605
 ## Load data and train models
 
 The data loading, model configuration, and model training steps were demonstrated in detail in previous notebook 3b (for admission models trained at each prediction time) and notebook 3c for the hospital service prediction model. Here I use `prepare_prediction_inputs`, a convenience function that performs all of these steps in a single call. It trains admission models for each prediction time, a hospital service prediction model, and a yet-to-arrive model.
+
 
 ```python
 from patientflow.train.emergency_demand import prepare_prediction_inputs
@@ -40,26 +42,28 @@ params = prediction_inputs['config']
 
     Split sizes: [62071, 10415, 29134]
     Split sizes: [7716, 1285, 3898]
-
+    
     Processing: (6, 0)
 
 
-
+    
     Processing: (9, 30)
 
 
-
+    
     Processing: (12, 0)
 
 
-
+    
     Processing: (15, 30)
 
 
-
+    
     Processing: (22, 0)
 
+
 Below I use the training, validation and test set dates set in `config.yaml` to retrieve the portion of the data that forms the test set.
+
 
 ```python
 import pandas as pd
@@ -83,6 +87,7 @@ _, _, test_visits_df = create_temporal_splits(
 
     Split sizes: [62071, 10415, 29134]
 
+
 ## Generate predicted distributions by hospital service
 
 In notebook 3c, I demonstrated how to generate a predicted bed count distribution for one hospital service and one group snapshot. To evaluate the model, I need to generate predictions for every group snapshot in the test set, for each hospital service and prediction time.
@@ -94,6 +99,7 @@ The function below does this by:
 3. Recording the observed number of admissions to each service for comparison
 
 The `category_filter` parameter passed to `get_prob_dist` ensures that the observed counts reflect only patients admitted to the specific hospital service being evaluated, while the `weights` parameter adjusts the predicted distribution to reflect the probability of admission to that service.
+
 
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -111,7 +117,7 @@ def get_specialty_probability_distributions(
 ):
     """
     Calculate probability distributions for ED patients by hospital service and prediction time.
-
+    
     Args:
         test_visits_df: DataFrame containing test visit data
         spec_model: Model for hospital service predictions
@@ -119,7 +125,7 @@ def get_specialty_probability_distributions(
         model_name: Name of the model to use
         specialties: List of hospital services to consider
         baseline_prob_dict: Optional dict of baseline probabilities to use instead of model predictions
-
+        
     Returns:
         Dictionary containing probability distributions for each service and prediction time
     """
@@ -135,7 +141,7 @@ def get_specialty_probability_distributions(
         else:
             def determine_specialty(row):
                 return spec_model.predict(row["consultation_sequence"])
-
+            
             test_visits_df.loc[:, "specialty_prob"] = test_visits_df.apply(determine_specialty, axis=1)
 
     prob_dist_dict_all = {}
@@ -144,17 +150,17 @@ def get_specialty_probability_distributions(
         prob_dist_dict_for_pats_in_ED = {}
         print("\nProcessing :" + str(_prediction_time))
         model_key = get_model_key(model_name, _prediction_time)
-
+        
         for specialty in specialties:
             print(f"Predicting bed counts for {specialty} service, for all snapshots in the test set")
 
             prob_admission_to_specialty = test_visits_df["specialty_prob"].apply(
                 lambda x: x.get(specialty, 0.0) if isinstance(x, dict) else 0.0
             )
-
+            
             X_test, y_test = prepare_patient_snapshots(
-                df=test_visits_df,
-                prediction_time=_prediction_time,
+                df=test_visits_df, 
+                prediction_time=_prediction_time, 
                 single_snapshot_per_visit=False,
                 visit_col='visit_number'
             )
@@ -166,9 +172,9 @@ def get_specialty_probability_distributions(
             admitted_to_specialty = test_visits_df['specialty'] == specialty
 
             prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
-                group_snapshots_dict, X_test, y_test, admissions_models[model_key],
+                group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
                 weights=prob_admission_to_specialty,
-                category_filter=admitted_to_specialty,
+                category_filter=admitted_to_specialty, 
                 normal_approx_threshold=30
             )
 
@@ -176,6 +182,7 @@ def get_specialty_probability_distributions(
 
     return prob_dist_dict_all
 ```
+
 
 ```python
 prob_dist_dict_all = get_specialty_probability_distributions(
@@ -185,6 +192,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     model_name)
 ```
 
+    
     Processing :(22, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -198,7 +206,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(6, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -212,7 +220,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(15, 30)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -226,7 +234,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(9, 30)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -240,7 +248,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(12, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -253,9 +261,11 @@ prob_dist_dict_all = get_specialty_probability_distributions(
 
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
+
 ## Evaluate predictions by hospital service
 
 I now evaluate the predicted distributions using the approaches introduced in notebook 3b. First, histograms showing the difference between observed and expected values for each hospital service. Then, EPUDD plots which evaluate the full predicted distribution against observed values.
+
 
 ```python
 from patientflow.evaluate import calc_mae_mpe
@@ -267,13 +277,30 @@ for specialty in specialties:
     plot_deltas(results, suptitle=f"Histograms of Observed - Expected Values for {specialty} service")
 ```
 
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_0.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_1.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_2.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_3.png)
+    
+
+
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -281,19 +308,35 @@ from patientflow.viz.epudd import plot_epudd
 for specialty in specialties:
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    plot_epudd(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(), 
             specialty_prob_dist,
             model_name="admissions",
             suptitle=f"EPUDD plots for {specialty} service")
 ```
 
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_11_0.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_11_1.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_11_2.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_11_3.png)
+    
+
 
 ## Summary
 
@@ -304,6 +347,7 @@ In the notebooks that follow, prefixed with 4, I demonstrate how these functions
 ## Appendix: Comparing with a baseline prediction by hospital service
 
 The service prediction model used above was trained on sequences of consults. A natural baseline is to give each patient the same probability of admission to each hospital service, based on past averages. To calculate past averages, I use the `inpatient_arrivals` dataset, which includes all arrivals with one row per visit.
+
 
 ```python
 
@@ -320,7 +364,7 @@ baseline_probs = train_inpatient_arrivals_df['specialty'].value_counts(normalize
 
 prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     test_visits_df=test_visits_df,
-    spec_model=spec_model,
+    spec_model=spec_model,      
     admissions_models=admissions_models,
     model_name=model_name,
     baseline_prob_dict=baseline_probs
@@ -328,7 +372,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
 ```
 
     Split sizes: [7716, 1285, 3898]
-
+    
     Processing :(22, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -342,7 +386,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(6, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -356,7 +400,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(15, 30)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -370,7 +414,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(9, 30)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -384,7 +428,7 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
 
-
+    
     Processing :(12, 0)
     Predicting bed counts for medical service, for all snapshots in the test set
 
@@ -397,7 +441,9 @@ prob_dist_dict_all_baseline = get_specialty_probability_distributions(
 
     Predicting bed counts for paediatric service, for all snapshots in the test set
 
+
 The EPUDD plots below show two plots per hospital service: the baseline model using average proportions admitted to each service (upper), and the model where service of admission is predicted using consult sequences (lower). Particularly for services with small admission numbers (haem/onc and paediatric) there is an improvement; the extent of over-prediction is reduced.
+
 
 ```python
 for specialty in specialties:
@@ -407,40 +453,81 @@ for specialty in specialties:
 
     print(f'\nEPUDD plots for {specialty} service: baseline vs sequence predictor')
 
-    plot_epudd(ed_visits.prediction_time.unique(),
+    plot_epudd(ed_visits.prediction_time.unique(), 
         specialty_prob_dist_baseline,
         model_name="admissions",
         suptitle=f"EPUDD plots for {specialty} service using baseline probability")
-
-    plot_epudd(ed_visits.prediction_time.unique(),
+    
+    plot_epudd(ed_visits.prediction_time.unique(), 
         specialty_prob_dist,
         model_name="admissions",
         suptitle=f"EPUDD plots for {specialty} service using sequence predictor")
 ```
 
+    
     EPUDD plots for surgical service: baseline vs sequence predictor
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_1.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_2.png)
+    
 
+
+    
     EPUDD plots for haem/onc service: baseline vs sequence predictor
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_4.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_5.png)
+    
 
+
+    
     EPUDD plots for medical service: baseline vs sequence predictor
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_7.png)
+    
 
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_8.png)
+    
 
+
+    
     EPUDD plots for paediatric service: baseline vs sequence predictor
 
-![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_10.png)
 
+
+    
+![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_10.png)
+    
+
+
+
+    
 ![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_16_11.png)
+    
+
+
 
 ```python
 

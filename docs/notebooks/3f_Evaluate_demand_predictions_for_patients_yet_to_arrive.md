@@ -4,14 +4,15 @@ In notebook 3e, I showed how to predict demand from patients yet to arrive, usin
 
 Predictions for patients yet to arrive are made up of two components:
 
-- Arrival rates calculated from past data, prepared for a series of time intervals within a prediction window after the moment of prediction
-- A probability of admission for any patient arriving within one of these time intervals being admitted within the prediction window. The probability of admission is generated using either an empirical survival curve, or an aspirational approach.
+* Arrival rates calculated from past data, prepared for a series of time intervals within a prediction window after the moment of prediction
+* A probability of admission for any patient arriving within one of these time intervals being admitted within the prediction window. The probability of admission is generated using either an empirical survival curve, or an aspirational approach.
 
 We can evaluate these two components separately. First I evaluate the arrival rates, by comparing the arrival rates learned from the training set against observed arrival rates during the test set. Then I evaluate a survival-curve-based model, comparing its predicted bed count distributions against observed admissions.
 
 ### About the data used in this notebook
 
 You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
+
 
 ```python
 # Reload functions every time
@@ -22,6 +23,7 @@ You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/1486605
 ## Load data and train models
 
 The data loading and model training steps were demonstrated in detail in previous notebooks. Here I use `prepare_prediction_inputs`, a convenience function that performs all of these steps in a single call.
+
 
 ```python
 from patientflow.train.emergency_demand import prepare_prediction_inputs
@@ -37,26 +39,28 @@ params = prediction_inputs['config']
 
     Split sizes: [62071, 10415, 29134]
     Split sizes: [7716, 1285, 3898]
-
+    
     Processing: (6, 0)
 
 
-
+    
     Processing: (9, 30)
 
 
-
+    
     Processing: (12, 0)
 
 
-
+    
     Processing: (15, 30)
 
 
-
+    
     Processing: (22, 0)
 
+
 Below I use the training, validation and test set dates set in `config.yaml` to retrieve the portions of the data needed for evaluation.
+
 
 ```python
 import pandas as pd
@@ -81,6 +85,7 @@ _, _, test_inpatient_arrivals_df = create_temporal_splits(
 
     Split sizes: [7716, 1285, 3898]
 
+
 ## Evaluating arrival rates
 
 We can compare the arrival rates learned from the training set against observed arrival rates at the front door of the ED during the test set.
@@ -89,23 +94,29 @@ To illustrate, I start by plotting the cumulative arrivals of patients later adm
 
 The lower chart shows the delta between the two lines.
 
+
 ```python
 from patientflow.viz.observed_against_expected import plot_arrival_delta_single_instance
 from datetime import timedelta
 
-plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
-                        prediction_time=(22,0),
-                        snapshot_date=start_test_set,
-                        show_delta=True,
-                        prediction_window=timedelta(minutes=params["prediction_window"]),
+plot_arrival_delta_single_instance(test_inpatient_arrivals_df, 
+                        prediction_time=(22,0), 
+                        snapshot_date=start_test_set, 
+                        show_delta=True, 
+                        prediction_window=timedelta(minutes=params["prediction_window"]), 
                         yta_time_interval = timedelta(minutes=params["yta_time_interval"]),
                         fig_size=(9, 3)
                         )
 ```
 
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_0.png)
+    
+
 
 The chart below shows multiple versions of the delta for each date in the test set, for each prediction time, with the average delta shown in red.
+
 
 ```python
 from patientflow.viz.observed_against_expected import plot_arrival_deltas
@@ -128,29 +139,50 @@ prediction_times_sorted = sorted(
 )
 
 for prediction_time in prediction_times_sorted:
-    plot_arrival_deltas(test_inpatient_arrivals_df,
-                         prediction_time,
-                         snapshot_dates,
-                        prediction_window=timedelta(minutes=params["prediction_window"]),
+    plot_arrival_deltas(test_inpatient_arrivals_df, 
+                         prediction_time, 
+                         snapshot_dates, 
+                        prediction_window=timedelta(minutes=params["prediction_window"]), 
                         yta_time_interval = timedelta(minutes=params["yta_time_interval"])
                          )
 ```
 
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_0.png)
+    
 
+
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_1.png)
+    
 
+
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_2.png)
+    
 
+
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_3.png)
+    
 
+
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_4.png)
+    
+
 
 ## Evaluate predictions using survival curves
 
 In notebook 3e, I demonstrated an `EmpiricalIncomingAdmissionPredictor` that uses a survival curve to estimate how long patients take to be admitted after arriving at the ED. To evaluate that model, I need data with both arrival and admission-to-ward times — which is not available in the public dataset used above. Instead, I use the same fake data as in notebook 3e.
 
 First I generate the fake data and train the model.
+
 
 ```python
 import pandas as pd
@@ -219,6 +251,10 @@ yta_model_empirical.fit(
 
 
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
+
+
+
+
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
@@ -626,9 +662,12 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 }
 </style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
+
+
 ### Compare survival curves across train, validation and test sets
 
 The survival curve plot function can be used with multiple datasets. This may be useful to check whether the ED has become slower to process patients over time — such a difference would show up as a gap between the curves. We encountered this issue in our own work, and showed how to mitigate it using a sliding window approach for the survival curve in our [Nature Digital Medicine paper](https://www.nature.com/articles/s41746-022-00649-y). The problem does not show up below because these curves are based on synthetic data, but it might in your dataset.
+
 
 ```python
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
@@ -646,11 +685,16 @@ plot_admission_time_survival_curve(
 )
 ```
 
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_13_0.png)
+    
+
 
 ### Compare predicted with observed bed counts
 
 The function below compares the predicted bed count distributions from the `EmpiricalIncomingAdmissionPredictor` with the observed counts of patients who arrived and were admitted within the prediction window, for each date in the test set.
+
 
 ```python
 from patientflow.aggregate import get_prob_dist_using_survival_curve
@@ -681,6 +725,7 @@ for prediction_time in prediction_times:
 
 The result can be plotted using EPUDD plots. The model appears as a series of vertical lines because the `EmpiricalIncomingAdmissionPredictor` is trained only on time of day, so there is minimal variation in the predicted distributions. This is included as a placeholder, to show how modelling of yet-to-arrive patients using past data on time to admission could be evaluated. You could modify the function to include a weekday/weekend variable, or replace it with a different approach based on moving averages (such as ARIMA).
 
+
 ```python
 from patientflow.viz.epudd import plot_epudd
 
@@ -691,15 +736,21 @@ plot_epudd(prediction_times,
            plot_all_bounds=False)
 ```
 
+
+    
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_17_0.png)
+    
+
 
 ## Summary
 
 In this notebook I have shown two approaches to evaluating predictions for patients yet to arrive:
 
-- Comparing the mean arrival rates learned from the training set against observed arrivals during the test set, to assess whether the arrival rate model is well calibrated.
-- Comparing predicted bed count distributions from a survival-curve-based model against observed admissions, using EPUDD plots.
+* Comparing the mean arrival rates learned from the training set against observed arrivals during the test set, to assess whether the arrival rate model is well calibrated.
+* Comparing predicted bed count distributions from a survival-curve-based model against observed admissions, using EPUDD plots.
 
 The survival curve evaluation used fake data because the public dataset does not include admission-to-ward times. If your data includes these times, you can apply the same approach to your real data. Comparing survival curves across training and test periods is a useful diagnostic for detecting whether ED performance has changed over time.
 
 In the notebooks that follow, I demonstrate a fully worked example of how these functions are used at University College London Hospital to predict emergency demand.
+
+

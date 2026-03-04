@@ -10,13 +10,13 @@ When patients are still in the ED, we don't yet know which hospital service they
 
 I demonstrate the use of a `SequenceToOutcomePredictor` class, which predicts each patient's probability of admission to each hospital service, based on sequences of consult requests made while patients are in the ED.
 
-The `SequenceToOutcomePredictor` approach could be used with other sequence data, such as sequences of locations or procedures, if you deem these likely to be associated with a patient being admitted to a particular hospital service. The key assumption of the sequence design is that the order is meaningful; for example, a surgical consult following a medical consult, or vice versa, is meaningful for the patient's likelihood of being admitted under surgery.
+The `SequenceToOutcomePredictor` approach could be used with other sequence data, such as sequences of locations or procedures, if you deem these likely to be associated with a patient being admitted to a particular hospital service. The key assumption of the sequence design is that the order is meaningful; for example, a surgical consult following a medical consult, or vice versa, is meaningful for the patient's likelihood of being admitted under surgery. 
 
-If you don't have sequences for predicting hospital service, you might have simpler data, such as a single reason code for each visit, entered on triage (eg heart problem, broken bone), that suggests which service a patient will end up in. I demonstrate a `ValueToOutcomePredictor` which can be used with such data.
+If you don't have sequences for predicting hospital service, you might have simpler data, such as a single reason code for each visit, entered on triage (eg heart problem, broken bone), that suggests which service a patient will end up in. I demonstrate a `ValueToOutcomePredictor` which can be used with such data. 
 
 ### Combining specialty prediction with admission prediction
 
-I then combine the specialty prediction model with the admission probability model (shown in previous notebooks) to calculate the joint probability that a patient will both be admitted and require a specific specialty. Formally, this derives P(admitted AND specialty X) = P(admitted) × P(specialty X | admitted). This joint probability approach means we can generate specialty-specific bed count predictions. I demonstrate the joint probability for one group snapshot.
+I then combine the specialty prediction model with the admission probability model (shown in previous notebooks) to calculate the joint probability that a patient will both be admitted and require a specific specialty. Formally, this derives P(admitted AND specialty X) = P(admitted) × P(specialty X | admitted). This joint probability approach means we can generate specialty-specific bed count predictions. I demonstrate the joint probability for one group snapshot. 
 
 I deliberately excluded consult types from the admissions model to ensure the two models use independent signals, avoiding potential overfitting when combining their predictions.
 
@@ -26,13 +26,15 @@ Finally, I show a different type of subgroup analysis by stratifying patients by
 
 ## Load real patient data
 
-Following the approach taken in the previous notebook, I'll first load some real patient data.
+Following the approach taken in the previous notebook, I'll first load some real patient data. 
+
 
 ```python
 # Reload functions every time
-%load_ext autoreload
+%load_ext autoreload 
 %autoreload 2
 ```
+
 
 ```python
 import pandas as pd
@@ -44,15 +46,15 @@ project_root = set_project_root()
 
 # set file paths
 data_file_path, media_file_path, model_file_path, config_path = set_file_paths(
-        project_root,
+        project_root, 
         data_folder_name='data-public', # change this to data-synthetic if you don't have the public dataset
-        verbose=False)
+        verbose=False) 
 
 # load the data
-ed_visits = load_data(data_file_path,
-                    file_name='ed_visits.csv',
+ed_visits = load_data(data_file_path, 
+                    file_name='ed_visits.csv', 
                     index_column = 'snapshot_id',
-                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"],
+                    sort_columns = ["visit_number", "snapshot_date", "prediction_time"], 
                     eval_columns = ["prediction_time", "consultation_sequence", "final_sequence"])
 ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
@@ -70,8 +72,8 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="snapshot_date", # states which column contains the date to use when making the splits
-    visit_col="visit_number", # states which column contains the visit number to use when making the splits
+    col_name="snapshot_date", # states which column contains the date to use when making the splits 
+    visit_col="visit_number", # states which column contains the visit number to use when making the splits 
 
 )
 
@@ -82,16 +84,21 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
 
     Split sizes: [62071, 10415, 29134]
 
+
 ## Train a model to predict probability of admission to each specialty
 
 ### Predict specialty of admission using sequences of consults
 
-In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. The `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.
+In this example, the data used as input comprise sequences of consults issued while the patient was in the ED. The `consultation_sequence` column shows the ordered sequence of consultation requests up to the moment of the snapshot, and the `final_sequence` shows the ordered sequence at the end of the ED visit. The `specialty` column records which specialty the patient was admitted to.  
+
 
 ```python
 ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['consultation_sequence', 'final_sequence', 'specialty']].head(10)
 
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -106,7 +113,6 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -188,18 +194,22 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['con
 </table>
 </div>
 
+
+
 Below I demonstrate training the model. A rooted decision-tree is used to calculate:
 
-- the probability of an ordered sequence of consultations observed at the snapshot (which could be none) resulting in each final sequence at the end of the ED visit
-- the probability of each of those final sequences being associated with admission to each specialty (the outcome)
+* the probability of an ordered sequence of consultations observed at the snapshot (which could be none) resulting in each final sequence at the end of the ED visit
+* the probability of each of those final sequences being associated with admission to each specialty (the outcome)
 
-This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams visited. Therefore, the `SequenceToOutcomePredictor` arguments have been given generic names:
+This sequence predictor could be applied to other types of data, such as sequences of ED locations, or sequences of clinical teams visited. Therefore, the `SequenceToOutcomePredictor` arguments have been given generic names: 
 
-- `input_var` - the interim node in the decision tree, observed at the snapshot
-- `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
-- `outcome_var` - the final outcome to be predicted
+* `input_var` - the interim node in the decision tree, observed at the snapshot
+* `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
+* `outcome_var` - the final outcome to be predicted
 
 The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties. I demonstrate this in a later notebook.
+
+
 
 ```python
 from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
@@ -213,6 +223,9 @@ spec_model = SequenceToOutcomePredictor(
 
 spec_model.fit(train_visits)
 ```
+
+
+
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
@@ -619,22 +632,23 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   background-color: var(--sklearn-color-fitted-level-3);
 }
 </style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>SequenceToOutcomePredictor(
-
     input_var=&#x27;consultation_sequence&#x27;,
     grouping_var=&#x27;final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
-
 )</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;SequenceToOutcomePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>SequenceToOutcomePredictor(
-input_var=&#x27;consultation_sequence&#x27;,
-grouping_var=&#x27;final_sequence&#x27;,
-outcome_var=&#x27;specialty&#x27;,
-apply_special_category_filtering=False,
-admit_col=&#x27;is_admitted&#x27;
+    input_var=&#x27;consultation_sequence&#x27;,
+    grouping_var=&#x27;final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=False,
+    admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
+
+
 From the weights that are returned, we can view the probability of being admitted to each specialty for a patient who has no consultation sequence at the time of prediction
+
 
 ```python
 print(
@@ -646,7 +660,9 @@ print(
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
     {'medical': 0.611, 'surgical': 0.248, 'paediatric': 0.061, 'haem/onc': 0.08}
 
+
 Similarly, we can view the probability of being admitted to each specialty after a consultation request to acute medicine
+
 
 ```python
 print(
@@ -655,14 +671,20 @@ print(
 )
 ```
 
+    
     Probability of being admitted to each specialty if one consultation request to acute medicine has taken place by the time of the snapshot:
     {'medical': 0.95, 'surgical': 0.017, 'paediatric': 0.002, 'haem/onc': 0.032}
 
-The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
+
+The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options. 
+
 
 ```python
 spec_model.input_to_grouping_probs.iloc[:, :10]
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -677,7 +699,6 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -857,13 +878,19 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
 <p>123 rows × 10 columns</p>
 </div>
 
-#### Using the `SequenceToOutcomePredictor`
+
+
+#### Using the `SequenceToOutcomePredictor` 
 
 Below I apply the predict function to get each patient's probability of being admitted to the four specialties.
+
 
 ```python
 test_visits['consultation_sequence'].head().apply(spec_model.predict)
 ```
+
+
+
 
     snapshot_id
     192732    {'medical': 0.1318359375, 'surgical': 0.826171...
@@ -873,7 +900,10 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
     207071    {'medical': 0.6107109665427509, 'surgical': 0....
     Name: consultation_sequence, dtype: object
 
+
+
 A dictionary is returned for each patient, with probabilities summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
+
 
 ```python
 print("Probability of admission to medical specialty for the first five patients:")
@@ -889,11 +919,14 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lamb
 
     array([0.13183594, 0.09243697, 0.83333333, 0.61071097, 0.61071097])
 
+
+
 ### Predicting specialty of admission using a simpler input
 
-If your data for predicting specialty has a simpler structure, say in the form of a string variable containing reasons for presentation at ED, `patientflow` offers a simpler model.
+If your data for predicting specialty has a simpler structure, say in the form of a string variable containing reasons for presentation at ED, `patientflow` offers a simpler model. 
 
-To illustrate this, I create a temporary column by truncating the sequence data to the first item in the list only.
+To illustrate this, I create a temporary column by truncating the sequence data to the first item in the list only.  
+
 
 ```python
 ed_visits['temp_consultation_sequence'] = ed_visits['consultation_sequence'].apply(
@@ -908,6 +941,9 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['tem
 
 ```
 
+
+
+
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
@@ -921,7 +957,6 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['tem
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1003,6 +1038,9 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['tem
 </table>
 </div>
 
+
+
+
 ```python
 # create the temporal splits
 train_visits, valid_visits, test_visits = create_temporal_splits(
@@ -1011,8 +1049,8 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name="snapshot_date", # states which column contains the date to use when making the splits
-    visit_col="visit_number", # states which column contains the visit number to use when making the splits
+    col_name="snapshot_date", # states which column contains the date to use when making the splits 
+    visit_col="visit_number", # states which column contains the visit number to use when making the splits 
 
 )
 
@@ -1029,6 +1067,10 @@ spec_model_simple.fit(train_visits)
 ```
 
     Split sizes: [62071, 10415, 29134]
+
+
+
+
 
 <style>#sk-container-id-2 {
   /* Definition of color scheme common for light and dark mode */
@@ -1435,22 +1477,23 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   background-color: var(--sklearn-color-fitted-level-3);
 }
 </style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ValueToOutcomePredictor(
-
     input_var=&#x27;temp_consultation_sequence&#x27;,
     grouping_var=&#x27;temp_final_sequence&#x27;,
     outcome_var=&#x27;specialty&#x27;,
     apply_special_category_filtering=False,
     admit_col=&#x27;is_admitted&#x27;
-
 )</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ValueToOutcomePredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ValueToOutcomePredictor(
-input_var=&#x27;temp_consultation_sequence&#x27;,
-grouping_var=&#x27;temp_final_sequence&#x27;,
-outcome_var=&#x27;specialty&#x27;,
-apply_special_category_filtering=False,
-admit_col=&#x27;is_admitted&#x27;
+    input_var=&#x27;temp_consultation_sequence&#x27;,
+    grouping_var=&#x27;temp_final_sequence&#x27;,
+    outcome_var=&#x27;specialty&#x27;,
+    apply_special_category_filtering=False,
+    admit_col=&#x27;is_admitted&#x27;
 )</pre></div> </div></div></div></div>
 
-The weights, which map the input variable to specialty, and the intermediate mappings from input to grouping variables can be viewed in the same way as before. The weights are returned with a key of an empty string rather than a None value for probabilities with a Null value in the input variable.
+
+
+The weights, which map the input variable to specialty, and the intermediate mappings from input to grouping variables can be viewed in the same way as before. The weights are returned with a key of an empty string rather than a None value for probabilities with a Null value in the input variable. 
+
 
 ```python
 print(
@@ -1466,13 +1509,18 @@ print(
 
     Probability of being admitted to each specialty at the end of the visit if the value of the input is "medical" at the time of the snapshot:
     {'haem/onc': 0.019, 'medical': 0.91, 'paediatric': 0.01, 'surgical': 0.061}
-
+    
     Probability of being admitted to each specialty at the end of the visit if no input has been recorded by the time of the snapshot:
     {'haem/onc': 0.063, 'medical': 0.652, 'paediatric': 0.057, 'surgical': 0.228}
+
+
 
 ```python
 spec_model_simple.input_to_grouping_probs
 ```
+
+
+
 
 <div>
 <style scoped>
@@ -1487,7 +1535,6 @@ spec_model_simple.input_to_grouping_probs
     .dataframe thead th {
         text-align: right;
     }
-
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1857,16 +1904,19 @@ spec_model_simple.input_to_grouping_probs
 </table>
 </div>
 
+
+
 ## Combining specialty prediction with admission prediction
 
 I now have a model I can use to predict a patient's probability of admission to each of the four specialties: medical, surgical, haematology/oncology or paediatric, if admitted. I'll use these probabilities, with each patient's probability of admission after ED, to generate predicted bed count distributions for each specialty.
 
-For that I'll also need an admission prediction model, which is set up below.
+For that I'll also need an admission prediction model, which is set up below. 
+
 
 ```python
 from patientflow.train.classifiers import train_classifier
 
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
 ordinal_mappings = {
     "age_group": [
         "0-17",
@@ -1921,6 +1971,7 @@ admission_model = train_classifier(
 
 The preparation of group snapshots below is similar to previous notebooks.
 
+
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 
@@ -1931,10 +1982,10 @@ prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_sna
 
 # format patient snapshots for input into the admissions model
 X_test, y_test = prepare_patient_snapshots(
-    df=prediction_snapshots,
-    prediction_time=(9,30),
+    df=prediction_snapshots, 
+    prediction_time=(9,30), 
     single_snapshot_per_visit=False,
-    exclude_columns=exclude_from_training_data,
+    exclude_columns=exclude_from_training_data, 
     visit_col='visit_number'
 )
 
@@ -1945,7 +1996,8 @@ group_snapshots_dict = prepare_group_snapshot_dict(
 
 ```
 
-Below I demonstrate predictions for each specialty in turn.
+Below I demonstrate predictions for each specialty in turn. 
+
 
 ```python
 import matplotlib.pyplot as plt
@@ -1964,12 +2016,12 @@ for ax, specialty in zip(axes.flat, plot_order):
     prob_admission_to_specialty = prediction_snapshots['consultation_sequence'].apply(spec_model.predict).apply(lambda x, s=specialty: x[s])
 
     prob_dist_dict = get_prob_dist(
-            group_snapshots_dict, X_test, y_test, admission_model,
+            group_snapshots_dict, X_test, y_test, admission_model, 
             weights=prob_admission_to_specialty
         )
 
     title = specialty.title()
-    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
         include_titles=True,
         truncate_at_beds=20,
         bar_colour=spec_colour_dict["single"].get(specialty, "#5B9BD5"),
@@ -1988,14 +2040,19 @@ fig.tight_layout()
 plt.show()
 ```
 
-![png](3c_Predict_bed_demand_by_hospital_service_files/3c_Predict_bed_demand_by_hospital_service_30_0.png)
 
-To compare these with the predictions overall (not by specialty) uses the same function without weighting the probability for each specialty.
+    
+![png](3c_Predict_bed_demand_by_hospital_service_files/3c_Predict_bed_demand_by_hospital_service_30_0.png)
+    
+
+
+To compare these with the predictions overall (not by specialty) uses the same function without weighting the probability for each specialty. 
+
 
 ```python
 # get probability distribution for this time of day
 prob_dist_dict = get_prob_dist(
-        group_snapshots_dict, X_test, y_test, admission_model
+        group_snapshots_dict, X_test, y_test, admission_model 
         # commenting out the weights argument
         # weights=prob_admission_to_specialty
     )
@@ -2006,15 +2063,20 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} '
 )
-plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
     include_titles=True, truncate_at_beds=20)
 ```
 
+
+    
 ![png](3c_Predict_bed_demand_by_hospital_service_files/3c_Predict_bed_demand_by_hospital_service_32_0.png)
+    
+
 
 ## Stratifying by observed characteristics
 
-Disaggregation of predictions using unchanging attributes like sex is very straightforward. Here I show breakdowns by sex.
+Disaggregation of predictions using unchanging attributes like sex is very straightforward. Here I show breakdowns by sex. 
+
 
 ```python
 sex_colour_dict = {"M": "#9467BD", "F": "#8C564B"}
@@ -2024,10 +2086,10 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
 for ax, sex in zip(axes.flat, ['M', 'F']):
 
-    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) &
+    prediction_snapshots = test_visits[(test_visits.snapshot_date == first_group_snapshot_key) & 
                                        (test_visits.sex == sex) &
                                        (test_visits.prediction_time == (9,30))]
-
+    
     group_snapshots_dict = prepare_group_snapshot_dict(
         prediction_snapshots
     )
@@ -2037,7 +2099,7 @@ for ax, sex in zip(axes.flat, ['M', 'F']):
         )
 
     title = f'{len(prediction_snapshots)} {sex_labels[sex]} patients'
-    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title,
+    plot_prob_dist(prob_dist_dict[first_group_snapshot_key]['agg_predicted'], title, 
         include_titles=True,
         truncate_at_beds=20,
         bar_colour=sex_colour_dict[sex],
@@ -2055,10 +2117,16 @@ fig.tight_layout()
 plt.show()
 ```
 
+
+    
 ![png](3c_Predict_bed_demand_by_hospital_service_files/3c_Predict_bed_demand_by_hospital_service_34_0.png)
+    
+
 
 ## Summary
 
 In this notebook I have shown how to predict bed demand by hospital service, using both sequence-based and simpler input data to predict which service a patient will be admitted to. I also demonstrated stratification by observed patient characteristics such as sex.
 
 In the next notebook, I evaluate these predictions across the full test set and compare them against a baseline.
+
+

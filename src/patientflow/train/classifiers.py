@@ -458,6 +458,7 @@ class FeatureMetadata(TypedDict):
 class DatasetMetadata(TypedDict):
     train_valid_test_set_no: Dict[str, Optional[int]]
     train_valid_test_class_balance: Dict[str, Optional[Dict[Any, float]]]
+    train_valid_test_positive_cases: Dict[str, Optional[int]]
 
 
 def get_feature_metadata(pipeline: Pipeline) -> FeatureMetadata:
@@ -542,6 +543,13 @@ def get_dataset_metadata(
             "y_train_class_balance": calculate_class_balance(y_train),
             "y_valid_class_balance": calculate_class_balance(y_valid),
             "y_test_class_balance": calculate_class_balance(y_test)
+            if y_test is not None
+            else None,
+        },
+        "train_valid_test_positive_cases": {
+            "train_positive_cases": int((y_train == 1).sum()),
+            "valid_positive_cases": int((y_valid == 1).sum()),
+            "test_positive_cases": int((y_test == 1).sum())
             if y_test is not None
             else None,
         },
@@ -792,6 +800,7 @@ def train_classifier(
 
     trials_list: List[HyperParameterTrial] = []
     best_logloss = float("inf")
+    best_cv_results: Dict[str, float] = {}
 
     for params in ParameterGrid(grid):
         # Initialize model based on provided class
@@ -820,6 +829,7 @@ def train_classifier(
 
         if cv_results["valid_logloss"] < best_logloss:
             best_logloss = cv_results["valid_logloss"]
+            best_cv_results = cv_results
             best_model.pipeline = pipeline
 
             # Get feature metadata if available
@@ -906,6 +916,34 @@ def train_classifier(
         else:
             best_training.test_results = None
 
+    # Persist canonical metrics for read-only downstream evaluation.
+    if evaluate_on_test and best_training.test_results is not None:
+        n_samples = dataset_metadata["train_valid_test_set_no"].get("test_set_no")
+        n_positive_cases = dataset_metadata["train_valid_test_positive_cases"].get(
+            "test_positive_cases"
+        )
+        best_model.selected_eval_metrics = {
+            "split": "test",
+            "log_loss": best_training.test_results.get("test_logloss"),
+            "auroc": best_training.test_results.get("test_auc"),
+            "auprc": best_training.test_results.get("test_auprc"),
+            "n_samples": n_samples,
+            "n_positive_cases": n_positive_cases,
+        }
+    else:
+        n_samples = dataset_metadata["train_valid_test_set_no"].get("valid_set_no")
+        n_positive_cases = dataset_metadata["train_valid_test_positive_cases"].get(
+            "valid_positive_cases"
+        )
+        best_model.selected_eval_metrics = {
+            "split": "valid",
+            "log_loss": best_cv_results.get("valid_logloss"),
+            "auroc": best_cv_results.get("valid_auc"),
+            "auprc": best_cv_results.get("valid_auprc"),
+            "n_samples": n_samples,
+            "n_positive_cases": n_positive_cases,
+        }
+
     return best_model
 
 
@@ -920,7 +958,7 @@ def train_multiple_classifiers(
     model_name: str = "admissions",
     visit_col: str = "visit_number",
     calibrate_probabilities: bool = True,
-    calibration_method: str = "isotonic",
+    calibration_method: str = "sigmoid",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     label_col: str = "is_admitted",
@@ -952,7 +990,7 @@ def train_multiple_classifiers(
     calibrate_probabilities : bool, optional
         Whether to calibrate probabilities, by default True
     calibration_method : str, optional
-        Calibration method, by default "isotonic"
+        Calibration method, by default "sigmoid"
     use_balanced_training : bool, optional
         Whether to use balanced training, by default True
     majority_to_minority_ratio : float, optional
