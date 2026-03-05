@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1608,8 +1608,8 @@ def get_specialty_probability_distributions(
             )
 
             X_test, y_test = prepare_patient_snapshots(
-                df=test_visits_df, 
-                prediction_time=_prediction_time, 
+                df=test_visits_df,
+                prediction_time=_prediction_time,
                 single_snapshot_per_visit=False,
                 visit_col='visit_number'
             )
@@ -1621,9 +1621,9 @@ def get_specialty_probability_distributions(
             admitted_to_specialty = test_visits_df['specialty'] == specialty
 
             prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
-                group_snapshots_dict, X_test, y_test, admissions_models[model_key], 
+                group_snapshots_dict, X_test, y_test, admissions_models[model_key],
                 weights=prob_admission_to_specialty,
-                category_filter=admitted_to_specialty, 
+                category_filter=admitted_to_specialty,
                 normal_approx_threshold=30
             )
 
@@ -1724,7 +1724,7 @@ for specialty in specialties:
 for specialty in specialties:
     specialty_prob_dist = {time: dist_dict[specialty] for time, dist_dict in prob_dist_dict_all.items()}
 
-    plot_epudd(ed_visits.prediction_time.unique(), 
+    plot_epudd(ed_visits.prediction_time.unique(),
             specialty_prob_dist,
             model_name=&quot;admissions&quot;,
             suptitle=f&quot;EPUDD plots for {specialty} service&quot;)
@@ -1752,7 +1752,7 @@ baseline_probs = train_inpatient_arrivals_df['specialty'].value_counts(normalize
 
 prob_dist_dict_all_baseline = get_specialty_probability_distributions(
     test_visits_df=test_visits_df,
-    spec_model=spec_model,      
+    spec_model=spec_model,
     admissions_models=admissions_models,
     model_name=model_name,
     baseline_prob_dict=baseline_probs
@@ -1836,12 +1836,12 @@ Predicting bed counts for paediatric service, for all snapshots in the test set
 
     print(f'\nEPUDD plots for {specialty} service: baseline vs sequence predictor')
 
-    plot_epudd(ed_visits.prediction_time.unique(), 
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist_baseline,
         model_name=&quot;admissions&quot;,
         suptitle=f&quot;EPUDD plots for {specialty} service using baseline probability&quot;)
 
-    plot_epudd(ed_visits.prediction_time.unique(), 
+    plot_epudd(ed_visits.prediction_time.unique(),
         specialty_prob_dist,
         model_name=&quot;admissions&quot;,
         suptitle=f&quot;EPUDD plots for {specialty} service using sequence predictor&quot;)

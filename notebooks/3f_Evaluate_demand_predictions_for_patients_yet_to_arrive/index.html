@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1581,11 +1581,11 @@ _, _, test_inpatient_arrivals_df = create_temporal_splits(
 <pre><code class="language-python">from patientflow.viz.observed_against_expected import plot_arrival_delta_single_instance
 from datetime import timedelta
 
-plot_arrival_delta_single_instance(test_inpatient_arrivals_df, 
-                        prediction_time=(22,0), 
-                        snapshot_date=start_test_set, 
-                        show_delta=True, 
-                        prediction_window=timedelta(minutes=params[&quot;prediction_window&quot;]), 
+plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
+                        prediction_time=(22,0),
+                        snapshot_date=start_test_set,
+                        show_delta=True,
+                        prediction_window=timedelta(minutes=params[&quot;prediction_window&quot;]),
                         yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;]),
                         fig_size=(9, 3)
                         )
@@ -1612,10 +1612,10 @@ prediction_times_sorted = sorted(
 )
 
 for prediction_time in prediction_times_sorted:
-    plot_arrival_deltas(test_inpatient_arrivals_df, 
-                         prediction_time, 
-                         snapshot_dates, 
-                        prediction_window=timedelta(minutes=params[&quot;prediction_window&quot;]), 
+    plot_arrival_deltas(test_inpatient_arrivals_df,
+                         prediction_time,
+                         snapshot_dates,
+                        prediction_window=timedelta(minutes=params[&quot;prediction_window&quot;]),
                         yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;])
                          )
 </code></pre>

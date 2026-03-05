@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1550,24 +1550,24 @@
 
 
 <h1 id="2b-make-predictions-using-patient-level-snapshots">2b. Make predictions using patient-level snapshots</h1>
-<p>Now that the data have been prepared in snapshot form, we have a dataset of unfinished visits. The ultimate goal is to make predictions about whether an outcome of interest (e.g. admission, discharge) will happen within a prediction window. For now, I will use a simple outcome variable of admission or not, without worrying about when that admission happened. </p>
+<p>Now that the data have been prepared in snapshot form, we have a dataset of unfinished visits. The ultimate goal is to make predictions about whether an outcome of interest (e.g. admission, discharge) will happen within a prediction window. For now, I will use a simple outcome variable of admission or not, without worrying about when that admission happened.</p>
 <p>Everything shown here is standard modelling, but there are some important considerations when working with unfinished hospital visits.</p>
 <h2 id="things-to-consider-when-training-predictive-models-using-snapshots">Things to consider when training predictive models using snapshots</h2>
 <p><strong>Random versus temporal splits</strong></p>
 <p>When dividing your data into training, validation and test sets, a random allocation can give an optimistic assessment of prospective model performance, as the model’s robustness to any temporal changes in patient characteristics, flow-outcomes or the relationships between these goes untested. A more robust approach for testing models intended for prospective use is to apply temporal splits, where you train on earlier data and validate/test on later data, mimicking how the model would be deployed in a real-world setting. I show the application of temporal splits here.</p>
 <p><strong>Multiple snapshots per visit</strong></p>
-<p>To use <code>patientflow</code> your data should be in snapshot form. I showed how to create this in the last notebook. I defined a series of prediction times, and then sampled finished visits to get snapshots that represent those visits while still in progress. When you follow this method, you may end up with multiple snapshots per patient visit. Is this OK, for your analysis? You will need to decide whether you include all snapshots from a single visit into the training, validation or testing of a predictive model. Snapshots from the same visit are inherently correlated, which may violate assumptions of the statistical or machine learning methods you are using. For this reason, we chose to sample only one snapshot per patient visit. </p>
+<p>To use <code>patientflow</code> your data should be in snapshot form. I showed how to create this in the last notebook. I defined a series of prediction times, and then sampled finished visits to get snapshots that represent those visits while still in progress. When you follow this method, you may end up with multiple snapshots per patient visit. Is this OK, for your analysis? You will need to decide whether you include all snapshots from a single visit into the training, validation or testing of a predictive model. Snapshots from the same visit are inherently correlated, which may violate assumptions of the statistical or machine learning methods you are using. For this reason, we chose to sample only one snapshot per patient visit.</p>
 <p><strong>Multiple visits per patient</strong></p>
-<p>The patient identifier is also important, because if the same patient appears in training and test sets, there is the potential for data leakage. We took the decision to probabilistically allocate each patient to training, validation or test set, where the probability of being allocated to each set is in proportion to the number of visits they made in any of those time periods. </p>
+<p>The patient identifier is also important, because if the same patient appears in training and test sets, there is the potential for data leakage. We took the decision to probabilistically allocate each patient to training, validation or test set, where the probability of being allocated to each set is in proportion to the number of visits they made in any of those time periods.</p>
 <p><code>patientflow</code> includes functions to handle all of these considerations. I demonstrate them here.</p>
 <pre><code class="language-python"># Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 </code></pre>
 <h2 id="create-fake-snapshots">Create fake snapshots</h2>
-<p>See the previous notebook for more information about how this is done. </p>
+<p>See the previous notebook for more information about how this is done.</p>
 <pre><code class="language-python">from patientflow.generate import create_fake_snapshots
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
 snapshots_df=create_fake_snapshots(prediction_times=prediction_times, start_date='2023-01-01', end_date='2023-04-01')
 snapshots_df.head()
 </code></pre>
@@ -1584,6 +1584,7 @@ snapshots_df.head()
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1699,19 +1700,19 @@ snapshots_df.head()
 </div>
 
 <h2 id="train-a-model-to-predict-the-outcome-of-each-snapshot">Train a model to predict the outcome of each snapshot</h2>
-<p>We decided in our work at UCLH to train a different model for each prediction time in the day. That was a design-led decision; we wanted each model to be able to pick up different signals of the outcome at different times of day. You'll see the results of this in later notebooks where I show shap plots for models at different times of day. </p>
-<p>For now, let's train a model to predict admission for the 9:30 prediction time. </p>
-<p>I will specify that the triage scores are ordinal, to make use of sklearn's OrdinalEncoder to maintain the natural order of categories. </p>
+<p>We decided in our work at UCLH to train a different model for each prediction time in the day. That was a design-led decision; we wanted each model to be able to pick up different signals of the outcome at different times of day. You'll see the results of this in later notebooks where I show shap plots for models at different times of day.</p>
+<p>For now, let's train a model to predict admission for the 9:30 prediction time.</p>
+<p>I will specify that the triage scores are ordinal, to make use of sklearn's OrdinalEncoder to maintain the natural order of categories.</p>
 <p>I exclude columns that are not relevant to the prediction of probability of admission, including <code>snapshot_date</code> and <code>prediction_time</code>.</p>
 <h3 id="create-temporal-splits">Create temporal splits</h3>
-<p>The <code>create_temporal_splits()</code> function below will randomly allocate each patient_id to training, validation and test sets, where the probability of being allocated to each is in proportion to the number of visits they made in any of those time periods. </p>
-<pre><code class="language-python">from datetime import date   
+<p>The <code>create_temporal_splits()</code> function below will randomly allocate each patient_id to training, validation and test sets, where the probability of being allocated to each is in proportion to the number of visits they made in any of those time periods.</p>
+<pre><code class="language-python">from datetime import date
 from patientflow.prepare import create_temporal_splits
 
 # set the temporal split
-start_training_set = date(2023, 1, 1) 
-start_validation_set = date(2023, 2, 15) # 6-week training set 
-start_test_set = date(2023, 3, 1) # 2-week validation set 
+start_training_set = date(2023, 1, 1)
+start_validation_set = date(2023, 2, 15) # 6-week training set
+start_test_set = date(2023, 3, 1) # 2-week validation set
 end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
@@ -1721,9 +1722,9 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name=&quot;snapshot_date&quot;, # states which column contains the date to use when making the splits 
-    patient_id=&quot;patient_id&quot;, # states which column contains the patient id to use when making the splits 
-    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits 
+    col_name=&quot;snapshot_date&quot;, # states which column contains the date to use when making the splits
+    patient_id=&quot;patient_id&quot;, # states which column contains the patient id to use when making the splits
+    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits
 
 )
 </code></pre>
@@ -1734,28 +1735,28 @@ Train-Test: 156 of 3061
 All Sets: 0 of 3668 total patients
 Split sizes: [3179, 1025, 2157]
 </code></pre>
-<p>The function above returned information on the final size of each split, and on how many patients were found in more than one set. In this case, 29 patients were found in the validation and test set periods. Each of these patients has been probabilistically allocated to just one set. </p>
+<p>The function above returned information on the final size of each split, and on how many patients were found in more than one set. In this case, 29 patients were found in the validation and test set periods. Each of these patients has been probabilistically allocated to just one set.</p>
 <h3 id="select-one-snapshot-per-visit">Select one snapshot per visit</h3>
 <p>You will need to decide whether you include all snapshots from a single visit into a predictive model.</p>
-<p>Since we train a different model for each prediction time, then any visits spanning more than 24 hours will have multiple rows. If your snapshots are drawn from visits to ED, this should hopefully not happen too often. If your snapshots are drawn from inpatient visits, then it is very likely that you will have multiple rows per patient. </p>
-<p>We took the decision to select one snapshot per visit at random. The function below gives you this option. If you specify <code>single_snapshot_per_visit</code> as True, the <code>train_classifier</code> function will expect a <code>visit_col</code> parameter. </p>
+<p>Since we train a different model for each prediction time, then any visits spanning more than 24 hours will have multiple rows. If your snapshots are drawn from visits to ED, this should hopefully not happen too often. If your snapshots are drawn from inpatient visits, then it is very likely that you will have multiple rows per patient.</p>
+<p>We took the decision to select one snapshot per visit at random. The function below gives you this option. If you specify <code>single_snapshot_per_visit</code> as True, the <code>train_classifier</code> function will expect a <code>visit_col</code> parameter.</p>
 <h2 id="train-a-classifier-to-predict-probability-of-admission">Train a classifier to predict probability of admission</h2>
-<p>Below I'm using <code>train_classifier()</code>, which is a wrapper on standard scikit-learn functions. There are a few parameters in this function to explain. </p>
+<p>Below I'm using <code>train_classifier()</code>, which is a wrapper on standard scikit-learn functions. There are a few parameters in this function to explain.</p>
 <ul>
 <li><code>grid</code>: specifies the grid to use in hyperparameter tuning.</li>
 <li><code>prediction_time</code>: is used to identify which patient snapshots to use for training.</li>
-<li><code>single_snapshot_per_visit</code>: if this is True, the function will randomly pick one snapshot for any visit, using <code>visit_col</code> as the column name that identifies the visit identifier. </li>
+<li><code>single_snapshot_per_visit</code>: if this is True, the function will randomly pick one snapshot for any visit, using <code>visit_col</code> as the column name that identifies the visit identifier.</li>
 <li><code>exclude_from_training_data</code>: certain columns in the data should not be used for training, including visit numbers and dates.</li>
 <li><code>ordinal_mappings</code>: the function makes use of sklearn's OrdinalEncoder.</li>
-<li><code>use_balanced_training</code>: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class. </li>
+<li><code>use_balanced_training</code>: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class.</li>
 <li><code>calibrate_probabilities</code>: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will use a sigmoid function to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.</li>
 <li><code>calibration_method</code>: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.</li>
 <li><code>evaluate_on_test</code>: by default, this is set to False so the function will only return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance</li>
 </ul>
-<p>By default, the function will use an XGBoost classifier, initialised with the hyperparameter grid provided, with log loss as the evaluation metric. Chronological cross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values. </p>
+<p>By default, the function will use an XGBoost classifier, initialised with the hyperparameter grid provided, with log loss as the evaluation metric. Chronological cross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values.</p>
 <p>If you wish to use a different classifier, you can use another argument:</p>
 <ul>
-<li><code>model_class</code> (not shown here):  You can pass your own model in an optional model_class argument, which expects classifier class (like XGBClassifier or other scikit-learn compatible classifiers) that can be instantiated and initialised by providing further parameters.</li>
+<li><code>model_class</code> (not shown here): You can pass your own model in an optional model_class argument, which expects classifier class (like XGBClassifier or other scikit-learn compatible classifiers) that can be instantiated and initialised by providing further parameters.</li>
 </ul>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
 
@@ -1780,7 +1781,7 @@ model = train_classifier(
 
 </code></pre>
 <h2 id="inspecting-the-object-returned-by-train_classifier">Inspecting the object returned by <code>train_classifier()</code></h2>
-<p>The function returns an object of type TrainedClassifier(). Metadata and metrics from the training process are returned with it. </p>
+<p>The function returns an object of type TrainedClassifier(). Metadata and metrics from the training process are returned with it.</p>
 <pre><code class="language-python">print(f'Object returned is of type: {type(model)}')
 
 print('\nThe metadata from the training process are returned in the `training_results` attribute:')
@@ -1796,7 +1797,7 @@ The metadata from the training process are returned in the `training_results` at
 
 TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.23452358103155707), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401687873552), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304380613956), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622070024668), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291733590328), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921767090972), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders', 'num_troponin_orders', 'num_bmp_orders', 'num_cbc_orders', 'num_d-dimer_orders'], 'importances': [0.07901820540428162, 0.50030118227005, 0.10778335481882095, 0.06226950138807297, 0.08132454752922058, 0.049338143318891525, 0.11996506154537201], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}}}, calibration_info={'method': 'sigmoid'}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
 </code></pre>
-<p>To get a better view of what is included within the results, here is a list of the fields returned: </p>
+<p>To get a better view of what is included within the results, here is a list of the fields returned:</p>
 <pre><code class="language-python">from dataclasses import fields
 print(&quot;\nDataclass fields in TrainingResults:&quot;)
 for field in fields(model.training_results):
@@ -1809,12 +1810,12 @@ calibration_info
 test_results
 balance_info
 </code></pre>
-<p>The prediction time has been saved with the model. When the model's predict method is used, the method will check that the requested prediction time and that of the model align. </p>
+<p>The prediction time has been saved with the model. When the model's predict method is used, the method will check that the requested prediction time and that of the model align.</p>
 <pre><code class="language-python">print(f'The prediction time is: {model.training_results.prediction_time}')
 </code></pre>
 <pre><code>The prediction time is: (9, 30)
 </code></pre>
-<p>An object called training_info contains information related to model training. To simplify the code below, I'll assign it to a variable called results. It will tell us the size and class balance of each set </p>
+<p>An object called training_info contains information related to model training. To simplify the code below, I'll assign it to a variable called results. It will tell us the size and class balance of each set</p>
 <pre><code class="language-python">results = model.training_results.training_info
 
 print(f&quot;The training_info object contains the following keys: {results.keys()}&quot;)
@@ -1870,18 +1871,18 @@ print(f'The best parameters are: {best_trial.parameters}')
 </code></pre>
 <pre><code>The best parameters are: {'n_estimators': 20}
 </code></pre>
-<p>Note that, by default, no test set results are returned by train_classifier. To see AUROC, log loss and AUPRC on the test set, change <code>evaluate_on_test</code> parameter to True above. </p>
+<p>Note that, by default, no test set results are returned by train_classifier. To see AUROC, log loss and AUPRC on the test set, change <code>evaluate_on_test</code> parameter to True above.</p>
 <pre><code class="language-python">print('The results on the test set were:')
 model.training_results.test_results
 
 </code></pre>
 <pre><code>The results on the test set were:
 </code></pre>
-<p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id. </p>
+<p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.</p>
 <h2 id="evaluating-training-results">Evaluating training results</h2>
 <p>The following function enables you to plot the results of hyperparameter trials, which have been saved with the trained model. The input to the plot is a list of <code>HyperParameterTrial</code> instances containing validation set results and hyperparameter settings. Each trial's <code>cv_results</code> dictionary contains 'valid_auc' and 'valid_logloss' metrics, which have been computed for each hyperparameter configuration using the validation set.</p>
-<p>As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters. </p>
-<pre><code class="language-python">from patientflow.viz.trial_results import plot_trial_results  
+<p>As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.</p>
+<pre><code class="language-python">from patientflow.viz.trial_results import plot_trial_results
 
 plot_trial_results(trials_list = model.training_results.training_info['cv_trials'])
 </code></pre>
@@ -1890,7 +1891,7 @@ plot_trial_results(trials_list = model.training_results.training_info['cv_trials
 <p>Here I have shown how <code>patientflow</code> can help you</p>
 <ul>
 <li>handle multiple snapshots per visit and multiple visits per patient</li>
-<li>impose a temporal split on your training and test sets, allowing for the point above </li>
+<li>impose a temporal split on your training and test sets, allowing for the point above</li>
 <li>train a model to predict some later outcome using functions that handle class imbalance and calibration</li>
 <li>access various attributes of the model, that are saved as part of the model object</li>
 <li>plot the results of hyperparameter tuning</li>

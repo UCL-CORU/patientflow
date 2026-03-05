@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1597,7 +1597,7 @@
 
 <h1 id="4e-generate-predictions-using-a-customisable-hospital-hierarchy">4e. Generate predictions using a customisable hospital hierarchy.</h1>
 <p>In previous notebooks I have shown the prediction of demand by service, using a hard-coded list of specialties (medical, surgical, haem/onc and paediatric).</p>
-<p>In the real UCLH application, our users are interested in multiple levels of prediction. For example, within the medical division, the Medical Director might want high level information about pressure on the division as a whole, while a ward manager might want to know specifically about the pressures of their clinical area. </p>
+<p>In the real UCLH application, our users are interested in multiple levels of prediction. For example, within the medical division, the Medical Director might want high level information about pressure on the division as a whole, while a ward manager might want to know specifically about the pressures of their clinical area.</p>
 <p>To support prediction at a fine-grained level at UCLH, where there are approximately 50 reporting units and 500+ subspecialties, a hard-coded list is unsuitable. Instead, we want the list of specialties to be dynamic, and we want to be able to map these to the hospital's standard reporting groupings.</p>
 <p>This notebook shows code to set up hospital hierarchy to achieve this.</p>
 <p>A typical workflow is:</p>
@@ -1620,7 +1620,7 @@
 </ol>
 <h2 id="set-up-the-notebook-environment">Set up the notebook environment</h2>
 <pre><code class="language-python"># Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 </code></pre>
 <pre><code class="language-python">from patientflow.load import set_project_root
@@ -1630,8 +1630,8 @@ project_root = set_project_root()
 <pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
 </code></pre>
 <h2 id="1-create-the-hierarchy">1. Create the hierarchy</h2>
-<p>Here I create a very simple hierarchy comprising only two levels. In the public dataset we only have four specialties available, so we'll pretend that these fall within three hospital divisions: medical, surgical and specialist. </p>
-<p>The first step is to create an entry in config.yaml specifying the names of each level and their relationship in the hierarchy. These names could be anything (eg 'specialty' could be 'clinical area' or 'firm'). It should look something like this: </p>
+<p>Here I create a very simple hierarchy comprising only two levels. In the public dataset we only have four specialties available, so we'll pretend that these fall within three hospital divisions: medical, surgical and specialist.</p>
+<p>The first step is to create an entry in config.yaml specifying the names of each level and their relationship in the hierarchy. These names could be anything (eg 'specialty' could be 'clinical area' or 'firm'). It should look something like this:</p>
 <pre><code class="language-yaml"># Hierarchy configuration
 # Defines the organizational hierarchy structure
 levels:
@@ -1644,24 +1644,21 @@ levels:
   - entity_type: hospital
     parent_type: null
     level_order: 2
-  ```
-
-
-```python
-from patientflow.predict.hierarchy.structure import Hierarchy, populate_hierarchy_from_dataframe
+</code></pre>
+<pre><code class="language-python">from patientflow.predict.hierarchy.structure import Hierarchy, populate_hierarchy_from_dataframe
 import pandas as pd
 
 # Read the yaml file to populate a hierarchy object
 hierarchy = Hierarchy.from_yaml(project_root / &quot;config.yaml&quot;)
 
-# The hierarchy object has a `levels` attribute that shows the names of each level 
+# The hierarchy object has a `levels` attribute that shows the names of each level
 # and their relationship in the hierarchy.
-print(hierarchy.levels)  
+print(hierarchy.levels)
 </code></pre>
 <pre><code>{EntityType('specialty'): HierarchyLevel(entity_type=EntityType('specialty'), parent_type=EntityType('division'), level_order=0), EntityType('division'): HierarchyLevel(entity_type=EntityType('division'), parent_type=EntityType('hospital'), level_order=1), EntityType('hospital'): HierarchyLevel(entity_type=EntityType('hospital'), parent_type=None, level_order=2)}
 </code></pre>
 <h2 id="2-populate-the-hierarchy-with-organisational-data">2. Populate the hierarchy with organisational data</h2>
-<p>Thus far, we only know the names of the levels (specialty, division), but not their contents. We can specify these using a dataframe. The <code>column_mapping</code> parameter maps the column names in the dataframe to those specified in the hierarchy object. </p>
+<p>Thus far, we only know the names of the levels (specialty, division), but not their contents. We can specify these using a dataframe. The <code>column_mapping</code> parameter maps the column names in the dataframe to those specified in the hierarchy object.</p>
 <pre><code class="language-python">hierarchy_df = pd.DataFrame({
     'specialty_names': ['medical', 'surgical', 'haem/onc', 'paediatric'],
     'division_names': ['Medical Division', 'Surgical Division', 'Medical Division', 'Specialist Hospitals Division'],
@@ -1683,9 +1680,9 @@ print(hierarchy)
   hospital: 1
 </code></pre>
 <h3 id="important-note-when-creating-hierarchies">Important note when creating hierarchies.</h3>
-<p>The hierarchy must form a tree structure where each child entity can only have one parent. If the same child appears with different parents in different rows, the last relationship processed will overwrite previous ones, silently creating an invalid hierarchy. </p>
-<p>For example, this would be INVALID: </p>
-<p>Row 1: subspecialty='Cardiology', reporting_unit='Unit X', division='Division A' followed by Row 2: subspecialty='Cardiology', reporting_unit='Unit X', division='Division B'. </p>
+<p>The hierarchy must form a tree structure where each child entity can only have one parent. If the same child appears with different parents in different rows, the last relationship processed will overwrite previous ones, silently creating an invalid hierarchy.</p>
+<p>For example, this would be INVALID:</p>
+<p>Row 1: subspecialty='Cardiology', reporting_unit='Unit X', division='Division A' followed by Row 2: subspecialty='Cardiology', reporting_unit='Unit X', division='Division B'.</p>
 <p>This would result in 'Unit X' being assigned only to 'Division B' (the last one processed), overwriting the relationship to 'Division A', which violates the tree structure requirement and should be avoided. Note: Only entity types with a column_mapping entry will have entities created from the DataFrame, and the top_level_id ensures a single top-level entity exists (created if not in DataFrame, consolidated if present)</p>
 <h2 id="3-prepare-the-prediction-data">3. Prepare the prediction data</h2>
 <p>This requires loading data and training models, as demonstrated in detail in notebook 4c. Here we use <code>prepare_prediction_inputs</code> to perform all of these steps in a single call.</p>
@@ -1731,7 +1728,7 @@ specialty_filters = {
 }
 </code></pre>
 <h3 id="prepare-an-object-containing-the-inputs-to-the-prediction-pipeline">Prepare an object containing the inputs to the prediction pipeline</h3>
-<p>We now have models trained that we can use to create predicted probability distributions. To illustrate, I'll pick a random prediction date and time from the test set. </p>
+<p>We now have models trained that we can use to create predicted probability distributions. To illustrate, I'll pick a random prediction date and time from the test set.</p>
 <pre><code class="language-python">from patientflow.viz.utils import format_prediction_time
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
 
@@ -1758,7 +1755,7 @@ print(f'Number of patients under the age of 18 in the ED at {format_prediction_t
 <pre><code>Number of adult patients in the ED at 22:00 on 2031-10-09: 69
 Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 </code></pre>
-<p>Using the function below, I prepare prediction inputs, ready for the hierarchy orchestrator. The <code>build_service_data</code> function is introduced with more detail in notebook 4c. </p>
+<p>Using the function below, I prepare prediction inputs, ready for the hierarchy orchestrator. The <code>build_service_data</code> function is introduced with more detail in notebook 4c.</p>
 <pre><code class="language-python">from patientflow.predict.service import build_service_data
 
 # select the relevant ED admissions model based on the prediction time
@@ -1773,14 +1770,14 @@ prediction_inputs = build_service_data(
     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
     prediction_time=random_prediction_time,
     ed_snapshots=prediction_snapshots_processed,
-    inpatient_snapshots=None,  
+    inpatient_snapshots=None,
     specialties=specialty_filters.keys(),
     prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2
 )
 
 </code></pre>
-<p>The returned object is a dictionary, keyed by the various entities that were passed in the specialties parameter. This should be the lowest level of granularity for which predictions are desired. Below is a summary of what the object contains for one of our specialties. </p>
+<p>The returned object is a dictionary, keyed by the various entities that were passed in the specialties parameter. This should be the lowest level of granularity for which predictions are desired. Below is a summary of what the object contains for one of our specialties.</p>
 <pre><code class="language-python">prediction_inputs['medical']
 </code></pre>
 <pre><code>ServicePredictionInputs(service='medical')
@@ -1795,10 +1792,10 @@ prediction_inputs = build_service_data(
     Emergency inpatient departures           PMF[0:1]: [1.000] (E=0.0 of 0 emergency patients in service)
     Elective inpatient departures            PMF[0:1]: [1.000] (E=0.0 of 0 elective patients in service)
 </code></pre>
-<p>I can now use the prediction inputs to generate predictions for the lowest level. </p>
-<pre><code class="language-python">from patientflow.predict.demand import DemandPredictor, FlowSelection 
+<p>I can now use the prediction inputs to generate predictions for the lowest level.</p>
+<pre><code class="language-python">from patientflow.predict.demand import DemandPredictor, FlowSelection
 predictor = DemandPredictor(k_sigma=8.0)  # Controls distribution width caps
-from patientflow.viz.probability_distribution import plot_prob_dist 
+from patientflow.viz.probability_distribution import plot_prob_dist
 
 title = (
     f'Probability distribution for number of medical beds needed within {int(prediction_window.total_seconds()/3600)} hours\n'
@@ -1810,7 +1807,7 @@ bundle = predictor.predict_service(
     inputs=prediction_inputs['medical'],
     flow_selection=FlowSelection.custom(
         include_ed_current=True,
-        include_ed_yta=True, 
+        include_ed_yta=True,
         include_non_ed_yta=False,
         include_elective_yta=False,
         include_transfers_in=False,
@@ -1818,7 +1815,7 @@ bundle = predictor.predict_service(
         # cohort=&quot;emergency&quot; # No need to specify this as we have not included elective patients
     ))
 
-plot_prob_dist(bundle.arrivals.probabilities, title, 
+plot_prob_dist(bundle.arrivals.probabilities, title,
     include_titles=True, truncate_at_beds=20,
     probability_levels=[0.7,0.9],
     show_probability_thresholds=True, bar_colour='orange')
@@ -1831,7 +1828,7 @@ from patientflow.predict.demand import DemandPredictor, FlowSelection
 
 # Instantiate using the existing hierarchy
 hierarchical_predictor = HierarchicalPredictor(
-    hierarchy, 
+    hierarchy,
     DemandPredictor(k_sigma=8.0))
 
 # Run predictions, specifying flow selection
@@ -1839,7 +1836,7 @@ results = hierarchical_predictor.predict_all_levels(
     prediction_inputs,
     flow_selection=FlowSelection.custom(
         include_ed_current=True,
-        include_ed_yta=True, 
+        include_ed_yta=True,
         include_non_ed_yta=False,
         include_elective_yta=False,
         include_transfers_in=False,
@@ -1905,7 +1902,7 @@ PredictionBundle(hospital: Hospital)
   Net flow:    PMF[12:22]: [0.049, 0.067, 0.085, 0.099, 0.107, 0.108, 0.101, 0.088, 0.071, 0.054] (E=16.7)
   Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 </code></pre>
-<p>Components of the arrivals flow can be examined. </p>
+<p>Components of the arrivals flow can be examined.</p>
 <pre><code class="language-python">print(f&quot;{results['Medical Division'].arrivals.expectation:.1f} patients are expected to need beds in the Medical Division.&quot;)
 print(f&quot;25th, 50th and 75th percentiles for probability distribution are: {results['Medical Division'].arrivals.percentiles}&quot;)
 
@@ -1925,7 +1922,7 @@ print(
 </code></pre>
 <pre><code>There is a 90% probability of needing at least 7 beds for arrivals to the Medical Division in the 8 hours after the prediction moment
 </code></pre>
-<p>Although the keys in the results object are prefixed with the entity type, as shown below, the entity can be accessed either with or without the prefix. The prefix has been added to handle name collisions. </p>
+<p>Although the keys in the results object are prefixed with the entity type, as shown below, the entity can be accessed either with or without the prefix. The prefix has been added to handle name collisions.</p>
 <pre><code class="language-python">
 </code></pre>
 <pre><code class="language-python">print(f'The keys in the results object are: {results.keys()}')
@@ -1961,10 +1958,12 @@ hierarchical_predictor.hierarchy.get_children('Hospital') returns: ['Medical Div
 hierarchical_predictor.hierarchy.get_children('Medical Division') returns: ['haem/onc', 'medical']
 </code></pre>
 <h3 id="a-useful-shortcut">A useful shortcut</h3>
-<p>We can skip manually creating and populating the Hierarchy object by using the <code>create_hierarchical_predictor()</code> function which does the following:
-- Loading/creating the hierarchy structure (default or from config)
-- Populating it with a DataFrame
-- Initializing the <code>DemandPredictor</code> engine</p>
+<p>We can skip manually creating and populating the Hierarchy object by using the <code>create_hierarchical_predictor()</code> function which does the following:</p>
+<ul>
+<li>Loading/creating the hierarchy structure (default or from config)</li>
+<li>Populating it with a DataFrame</li>
+<li>Initializing the <code>DemandPredictor</code> engine</li>
+</ul>
 <pre><code class="language-python">from patientflow.predict.hierarchy import create_hierarchical_predictor
 from patientflow.predict.demand import FlowSelection
 
@@ -1979,7 +1978,7 @@ column_mapping = {
 }
 
 shortcut_predictor = create_hierarchical_predictor(
-    config_path=str(project_root / &quot;config.yaml&quot;),  
+    config_path=str(project_root / &quot;config.yaml&quot;),
     hierarchy_df=hierarchy_df,
     column_mapping=column_mapping,
     top_level_id=&quot;Hospital&quot;,
@@ -1987,10 +1986,10 @@ shortcut_predictor = create_hierarchical_predictor(
 )
 # Run predictions just as before
 shortcut_results = shortcut_predictor.predict_all_levels(
-    prediction_inputs, 
+    prediction_inputs,
     flow_selection=FlowSelection.custom(
         include_ed_current=True,
-        include_ed_yta=True, 
+        include_ed_yta=True,
         include_non_ed_yta=False,
         include_elective_yta=False,
         include_transfers_in=False,
@@ -2007,7 +2006,7 @@ print(f&quot;{results['Medical Division'].arrivals.expectation:.1f} patients are
 <h2 id="summary">Summary</h2>
 <p>In this notebook, we advanced from service-level predictions to a <strong>hierarchical prediction system</strong>. This allows you to view demand at any organisational level—from individual wards to entire divisions or the whole hospital—ensuring consistency across all views.</p>
 <p>I demonstrated a flexible, data-driven approach where the organisational structure is defined dynamically rather than hard-coded. I showed how to create this hierarchy, populate it with real organisational data, and generate predictions at any level of the hierarchy.</p>
-<p>This makes the use of <code>patientflow</code> configurable to any reporting hierarchy that your hospital wishes to use for predictions. </p>
+<p>This makes the use of <code>patientflow</code> configurable to any reporting hierarchy that your hospital wishes to use for predictions.</p>
 
 
 

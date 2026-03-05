@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -2180,6 +2180,7 @@ yta_distribution.head(10)
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -2458,13 +2459,15 @@ print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
   Expected departures: 7.0
   Expected net flow:   18.5
 </code></pre>
-<p>The available presets are:
-- <code>FlowSelection.default()</code> — all flows
-- <code>FlowSelection.incoming_only()</code> — all inflows, no departures
-- <code>FlowSelection.outgoing_only()</code> — only departures
-- <code>FlowSelection.emergency_only()</code> — only emergency-related flows
-- <code>FlowSelection.elective_only()</code> — only elective-related flows
-- <code>FlowSelection.custom(...)</code> — full control over individual flow families</p>
+<p>The available presets are:</p>
+<ul>
+<li><code>FlowSelection.default()</code> — all flows</li>
+<li><code>FlowSelection.incoming_only()</code> — all inflows, no departures</li>
+<li><code>FlowSelection.outgoing_only()</code> — only departures</li>
+<li><code>FlowSelection.emergency_only()</code> — only emergency-related flows</li>
+<li><code>FlowSelection.elective_only()</code> — only elective-related flows</li>
+<li><code>FlowSelection.custom(...)</code> — full control over individual flow families</li>
+</ul>
 <h2 id="step-7-the-predictionbundle-arrivals-departures-and-net-flow">Step 7: The <code>PredictionBundle</code> — arrivals, departures, and net flow</h2>
 <p>Every call to <code>predictor.predict_service()</code> returns a <code>PredictionBundle</code>. This bundles together three <code>DemandPrediction</code> objects:</p>
 <ul>
@@ -2515,7 +2518,7 @@ Departures:       False
 Cohort:           emergency
 </code></pre>
 <h2 id="summary">Summary</h2>
-<p>In this notebook we traced the path from familiar 3x_ outputs to the structured data classes used in the 4x_ notebooks:</p>
+<p>In this notebook we traced the path from familiar 3x<em> outputs to the structured data classes used in the 4x</em> notebooks:</p>
 <table>
 <thead>
 <tr>

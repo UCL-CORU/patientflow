@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1495,26 +1495,28 @@
 
 <h1 id="3a-prepare-group-snapshots-from-patient-snapshots">3a. Prepare group snapshots from patient snapshots</h1>
 <p>Collecting patient snapshots together into a group snapshot is useful when predicting a bed count distribution at a point in time. A group snapshot is a subset of patients who were in the ED on a single snapshot date, at a specific prediction time.</p>
-<p>In this notebook, I show how <code>patientflow</code> can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as a dictionary with:
-* <code>snapshot_date</code> as the key
-* <code>snapshot_ids</code> of each patient snapshot as the values </p>
+<p>In this notebook, I show how <code>patientflow</code> can be used to prepare group snapshots for current patients, by dividing patient snapshots into their groups, and storing the group snapshots as a dictionary with:</p>
+<ul>
+<li><code>snapshot_date</code> as the key</li>
+<li><code>snapshot_ids</code> of each patient snapshot as the values</li>
+</ul>
 <p>This structure is a convenient way to organise the data when making bed count predictions for different snapshot dates and prediction times, and especially when evaluating those predictions (see next notebook).</p>
 <h2 id="about-the-examples-in-this-notebook">About the examples in this notebook</h2>
 <p>In this notebook I use fake data that resemble visits to the Emergency Department (ED). The dataset covers multiple snapshot dates and prediction times.</p>
 <p>To start with a very simple example, I apply a series of Bernoulli trials to one group snapshot and visualise the bed count distribution reflecting the sum of these trials. In that simple example, every patient has the same probability of the outcome.</p>
-<p>I then train a model that predicts a probability of admission for each patient within a group snapshot. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials and again visualise the predicted distribution for the total number of beds needed for those patients. </p>
-<p>I demonstrate functions in <code>patientflow</code> that handle the preparation of group snapshots for making predictions. </p>
+<p>I then train a model that predicts a probability of admission for each patient within a group snapshot. This is a more realistic example, as each patient can have a different probability of admission, based on their data. I apply Bernoulli trials and again visualise the predicted distribution for the total number of beds needed for those patients.</p>
+<p>I demonstrate functions in <code>patientflow</code> that handle the preparation of group snapshots for making predictions.</p>
 <pre><code class="language-python"># Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 </code></pre>
 <h2 id="generate-fake-snapshots">Generate fake snapshots</h2>
-<p>See notebook 2a for more background on this. </p>
+<p>See notebook 2a for more background on this.</p>
 <pre><code class="language-python">from patientflow.generate import create_fake_snapshots
 
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)] 
-snapshots_df=create_fake_snapshots(prediction_times=prediction_times, 
-                                   start_date='2023-01-01', 
+prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+snapshots_df=create_fake_snapshots(prediction_times=prediction_times,
+                                   start_date='2023-01-01',
                                    end_date='2023-04-01',
                                    mean_patients_per_day=100)
 snapshots_df.head()
@@ -1533,6 +1535,7 @@ snapshots_df.head()
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1647,13 +1650,13 @@ snapshots_df.head()
 </table>
 </div>
 
-<p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id. </p>
+<p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.</p>
 <h2 id="prepare-group-snapshots">Prepare group snapshots</h2>
 <p><code>patientflow</code> includes a <code>prepare_group_snapshot_dict()</code> function. As input, it requires a pandas dataframe with a <code>snapshot_date</code> column. If a start date and end date are provided, the function will check for any intervening snapshot dates that are missing, and create an empty group snapshot for this date</p>
 <p>Here I create a group snapshot dictionary, for patients in the ED at 09.30.</p>
 <pre><code class="language-python">from patientflow.prepare import prepare_group_snapshot_dict
 
-# select the snapshots to include in the probability distribution, 
+# select the snapshots to include in the probability distribution,
 group_snapshots_dict = prepare_group_snapshot_dict(
     snapshots_df[snapshots_df.prediction_time == (9,30)]
     )
@@ -1666,7 +1669,7 @@ print(list(group_snapshots_dict.keys())[0:10])
 <pre><code>First 10 keys in the snapshots dictionary
 [datetime.date(2023, 1, 1), datetime.date(2023, 1, 2), datetime.date(2023, 1, 3), datetime.date(2023, 1, 4), datetime.date(2023, 1, 5), datetime.date(2023, 1, 6), datetime.date(2023, 1, 7), datetime.date(2023, 1, 8), datetime.date(2023, 1, 9), datetime.date(2023, 1, 10)]
 </code></pre>
-<p>From the first key in the dictionary, we can see the patients belonging to this first snapshot. </p>
+<p>From the first key in the dictionary, we can see the patients belonging to this first snapshot.</p>
 <pre><code class="language-python">first_group_snapshot_key = list(group_snapshots_dict.keys())[0]
 first_group_snapshot_values = group_snapshots_dict[first_group_snapshot_key]
 
@@ -1683,7 +1686,7 @@ print(first_group_snapshot_values)
 Unique snapshot_ids in the first group snapshot:
 [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 </code></pre>
-<p>We can use the indices to identify the full patient snapshots. </p>
+<p>We can use the indices to identify the full patient snapshots.</p>
 <pre><code class="language-python">snapshots_df.loc[first_group_snapshot_values]
 </code></pre>
 <div>
@@ -1699,6 +1702,7 @@ Unique snapshot_ids in the first group snapshot:
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -1907,12 +1911,12 @@ Unique snapshot_ids in the first group snapshot:
 <ul>
 <li>filter visits to include only those at the requested prediction time</li>
 <li>randomly select one snapshot per visit, if requested. If <code>single_snapshot_per_visit</code> is set to True, a <code>visit_col</code> argument must be used, giving the name of the column containing visit identifiers</li>
-<li>return a tuple of (X, y) matrices, ready for inference. The column containing the outcome (ie the label) is specified in the <code>label_col</code> argument.  </li>
+<li>return a tuple of (X, y) matrices, ready for inference. The column containing the outcome (ie the label) is specified in the <code>label_col</code> argument.</li>
 </ul>
 <pre><code class="language-python">from patientflow.prepare import prepare_patient_snapshots
 
 first_snapshot_X, first_snapshot_y = prepare_patient_snapshots(
-    df=snapshots_df.loc[first_group_snapshot_values], 
+    df=snapshots_df.loc[first_group_snapshot_values],
     prediction_time=(9,30),
     single_snapshot_per_visit=False,
     label_col=&quot;is_admitted&quot;
@@ -1932,6 +1936,7 @@ first_snapshot_X
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -2146,20 +2151,20 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} if each patient has a probability of admission of 0.2'
 )
-plot_prob_dist(prob_dist_data, title,  
+plot_prob_dist(prob_dist_data, title,
     include_titles=True)
 </code></pre>
 <p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_19_0.png" /></p>
 <h2 id="example-of-making-a-prediction-for-a-group-snapshot-with-varying-probabilities-for-each-patient">Example of making a prediction for a group snapshot with varying probabilities for each patient</h2>
 <p>In the cell below, I'm using <code>create_temporal_splits()</code> to create a training, validation and test set and <code>train_classifier()</code> to prepare a XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See notebook 2b for more on the functions shown here.</p>
-<pre><code class="language-python">from datetime import date   
+<pre><code class="language-python">from datetime import date
 from patientflow.prepare import create_temporal_splits
 from patientflow.train.classifiers import train_classifier
 
 # set the temporal split
-start_training_set = date(2023, 1, 1) 
-start_validation_set = date(2023, 2, 15) # 6-week training set 
-start_test_set = date(2023, 3, 1) # 2-week validation set 
+start_training_set = date(2023, 1, 1)
+start_validation_set = date(2023, 2, 15) # 6-week training set
+start_test_set = date(2023, 3, 1) # 2-week validation set
 end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
@@ -2169,9 +2174,9 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_validation_set,
     start_test_set,
     end_test_set,
-    col_name=&quot;snapshot_date&quot;, # states which column contains the date, for use when making the splits 
-    patient_id=&quot;patient_id&quot;, # states which column contains the patient id, for use when making the splits 
-    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits 
+    col_name=&quot;snapshot_date&quot;, # states which column contains the date, for use when making the splits
+    patient_id=&quot;patient_id&quot;, # states which column contains the patient id, for use when making the splits
+    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits
 
 )
 # exclude columns that are not needed for training
@@ -2199,7 +2204,7 @@ Train-Test: 307 of 6129
 All Sets: 0 of 7364 total patients
 Split sizes: [6406, 2122, 4304]
 </code></pre>
-<p>Now, using the trained model, I will predict a bed count distribution for one snapshot using <code>get_prob_dist_for_prediction_moment()</code>. That function expects the following: </p>
+<p>Now, using the trained model, I will predict a bed count distribution for one snapshot using <code>get_prob_dist_for_prediction_moment()</code>. That function expects the following:</p>
 <ul>
 <li><code>X_test</code> - the dataset of patient snapshots to be passed to the model</li>
 <li><code>y_test</code> - the vector containing the outcome for each patient snapshot (if these are known)</li>
@@ -2215,9 +2220,9 @@ Split sizes: [6406, 2122, 4304]
 <pre><code class="language-python">from patientflow.aggregate import get_prob_dist_for_prediction_moment
 
 bed_count_prob_dist = get_prob_dist_for_prediction_moment(
-    first_snapshot_X, 
-    model, 
-    inference_time=False, 
+    first_snapshot_X,
+    model,
+    inference_time=False,
     y_test=first_snapshot_y
 )
 
@@ -2235,30 +2240,30 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {first_group_snapshot_key} using the trained model for prediction'
 )
-plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,  
+plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True)
 
 </code></pre>
 <p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_26_0.png" /></p>
-<p>The <code>plot_prob_dist</code> function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure. </p>
-<pre><code class="language-python">fig = plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,  
+<p>The <code>plot_prob_dist</code> function will return the figure if requested. For example below, I have added the observed number of admissions for this group snapshot to the figure.</p>
+<pre><code class="language-python">fig = plot_prob_dist(bed_count_prob_dist['agg_predicted'], title,
     include_titles=True, return_figure=True)
-ax = fig.gca()  
+ax = fig.gca()
 ax.axvline(x=bed_count_prob_dist['agg_observed'], color='red', linestyle='--', label='Observed')
 ax.legend();
 
 </code></pre>
 <p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_28_0.png" /></p>
 <h2 id="make-predictions-for-group-snapshots">Make predictions for group snapshots</h2>
-<p>Now we'll make predictions for the whole test set. </p>
+<p>Now we'll make predictions for the whole test set.</p>
 <pre><code class="language-python">X_test, y_test = prepare_patient_snapshots(
-    df=snapshots_df, 
-    prediction_time=(9,30), 
+    df=snapshots_df,
+    prediction_time=(9,30),
     single_snapshot_per_visit=False,
     visit_col='visit_number'
 )
 </code></pre>
-<p>The <code>get_prob_dist</code> function is set up to receive as input a dictionary of group snapshots, created using the <code>prepare_group_snapshot_dict</code> function demonstrated above. It calls <code>get_prob_dist_for_prediction_moment()</code> for each entry in the dictionary. The arguments to <code>get_prob_dist</code> are: </p>
+<p>The <code>get_prob_dist</code> function is set up to receive as input a dictionary of group snapshots, created using the <code>prepare_group_snapshot_dict</code> function demonstrated above. It calls <code>get_prob_dist_for_prediction_moment()</code> for each entry in the dictionary. The arguments to <code>get_prob_dist</code> are:</p>
 <ul>
 <li><code>snapshots_dict</code> - a snapshots dictionary</li>
 <li><code>X_test</code> - the dataset of patient snapshots to be passed to the model</li>
@@ -2266,7 +2271,7 @@ ax.legend();
 <li><code>model</code> - a trained model</li>
 <li><code>weights</code> - an optional parameter to weight the probabilities returned by the model. This will be demonstrated in later examples</li>
 </ul>
-<p>When calling <code>get_prob_dist_for_prediction_moment</code> the function will set the <code>inference_time</code> parameter to false. </p>
+<p>When calling <code>get_prob_dist_for_prediction_moment</code> the function will set the <code>inference_time</code> parameter to false.</p>
 <pre><code class="language-python">from patientflow.aggregate import get_prob_dist
 
 group_snapshots_dict = prepare_group_snapshot_dict(
@@ -2277,7 +2282,7 @@ prob_dists_for_group_snapshots = get_prob_dist(
         group_snapshots_dict, X_test, y_test, model
     )
 </code></pre>
-<p>In the next cell I pick a date from the test set at random, and visualise the predicted distribution. </p>
+<p>In the next cell I pick a date from the test set at random, and visualise the predicted distribution.</p>
 <pre><code class="language-python">import random
 random_snapshot_date = random.choice(list(prob_dists_for_group_snapshots.keys()))
 title = (
@@ -2286,16 +2291,16 @@ title = (
     f'in the ED at {format_prediction_time((9,30))} '
     f'on {random_snapshot_date} using the trained model for prediction'
 )
-fig = plot_prob_dist(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,  
+fig = plot_prob_dist(prob_dists_for_group_snapshots[random_snapshot_date]['agg_predicted'], title,
     include_titles=True, return_figure=True)
-ax = fig.gca()  
+ax = fig.gca()
 ax.axvline(x=prob_dists_for_group_snapshots[random_snapshot_date]['agg_observed'], color='red', linestyle='--', label='Observed')
 ax.legend();
 </code></pre>
 <p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_34_0.png" /></p>
-<p>The returned object is now ready for evaluation, which I cover in the next notebook. </p>
+<p>The returned object is now ready for evaluation, which I cover in the next notebook.</p>
 <h2 id="summary">Summary</h2>
-<p>In this notebook I have demonstrated the functions in <code>patientflow</code> that handle the preparation of group snapshots. These include: </p>
+<p>In this notebook I have demonstrated the functions in <code>patientflow</code> that handle the preparation of group snapshots. These include:</p>
 <ul>
 <li><code>prepare_patient_snapshots</code>, which makes the data ready for processing in groups.</li>
 <li><code>get_prob_dist_for_prediction_moment</code>, which computes predicted and observed probabilities for a specific snapshot date and prediction time.</li>

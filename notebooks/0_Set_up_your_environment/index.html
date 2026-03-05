@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1450,17 +1450,17 @@
 
 
 <h1 id="0-set-up-your-environment">0. Set up your environment</h1>
-<p>In this notebook I will </p>
+<p>In this notebook I will</p>
 <ul>
-<li>Suggest how to set up your environment. You might find the checks below useful to confirm that your environment has been set up correctly for the following notebooks to run. </li>
-<li>Explain where the code expects to find data and where it saves media files by default. </li>
+<li>Suggest how to set up your environment. You might find the checks below useful to confirm that your environment has been set up correctly for the following notebooks to run.</li>
+<li>Explain where the code expects to find data and where it saves media files by default.</li>
 </ul>
-<p>Model files are not saved by these notebooks. Models are re-run for each notebook, so the notebooks will work if run in any order. </p>
-<p>See also the <a href="../">Notebooks README</a> in this folder for information about how to set the <code>project_root</code> variable. </p>
+<p>Model files are not saved by these notebooks. Models are re-run for each notebook, so the notebooks will work if run in any order.</p>
+<p>See also the <a href="../">Notebooks README</a> in this folder for information about how to set the <code>project_root</code> variable.</p>
 <h2 id="set-notebook-to-reload-functions-every-time-a-cell-is-run">Set notebook to reload functions every time a cell is run</h2>
 <p>This is useful if you make any changes to any underlying code.</p>
 <pre><code class="language-python"># Reload functions every time
-%load_ext autoreload 
+%load_ext autoreload
 %autoreload 2
 </code></pre>
 <h2 id="check-that-the-patientflow-package-has-been-installed">Check that the patientflow package has been installed</h2>
@@ -1477,14 +1477,14 @@ except Exception as e:
 <pre><code>✓ patientflow 1.2.1.dev12 imported successfully
 </code></pre>
 <h2 id="set-project_root-variable">Set <code>project_root</code> variable</h2>
-<p>The variable called <code>project_root</code> tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to <code>project_root</code>. There are various ways to set it, which are described in the notebooks <a href="../">README</a>. </p>
+<p>The variable called <code>project_root</code> tells the notebooks where the patientflow repository resides on your computer. All paths in the notebooks are set relative to <code>project_root</code>. There are various ways to set it, which are described in the notebooks <a href="../">README</a>.</p>
 <pre><code class="language-python">from patientflow.load import set_project_root
 project_root = set_project_root()
 </code></pre>
 <pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
 </code></pre>
 <h2 id="set-file-paths">Set file paths</h2>
-<p>Now that you have set the project root, you can specify where the data will be loaded from, where images and models are saved, and where to load the config file from. By default, a function called <code>set_file_paths()</code> sets these as shown here. </p>
+<p>Now that you have set the project root, you can specify where the data will be loaded from, where images and models are saved, and where to load the config file from. By default, a function called <code>set_file_paths()</code> sets these as shown here.</p>
 <pre><code class="language-python"># Basic checks
 print(f&quot;patientflow version: {patientflow.__version__}&quot;)
 print(f&quot;Repository root: {project_root}&quot;)
@@ -1501,11 +1501,11 @@ else:
 Repository root: /Users/zellaking/Repos/patientflow
 ✓ Synthetic data found
 </code></pre>
-<p>The <code>set_file_paths</code> function will set file paths to default values within the <code>patientflow</code> folder, as shown below. File paths for saving media and models are derived from the name of the data folder. </p>
-<p>In the notebooks that follow, no trained models are saved by default. All notebooks load data from <code>data_file_path</code> and train models from scratch. However, you may want to make use of <code>model_file_path</code> to save a model locally, especially if they are time-consuming to run in your environment. </p>
+<p>The <code>set_file_paths</code> function will set file paths to default values within the <code>patientflow</code> folder, as shown below. File paths for saving media and models are derived from the name of the data folder.</p>
+<p>In the notebooks that follow, no trained models are saved by default. All notebooks load data from <code>data_file_path</code> and train models from scratch. However, you may want to make use of <code>model_file_path</code> to save a model locally, especially if they are time-consuming to run in your environment.</p>
 <p>The config.yaml file will be loaded from the root directory. It specifies training, validation and test set dates, and some other parameters that will be discussed later.</p>
 <pre><code class="language-python">from patientflow.load import set_file_paths
-data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root, 
+data_file_path, media_file_path, model_file_path, config_path = set_file_paths(project_root,
                data_folder_name=data_folder_name)
 </code></pre>
 <pre><code>Configuration will be loaded from: /Users/zellaking/Repos/patientflow/config.yaml

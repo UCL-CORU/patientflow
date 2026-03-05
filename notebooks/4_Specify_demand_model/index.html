@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
     
     
       
@@ -1437,15 +1437,15 @@
 </ul>
 <p>In this series of notebooks, I show how we assembled these building blocks into a production system at University College London Hospital (UCLH) to predict demand for beds, by specialty, over the next 8 hours. The notebooks in this series cover:</p>
 <ul>
-<li><strong>4a</strong>: The production data structures (<code>FlowInputs</code>, <code>DemandPredictor</code>, <code>PredictionBundle</code>, etc.) that make the pipeline configurable </li>
+<li><strong>4a</strong>: The production data structures (<code>FlowInputs</code>, <code>DemandPredictor</code>, <code>PredictionBundle</code>, etc.) that make the pipeline configurable</li>
 <li><strong>4b</strong>: Stratifying predictions by patient subgroups (e.g. children vs adults vs older adults, men vs women) using <code>MultiSubgroupPredictor</code></li>
 <li><strong>4c</strong>: The full prediction pipeline, combining patients currently in the ED with those yet to arrive</li>
-<li><strong>4d</strong>: Evaluating the production model components </li>
+<li><strong>4d</strong>: Evaluating the production model components</li>
 <li><strong>4e</strong>: Extending to hierarchical reporting at multiple organisational levels (e.g. specialty, division, hospital)</li>
 </ul>
-<p>First, a brief recap on the requirements of our models. </p>
+<p>First, a brief recap on the requirements of our models.</p>
 <h2 id="recap-on-the-requirements-of-our-users-this-refers-to-the-legacy-version-of-our-application">Recap on the requirements of our users (this refers to the legacy version of our application)</h2>
-<p>In notebook 1 I introduced bed managers and their work. Through working closely with them over five years, we have developed an understanding of their requirements for emergency demand predictions. </p>
+<p>In notebook 1 I introduced bed managers and their work. Through working closely with them over five years, we have developed an understanding of their requirements for emergency demand predictions.</p>
 <ul>
 <li>They want information at specific times of day to coincide with their flow huddles, with an 8-hour view of incoming demand at these times</li>
 <li>The 8-hour view needs to take account of patients who are yet to arrive, who should be admitted within that time</li>
@@ -1480,11 +1480,11 @@ Image(filename='img/thumbnail_UCLH_application.jpg')
 <li>The view should also take account of expected discharges among current inpatients</li>
 <li>The predictions should be based on the assumption that the ED is meeting its 4-hour targets for performance (for example, the target that 80% of patients are to be admitted or discharged within 4 hours of arriving at the front door)</li>
 <li>Patients in ED/SDEC who already have decisions to admit under a specialty should be counted as part of the inpatient demand for that specialty</li>
-<li>The predictions should be provided as numbers of beds needed (rather than predictions of whether any individual patient will be admitted) </li>
+<li>The predictions should be provided as numbers of beds needed (rather than predictions of whether any individual patient will be admitted)</li>
 <li>The predictions should be grouped by specialty of admission, since a specialty breakdown helps to inform targeted actions, as before, but now the specialty breakdown should be available at any level of the hospital's reporting hierarchy</li>
 <li>The predictions should be sent by email, with a spreadsheet attached for now, but ultimately should be displayed in Epic</li>
 </ul>
-<p>The new output at UCLH </p>
+<p>The new output at UCLH</p>
 <ul>
 <li>serves the legacy predictions as the first in a multi-tab spreadsheet</li>
 <li>provides a tab for predictions at board, division, reporting unit and subspecialty levels (each a lower level of granularity)</li>
