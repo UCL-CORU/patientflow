@@ -82,15 +82,13 @@ def warn_specialty_mismatch(
     if new_in_request:
         warnings.warn(
             f"{len(new_in_request)} specialties found in the request but absent "
-            f"from the trained {source_label} (models may need retraining): "
-            f"{sorted(new_in_request)}",
+            f"from the trained {source_label} (models may need retraining).",
             stacklevel=stacklevel,
         )
     if missing_from_request:
         warnings.warn(
             f"{len(missing_from_request)} specialties present in the trained "
-            f"{source_label} but absent from the request: "
-            f"{sorted(missing_from_request)}",
+            f"{source_label} but absent from the request.",
             stacklevel=stacklevel,
         )
 

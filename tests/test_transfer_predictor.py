@@ -1,4 +1,5 @@
 import unittest
+import warnings
 import numpy as np
 import pandas as pd
 from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
@@ -235,6 +236,66 @@ class TestTransferProbabilityEstimator(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             predictor.fit(X_unknown, self.services)
         self.assertIn("unknown_subspecialty", str(context.exception))
+
+    def test_unknown_service_returns_zero_with_warning(self):
+        """Test that querying an unknown service returns 0.0 with a warning."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology"],
+                "next_subspecialty": ["surgery", None],
+            }
+        )
+        predictor = TransferProbabilityEstimator()
+        predictor.fit(X, self.services)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            prob = predictor.get_transfer_prob("unknown_service")
+            self.assertEqual(prob, 0.0)
+            self.assertEqual(len(w), 1)
+            self.assertIn("unknown_service", str(w[0].message))
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            dest = predictor.get_destination_distribution("unknown_service")
+            self.assertEqual(dest, {})
+            self.assertEqual(len(w), 1)
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            result = predictor.predict("unknown_service")
+            self.assertEqual(result["prob_transfer"], 0.0)
+            self.assertEqual(result["destination_distribution"], {})
+            self.assertEqual(len(w), 2)  # One from each sub-call
+
+    def test_internal_structure_separates_services_and_subgroups(self):
+        """Test that the internal dict separates services from subgroups."""
+        X = pd.DataFrame(
+            {
+                "current_subspecialty": [
+                    "cardiology",
+                    "cardiology",
+                    "surgery",
+                    "surgery",
+                ],
+                "next_subspecialty": ["surgery", None, None, "cardiology"],
+                "admission_type": ["elective", "elective", "emergency", "emergency"],
+                "age_on_arrival": [30, 70, 25, 50],
+                "sex": ["M", "F", "M", "F"],
+            }
+        )
+        predictor = TransferProbabilityEstimator(cohort_col="admission_type")
+        predictor.fit(X, self.services)
+
+        for cohort_data in predictor.transfer_probabilities.values():
+            self.assertIn("services", cohort_data)
+            self.assertIn("subgroups", cohort_data)
+            # Services should contain actual service keys
+            for key in cohort_data["services"]:
+                self.assertIn(key, self.services)
+            # Subgroups should not contain service keys
+            for key in cohort_data["subgroups"]:
+                self.assertNotIn(key, self.services)
 
     def test_cohort_functionality_basic(self):
         """Test basic cohort functionality with separate models for each cohort."""
