@@ -144,11 +144,13 @@ legacy_tox_ini = """
         jupyter nbconvert {toxinidir}/notebooks/*.ipynb --to markdown --output-dir={toxinidir}/docs/notebooks
         cp {toxinidir}/notebooks/README.md {toxinidir}/docs/notebooks/README.md
         python {toxinidir}/docs/notebooks/update_notebook_links.py {toxinidir}/docs/notebooks
+        npx prettier@3.1.0 --write --quote-props=as-needed {toxinidir}/docs/notebooks/*.md
         mkdocs build
     extras =
         docs
     allowlist_externals =
         cp
+        npx
 
     [tox]
     env_list =
