@@ -1357,7 +1357,9 @@ def compute_transfer_arrivals(
                         f"got {type(source_data)}"
                     )
 
-                # Get transfer probabilities from model
+                # Get transfer probabilities from model.
+                # get_transfer_prob returns 0.0 (with a warning) for unknown
+                # services, so we only need to handle cohort-not-found here.
                 try:
                     prob_transfer = transfer_model.get_transfer_prob(
                         source_service, admission_type
@@ -1366,18 +1368,9 @@ def compute_transfer_arrivals(
                         source_service, admission_type
                     )
                 except ValueError as e:
-                    # Handle case where cohort doesn't exist in transfer model
                     if "not found in trained model" in str(e):
-                        # Skip this admission type if not trained for it
                         continue
-                    else:
-                        raise ValueError(
-                            f"Error getting transfer probabilities for '{source_service}' and admission type '{admission_type}': {e}"
-                        )
-                except KeyError as e:
-                    raise ValueError(
-                        f"Error getting transfer probabilities for '{source_service}' and admission type '{admission_type}': {e}"
-                    )
+                    raise
 
                 # Skip if no transfers from this source
                 if prob_transfer == 0:
