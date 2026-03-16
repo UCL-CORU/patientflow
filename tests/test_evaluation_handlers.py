@@ -8,19 +8,19 @@ from unittest.mock import patch
 
 import numpy as np
 
-from patientflow.evaluation.handlers import (
+from patientflow.evaluate.handlers import (
     evaluate_aspirational_skip,
     evaluate_distribution,
 )
-from patientflow.evaluation.scalars import ScalarsCollector
-from patientflow.evaluation.types import EvaluationTarget, SnapshotResult
+from patientflow.evaluate.scalars import ScalarsCollector
+from patientflow.evaluate.types import EvaluationTarget, SnapshotResult
 
 
 class TestEvaluationHandlers(unittest.TestCase):
     """Behaviour tests for mode handlers."""
 
-    @patch("patientflow.evaluation.handlers.plot_deltas", return_value=None)
-    @patch("patientflow.evaluation.handlers.plot_epudd", return_value=None)
+    @patch("patientflow.evaluate.handlers.plot_deltas", return_value=None)
+    @patch("patientflow.evaluate.handlers.plot_epudd", return_value=None)
     def test_evaluate_distribution_records_metrics(
         self, _mock_epudd, _mock_deltas
     ) -> None:

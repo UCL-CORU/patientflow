@@ -15,7 +15,7 @@ from typing import Any, Dict, Mapping, Tuple
 import numpy as np
 import pandas as pd
 
-from patientflow.evaluation.types import SnapshotResult
+from patientflow.evaluate.types import SnapshotResult
 from patientflow.load import get_model_key
 
 

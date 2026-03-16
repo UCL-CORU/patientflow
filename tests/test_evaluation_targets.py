@@ -3,7 +3,7 @@
 import unittest
 from types import SimpleNamespace
 
-from patientflow.evaluation.targets import (
+from patientflow.evaluate.targets import (
     convert_legacy_target,
     convert_legacy_targets,
     get_default_evaluation_targets,

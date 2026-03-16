@@ -6,11 +6,11 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from patientflow.evaluation.adapters import (
+from patientflow.evaluate.adapters import (
     from_legacy_prob_dist_dict,
     to_legacy_prob_dist_dict_all,
 )
-from patientflow.evaluation.types import SnapshotResult
+from patientflow.evaluate.types import SnapshotResult
 from patientflow.load import get_model_key
 
 

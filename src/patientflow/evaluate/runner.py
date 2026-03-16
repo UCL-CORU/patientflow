@@ -16,16 +16,16 @@ from pathlib import Path
 import shutil
 from typing import Any, Dict, List, Optional, Union
 
-from patientflow.evaluation.constants import RELIABILITY_THRESHOLDS
-from patientflow.evaluation.handlers import (
+from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
+from patientflow.evaluate.handlers import (
     evaluate_arrival_deltas,
     evaluate_aspirational_skip,
     evaluate_classifier,
     evaluate_distribution,
     evaluate_survival_curve,
 )
-from patientflow.evaluation.scalars import ScalarsCollector, default_scalars_meta
-from patientflow.evaluation.types import EvaluationInputs
+from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
+from patientflow.evaluate.types import EvaluationInputs
 
 
 def run_evaluation(

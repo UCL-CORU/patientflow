@@ -4,7 +4,7 @@ import unittest
 
 import pandas as pd
 
-from patientflow.evaluation.scalars import ScalarsCollector, default_scalars_meta
+from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
 
 
 class TestScalarsCollector(unittest.TestCase):

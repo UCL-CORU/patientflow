@@ -16,11 +16,11 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import matplotlib.pyplot as plt
 
-from patientflow.evaluate import calc_mae_mpe
-from patientflow.evaluation.adapters import to_legacy_prob_dist_dict_all
-from patientflow.evaluation.constants import RELIABILITY_THRESHOLDS
-from patientflow.evaluation.scalars import ScalarsCollector
-from patientflow.evaluation.types import (
+from patientflow.evaluate.adapters import to_legacy_prob_dist_dict_all
+from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
+from patientflow.evaluate.legacy_api import calc_mae_mpe
+from patientflow.evaluate.scalars import ScalarsCollector
+from patientflow.evaluate.types import (
     ArrivalDeltaPayload,
     ClassifierInput,
     EvaluationTarget,
@@ -396,13 +396,89 @@ def _models_by_time(models: List[Any]) -> Dict[str, Any]:
 
 
 def _metrics_from_training_artifacts(trained_model: Any) -> Optional[Dict[str, Any]]:
-    """Temporary compatibility path for classifier metrics extraction."""
-    from patientflow.evaluate import _metrics_from_training_artifacts as _legacy_metrics
-
-    metrics = _legacy_metrics(trained_model)
-    if metrics is None:
+    """Extract classifier metrics from training artifacts and flatten reliability."""
+    training_results = getattr(trained_model, "training_results", None)
+    if training_results is None:
         return None
-    return _flatten_reliability(metrics)
+
+    selected = getattr(trained_model, "selected_eval_metrics", {}) or {}
+    if not selected:
+        selected = getattr(training_results, "selected_eval_metrics", {}) or {}
+    logloss = selected.get("log_loss")
+    auroc = selected.get("auroc")
+    auprc = selected.get("auprc")
+    n_samples = selected.get("n_samples")
+    n_positive = selected.get("n_positive_cases")
+
+    if logloss is None or auroc is None or auprc is None:
+        test_results = getattr(training_results, "test_results", None)
+        if test_results:
+            logloss = test_results.get("test_logloss", logloss)
+            auroc = test_results.get("test_auc", auroc)
+            auprc = test_results.get("test_auprc", auprc)
+
+    if logloss is None or auroc is None or auprc is None:
+        training_info = getattr(training_results, "training_info", {}) or {}
+        cv_trials = training_info.get("cv_trials", [])
+        if cv_trials:
+
+            def _trial_cv_results(trial: Any) -> Dict[str, Any]:
+                if hasattr(trial, "cv_results"):
+                    return trial.cv_results
+                if isinstance(trial, dict):
+                    return trial.get("cv_results", {})
+                return {}
+
+            best_trial = min(
+                cv_trials,
+                key=lambda t: _trial_cv_results(t).get(
+                    "valid_logloss", float("inf")
+                ),
+            )
+            cv = _trial_cv_results(best_trial)
+            logloss = cv.get("valid_logloss", logloss)
+            auroc = cv.get("valid_auc", auroc)
+            auprc = cv.get("valid_auprc", auprc)
+
+            dataset_info = training_info.get("dataset_info", {})
+            split_sizes = dataset_info.get("train_valid_test_set_no", {})
+            split_positives = dataset_info.get(
+                "train_valid_test_positive_cases", {}
+            )
+            if n_samples is None:
+                n_samples = split_sizes.get("valid_set_no")
+            if n_positive is None:
+                n_positive = split_positives.get("valid_positive_cases")
+            if n_positive is None:
+                split_balances = dataset_info.get(
+                    "train_valid_test_class_balance", {}
+                )
+                valid_balance = split_balances.get("y_valid_class_balance")
+                if valid_balance is not None and n_samples is not None:
+                    positive_rate = valid_balance.get(1, valid_balance.get("1"))
+                    if positive_rate is not None:
+                        n_positive = int(
+                            round(float(n_samples) * float(positive_rate))
+                        )
+
+    if logloss is None or auroc is None or auprc is None:
+        return None
+
+    threshold = RELIABILITY_THRESHOLDS["classifier_positive_cases"]
+    reliable = None
+    if n_positive is not None:
+        reliable = int(n_positive) >= threshold
+
+    return {
+        "log_loss": float(logloss),
+        "auroc": float(auroc),
+        "auprc": float(auprc),
+        "n_samples": int(n_samples) if n_samples is not None else None,
+        "n_positive_cases": int(n_positive) if n_positive is not None else None,
+        "reliable": reliable,
+        "reliability_threshold": threshold,
+        "reliability_basis": "positive_cases",
+    }
 
 
 def evaluate_classifier(

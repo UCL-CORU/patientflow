@@ -1,4 +1,4 @@
-"""Public API for the typed evaluation package.
+"""Evaluate patient flow model predictions.
 
 This package provides a structured interface for evaluation workflows:
 
@@ -9,25 +9,25 @@ This package provides a structured interface for evaluation workflows:
 - adapters for plotting-ready distribution dictionaries
 
 The symbols re-exported here are the preferred import surface for
-notebooks and application code using typed evaluation.
+notebooks and application code.
 """
 
-from patientflow.evaluation.adapters import (
+from patientflow.evaluate.adapters import (
     from_legacy_prob_dist_dict,
     to_legacy_prob_dist_dict_all,
 )
-from patientflow.evaluation.builder import EvaluationInputsBuilder
-from patientflow.evaluation.constants import RELIABILITY_THRESHOLDS
-from patientflow.evaluation.handlers import MODE_HANDLERS, evaluate_distribution
-from patientflow.evaluation.legacy_api import calc_mae_mpe, calculate_results
-from patientflow.evaluation.runner import run_evaluation
-from patientflow.evaluation.scalars import ScalarsCollector, default_scalars_meta
-from patientflow.evaluation.targets import (
+from patientflow.evaluate.builder import EvaluationInputsBuilder
+from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
+from patientflow.evaluate.handlers import MODE_HANDLERS, evaluate_distribution
+from patientflow.evaluate.legacy_api import calc_mae_mpe, calculate_results
+from patientflow.evaluate.runner import run_evaluation
+from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
+from patientflow.evaluate.targets import (
     convert_legacy_target,
     convert_legacy_targets,
     get_default_evaluation_targets,
 )
-from patientflow.evaluation.types import (
+from patientflow.evaluate.types import (
     ArrivalDeltaPayload,
     ClassifierInput,
     EvaluationInputs,

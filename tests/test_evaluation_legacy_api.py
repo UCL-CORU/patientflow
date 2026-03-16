@@ -4,7 +4,7 @@ import unittest
 
 import pandas as pd
 
-from patientflow.evaluation.legacy_api import calc_mae_mpe, calculate_results
+from patientflow.evaluate.legacy_api import calc_mae_mpe, calculate_results
 
 
 class TestEvaluationLegacyApi(unittest.TestCase):

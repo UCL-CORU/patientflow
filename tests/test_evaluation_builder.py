@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from patientflow.evaluation.builder import EvaluationInputsBuilder
-from patientflow.evaluation.types import ArrivalDeltaPayload, SurvivalCurvePayload
+from patientflow.evaluate.builder import EvaluationInputsBuilder
+from patientflow.evaluate.types import ArrivalDeltaPayload, SurvivalCurvePayload
 from patientflow.load import get_model_key
 
 

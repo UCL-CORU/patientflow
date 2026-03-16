@@ -5,8 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from patientflow.evaluation.runner import run_evaluation
-from patientflow.evaluation.types import EvaluationInputs, EvaluationTarget
+from patientflow.evaluate.runner import run_evaluation
+from patientflow.evaluate.types import EvaluationInputs, EvaluationTarget
 
 
 class TestEvaluationRunner(unittest.TestCase):

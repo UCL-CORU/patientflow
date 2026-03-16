@@ -19,9 +19,9 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import pandas as pd
 
-from patientflow.evaluation.adapters import from_legacy_prob_dist_dict
-from patientflow.evaluation.targets import get_default_evaluation_targets
-from patientflow.evaluation.types import (
+from patientflow.evaluate.adapters import from_legacy_prob_dist_dict
+from patientflow.evaluate.targets import get_default_evaluation_targets
+from patientflow.evaluate.types import (
     ArrivalDeltaPayload,
     ClassifierInput,
     EvaluationInputs,
