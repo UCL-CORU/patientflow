@@ -35,6 +35,7 @@ def run_evaluation(
     config_path: Optional[Union[str, Path]] = None,
     run_label: Optional[str] = None,
     services: Optional[List[str]] = None,
+    verbose: bool = True,
 ) -> Dict[str, Any]:
     """Run typed evaluation targets and write plots/scalars to disk.
 
@@ -51,6 +52,8 @@ def run_evaluation(
     services
         Optional service subset for non-classifier evaluations. If omitted,
         services are inferred from ``inputs.flow_inputs_by_service``.
+    verbose
+        Whether to print progress messages. Defaults to True.
 
     Returns
     -------
@@ -82,11 +85,24 @@ def run_evaluation(
 
     collector = ScalarsCollector()
     services_to_process = services or sorted(inputs.flow_inputs_by_service.keys())
+    n_targets = len(inputs.evaluation_targets)
+    n_services = len(services_to_process)
 
-    for flow_name, target in inputs.evaluation_targets.items():
+    if verbose:
+        print(
+            f"Running evaluation: {n_targets} targets, "
+            f"{n_services} services, "
+            f"{len(inputs.prediction_times)} prediction times"
+        )
+
+    for target_idx, (flow_name, target) in enumerate(
+        inputs.evaluation_targets.items(), 1
+    ):
         mode = target.evaluation_mode
 
         if mode == "classifier":
+            if verbose:
+                print(f"  [{target_idx}/{n_targets}] {flow_name} (classifier)")
             evaluate_classifier(
                 flow_name=flow_name,
                 target=target,
@@ -96,6 +112,12 @@ def run_evaluation(
                 classifier_input=inputs.classifier_inputs.get(flow_name),
             )
             continue
+
+        if verbose:
+            print(
+                f"  [{target_idx}/{n_targets}] {flow_name} ({mode}) "
+                f"× {n_services} services"
+            )
 
         for service_name in services_to_process:
             payload_by_time = (
@@ -158,6 +180,9 @@ def run_evaluation(
     scalars_path.write_text(
         json.dumps(collector.to_payload(meta=meta), indent=2, sort_keys=True)
     )
+
+    if verbose:
+        print(f"Evaluation complete. Results written to {root}")
 
     return {
         "output_root": str(root),

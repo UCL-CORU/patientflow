@@ -637,6 +637,8 @@ def _count_observed_admissions(
     prediction_time: Tuple[int, int],
     prediction_window: timedelta,
     specialty: Optional[str] = None,
+    label_col: str = "is_admitted",
+    service_col: str = "specialty",
 ) -> int:
     """Count actual admissions for a given snapshot date, prediction time and
     (optionally) specialty.
@@ -645,8 +647,8 @@ def _count_observed_admissions(
     ----------
     ed_visits : pd.DataFrame
         Full ED visits dataframe.  Must contain columns ``snapshot_date``,
-        ``prediction_time``, ``is_admitted``, and (when *specialty* is given)
-        ``specialty``.
+        ``prediction_time``, ``label_col``, and (when *specialty* is given)
+        ``service_col``.
     snapshot_date : date
         The date of the snapshot.
     prediction_time : Tuple[int, int]
@@ -657,6 +659,10 @@ def _count_observed_admissions(
         counting.
     specialty : str, optional
         If provided, count only admissions to this specialty.
+    label_col : str, default "is_admitted"
+        Name of the boolean/flag column indicating admission.
+    service_col : str, default "specialty"
+        Name of the service/specialty column used for service-level filtering.
 
     Returns
     -------
@@ -666,10 +672,10 @@ def _count_observed_admissions(
     mask = (
         (ed_visits["snapshot_date"] == snapshot_date)
         & (ed_visits["prediction_time"] == prediction_time)
-        & (ed_visits["is_admitted"].astype(bool))
+        & (ed_visits[label_col].astype(bool))
     )
     if specialty is not None:
-        mask = mask & (ed_visits["specialty"] == specialty)
+        mask = mask & (ed_visits[service_col] == specialty)
     return int(mask.sum())
 
 
@@ -688,6 +694,8 @@ def get_prob_dist_by_service(
     inpatient_visits: Optional[pd.DataFrame] = None,
     flow_selection: Optional[Any] = None,
     component: str = "arrivals",
+    label_col: str = "is_admitted",
+    service_col: str = "specialty",
     verbose: bool = False,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
@@ -754,6 +762,10 @@ def get_prob_dist_by_service(
         Which component of the ``PredictionBundle`` to extract for
         evaluation.  One of ``"arrivals"``, ``"departures"``, or
         ``"net_flow"``.
+    label_col : str, default ``"is_admitted"``
+        Name of the boolean/flag column used to identify observed admissions.
+    service_col : str, default ``"specialty"``
+        Name of the column used to filter observations by service.
     verbose : bool, default ``False``
         If ``True``, print a one-line summary on completion.
 
@@ -855,6 +867,8 @@ def get_prob_dist_by_service(
                 prediction_time,
                 prediction_window,
                 specialty=svc,
+                label_col=label_col,
+                service_col=service_col,
             )
 
             result[svc][dt] = prediction_to_eval_dict(
