@@ -109,6 +109,32 @@ class SurvivalCurvePayload:
     end_time_col: str = "departure_datetime"
 
 
+OBSERVATION_MODES = (
+    "count_at_some_point",
+    "count_in_window",
+    "not_applicable",
+    "classifier_binary",
+    "arrival_rates",
+    "survival_comparison",
+)
+"""Recognised values for ``EvaluationTarget.observation_mode``.
+
+``count_at_some_point``
+    Count patients flagged as admitted regardless of when they leave ED.
+``count_in_window``
+    Count events (admissions, departures, arrivals) within the prediction
+    window.
+``not_applicable``
+    Aspirational targets — no observed count is meaningful.
+``classifier_binary``
+    Per-patient binary outcome evaluated by the classifier handler.
+``arrival_rates``
+    Per-interval arrival counts compared to predicted rates.
+``survival_comparison``
+    Train-vs-test survival curve comparison with no per-snapshot count.
+"""
+
+
 @dataclass(frozen=True)
 class EvaluationTarget:
     """Configuration for one evaluation target.
@@ -127,6 +153,10 @@ class EvaluationTarget:
     component
         Single evaluated component (for example ``"arrivals"``,
         ``"departures"``, ``"net_flow"``, or ``"classifier"``).
+    observation_mode
+        How observed counts should be prepared when evaluating this target.
+        Must be one of :data:`OBSERVATION_MODES`.  Defaults to
+        ``"count_at_some_point"`` for backward compatibility.
     flow_selection
         Optional flow-selection metadata that documents how the flow is
         assembled upstream.
@@ -136,7 +166,15 @@ class EvaluationTarget:
     flow_type: str
     evaluation_mode: str
     component: str
+    observation_mode: str = "count_at_some_point"
     flow_selection: Optional[FlowSelection] = None
+
+    def __post_init__(self) -> None:
+        if self.observation_mode not in OBSERVATION_MODES:
+            raise ValueError(
+                f"observation_mode must be one of {OBSERVATION_MODES}, "
+                f"got {self.observation_mode!r}"
+            )
 
     @property
     def aspirational(self) -> bool:

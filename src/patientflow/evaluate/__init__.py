@@ -20,6 +20,11 @@ from patientflow.evaluate.builder import EvaluationInputsBuilder
 from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
 from patientflow.evaluate.handlers import MODE_HANDLERS, evaluate_distribution
 from patientflow.evaluate.legacy_api import calc_mae_mpe, calculate_results
+from patientflow.evaluate.observations import (
+    count_observed,
+    count_observed_at_some_point,
+    count_observed_in_window,
+)
 from patientflow.evaluate.runner import run_evaluation
 from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
 from patientflow.evaluate.targets import (
@@ -33,6 +38,7 @@ from patientflow.evaluate.types import (
     EvaluationInputs,
     EvaluationTarget,
     FlowInputPayload,
+    OBSERVATION_MODES,
     SnapshotResult,
     SurvivalCurvePayload,
 )
@@ -43,12 +49,16 @@ __all__ = [
     "EvaluationInputs",
     "EvaluationTarget",
     "FlowInputPayload",
+    "OBSERVATION_MODES",
     "SnapshotResult",
     "SurvivalCurvePayload",
     "convert_legacy_target",
     "convert_legacy_targets",
     "calc_mae_mpe",
     "calculate_results",
+    "count_observed",
+    "count_observed_at_some_point",
+    "count_observed_in_window",
     "default_scalars_meta",
     "EvaluationInputsBuilder",
     "get_default_evaluation_targets",

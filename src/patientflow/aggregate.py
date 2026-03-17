@@ -640,23 +640,22 @@ def _count_observed_admissions(
     label_col: str = "is_admitted",
     service_col: str = "specialty",
 ) -> int:
-    """Count actual admissions for a given snapshot date, prediction time and
-    (optionally) specialty.
+    """Count actual admissions for a given snapshot date and prediction time.
+
+    .. deprecated::
+        Use :func:`patientflow.evaluate.observations.count_observed_at_some_point`
+        instead.  This wrapper delegates to the new location.
 
     Parameters
     ----------
     ed_visits : pd.DataFrame
-        Full ED visits dataframe.  Must contain columns ``snapshot_date``,
-        ``prediction_time``, ``label_col``, and (when *specialty* is given)
-        ``service_col``.
+        Full ED visits dataframe.
     snapshot_date : date
         The date of the snapshot.
     prediction_time : Tuple[int, int]
         ``(hour, minute)`` of the prediction moment.
     prediction_window : timedelta
-        Not used for counting (admissions are identified by the ``is_admitted``
-        flag on the snapshot), but reserved for future use with time-windowed
-        counting.
+        Not used (kept for signature compatibility).
     specialty : str, optional
         If provided, count only admissions to this specialty.
     label_col : str, default "is_admitted"
@@ -669,14 +668,24 @@ def _count_observed_admissions(
     int
         Number of admitted patients matching the criteria.
     """
-    mask = (
-        (ed_visits["snapshot_date"] == snapshot_date)
-        & (ed_visits["prediction_time"] == prediction_time)
-        & (ed_visits[label_col].astype(bool))
+    import warnings
+
+    from patientflow.evaluate.observations import count_observed_at_some_point
+
+    warnings.warn(
+        "_count_observed_admissions is deprecated. "
+        "Use patientflow.evaluate.observations.count_observed_at_some_point instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    if specialty is not None:
-        mask = mask & (ed_visits[service_col] == specialty)
-    return int(mask.sum())
+    return count_observed_at_some_point(
+        ed_visits,
+        snapshot_date,
+        prediction_time,
+        specialty=specialty,
+        label_col=label_col,
+        service_col=service_col,
+    )
 
 
 def get_prob_dist_by_service(
@@ -697,6 +706,7 @@ def get_prob_dist_by_service(
     label_col: str = "is_admitted",
     service_col: str = "specialty",
     verbose: bool = False,
+    observation_mode: str = "count_at_some_point",
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
@@ -718,7 +728,8 @@ def get_prob_dist_by_service(
        for all specialties.
     3. Runs ``DemandPredictor.predict_service`` with the given
        ``flow_selection`` for each requested service.
-    4. Counts the observed admissions from the data for each service.
+    4. Counts the observed values from the data for each service, using
+       the strategy specified by ``observation_mode``.
     5. Packages the predicted PMF and observed count into the standard
        evaluation dictionary format consumed by ``plot_epudd``,
        ``plot_randomised_pit``, ``qq_plot``, etc.
@@ -768,6 +779,11 @@ def get_prob_dist_by_service(
         Name of the column used to filter observations by service.
     verbose : bool, default ``False``
         If ``True``, print a one-line summary on completion.
+    observation_mode : str, default ``"count_at_some_point"``
+        How observed counts are computed.  ``"count_at_some_point"`` counts
+        patients flagged as admitted at the snapshot regardless of timing;
+        ``"count_in_window"`` counts events within the prediction window.
+        See :func:`patientflow.evaluate.observations.count_observed`.
 
     Returns
     -------
@@ -784,6 +800,7 @@ def get_prob_dist_by_service(
         If ``component`` is not one of the recognised values, or
         if any entry in *services* is not found in *specialties*.
     """
+    from patientflow.evaluate.observations import count_observed
     from patientflow.predict.service import build_service_data
     from patientflow.predict.demand import DemandPredictor, FlowSelection
 
@@ -861,11 +878,12 @@ def get_prob_dist_by_service(
 
             demand_prediction = getattr(bundle, component)
 
-            observed = _count_observed_admissions(
-                ed_visits,
-                dt,
-                prediction_time,
-                prediction_window,
+            observed = count_observed(
+                observation_mode,
+                visits=ed_visits,
+                snapshot_date=dt,
+                prediction_time=prediction_time,
+                prediction_window=prediction_window,
                 specialty=svc,
                 label_col=label_col,
                 service_col=service_col,
