@@ -105,17 +105,60 @@ class ScalarsCollector:
             row.update(metrics)
         self.rows.append(row)
 
-    def to_payload(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+    def service_summary(self) -> Dict[str, Any]:
+        """Compute a summary of service coverage from recorded rows.
+
+        A service is counted as *inactive* when at least one of its rows
+        has ``charts_generated`` set to ``False``.  Services that appear
+        only in non-service-specific rows (``service is None``) are
+        excluded.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Summary with ``total_services``, ``active_services``,
+            ``inactive_services``, and ``inactive_service_names``.
+        """
+        all_services: set = set()
+        inactive_services: set = set()
+        for row in self.rows:
+            svc = row.get("service")
+            if svc is None:
+                continue
+            all_services.add(svc)
+            if row.get("charts_generated") is False:
+                inactive_services.add(svc)
+        active_services = all_services - inactive_services
+        return {
+            "total_services": len(all_services),
+            "active_services": len(active_services),
+            "inactive_services": len(inactive_services),
+            "inactive_service_names": sorted(inactive_services),
+        }
+
+    def to_payload(
+        self,
+        meta: Dict[str, Any],
+        *,
+        include_service_summary: bool = False,
+    ) -> Dict[str, Any]:
         """Build serialisable scalars payload.
 
         Parameters
         ----------
         meta
             Metadata block for the output payload.
+        include_service_summary
+            When True, a ``_service_summary`` block is appended to the
+            payload summarising active vs inactive service counts.
 
         Returns
         -------
         Dict[str, Any]
-            Payload with ``_meta`` and flat ``results`` rows.
+            Payload with ``_meta``, flat ``results`` rows, and
+            optionally ``_service_summary``.
         """
-        return {"_meta": meta, "results": self.rows}
+        payload: Dict[str, Any] = {"_meta": meta, "results": self.rows}
+        if include_service_summary:
+            payload["_service_summary"] = self.service_summary()
+        return payload

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from patientflow.evaluate.adapters import to_legacy_prob_dist_dict_all
 from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
@@ -77,6 +78,38 @@ def _record_not_evaluated(
     )
 
 
+def _is_inactive_distribution(
+    snapshots_by_time: Mapping[Tuple[int, int], Mapping[Any, SnapshotResult]],
+    *,
+    min_total_observed: int = 1,
+    max_mean_predicted: float = 0.5,
+) -> bool:
+    """Return True when all distribution snapshots show negligible activity.
+
+    A service is inactive when both conditions hold:
+
+    - total observed count across every snapshot and prediction time is below
+      *min_total_observed* (default 1, i.e. all zeros)
+    - the peak predicted mean across every snapshot is below
+      *max_mean_predicted* (default 0.5)
+
+    This catches Poisson(0) services and near-zero services where charts
+    would be uninformative.
+    """
+    total_observed = 0
+    peak_mean = 0.0
+    for by_date in snapshots_by_time.values():
+        for snap in by_date.values():
+            total_observed += snap.observed
+            support = np.arange(
+                snap.offset, snap.offset + len(snap.predicted_pmf)
+            )
+            mean = float(np.dot(support, snap.predicted_pmf))
+            if mean > peak_mean:
+                peak_mean = mean
+    return total_observed < min_total_observed and peak_mean < max_mean_predicted
+
+
 def evaluate_aspirational_skip(
     *,
     service_name: str,
@@ -122,6 +155,7 @@ def evaluate_distribution(
     snapshots_by_time: Optional[
         Mapping[Tuple[int, int], Mapping[Any, SnapshotResult]]
     ] = None,
+    skip_inactive: bool = False,
 ) -> None:
     """Evaluate one service-level distribution target.
 
@@ -146,10 +180,12 @@ def evaluate_distribution(
     snapshots_by_time
         Optional mapping ``prediction_time -> snapshot_date -> SnapshotResult``.
         Missing times are recorded as non-evaluated rows.
+    skip_inactive
+        When True, services whose snapshots show negligible activity (zero
+        observed counts and near-zero predicted means) are recorded in
+        scalars with ``charts_generated: false`` and no chart files are
+        written.  Defaults to False for backward compatibility.
     """
-    service_dir = output_root / "services" / service_name.replace("/", "_")
-    service_dir.mkdir(parents=True, exist_ok=True)
-
     by_time = snapshots_by_time or {}
     available = {pt: by_time[pt] for pt in prediction_times if pt in by_time}
 
@@ -166,6 +202,36 @@ def evaluate_distribution(
 
     if not available:
         return
+
+    if skip_inactive and _is_inactive_distribution(available):
+        for prediction_time in available:
+            n_snapshots = len(available[prediction_time])
+            collector.record(
+                flow=flow_name,
+                service=service_name,
+                component=target.component,
+                prediction_time=_format_prediction_time(prediction_time),
+                flow_type=target.flow_type,
+                aspirational=target.aspirational,
+                evaluated=True,
+                metrics={
+                    "mae": 0.0,
+                    "mpe": 0.0,
+                    "n_snapshots": n_snapshots,
+                    "reliable": n_snapshots
+                    >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
+                    "reliability_threshold": RELIABILITY_THRESHOLDS[
+                        "distribution_snapshots"
+                    ],
+                    "reliability_basis": "snapshots",
+                    "charts_generated": False,
+                    "skip_reason": "inactive_service",
+                },
+            )
+        return
+
+    service_dir = output_root / "services" / service_name.replace("/", "_")
+    service_dir.mkdir(parents=True, exist_ok=True)
 
     legacy_prob_dist_dict_all = to_legacy_prob_dist_dict_all(
         snapshots_by_time=available,

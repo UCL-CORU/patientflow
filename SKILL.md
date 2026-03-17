@@ -46,6 +46,21 @@ eval-output/
 
 Where `{diagnostic}` is `epudd` or `obs_exp`. Classifier charts that show all prediction times on one figure omit `{prediction_time}`. Aspirational flows produce no files in the services folder.
 
+### Inactive services
+
+When `run_evaluation` is called with `skip_inactive_services=True`, services whose distribution snapshots show negligible activity (zero observed counts and near-zero predicted means) are **not given a service folder or chart files**. Their scalar rows are still recorded in `scalars.json` with `"charts_generated": false` and `"skip_reason": "inactive_service"`. In production environments with hundreds of subspecialties, the majority of services may be inactive.
+
+When `skip_inactive_services` is enabled, `scalars.json` includes a `_service_summary` block:
+
+```json
+"_service_summary": {
+  "total_services": 511,
+  "active_services": 199,
+  "inactive_services": 312,
+  "inactive_service_names": ["svc_a", "svc_b", "..."]
+}
+```
+
 ## Flows
 
 File name prefixes map to flow groups:
@@ -119,8 +134,8 @@ Flag metrics as unreliable below these thresholds: 50 positive cases (classifier
 ## Review workflow
 
 1. **Inventory**: List folders present. Note which flows and services are covered. Gaps are themselves a finding.
-2. **Scan scalars**: Load scalars.json. Flag any positive MPE (under-prediction) prominently. Note MAE relative to typical counts for each service.
-3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD for distribution flows (coloured points should track grey — not the diagonal). Describe what you see.
+2. **Scan scalars**: Load scalars.json. Flag any positive MPE (under-prediction) prominently. Note MAE relative to typical counts for each service. If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
+3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD for distribution flows (coloured points should track grey — not the diagonal). Describe what you see. Only active services (those with chart folders) need visual review.
 4. **Cross-flow checks**: Do component flows explain the combined views? If combined is poor but components look fine, the convolution or a specific flow may be the issue.
 5. **Prioritise findings**: Under-prediction of demand and poor calibration of feeding classifiers are higher priority than slight over-prediction or noisy metrics at low-volume services.
 
