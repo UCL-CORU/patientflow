@@ -624,6 +624,7 @@ def plot_arrival_deltas(
         ax1.step(all_times, delta, where="post", color="grey", alpha=0.5)
 
     # Calculate and plot average delta
+    common_times = []
     if all_deltas:
         # Find the common time points across all dates
         common_times = sorted(set().union(*[set(times) for times in all_times_list]))
@@ -684,8 +685,9 @@ def plot_arrival_deltas(
         f" over {interval_mins}-min intervals, {start_time}\u2013{end_time}"
     )
 
-    # Format time axis
-    _format_time_axis(ax1, common_times)
+    # Format time axis when timeline data exists
+    if common_times:
+        _format_time_axis(ax1, common_times)
 
     # Create histogram of final delta values
     if final_deltas:

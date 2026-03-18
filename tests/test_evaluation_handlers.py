@@ -1,19 +1,21 @@
 """Tests for evaluation mode handlers."""
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
 import numpy as np
+import pandas as pd
 
 from patientflow.evaluate.handlers import (
     evaluate_aspirational_skip,
+    evaluate_arrival_deltas,
     evaluate_distribution,
 )
 from patientflow.evaluate.scalars import ScalarsCollector
-from patientflow.evaluate.types import EvaluationTarget, SnapshotResult
+from patientflow.evaluate.types import ArrivalDeltaPayload, EvaluationTarget, SnapshotResult
 
 
 class TestEvaluationHandlers(unittest.TestCase):
@@ -89,6 +91,95 @@ class TestEvaluationHandlers(unittest.TestCase):
             self.assertFalse(row["evaluated"])
             self.assertTrue(row["aspirational"])
             self.assertIn("Aspirational flow", row["reason"])
+
+    @patch("patientflow.evaluate.handlers.plot_arrival_deltas", return_value=None)
+    def test_evaluate_arrival_deltas_skips_all_empty_snapshot_windows(
+        self, mock_plot
+    ) -> None:
+        target = EvaluationTarget(
+            name="ed_yta_arrival_rates",
+            flow_type="special",
+            evaluation_mode="arrival_deltas",
+            component="arrivals",
+        )
+        collector = ScalarsCollector()
+        payloads_by_time = {
+            (9, 30): ArrivalDeltaPayload(
+                df=pd.DataFrame(
+                    {
+                        "arrival_datetime": [
+                            pd.Timestamp("2026-01-01 06:00:00+00:00"),
+                            pd.Timestamp("2026-01-02 06:30:00+00:00"),
+                        ]
+                    }
+                ),
+                snapshot_dates=[date(2026, 1, 1), date(2026, 1, 2)],
+                prediction_window=timedelta(hours=2),
+                yta_time_interval=timedelta(minutes=15),
+            ),
+        }
+
+        with TemporaryDirectory() as tmpdir:
+            evaluate_arrival_deltas(
+                service_name="medical",
+                flow_name="ed_yta_arrival_rates",
+                target=target,
+                prediction_times=[(9, 30)],
+                collector=collector,
+                output_root=Path(tmpdir),
+                payloads_by_time=payloads_by_time,
+            )
+
+        mock_plot.assert_not_called()
+        self.assertEqual(len(collector.rows), 1)
+        row = collector.rows[0]
+        self.assertTrue(row["evaluated"])
+        self.assertFalse(row["charts_generated"])
+        self.assertEqual(row["skip_reason"], "inactive_service")
+
+    @patch("patientflow.evaluate.handlers.plot_arrival_deltas", return_value=None)
+    def test_evaluate_arrival_deltas_plots_when_any_snapshot_has_arrivals(
+        self, mock_plot
+    ) -> None:
+        target = EvaluationTarget(
+            name="ed_yta_arrival_rates",
+            flow_type="special",
+            evaluation_mode="arrival_deltas",
+            component="arrivals",
+        )
+        collector = ScalarsCollector()
+        payloads_by_time = {
+            (9, 30): ArrivalDeltaPayload(
+                df=pd.DataFrame(
+                    {
+                        "arrival_datetime": [
+                            pd.Timestamp("2026-01-01 10:00:00+00:00"),
+                            pd.Timestamp("2026-01-02 06:30:00+00:00"),
+                        ]
+                    }
+                ),
+                snapshot_dates=[date(2026, 1, 1), date(2026, 1, 2)],
+                prediction_window=timedelta(hours=2),
+                yta_time_interval=timedelta(minutes=15),
+            ),
+        }
+
+        with TemporaryDirectory() as tmpdir:
+            evaluate_arrival_deltas(
+                service_name="medical",
+                flow_name="ed_yta_arrival_rates",
+                target=target,
+                prediction_times=[(9, 30)],
+                collector=collector,
+                output_root=Path(tmpdir),
+                payloads_by_time=payloads_by_time,
+            )
+
+        mock_plot.assert_called_once()
+        self.assertEqual(len(collector.rows), 1)
+        row = collector.rows[0]
+        self.assertTrue(row["evaluated"])
+        self.assertIsNone(row.get("charts_generated"))
 
 
 if __name__ == "__main__":

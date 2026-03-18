@@ -6,6 +6,7 @@ Tier 3: Render smoke tests — verify plotting functions produce figures without
 """
 
 import unittest
+from datetime import timedelta
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -25,7 +26,7 @@ from patientflow.viz.randomised_pit import _prob_to_cdf
 from patientflow.viz.aspirational_curve import plot_curve
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
 from patientflow.viz.data_distribution import plot_data_distribution
-from patientflow.viz.observed_against_expected import plot_deltas
+from patientflow.viz.observed_against_expected import plot_deltas, plot_arrival_deltas
 from patientflow.viz.arrival_rates import (
     plot_arrival_rates,
     plot_cumulative_arrival_rates,
@@ -320,6 +321,25 @@ class TestPlotRendering(unittest.TestCase):
             },
         }
         fig = plot_deltas(results, return_figure=True)
+        self.assertIsInstance(fig, Figure)
+
+    def test_plot_arrival_deltas_with_no_arrivals_in_window(self):
+        df = pd.DataFrame(
+            {
+                "arrival_datetime": [
+                    pd.Timestamp("2024-01-01 06:00:00+00:00"),
+                    pd.Timestamp("2024-01-01 07:00:00+00:00"),
+                ]
+            }
+        )
+        fig = plot_arrival_deltas(
+            df=df,
+            prediction_time=(9, 30),
+            snapshot_dates=[pd.Timestamp("2024-01-01").date()],
+            prediction_window=timedelta(hours=2),
+            yta_time_interval=timedelta(minutes=15),
+            return_figure=True,
+        )
         self.assertIsInstance(fig, Figure)
 
     def test_plot_arrival_rates(self):

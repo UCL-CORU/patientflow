@@ -10,12 +10,13 @@ rows through ``ScalarsCollector``.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from patientflow.evaluate.adapters import to_legacy_prob_dist_dict_all
 from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
@@ -108,6 +109,38 @@ def _is_inactive_distribution(
             if mean > peak_mean:
                 peak_mean = mean
     return total_observed < min_total_observed and peak_mean < max_mean_predicted
+
+
+def _all_arrival_delta_snapshots_empty(
+    payload: ArrivalDeltaPayload, prediction_time: Tuple[int, int]
+) -> bool:
+    """Return True when every supplied snapshot window has zero arrivals.
+
+    This is used to treat arrival-delta diagnostics as inactive only when
+    all provided snapshot windows are empty.
+    """
+    if not payload.snapshot_dates:
+        return False
+
+    arrivals_index = (
+        payload.df["arrival_datetime"]
+        if "arrival_datetime" in payload.df.columns
+        else payload.df.index
+    )
+    arrivals = pd.to_datetime(arrivals_index, utc=True)
+
+    for snapshot_date in payload.snapshot_dates:
+        start = pd.Timestamp(
+            datetime.combine(
+                snapshot_date, time(hour=prediction_time[0], minute=prediction_time[1])
+            ),
+            tz="UTC",
+        )
+        end = start + pd.Timedelta(payload.prediction_window)
+        has_arrivals = bool(((arrivals > start) & (arrivals <= end)).any())
+        if has_arrivals:
+            return False
+    return True
 
 
 def evaluate_aspirational_skip(
@@ -340,6 +373,30 @@ def evaluate_arrival_deltas(
             )
             continue
 
+        n_snapshots = int(len(payload.snapshot_dates))
+        if _all_arrival_delta_snapshots_empty(payload, prediction_time):
+            collector.record(
+                flow=flow_name,
+                service=service_name,
+                component=target.component,
+                prediction_time=_format_prediction_time(prediction_time),
+                flow_type=target.flow_type,
+                aspirational=target.aspirational,
+                evaluated=True,
+                metrics={
+                    "n_snapshots": n_snapshots,
+                    "reliable": n_snapshots
+                    >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
+                    "reliability_threshold": RELIABILITY_THRESHOLDS[
+                        "distribution_snapshots"
+                    ],
+                    "reliability_basis": "snapshots",
+                    "charts_generated": False,
+                    "skip_reason": "inactive_service",
+                },
+            )
+            continue
+
         fig = plot_arrival_deltas(
             df=payload.df,
             prediction_time=prediction_time,
@@ -356,7 +413,6 @@ def evaluate_arrival_deltas(
         )
         _close_fig(fig)
 
-        n_snapshots = int(len(payload.snapshot_dates))
         collector.record(
             flow=flow_name,
             service=service_name,
