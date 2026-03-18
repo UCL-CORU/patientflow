@@ -13,12 +13,19 @@ from matplotlib import pyplot as plt
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.model_artifacts import TrainedClassifier
-import shap
 import scipy.sparse
 import numpy as np
 from sklearn.pipeline import Pipeline
 from typing import List, Optional
 from pathlib import Path
+
+try:
+    import shap
+
+    SHAP_AVAILABLE = True
+except ImportError:
+    shap = None  # type: ignore[assignment]
+    SHAP_AVAILABLE = False
 
 
 def plot_shap(
@@ -61,6 +68,12 @@ def plot_shap(
     matplotlib.figure.Figure or None
         If return_figure is True, returns the generated figure. Otherwise, returns None.
     """
+    if not SHAP_AVAILABLE:
+        raise ImportError(
+            "shap is required for SHAP plots but is not installed. "
+            "Install with: pip install shap"
+        )
+
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
         trained_models = list(trained_models.values())

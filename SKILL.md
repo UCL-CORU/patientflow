@@ -29,7 +29,9 @@ eval-output/
 │       ├── discrimination.png
 │       ├── discrimination_{prediction_time}.png
 │       ├── calibration.png
-│       └── calibration_{prediction_time}.png
+│       ├── calibration_{prediction_time}.png
+│       ├── feature_importance.png
+│       └── shap_plot_{prediction_time}.png  (when shap is installed)
 └── services/{service_name}/
     ├── ed_current_beds_{prediction_time}_{diagnostic}.png
     ├── ed_current_window_beds_{prediction_time}_{diagnostic}.png
@@ -98,6 +100,14 @@ Histograms of predicted probabilities for positive vs negative cases. Look for s
 ### Calibration plots
 
 Predicted probability bins vs observed fraction. Points should follow the diagonal. Use both uniform and quantile views — uniform as primary, quantile as robustness check.
+
+### Feature importance plots
+
+Horizontal bar charts showing the top features by XGBoost importance, one panel per prediction time. Useful for sanity-checking that the model is using clinically plausible features. Flag any feature that dominates unexpectedly or that shouldn't be available at prediction time (data leakage).
+
+### SHAP plots (optional — requires shap package)
+
+SHAP summary plots showing feature impact on predictions, one file per prediction time. Each dot is a patient; colour encodes feature value, horizontal position encodes SHAP value. Look for features with large spread (high impact) and check directionality makes clinical sense. These are only generated when the `shap` package is installed.
 
 ### EPUDD plots (primary distribution diagnostic)
 

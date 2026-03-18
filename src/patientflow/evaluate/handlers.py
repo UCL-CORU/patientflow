@@ -33,8 +33,10 @@ from patientflow.load import get_model_key
 from patientflow.viz.calibration import plot_calibration
 from patientflow.viz.epudd import plot_epudd
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.features import plot_features
 from patientflow.viz.madcap import plot_madcap
 from patientflow.viz.observed_against_expected import plot_arrival_deltas, plot_deltas
+from patientflow.viz.shap import SHAP_AVAILABLE, plot_shap
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
 
 
@@ -356,9 +358,8 @@ def evaluate_arrival_deltas(
         Optional mapping ``prediction_time -> ArrivalDeltaPayload``.
         Missing times are recorded as non-evaluated rows.
     """
-    service_dir = output_root / "services" / service_name.replace("/", "_")
-    service_dir.mkdir(parents=True, exist_ok=True)
     by_time = payloads_by_time or {}
+    service_dir = output_root / "services" / service_name.replace("/", "_")
 
     for prediction_time in prediction_times:
         payload = by_time.get(prediction_time)
@@ -397,6 +398,7 @@ def evaluate_arrival_deltas(
             )
             continue
 
+        service_dir.mkdir(parents=True, exist_ok=True)
         fig = plot_arrival_deltas(
             df=payload.df,
             prediction_time=prediction_time,
@@ -463,9 +465,8 @@ def evaluate_survival_curve(
         Optional mapping ``prediction_time -> SurvivalCurvePayload``.
         Missing times are recorded as non-evaluated rows.
     """
-    service_dir = output_root / "services" / service_name.replace("/", "_")
-    service_dir.mkdir(parents=True, exist_ok=True)
     by_time = payloads_by_time or {}
+    service_dir = output_root / "services" / service_name.replace("/", "_")
 
     for prediction_time in prediction_times:
         payload = by_time.get(prediction_time)
@@ -480,6 +481,7 @@ def evaluate_survival_curve(
             )
             continue
 
+        service_dir.mkdir(parents=True, exist_ok=True)
         fig = plot_admission_time_survival_curve(
             df=[payload.train_df, payload.test_df],
             labels=["train", "test"],
@@ -631,7 +633,6 @@ def evaluate_classifier(
         If absent, rows are recorded as non-evaluated.
     """
     class_dir = output_root / "classifiers" / flow_name.replace("/", "_")
-    class_dir.mkdir(parents=True, exist_ok=True)
 
     if classifier_input is None:
         for prediction_time in prediction_times:
@@ -657,6 +658,8 @@ def evaluate_classifier(
                 service_name=None,
             )
         return
+
+    class_dir.mkdir(parents=True, exist_ok=True)
 
     if classifier_input.visits_df is not None:
         fig = plot_madcap(
@@ -686,6 +689,22 @@ def evaluate_classifier(
             label_col=classifier_input.label_col,
         )
         _close_fig(fig)
+
+        if SHAP_AVAILABLE:
+            plot_shap(
+                trained_models=models,
+                test_visits=classifier_input.visits_df,
+                media_file_path=class_dir,
+                label_col=classifier_input.label_col,
+            )
+
+    fig = plot_features(
+        trained_models=models,
+        media_file_path=class_dir,
+        file_name="feature_importance.png",
+        return_figure=True,
+    )
+    _close_fig(fig)
 
     models_for_times = _models_by_time(models)
     for prediction_time in prediction_times:

@@ -35,7 +35,7 @@ def run_evaluation(
     config_path: Optional[Union[str, Path]] = None,
     run_label: Optional[str] = None,
     services: Optional[List[str]] = None,
-    skip_inactive_services: bool = False,
+    skip_inactive_services: bool = True,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """Run typed evaluation targets and write plots/scalars to disk.
@@ -58,7 +58,7 @@ def run_evaluation(
         activity (zero observed counts and near-zero predicted means) are
         recorded in scalars with ``charts_generated: false`` but no chart
         files are written.  This dramatically reduces output volume when
-        many services have zero activity.  Defaults to False.
+        many services have zero activity.  Defaults to True.
     verbose
         Whether to print progress messages. Defaults to True.
 
@@ -91,6 +91,13 @@ def run_evaluation(
             shutil.copy2(source, destination)
 
     collector = ScalarsCollector()
+    scalars_path = root / "scalars.json"
+    if scalars_path.exists():
+        try:
+            existing = json.loads(scalars_path.read_text())
+            collector.load_prior(existing.get("results", []))
+        except (json.JSONDecodeError, KeyError):
+            pass
     services_to_process = services or sorted(inputs.flow_inputs_by_service.keys())
     n_targets = len(inputs.evaluation_targets)
     n_services = len(services_to_process)
@@ -183,7 +190,6 @@ def run_evaluation(
                         reason=f"Unsupported evaluation mode: {mode}",
                     )
 
-    scalars_path = root / "scalars.json"
     meta = default_scalars_meta(RELIABILITY_THRESHOLDS, schema_version=3)
     include_summary = skip_inactive_services
     scalars_path.write_text(

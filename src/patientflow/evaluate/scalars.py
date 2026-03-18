@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def default_scalars_meta(
@@ -46,14 +46,55 @@ def default_scalars_meta(
 class ScalarsCollector:
     """Collect scalar rows in a flat, DataFrame-friendly structure.
 
+    Supports incremental evaluation: prior rows loaded from an existing
+    ``scalars.json`` are preserved and merged with new rows at output
+    time.  When a prior row and a new row share the same key
+    ``(flow, service, component, prediction_time)``, the new row wins.
+
     Attributes
     ----------
     rows
-        Accumulated scalar rows, each representing one
-        ``(flow, service, component, prediction_time)`` record.
+        Scalar rows accumulated during the current evaluation run.
     """
 
     rows: List[Dict[str, Any]] = field(default_factory=list)
+    _prior_rows: List[Dict[str, Any]] = field(default_factory=list)
+
+    @staticmethod
+    def _row_key(row: Dict[str, Any]) -> Tuple:
+        return (
+            row.get("flow"),
+            row.get("service"),
+            row.get("component"),
+            row.get("prediction_time"),
+        )
+
+    def load_prior(self, rows: List[Dict[str, Any]]) -> None:
+        """Load rows from a previous run for incremental merging.
+
+        Parameters
+        ----------
+        rows
+            Flat result rows from an earlier ``scalars.json``.  These are
+            kept unless superseded by a new row with the same key.
+        """
+        self._prior_rows = list(rows)
+
+    def merged_rows(self) -> List[Dict[str, Any]]:
+        """Return prior rows merged with current rows (current wins).
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            Combined rows, deduplicated by
+            ``(flow, service, component, prediction_time)``.
+        """
+        current_keys = {self._row_key(r) for r in self.rows}
+        merged = [
+            r for r in self._prior_rows if self._row_key(r) not in current_keys
+        ]
+        merged.extend(self.rows)
+        return merged
 
     def record(
         self,
@@ -106,12 +147,13 @@ class ScalarsCollector:
         self.rows.append(row)
 
     def service_summary(self) -> Dict[str, Any]:
-        """Compute a summary of service coverage from recorded rows.
+        """Compute a summary of service coverage from all rows (merged).
 
-        A service is counted as *inactive* when at least one of its rows
-        has ``charts_generated`` set to ``False``.  Services that appear
-        only in non-service-specific rows (``service is None``) are
-        excluded.
+        A service is *active* if any of its rows generated charts (i.e.
+        does not have ``charts_generated`` set to ``False``).  A service
+        is *inactive* only when every row that expresses an opinion marks
+        it as ``charts_generated: false``.  Services that appear only in
+        non-service-specific rows (``service is None``) are excluded.
 
         Returns
         -------
@@ -120,15 +162,15 @@ class ScalarsCollector:
             ``inactive_services``, and ``inactive_service_names``.
         """
         all_services: set = set()
-        inactive_services: set = set()
-        for row in self.rows:
+        active_services: set = set()
+        for row in self.merged_rows():
             svc = row.get("service")
             if svc is None:
                 continue
             all_services.add(svc)
-            if row.get("charts_generated") is False:
-                inactive_services.add(svc)
-        active_services = all_services - inactive_services
+            if row.get("charts_generated") is not False:
+                active_services.add(svc)
+        inactive_services = all_services - active_services
         return {
             "total_services": len(all_services),
             "active_services": len(active_services),
@@ -144,6 +186,10 @@ class ScalarsCollector:
     ) -> Dict[str, Any]:
         """Build serialisable scalars payload.
 
+        Prior rows and current rows are merged, with current rows taking
+        precedence when both share the same
+        ``(flow, service, component, prediction_time)`` key.
+
         Parameters
         ----------
         meta
@@ -158,7 +204,7 @@ class ScalarsCollector:
             Payload with ``_meta``, flat ``results`` rows, and
             optionally ``_service_summary``.
         """
-        payload: Dict[str, Any] = {"_meta": meta, "results": self.rows}
+        payload: Dict[str, Any] = {"_meta": meta, "results": self.merged_rows()}
         if include_service_summary:
             payload["_service_summary"] = self.service_summary()
         return payload
