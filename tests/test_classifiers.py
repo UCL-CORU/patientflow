@@ -214,6 +214,42 @@ class TestClassifiers(unittest.TestCase):
                 single_snapshot_per_visit=True,
             )
 
+    def test_string_dtype_columns(self):
+        """Test training when categorical columns use pandas StringDtype."""
+        visits = self.train_visits.copy()
+        visits["sex"] = visits["sex"].astype("string")
+        visits["arrival_method"] = visits["arrival_method"].astype("string")
+
+        model = train_classifier(
+            train_visits=visits,
+            valid_visits=visits.copy(),
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            visit_col="visit_number",
+        )
+        self.assertIsInstance(model, TrainedClassifier)
+        self.assertIsNotNone(model.pipeline)
+
+    def test_categorical_dtype_columns(self):
+        """Test training when categorical columns use CategoricalDtype."""
+        visits = self.train_visits.copy()
+        visits["sex"] = visits["sex"].astype("category")
+        visits["arrival_method"] = visits["arrival_method"].astype("category")
+
+        model = train_classifier(
+            train_visits=visits,
+            valid_visits=visits.copy(),
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            visit_col="visit_number",
+        )
+        self.assertIsInstance(model, TrainedClassifier)
+        self.assertIsNotNone(model.pipeline)
+
     def test_feature_importance(self):
         """Test that feature importance is captured when available."""
         model = train_classifier(

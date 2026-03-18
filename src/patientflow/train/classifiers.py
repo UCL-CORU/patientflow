@@ -60,6 +60,23 @@ from patientflow.model_artifacts import (
 )
 
 
+def _is_string_like_column(series: Series) -> bool:
+    """Check whether a Series holds string-like values that need encoding.
+
+    Uses an exclusion-based approach so that any current or future
+    string-like dtype (``object``, ``StringDtype``, ``ArrowDtype("string")``,
+    ``CategoricalDtype`` with string categories, etc.) is detected without
+    needing to enumerate each one explicitly.
+    """
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        series = series.cat.categories.to_series()
+    return not (
+        pd.api.types.is_numeric_dtype(series)
+        or pd.api.types.is_bool_dtype(series)
+        or pd.api.types.is_datetime64_any_dtype(series)
+    )
+
+
 class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
     """
     Ensure that input data has exactly the columns seen during training.
@@ -118,7 +135,7 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
                 default = 0.0
             elif pd.api.types.is_datetime64_any_dtype(series):
                 default = pd.NaT
-            elif series.dtype == "object":
+            elif _is_string_like_column(series):
                 mode = series.mode(dropna=True)
                 default = mode.iloc[0] if not mode.empty else "Unknown"
             else:
@@ -328,8 +345,7 @@ def create_column_transformer(
         # Keep boolean columns as single 0/1 features rather than one-hot encoding
         elif df[col].dtype == "bool":
             transformers.append((col, "passthrough", [col]))
-        # One-hot encode string/object categoricals
-        elif df[col].dtype == "object":
+        elif _is_string_like_column(df[col]):
             transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
         # Keep non-boolean binary (0/1) columns as single features
         elif df[col].nunique() == 2:
