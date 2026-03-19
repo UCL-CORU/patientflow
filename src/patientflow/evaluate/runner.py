@@ -24,8 +24,13 @@ from patientflow.evaluate.handlers import (
     evaluate_distribution,
     evaluate_survival_curve,
 )
+from patientflow.evaluate.observations import count_observed
 from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
-from patientflow.evaluate.types import EvaluationInputs
+from patientflow.evaluate.types import (
+    EvaluationInputs,
+    PredictedSnapshotResult,
+    SnapshotResult,
+)
 
 
 def run_evaluation(
@@ -139,6 +144,55 @@ def run_evaluation(
             )
 
             if mode == "distribution":
+                resolved_snapshots_by_time: Dict[Any, Dict[Any, SnapshotResult]] = {}
+                for prediction_time in inputs.prediction_times:
+                    snapshots = payload_by_time.get(prediction_time)
+                    if snapshots is None:
+                        continue
+
+                    observation_input = (
+                        inputs.observation_inputs_by_service.get(service_name, {})
+                        .get(flow_name, {})
+                        .get(prediction_time)
+                    )
+
+                    resolved_snapshots: Dict[Any, SnapshotResult] = {}
+                    for snapshot_date, snapshot in snapshots.items():
+                        if observation_input is not None:
+                            observed = count_observed(
+                                target.observation_mode,
+                                visits=observation_input.visits,
+                                snapshot_date=snapshot_date,
+                                prediction_time=prediction_time,
+                                prediction_window=observation_input.prediction_window,
+                                specialty=(
+                                    service_name
+                                    if observation_input.apply_service_filter
+                                    else None
+                                ),
+                                label_col=observation_input.label_col,
+                                service_col=observation_input.service_col,
+                                start_time_col=observation_input.start_time_col,
+                                end_time_col=observation_input.end_time_col,
+                            )
+                        else:
+                            if isinstance(snapshot, PredictedSnapshotResult):
+                                raise ValueError(
+                                    "Distribution snapshot is missing observed count "
+                                    f"for flow '{flow_name}', service '{service_name}', "
+                                    f"prediction_time '{prediction_time}'. Provide "
+                                    "observation_inputs_by_service for prediction-only "
+                                    "payloads."
+                                )
+                            observed = int(snapshot.observed)
+
+                        resolved_snapshots[snapshot_date] = SnapshotResult(
+                            predicted_pmf=snapshot.predicted_pmf,
+                            observed=observed,
+                            offset=snapshot.offset,
+                        )
+                    resolved_snapshots_by_time[prediction_time] = resolved_snapshots
+
                 evaluate_distribution(
                     service_name=service_name,
                     flow_name=flow_name,
@@ -146,7 +200,7 @@ def run_evaluation(
                     prediction_times=inputs.prediction_times,
                     collector=collector,
                     output_root=root,
-                    snapshots_by_time=payload_by_time,
+                    snapshots_by_time=resolved_snapshots_by_time,
                     skip_inactive=skip_inactive_services,
                 )
             elif mode == "arrival_deltas":

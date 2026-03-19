@@ -151,7 +151,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_at_some_point",
+            observation_mode="admitted_at_some_point",
             flow_selection=FlowSelection.custom(
                 include_ed_current=True,
                 include_ed_yta=False,
@@ -183,7 +183,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_in_window",
+            observation_mode="admitted_in_window",
         ),
         # Row 5a: aspirational — no observation
         "ed_current_window_beds_aspirational": EvaluationTarget(
@@ -207,7 +207,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="poisson",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_in_window",
+            observation_mode="arrived_and_admitted_in_window",
             flow_selection=FlowSelection.custom(
                 include_ed_current=False,
                 include_ed_yta=True,
@@ -231,7 +231,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="poisson",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_in_window",
+            observation_mode="arrived_in_window",
         ),
         # Row 9: elective admissions in window
         "elective_yta_beds": EvaluationTarget(
@@ -239,7 +239,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="poisson",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_in_window",
+            observation_mode="arrived_in_window",
         ),
         # Row 11: emergency departures in window
         "discharge_emergency": EvaluationTarget(
@@ -247,7 +247,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="departures",
-            observation_mode="count_in_window",
+            observation_mode="departed_in_window",
         ),
         # Row 12: elective departures in window
         "discharge_elective": EvaluationTarget(
@@ -255,7 +255,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="departures",
-            observation_mode="count_in_window",
+            observation_mode="departed_in_window",
         ),
         # Row 16: aspirational — no observation
         "combined_emergency_arrivals": EvaluationTarget(
@@ -272,7 +272,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="arrivals",
-            observation_mode="count_in_window",
+            observation_mode="arrived_in_window",
             flow_selection=FlowSelection.elective_only(),
         ),
         # Row 18: aspirational — no observation
@@ -290,7 +290,7 @@ def get_default_evaluation_targets() -> Dict[str, EvaluationTarget]:
             flow_type="pmf",
             evaluation_mode="distribution",
             component="net_flow",
-            observation_mode="count_in_window",
+            observation_mode="admitted_in_window",
             flow_selection=FlowSelection.elective_only(),
         ),
     }

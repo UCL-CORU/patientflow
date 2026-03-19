@@ -44,6 +44,50 @@ class SnapshotResult:
 
 
 @dataclass
+class PredictedSnapshotResult:
+    """Predicted PMF for one snapshot date, without observed value.
+
+    Used when upstream payloads provide prediction-only distributions and
+    observed counts are computed in the evaluation layer.
+    """
+
+    predicted_pmf: np.ndarray
+    offset: int = 0
+
+
+@dataclass
+class ObservationInput:
+    """Input payload used to compute observed counts for distribution targets.
+
+    Parameters
+    ----------
+    visits
+        DataFrame containing raw events from which observed counts are derived.
+    prediction_window
+        Forecast window associated with each prediction time.
+    label_col
+        Boolean/flag column used by ``admitted_at_some_point`` mode.
+    service_col
+        Column used for service-level filtering.
+    start_time_col
+        Start timestamp column used by window-based counting modes.
+    end_time_col
+        End timestamp column used by window-based counting modes.
+    apply_service_filter
+        Whether observed counting should filter rows to the service currently
+        being evaluated.
+    """
+
+    visits: pd.DataFrame
+    prediction_window: timedelta
+    label_col: str = "is_admitted"
+    service_col: str = "specialty"
+    start_time_col: str = "arrival_datetime"
+    end_time_col: str = "departure_datetime"
+    apply_service_filter: bool = True
+
+
+@dataclass
 class ClassifierInput:
     """Input payload required for classifier diagnostics.
 
@@ -110,8 +154,11 @@ class SurvivalCurvePayload:
 
 
 OBSERVATION_MODES = (
-    "count_at_some_point",
-    "count_in_window",
+    "admitted_at_some_point",
+    "admitted_in_window",
+    "departed_in_window",
+    "arrived_in_window",
+    "arrived_and_admitted_in_window",
     "not_applicable",
     "classifier_binary",
     "arrival_rates",
@@ -119,11 +166,23 @@ OBSERVATION_MODES = (
 )
 """Recognised values for ``EvaluationTarget.observation_mode``.
 
-``count_at_some_point``
-    Count patients flagged as admitted regardless of when they leave ED.
-``count_in_window``
-    Count events (admissions, departures, arrivals) within the prediction
-    window.
+``admitted_at_some_point``
+    Patient is in ED at prediction time and is admitted to a bed at some
+    later point (uses ``is_admitted`` flag; no window constraint).
+``admitted_in_window``
+    Patient is already present at prediction time and their admission to a
+    bed (end event) falls within the prediction window.
+``departed_in_window``
+    Alias for the same counting logic as ``admitted_in_window``, used for
+    departure targets to make intent clear.
+``arrived_in_window``
+    Patient arrives after the prediction moment and before the end of the
+    window.  Only the arrival/start column is checked — suitable for
+    direct-admission flows where arrival = admission.
+``arrived_and_admitted_in_window``
+    Patient arrives after the prediction moment and their admission to a
+    bed (end event) falls within the window.  Used for ED yet-to-arrive
+    predictions where there is a delay between arrival and admission.
 ``not_applicable``
     Aspirational targets — no observed count is meaningful.
 ``classifier_binary``
@@ -156,7 +215,7 @@ class EvaluationTarget:
     observation_mode
         How observed counts should be prepared when evaluating this target.
         Must be one of :data:`OBSERVATION_MODES`.  Defaults to
-        ``"count_at_some_point"`` for backward compatibility.
+        ``"admitted_at_some_point"`` for backward compatibility.
     flow_selection
         Optional flow-selection metadata that documents how the flow is
         assembled upstream.
@@ -166,7 +225,7 @@ class EvaluationTarget:
     flow_type: str
     evaluation_mode: str
     component: str
-    observation_mode: str = "count_at_some_point"
+    observation_mode: str = "admitted_at_some_point"
     flow_selection: Optional[FlowSelection] = None
 
     def __post_init__(self) -> None:
@@ -182,11 +241,9 @@ class EvaluationTarget:
         return self.evaluation_mode == "aspirational_skip"
 
 
-FlowInputPayload = Union[
-    Dict[date, SnapshotResult],
-    ArrivalDeltaPayload,
-    SurvivalCurvePayload,
-]
+DistributionSnapshotPayload = Dict[date, Union[SnapshotResult, PredictedSnapshotResult]]
+
+FlowInputPayload = Union[DistributionSnapshotPayload, ArrivalDeltaPayload, SurvivalCurvePayload]
 
 
 @dataclass
@@ -206,9 +263,17 @@ class EvaluationInputs:
         ``service -> flow -> prediction_time -> payload``.
         Payload type depends on target mode:
         distribution snapshots, arrival-delta payloads, or survival payloads.
+    observation_inputs_by_service
+        Nested mapping:
+        ``service -> flow -> prediction_time -> ObservationInput``.
+        Used by distribution-mode targets when observed counts are computed in
+        the evaluation layer.
     """
 
     prediction_times: List[Tuple[int, int]]
     evaluation_targets: Dict[str, EvaluationTarget]
     classifier_inputs: Dict[str, ClassifierInput]
     flow_inputs_by_service: Dict[str, Dict[str, Dict[Tuple[int, int], FlowInputPayload]]]
+    observation_inputs_by_service: Dict[
+        str, Dict[str, Dict[Tuple[int, int], ObservationInput]]
+    ] = field(default_factory=dict)

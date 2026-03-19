@@ -19,12 +19,16 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import pandas as pd
 
-from patientflow.evaluate.adapters import from_legacy_prob_dist_dict
+from patientflow.evaluate.adapters import (
+    from_legacy_prediction_dict,
+    from_legacy_prob_dist_dict,
+)
 from patientflow.evaluate.targets import get_default_evaluation_targets
 from patientflow.evaluate.types import (
     ArrivalDeltaPayload,
     ClassifierInput,
     EvaluationInputs,
+    ObservationInput,
     EvaluationTarget,
     SurvivalCurvePayload,
 )
@@ -51,6 +55,9 @@ class EvaluationInputsBuilder:
         self.evaluation_targets = evaluation_targets or get_default_evaluation_targets()
         self.classifier_inputs: Dict[str, ClassifierInput] = {}
         self.flow_inputs_by_service: Dict[str, Dict[str, Dict[Tuple[int, int], Any]]] = {}
+        self.observation_inputs_by_service: Dict[
+            str, Dict[str, Dict[Tuple[int, int], ObservationInput]]
+        ] = {}
 
     def add_classifier(
         self,
@@ -101,6 +108,9 @@ class EvaluationInputsBuilder:
             Distribution flow target name.
         prob_dist_by_service
             Mapping returned by ``get_prob_dist_by_service`` keyed by model key.
+            Payload entries with ``agg_observed`` are stored as
+            :class:`SnapshotResult`; prediction-only entries are stored as
+            :class:`PredictedSnapshotResult`.
         model_name
             Base model name used to derive model keys for prediction times.
 
@@ -113,10 +123,53 @@ class EvaluationInputsBuilder:
             model_key = get_model_key(model_name, prediction_time)
             by_service = prob_dist_by_service.get(model_key, {})
             for service_name, legacy_prob_dist_dict in by_service.items():
-                typed_prob_dist_dict = from_legacy_prob_dist_dict(legacy_prob_dist_dict)
+                first_payload = next(iter(legacy_prob_dist_dict.values()), {})
+                has_observed = "agg_observed" in first_payload
+                if has_observed:
+                    typed_prob_dist_dict = from_legacy_prob_dist_dict(
+                        legacy_prob_dist_dict
+                    )
+                else:
+                    typed_prob_dist_dict = from_legacy_prediction_dict(
+                        legacy_prob_dist_dict
+                    )
                 self.flow_inputs_by_service.setdefault(service_name, {}).setdefault(
                     flow_name, {}
                 )[prediction_time] = typed_prob_dist_dict
+        return self
+
+    def add_distribution_observations(
+        self,
+        flow_name: str,
+        *,
+        observations_by_service: Mapping[str, pd.DataFrame],
+        prediction_window: timedelta,
+        prediction_times: Optional[Iterable[Tuple[int, int]]] = None,
+        label_col: str = "is_admitted",
+        service_col: str = "specialty",
+        start_time_col: str = "arrival_datetime",
+        end_time_col: str = "departure_datetime",
+        apply_service_filter: bool = True,
+    ) -> "EvaluationInputsBuilder":
+        """Register observation datasets for a distribution target.
+
+        These inputs are consumed by ``run_evaluation`` to compute observed
+        counts using each target's ``observation_mode`` at evaluation time.
+        """
+        selected_times = list(prediction_times or self.prediction_times)
+        for service_name, visits in observations_by_service.items():
+            for prediction_time in selected_times:
+                self.observation_inputs_by_service.setdefault(service_name, {}).setdefault(
+                    flow_name, {}
+                )[prediction_time] = ObservationInput(
+                    visits=visits,
+                    prediction_window=prediction_window,
+                    label_col=label_col,
+                    service_col=service_col,
+                    start_time_col=start_time_col,
+                    end_time_col=end_time_col,
+                    apply_service_filter=apply_service_filter,
+                )
         return self
 
     def add_arrival_deltas(
@@ -225,4 +278,5 @@ class EvaluationInputsBuilder:
             evaluation_targets=dict(self.evaluation_targets),
             classifier_inputs=dict(self.classifier_inputs),
             flow_inputs_by_service=dict(self.flow_inputs_by_service),
+            observation_inputs_by_service=dict(self.observation_inputs_by_service),
         )

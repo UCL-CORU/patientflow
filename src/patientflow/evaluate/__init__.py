@@ -13,6 +13,7 @@ notebooks and application code.
 """
 
 from patientflow.evaluate.adapters import (
+    from_legacy_prediction_dict,
     from_legacy_prob_dist_dict,
     to_legacy_prob_dist_dict_all,
 )
@@ -22,8 +23,10 @@ from patientflow.evaluate.handlers import MODE_HANDLERS, evaluate_distribution
 from patientflow.evaluate.legacy_api import calc_mae_mpe, calculate_results
 from patientflow.evaluate.observations import (
     count_observed,
-    count_observed_at_some_point,
-    count_observed_in_window,
+    count_observed_admitted_at_some_point,
+    count_observed_admitted_in_window,
+    count_observed_arrived_and_admitted_in_window,
+    count_observed_arrived_in_window,
 )
 from patientflow.evaluate.runner import run_evaluation
 from patientflow.evaluate.scalars import ScalarsCollector, default_scalars_meta
@@ -38,7 +41,9 @@ from patientflow.evaluate.types import (
     EvaluationInputs,
     EvaluationTarget,
     FlowInputPayload,
+    ObservationInput,
     OBSERVATION_MODES,
+    PredictedSnapshotResult,
     SnapshotResult,
     SurvivalCurvePayload,
 )
@@ -49,7 +54,9 @@ __all__ = [
     "EvaluationInputs",
     "EvaluationTarget",
     "FlowInputPayload",
+    "ObservationInput",
     "OBSERVATION_MODES",
+    "PredictedSnapshotResult",
     "SnapshotResult",
     "SurvivalCurvePayload",
     "convert_legacy_target",
@@ -57,11 +64,14 @@ __all__ = [
     "calc_mae_mpe",
     "calculate_results",
     "count_observed",
-    "count_observed_at_some_point",
-    "count_observed_in_window",
+    "count_observed_admitted_at_some_point",
+    "count_observed_admitted_in_window",
+    "count_observed_arrived_and_admitted_in_window",
+    "count_observed_arrived_in_window",
     "default_scalars_meta",
     "EvaluationInputsBuilder",
     "get_default_evaluation_targets",
+    "from_legacy_prediction_dict",
     "from_legacy_prob_dist_dict",
     "MODE_HANDLERS",
     "RELIABILITY_THRESHOLDS",

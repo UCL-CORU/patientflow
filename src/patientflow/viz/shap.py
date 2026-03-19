@@ -34,6 +34,7 @@ def plot_shap(
     media_file_path: Optional[Path] = None,
     file_name: Optional[str] = None,
     return_figure=False,
+    show: bool = False,
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
@@ -57,6 +58,9 @@ def plot_shap(
         Custom filename to use when saving the plot. If not provided, defaults to "shap_plot.png".
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it.
+    show : bool, default=False
+        If True, display plots interactively. Defaults to False so SHAP
+        diagnostics save without rendering inline in notebooks.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
     exclude_from_training_data : List[str], optional, deprecated
@@ -162,6 +166,8 @@ def plot_shap(
 
         if return_figure:
             return fig
-        else:
+
+        if show:
             plt.show()
-            plt.close(fig)
+
+        plt.close(fig)

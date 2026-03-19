@@ -94,6 +94,34 @@ class TestEvaluationInputsBuilder(unittest.TestCase):
         ][(12, 0)]
         self.assertIsInstance(survival_payload, SurvivalCurvePayload)
 
+    def test_add_distribution_observations(self) -> None:
+        builder = EvaluationInputsBuilder(
+            prediction_times=[(9, 30)],
+            evaluation_targets={},
+        )
+        observations = pd.DataFrame(
+            {
+                "arrival_datetime": [pd.Timestamp("2026-01-01 10:00:00+00:00")],
+                "departure_datetime": [pd.Timestamp("2026-01-01 11:00:00+00:00")],
+                "specialty": ["medical"],
+            }
+        )
+
+        builder.add_distribution_observations(
+            "ed_yta_beds",
+            observations_by_service={"medical": observations},
+            prediction_window=timedelta(hours=4),
+            start_time_col="arrival_datetime",
+            end_time_col="departure_datetime",
+        )
+        built = builder.build()
+        observation_input = built.observation_inputs_by_service["medical"]["ed_yta_beds"][
+            (9, 30)
+        ]
+        self.assertEqual(observation_input.start_time_col, "arrival_datetime")
+        self.assertEqual(observation_input.end_time_col, "departure_datetime")
+        self.assertEqual(observation_input.prediction_window, timedelta(hours=4))
+
 
 if __name__ == "__main__":
     unittest.main()

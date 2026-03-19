@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from patientflow.evaluate.adapters import (
+    from_legacy_prediction_dict,
     from_legacy_prob_dist_dict,
     to_legacy_prob_dist_dict_all,
 )
@@ -33,6 +34,19 @@ class TestEvaluationAdapters(unittest.TestCase):
         self.assertEqual(converted[dt].observed, 1)
         self.assertEqual(converted[dt].offset, 0)
         np.testing.assert_allclose(converted[dt].predicted_pmf, np.array([0.2, 0.5, 0.3]))
+
+    def test_from_legacy_prediction_dict_accepts_prediction_only_payload(self):
+        dt = date(2026, 1, 1)
+        legacy = {
+            dt: {
+                "agg_predicted": pd.DataFrame(
+                    {"agg_proba": [0.6, 0.4]},
+                    index=[0, 1],
+                )
+            }
+        }
+        converted = from_legacy_prediction_dict(legacy)
+        np.testing.assert_allclose(converted[dt].predicted_pmf, np.array([0.6, 0.4]))
 
     def test_to_legacy_prob_dist_dict_all_preserves_offset(self):
         pt = (9, 30)

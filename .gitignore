@@ -1,3 +1,4 @@
+notebooks/eval-output/*
 uv.lock
 *data-dictionaries/uclh*
 *results_dict*

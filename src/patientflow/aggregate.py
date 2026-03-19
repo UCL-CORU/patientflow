@@ -45,7 +45,7 @@ get_prob_dist_using_survival_curve : function
 
 get_prob_dist_by_service : function
     Evaluate composed service-level predictions across the test set for one or more
-    services, producing probability distributions and observed values in the standard
+    services, producing probability distributions in the standard
     evaluation format.
 
 """
@@ -643,13 +643,15 @@ def _count_observed_admissions(
     """Count actual admissions for a given snapshot date and prediction time.
 
     .. deprecated::
-        Use :func:`patientflow.evaluate.observations.count_observed_at_some_point`
+        Use :func:`patientflow.evaluate.observations.count_observed_admitted_at_some_point`
         instead.  This wrapper delegates to the new location.
 
     Parameters
     ----------
     ed_visits : pd.DataFrame
-        Full ED visits dataframe.
+        Full ED visits dataframe.  Must contain columns ``snapshot_date``,
+        ``prediction_time``, ``label_col``, and (when *specialty* is given)
+        ``service_col``.
     snapshot_date : date
         The date of the snapshot.
     prediction_time : Tuple[int, int]
@@ -670,15 +672,15 @@ def _count_observed_admissions(
     """
     import warnings
 
-    from patientflow.evaluate.observations import count_observed_at_some_point
+    from patientflow.evaluate.observations import count_observed_admitted_at_some_point
 
     warnings.warn(
         "_count_observed_admissions is deprecated. "
-        "Use patientflow.evaluate.observations.count_observed_at_some_point instead.",
+        "Use patientflow.evaluate.observations.count_observed_admitted_at_some_point instead.",
         DeprecationWarning,
         stacklevel=2,
     )
-    return count_observed_at_some_point(
+    return count_observed_admitted_at_some_point(
         ed_visits,
         snapshot_date,
         prediction_time,
@@ -703,10 +705,7 @@ def get_prob_dist_by_service(
     inpatient_visits: Optional[pd.DataFrame] = None,
     flow_selection: Optional[Any] = None,
     component: str = "arrivals",
-    label_col: str = "is_admitted",
-    service_col: str = "specialty",
     verbose: bool = False,
-    observation_mode: str = "count_at_some_point",
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
@@ -728,11 +727,9 @@ def get_prob_dist_by_service(
        for all specialties.
     3. Runs ``DemandPredictor.predict_service`` with the given
        ``flow_selection`` for each requested service.
-    4. Counts the observed values from the data for each service, using
-       the strategy specified by ``observation_mode``.
-    5. Packages the predicted PMF and observed count into the standard
-       evaluation dictionary format consumed by ``plot_epudd``,
-       ``plot_randomised_pit``, ``qq_plot``, etc.
+    4. Packages the predicted PMF in the standard evaluation dictionary
+       format consumed by ``plot_epudd``, ``plot_randomised_pit``,
+       ``qq_plot``, etc.
 
     Parameters
     ----------
@@ -773,26 +770,16 @@ def get_prob_dist_by_service(
         Which component of the ``PredictionBundle`` to extract for
         evaluation.  One of ``"arrivals"``, ``"departures"``, or
         ``"net_flow"``.
-    label_col : str, default ``"is_admitted"``
-        Name of the boolean/flag column used to identify observed admissions.
-    service_col : str, default ``"specialty"``
-        Name of the column used to filter observations by service.
     verbose : bool, default ``False``
         If ``True``, print a one-line summary on completion.
-    observation_mode : str, default ``"count_at_some_point"``
-        How observed counts are computed.  ``"count_at_some_point"`` counts
-        patients flagged as admitted at the snapshot regardless of timing;
-        ``"count_in_window"`` counts events within the prediction window.
-        See :func:`patientflow.evaluate.observations.count_observed`.
 
     Returns
     -------
     Dict[str, Dict[date, Dict[str, Any]]]
         Dictionary mapping each service name to a dict mapping each
-        snapshot date to a dict with keys ``'agg_predicted'`` (DataFrame
-        with ``'agg_proba'`` column) and ``'agg_observed'`` (int).  The
-        inner dict is the standard format expected by the evaluation
-        visualisation functions.
+        snapshot date to a dict with key ``'agg_predicted'`` (DataFrame
+        with ``'agg_proba'`` column). Observations are intentionally omitted
+        and should be computed in the evaluation layer.
 
     Raises
     ------
@@ -800,7 +787,6 @@ def get_prob_dist_by_service(
         If ``component`` is not one of the recognised values, or
         if any entry in *services* is not found in *specialties*.
     """
-    from patientflow.evaluate.observations import count_observed
     from patientflow.predict.service import build_service_data
     from patientflow.predict.demand import DemandPredictor, FlowSelection
 
@@ -833,7 +819,9 @@ def get_prob_dist_by_service(
 
         if ed_snapshot.empty:
             for svc in services:
-                result[svc][dt] = prediction_to_eval_dict(np.array([1.0]), observed=0)
+                result[svc][dt] = {
+                    "agg_predicted": pd.DataFrame({"agg_proba": [1.0]}, index=[0])
+                }
             continue
 
         ed_snapshot_processed = ed_snapshot.copy(deep=True)
@@ -878,20 +866,12 @@ def get_prob_dist_by_service(
 
             demand_prediction = getattr(bundle, component)
 
-            observed = count_observed(
-                observation_mode,
-                visits=ed_visits,
-                snapshot_date=dt,
-                prediction_time=prediction_time,
-                prediction_window=prediction_window,
-                specialty=svc,
-                label_col=label_col,
-                service_col=service_col,
-            )
-
-            result[svc][dt] = prediction_to_eval_dict(
-                demand_prediction.probabilities, observed
-            )
+            result[svc][dt] = {
+                "agg_predicted": pd.DataFrame(
+                    {"agg_proba": demand_prediction.probabilities},
+                    index=range(len(demand_prediction.probabilities)),
+                )
+            }
 
     if verbose:
         print(

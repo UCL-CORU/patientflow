@@ -15,7 +15,7 @@ from typing import Any, Dict, Mapping, Tuple
 import numpy as np
 import pandas as pd
 
-from patientflow.evaluate.types import SnapshotResult
+from patientflow.evaluate.types import PredictedSnapshotResult, SnapshotResult
 from patientflow.load import get_model_key
 
 
@@ -72,6 +72,45 @@ def from_legacy_prob_dist_dict(
         converted[snapshot_date] = SnapshotResult(
             predicted_pmf=np.asarray(proba_series.to_numpy(), dtype=float),
             observed=int(payload["agg_observed"]),
+            offset=offset,
+        )
+    return converted
+
+
+def from_legacy_prediction_dict(
+    legacy_prob_dist_dict: Mapping[date, Mapping[str, Any]],
+) -> Dict[date, PredictedSnapshotResult]:
+    """Convert a prediction-only payload into typed predicted snapshots.
+
+    Parameters
+    ----------
+    legacy_prob_dist_dict
+        Mapping of snapshot date to payload with key ``"agg_predicted"``
+        (DataFrame).
+    """
+    converted: Dict[date, PredictedSnapshotResult] = {}
+    for snapshot_date, payload in legacy_prob_dist_dict.items():
+        if "agg_predicted" not in payload:
+            raise ValueError("Legacy payload must contain 'agg_predicted'.")
+
+        agg_predicted = payload["agg_predicted"]
+        if not isinstance(agg_predicted, pd.DataFrame):
+            raise TypeError(
+                "Legacy payload field 'agg_predicted' must be a pandas DataFrame."
+            )
+
+        if "agg_proba" in agg_predicted.columns:
+            proba_series = agg_predicted["agg_proba"]
+        elif len(agg_predicted.columns) > 0:
+            proba_series = agg_predicted.iloc[:, 0]
+        else:
+            raise ValueError(
+                "Legacy payload DataFrame 'agg_predicted' has no probability column."
+            )
+
+        offset = int(agg_predicted.index.min()) if len(agg_predicted.index) > 0 else 0
+        converted[snapshot_date] = PredictedSnapshotResult(
+            predicted_pmf=np.asarray(proba_series.to_numpy(), dtype=float),
             offset=offset,
         )
     return converted
