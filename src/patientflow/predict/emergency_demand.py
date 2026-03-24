@@ -55,44 +55,6 @@ if hasattr(pd.errors, "SettingWithCopyWarning"):
     warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
-def warn_specialty_mismatch(
-    requested: set,
-    trained: set,
-    source_label: str,
-    *,
-    stacklevel: int = 3,
-) -> None:
-    """Emit warnings when requested and trained specialty sets diverge.
-
-    Parameters
-    ----------
-    requested : set
-        Specialties coming from the current request (e.g. Clarity).
-    trained : set
-        Specialties the model was trained on.
-    source_label : str
-        Human-readable name for the trained artefact, used in messages
-        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
-    stacklevel : int, optional
-        Passed to :func:`warnings.warn` so the warning points to the
-        caller rather than this helper.  Default is 3 (caller's caller).
-    """
-    new_in_request = requested - trained
-    missing_from_request = trained - requested
-    if new_in_request:
-        warnings.warn(
-            f"{len(new_in_request)} specialties found in the request but absent "
-            f"from the trained {source_label} (models may need retraining).",
-            stacklevel=stacklevel,
-        )
-    if missing_from_request:
-        warnings.warn(
-            f"{len(missing_from_request)} specialties present in the trained "
-            f"{source_label} but absent from the request.",
-            stacklevel=stacklevel,
-        )
-
-
 def add_missing_columns(pipeline, df):
     """Add missing columns required by the prediction pipeline from the training data.
 
@@ -442,6 +404,9 @@ def create_predictions(
         raise ValueError(
             f"Requested prediction window {prediction_window} does not match the prediction window of the trained yet-to-arrive model {yet_to_arrive_model.prediction_window}"
         )
+
+    # Local import: patientflow.predict.service imports this module at load time.
+    from patientflow.predict.service import warn_specialty_mismatch
 
     warn_specialty_mismatch(
         set(specialties),

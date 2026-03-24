@@ -15,6 +15,7 @@ schemes) implemented elsewhere.
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union, Any
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,6 @@ import pandas as pd
 from patientflow.predict.emergency_demand import (
     add_missing_columns,
     get_specialty_probs,
-    warn_specialty_mismatch,
 )
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
@@ -252,6 +252,44 @@ class ServicePredictionInputs:
                 lines.append(f"    {flow.get_display_name():<40} {flow_str}")
 
         return "\n".join(lines)
+
+
+def warn_specialty_mismatch(
+    requested: set,
+    trained: set,
+    source_label: str,
+    *,
+    stacklevel: int = 3,
+) -> None:
+    """Emit warnings when requested and trained specialty sets diverge.
+
+    Parameters
+    ----------
+    requested : set
+        Specialties coming from the current request (e.g. Clarity).
+    trained : set
+        Specialties the model was trained on.
+    source_label : str
+        Human-readable name for the trained artefact, used in messages
+        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
+    stacklevel : int, optional
+        Passed to :func:`warnings.warn` so the warning points to the
+        caller rather than this helper.  Default is 3 (caller's caller).
+    """
+    new_in_request = requested - trained
+    missing_from_request = trained - requested
+    if new_in_request:
+        warnings.warn(
+            f"{len(new_in_request)} specialties found in the request but absent "
+            f"from the trained {source_label} (models may need retraining).",
+            stacklevel=stacklevel,
+        )
+    if missing_from_request:
+        warnings.warn(
+            f"{len(missing_from_request)} specialties present in the trained "
+            f"{source_label} but absent from the request.",
+            stacklevel=stacklevel,
+        )
 
 
 def _validate_models_and_data(
