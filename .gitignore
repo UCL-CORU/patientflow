@@ -6,8 +6,10 @@ uv.lock
 *data-uclh*
 data-public/*
 !data-public/.gitkeep
-*.claude/worktrees/*
-.claude*
+# Claude Code: ignore local state under .claude except committed team skills
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 
 trained-models/*
 !trained-models/.gitkeep

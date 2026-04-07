@@ -10,7 +10,7 @@ description: >
 
 You are reviewing evaluation outputs from a hospital bed demand prediction system. The system predicts bed demand per service by convolving multiple patient flow components. Your job is to review what the evaluation has produced, surface problems, and help create clear reports.
 
-For the full evaluation plan — including the complete list of flows, what each predicts, and how they relate — see `Evaluation_plan_v2b.docx` in the root folder.
+For the evaluation plan in this repository, see `docs/evaluation_plan.md`. (If you maintain a fuller Word version elsewhere, use that as supplementary context.)
 
 ## Core principle
 
@@ -79,9 +79,13 @@ File name prefixes map to flow groups:
 
 ### Aspirational flows
 
-Some flows assume operational targets (e.g. 4-hour ED targets) that don't match observed reality. These are marked `"aspirational": true` in scalars.json. Standard observed-vs-predicted diagnostics are not valid for them. Currently aspirational: `ed_current_window_beds_aspirational`, `ed_yta_beds_aspirational`, `combined_emergency_arrivals`, `combined_net_emergency`.
+These correspond to **`docs/evaluation_plan.md` matrix rows built on 4-hour-style targets** (rows **4a**, **5a**, **7a**) and **combined flows that include those components** (e.g. rows **16**, **18**). The plan states **no formal test-set evaluation** for those rows: predictions are scenario / target-based, not expected to match observed counts on the test set (row 7a explicitly: no test-set evaluation; optional charts in model-in-use are a separate question).
 
-Combined predictions that include any aspirational component are themselves aspirational. Flag the aspirational mismatch once in your review, not per instance.
+In `scalars.json`, they are marked `"aspirational": true`. **Implementation may still emit scalar rows** (e.g. MAE/MPE) for debugging or downstream tooling; that does **not** override the plan — **do not** treat those metrics as measures of operational forecast quality or apply the usual “positive MPE = dangerous under-prediction” reading to them.
+
+Named targets in this category include: `ed_current_window_beds_aspirational`, `ed_yta_beds_aspirational`, `combined_emergency_arrivals`, `combined_net_emergency`. Combined predictions that include any aspirational component are themselves aspirational.
+
+In reviews: **mention once** that aspirational flows are present and, per the evaluation plan, **out of scope for standard obs-vs-pred interpretation** — do **not** stack their scalars with observed-flow conclusions or list them among operational under-prediction findings.
 
 ## How to interpret each diagnostic
 
@@ -134,7 +138,7 @@ One `scalars.json` at the output root, keyed by flow name and prediction time. E
 | Log loss | Classifiers | Primary classifier metric. Lower is better. |
 | AUROC, AUPRC | Classifiers | Secondary. Useful for comparison across times/folds. |
 | MAE | Distributions | Average error magnitude. Scale-dependent — interpret relative to typical counts. |
-| MPE | Distributions | Systematic bias. **Positive = under-prediction. Flag prominently.** |
+| MPE | Distributions | Systematic bias. **Positive = under-prediction. Flag prominently.** (Not for aspirational rows — see above.) |
 | n_snapshots | Distributions | Sample size for reliability. |
 
 ### Minimum sample sizes
@@ -144,7 +148,7 @@ Flag metrics as unreliable below these thresholds: 50 positive cases (classifier
 ## Review workflow
 
 1. **Inventory**: List folders present. Note which flows and services are covered. Gaps are themselves a finding.
-2. **Scan scalars**: Load scalars.json. Flag any positive MPE (under-prediction) prominently. Note MAE relative to typical counts for each service. If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
+2. **Scan scalars**: Load scalars.json. For **non-aspirational** distribution rows only, flag positive MPE (under-prediction) prominently. **Skip** MAE/MPE interpretation for `aspirational: true` rows (see **Aspirational flows** above and `docs/evaluation_plan.md`). Note MAE relative to typical counts for each service where applicable. If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
 3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD for distribution flows (coloured points should track grey — not the diagonal). Describe what you see. Only active services (those with chart folders) need visual review.
 4. **Cross-flow checks**: Do component flows explain the combined views? If combined is poor but components look fine, the convolution or a specific flow may be the issue.
 5. **Prioritise findings**: Under-prediction of demand and poor calibration of feeding classifiers are higher priority than slight over-prediction or noisy metrics at low-volume services.
@@ -154,10 +158,10 @@ Flag metrics as unreliable below these thresholds: 50 positive cases (classifier
 Produce what the user asks for:
 
 - **Quick review summary**: Concise markdown. What was evaluated, headline metrics, flagged issues, next steps.
-- **Technical evaluation report**: Detailed Word document (use docx skill). Executive summary → flow-by-flow → cross-cutting issues → recommendations.
-- **Presentation**: Slide deck (use pptx skill). Ask who the audience is.
+- **Technical evaluation report**: Detailed document (markdown in-repo, or Word if the user requests and you have tooling). Executive summary → flow-by-flow → cross-cutting issues → recommendations.
+- **Presentation**: Slide deck if the user requests; ask who the audience is.
 - **Comparison report**: Across evaluation runs — what improved, what regressed.
-- **Issue tracker**: Spreadsheet (use xlsx skill). Columns: flow, service, issue, severity, status, date, notes.
+- **Issue tracker**: Table or spreadsheet if the user requests; columns: flow, service, issue, severity, status, date, notes.
 
 ## Things to watch out for
 
