@@ -7,8 +7,7 @@ uv.lock
 data-public/*
 !data-public/.gitkeep
 *.claude/worktrees/*
-notebooks/eval-output/*
-
+.claude*
 
 trained-models/*
 !trained-models/.gitkeep
