@@ -55,6 +55,8 @@ import numpy as np
 from scipy.stats import norm
 from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Tuple, Optional, Dict, Any
+
+from patientflow.predict.types import FlowSelection
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
@@ -691,21 +693,22 @@ def _count_observed_admissions(
 
 
 def get_prob_dist_by_service(
-    ed_visits: pd.DataFrame,
     snapshot_dates: List[date],
     prediction_time: Tuple[int, int],
     models: tuple,
     specialties: List[str],
     prediction_window: timedelta,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    flow_selection: FlowSelection,
+    ed_visits: Optional[pd.DataFrame] = None,
+    x1: Optional[float] = None,
+    y1: Optional[float] = None,
+    x2: Optional[float] = None,
+    y2: Optional[float] = None,
     services: Optional[List[str]] = None,
     inpatient_visits: Optional[pd.DataFrame] = None,
-    flow_selection: Optional[Any] = None,
     component: str = "arrivals",
     verbose: bool = False,
+    use_admission_in_window_prob: bool = True,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
@@ -722,7 +725,7 @@ def get_prob_dist_by_service(
     For each snapshot date, this function:
 
     1. Extracts the ED and (optionally) inpatient snapshots for the given
-       ``prediction_time``.
+       ``prediction_time`` (when those flows require snapshot data).
     2. Calls ``build_service_data`` to produce ``ServicePredictionInputs``
        for all specialties.
     3. Runs ``DemandPredictor.predict_service`` with the given
@@ -733,62 +736,55 @@ def get_prob_dist_by_service(
 
     Parameters
     ----------
-    ed_visits : pd.DataFrame
-        Full ED visits dataframe (all dates, all prediction times).  Must
-        contain columns ``snapshot_date``, ``prediction_time``,
-        ``is_admitted``, ``specialty``, and ``elapsed_los`` (as timedelta).
     snapshot_dates : List[date]
         Dates in the test set to evaluate.
     prediction_time : Tuple[int, int]
         ``(hour, minute)`` of the prediction moment.
     models : tuple
         Seven-element tuple of trained models (or ``None``), as expected by
-        ``build_service_data``: ``(ed_classifier, inpatient_classifier,
-        spec_model, yta_model, non_ed_yta_model, elective_yta_model,
-        transfer_model)``.
+        ``build_service_data``.
     specialties : List[str]
-        All specialties to pass to ``build_service_data``.  This determines
-        the full set of ``ServicePredictionInputs`` that are prepared.
+        All specialties to pass to ``build_service_data``.
     prediction_window : timedelta
         Prediction horizon.
-    x1, y1, x2, y2 : float
-        Parameters for the admission-in-window probability curve.
+    flow_selection : FlowSelection
+        Which flows to include; required. Drives validation of snapshots and
+        models inside ``build_service_data``.
+    ed_visits : pd.DataFrame, optional
+        Full ED visits dataframe. Required when ``include_ed_current`` is True.
+    x1, y1, x2, y2 : float, optional
+        Parametric admission-in-window curve; required when selected flows use a
+        parametric ED yet-to-arrive model (see ``build_service_data``).
     services : List[str], optional
-        Which services to evaluate and return results for.  Each must be
-        present in *specialties*.  If ``None``, all *specialties* are
-        evaluated.
+        Subset of *specialties* to return. If ``None``, all *specialties*.
     inpatient_visits : pd.DataFrame, optional
-        Full inpatient visits dataframe (all dates, all prediction times).
-        If provided, must contain columns ``snapshot_date``,
-        ``prediction_time``, and ``elapsed_los`` (as timedelta).  Used
-        to supply inpatient snapshots for departure predictions.  If
-        ``None``, departures are predicted as zero.
-    flow_selection : FlowSelection, optional
-        Which flows to include in the prediction.  If ``None``,
-        ``FlowSelection.default()`` is used.
+        Full inpatient visits dataframe. Required when departures or
+        transfer-driven arrivals (with a transfer model) are selected.
     component : str, default ``"arrivals"``
-        Which component of the ``PredictionBundle`` to extract for
-        evaluation.  One of ``"arrivals"``, ``"departures"``, or
-        ``"net_flow"``.
+        Bundle field to extract: ``"arrivals"``, ``"departures"``, or ``"net_flow"``.
     verbose : bool, default ``False``
         If ``True``, print a one-line summary on completion.
+    use_admission_in_window_prob : bool, default True
+        Passed to ``build_service_data`` for weighting current ED patients.
 
     Returns
     -------
     Dict[str, Dict[date, Dict[str, Any]]]
-        Dictionary mapping each service name to a dict mapping each
-        snapshot date to a dict with key ``'agg_predicted'`` (DataFrame
-        with ``'agg_proba'`` column). Observations are intentionally omitted
-        and should be computed in the evaluation layer.
+        Nested mapping service → date → ``agg_predicted`` DataFrame.
 
     Raises
     ------
     ValueError
-        If ``component`` is not one of the recognised values, or
-        if any entry in *services* is not found in *specialties*.
+        If ``component`` is invalid, conflicts with ``flow_selection``, or
+        required snapshot tables are missing.
     """
+    from patientflow.predict.flow_selection_checks import (
+        assert_component_matches_flow_selection,
+        requires_ed_snapshots,
+        requires_inpatient_snapshots,
+    )
     from patientflow.predict.service import build_service_data
-    from patientflow.predict.demand import DemandPredictor, FlowSelection
+    from patientflow.predict.demand import DemandPredictor
 
     valid_components = ("arrivals", "departures", "net_flow")
     if component not in valid_components:
@@ -805,57 +801,68 @@ def get_prob_dist_by_service(
                 f"services {unknown} not found in specialties {specialties}"
             )
 
-    if flow_selection is None:
-        flow_selection = FlowSelection.default()
+    flow_selection.validate()
+    assert_component_matches_flow_selection(component, flow_selection)
+
+    transfer_model = models[6] if len(models) > 6 else None
+    if requires_ed_snapshots(flow_selection) and ed_visits is None:
+        raise ValueError(
+            "ed_visits is required when flow_selection.include_ed_current is True"
+        )
+    if requires_inpatient_snapshots(flow_selection, transfer_model) and (
+        inpatient_visits is None
+    ):
+        raise ValueError(
+            "inpatient_visits is required when include_departures is True, or when "
+            "include_transfers_in is True and a transfer model is provided"
+        )
 
     predictor = DemandPredictor(k_sigma=8.0)
     result: Dict[str, Dict[date, Dict[str, Any]]] = {svc: {} for svc in services}
 
     for dt in snapshot_dates:
-        ed_snapshot = ed_visits[
-            (ed_visits["snapshot_date"] == dt)
-            & (ed_visits["prediction_time"] == prediction_time)
-        ]
-
-        if ed_snapshot.empty:
-            for svc in services:
-                result[svc][dt] = {
-                    "agg_predicted": pd.DataFrame({"agg_proba": [1.0]}, index=[0])
-                }
-            continue
-
-        ed_snapshot_processed = ed_snapshot.copy(deep=True)
-        if not pd.api.types.is_timedelta64_dtype(ed_snapshot_processed["elapsed_los"]):
-            ed_snapshot_processed["elapsed_los"] = pd.to_timedelta(
-                ed_snapshot_processed["elapsed_los"], unit="s"
-            )
+        if requires_ed_snapshots(flow_selection):
+            ed_snapshot = ed_visits[
+                (ed_visits["snapshot_date"] == dt)
+                & (ed_visits["prediction_time"] == prediction_time)
+            ]
+            ed_snapshot_processed = ed_snapshot.copy(deep=True)
+            if len(ed_snapshot_processed) > 0 and not pd.api.types.is_timedelta64_dtype(
+                ed_snapshot_processed["elapsed_los"]
+            ):
+                ed_snapshot_processed["elapsed_los"] = pd.to_timedelta(
+                    ed_snapshot_processed["elapsed_los"], unit="s"
+                )
+        else:
+            ed_snapshot_processed = None
 
         inpatient_snapshot = None
-        if inpatient_visits is not None:
+        if requires_inpatient_snapshots(flow_selection, transfer_model):
             ip_mask = (inpatient_visits["snapshot_date"] == dt) & (
                 inpatient_visits["prediction_time"] == prediction_time
             )
             ip_filtered = inpatient_visits[ip_mask]
-            if not ip_filtered.empty:
-                inpatient_snapshot = ip_filtered.copy(deep=True)
-                if not pd.api.types.is_timedelta64_dtype(
-                    inpatient_snapshot["elapsed_los"]
-                ):
-                    inpatient_snapshot["elapsed_los"] = pd.to_timedelta(
-                        inpatient_snapshot["elapsed_los"], unit="s"
-                    )
+            inpatient_snapshot = ip_filtered.copy(deep=True)
+            if len(inpatient_snapshot) > 0 and not pd.api.types.is_timedelta64_dtype(
+                inpatient_snapshot["elapsed_los"]
+            ):
+                inpatient_snapshot["elapsed_los"] = pd.to_timedelta(
+                    inpatient_snapshot["elapsed_los"], unit="s"
+                )
 
         service_data = build_service_data(
             models=models,
             prediction_time=prediction_time,
-            ed_snapshots=ed_snapshot_processed,
-            inpatient_snapshots=inpatient_snapshot,
+            flow_selection=flow_selection,
             specialties=specialties,
             prediction_window=prediction_window,
+            ed_snapshots=ed_snapshot_processed,
+            inpatient_snapshots=inpatient_snapshot,
             x1=x1,
             y1=y1,
             x2=x2,
             y2=y2,
+            use_admission_in_window_prob=use_admission_in_window_prob,
         )
 
         for svc in services:

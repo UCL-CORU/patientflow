@@ -12,7 +12,7 @@ def calculate_hierarchical_stats(
     bottom_level_data: Dict[str, ServicePredictionInputs],
     hierarchy: "Hierarchy",
     flow_type: str,
-    flow_selection: Optional[FlowSelection] = None,
+    flow_selection: FlowSelection,
     k_sigma: float = 8.0,
 ) -> Tuple[float, float, int]:
     """Calculate sum of means, combined SD, and maximum support for an entity.
@@ -33,8 +33,8 @@ def calculate_hierarchical_stats(
         Hierarchy structure for traversing the tree
     flow_type : str
         Type of flow to analyze: 'arrivals' or 'departures' only
-    flow_selection : FlowSelection, optional
-        Selection for which flows to include. If None, includes all flows.
+    flow_selection : FlowSelection
+        Selection for which flows to include.
     k_sigma : float, default=8.0
         Number of standard deviations used to cap supports
 
@@ -57,9 +57,6 @@ def calculate_hierarchical_stats(
         raise ValueError(
             f"flow_type must be 'arrivals' or 'departures', got '{flow_type}'"
         )
-
-    if flow_selection is None:
-        flow_selection = FlowSelection.default()
 
     # Get bottom level type
     bottom_type = hierarchy.get_bottom_level_type()

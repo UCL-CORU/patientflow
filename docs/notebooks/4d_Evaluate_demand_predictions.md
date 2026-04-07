@@ -134,14 +134,14 @@ for pt in prediction_times:
     models_tuple = (admission_model, None, spec_model, yta_model_by_spec, None, None, None)
 
     ed_current_prob_dist_by_service[model_key] = get_prob_dist_by_service(
-        ed_visits=ed_visits,
         snapshot_dates=test_snapshot_dates,
         prediction_time=pt,
         models=models_tuple,
         specialties=specialties,
         prediction_window=prediction_window,
-        x1=x1, y1=y1, x2=x2, y2=y2,
         flow_selection=flow_sel,
+        ed_visits=ed_visits,
+        x1=x1, y1=y1, x2=x2, y2=y2,
         component="arrivals",
         verbose=True,
     )

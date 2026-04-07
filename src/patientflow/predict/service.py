@@ -51,6 +51,19 @@ from patientflow.calculate.admission_in_prediction_window import (
     calculate_admission_probability_from_survival_curve,
 )
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.predict.flow_selection_checks import (
+    requires_admission_curve_params,
+    requires_ed_snapshots,
+    requires_inpatient_snapshots,
+    validate_ed_classifier,
+    validate_elective_yta,
+    validate_inpatient_classifier,
+    validate_non_ed_yta,
+    validate_spec_model_for_ed,
+    validate_transfer_model,
+    validate_yta_ed,
+)
+from patientflow.predict.types import FlowSelection
 
 
 @dataclass(frozen=True)
@@ -318,17 +331,16 @@ def _validate_models_and_data(
     inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
     specialties: List[str],
+    flow_selection: FlowSelection,
+    use_admission_in_window_prob: bool,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
 ) -> None:
-    """Validate all models and input data.
+    """Validate models and snapshots required by *flow_selection*."""
+    flow_selection.validate()
 
-    Raises
-    ------
-    TypeError
-        If any model is not of the expected type
-    ValueError
-        If required columns are missing, models are not fitted, or parameters
-        don't match between models and requested parameters
-    """
     (
         ed_classifier,
         inpatient_classifier,
@@ -339,7 +351,6 @@ def _validate_models_and_data(
         transfer_model,
     ) = models
 
-    # Validate model types
     if ed_classifier is not None and not isinstance(ed_classifier, TrainedClassifier):
         raise TypeError("First model must be of type TrainedClassifier (ED classifier)")
     if inpatient_classifier is not None and not isinstance(
@@ -371,7 +382,6 @@ def _validate_models_and_data(
                 "If you're using Jupyter, try restarting the kernel."
             )
 
-    # Validate that non-ED and elective models are DirectAdmissionPredictor
     if non_ed_yta_model is not None and not isinstance(
         non_ed_yta_model, DirectAdmissionPredictor
     ):
@@ -391,8 +401,19 @@ def _validate_models_and_data(
             "Seventh model must be of type TransferProbabilityEstimator (transfer)"
         )
 
-    # Validate elapsed_los column presence and dtype for ED snapshots
-    if ed_snapshots is not None:
+    if requires_ed_snapshots(flow_selection) and ed_snapshots is None:
+        raise ValueError(
+            "ed_snapshots is required when flow_selection.include_ed_current is True"
+        )
+    if requires_inpatient_snapshots(flow_selection, transfer_model) and (
+        inpatient_snapshots is None
+    ):
+        raise ValueError(
+            "inpatient_snapshots is required when include_departures is True, or when "
+            "include_transfers_in is True and a transfer model is provided"
+        )
+
+    if ed_snapshots is not None and len(ed_snapshots) > 0:
         if "elapsed_los" not in ed_snapshots.columns:
             raise ValueError("Column 'elapsed_los' not found in ed_snapshots")
         if not pd.api.types.is_timedelta64_dtype(ed_snapshots["elapsed_los"]):
@@ -402,8 +423,7 @@ def _validate_models_and_data(
                 f"{actual_type}"
             )
 
-    # Validate elapsed_los column presence and dtype for inpatient snapshots
-    if inpatient_snapshots is not None:
+    if inpatient_snapshots is not None and len(inpatient_snapshots) > 0:
         if "elapsed_los" not in inpatient_snapshots.columns:
             raise ValueError("Column 'elapsed_los' not found in inpatient_snapshots")
         if not pd.api.types.is_timedelta64_dtype(inpatient_snapshots["elapsed_los"]):
@@ -413,16 +433,52 @@ def _validate_models_and_data(
                 f"{actual_type}"
             )
 
-    # Check that all models have been fit
-    if ed_classifier is not None and (
-        not hasattr(ed_classifier, "pipeline") or ed_classifier.pipeline is None
-    ):
-        raise ValueError("ED classifier model has not been fit")
-    if inpatient_classifier is not None and (
-        not hasattr(inpatient_classifier, "pipeline")
-        or inpatient_classifier.pipeline is None
-    ):
-        raise ValueError("Inpatient classifier model has not been fit")
+    if validate_ed_classifier(flow_selection):
+        if ed_snapshots is not None and len(ed_snapshots) > 0 and ed_classifier is None:
+            raise ValueError(
+                "ED classifier is required for current ED patients when "
+                "include_ed_current is True and cohort includes emergency"
+            )
+    if validate_ed_classifier(flow_selection) and ed_classifier is not None:
+        if not hasattr(ed_classifier, "pipeline") or ed_classifier.pipeline is None:
+            raise ValueError("ED classifier model has not been fit")
+        if not ed_classifier.training_results.prediction_time == prediction_time:
+            raise ValueError(
+                "Requested prediction time {pt} does not match the prediction time of the "
+                "trained ED classifier {ct}".format(
+                    pt=prediction_time,
+                    ct=ed_classifier.training_results.prediction_time,
+                )
+            )
+
+    if validate_inpatient_classifier(flow_selection, transfer_model):
+        if (
+            inpatient_snapshots is not None
+            and len(inpatient_snapshots) > 0
+            and inpatient_classifier is None
+        ):
+            raise ValueError(
+                "Inpatient classifier is required when departures or transfer-driven "
+                "arrivals use non-empty inpatient snapshots"
+            )
+    if validate_inpatient_classifier(flow_selection, transfer_model):
+        if inpatient_classifier is not None:
+            if (
+                not hasattr(inpatient_classifier, "pipeline")
+                or inpatient_classifier.pipeline is None
+            ):
+                raise ValueError("Inpatient classifier model has not been fit")
+            if (
+                not inpatient_classifier.training_results.prediction_time
+                == prediction_time
+            ):
+                raise ValueError(
+                    "Requested prediction time {pt} does not match the prediction time of the "
+                    "trained inpatient classifier {ct}".format(
+                        pt=prediction_time,
+                        ct=inpatient_classifier.training_results.prediction_time,
+                    )
+                )
 
     if spec_model is not None:
         if isinstance(
@@ -433,48 +489,43 @@ def _validate_models_and_data(
         else:
             if not hasattr(spec_model, "specialty_to_subgroups"):
                 raise ValueError("Specialty model has not been fit")
-    if yet_to_arrive_model is not None and (
-        not hasattr(yet_to_arrive_model, "prediction_window")
-        or yet_to_arrive_model.prediction_window is None
-    ):
-        raise ValueError("Yet-to-arrive model has not been fit")
 
-    # Validate prediction_time and prediction_window compatibility
-    if (
-        ed_classifier is not None
-        and not ed_classifier.training_results.prediction_time == prediction_time
-    ):
-        raise ValueError(
-            "Requested prediction time {pt} does not match the prediction time of the "
-            "trained ED classifier {ct}".format(
-                pt=prediction_time, ct=ed_classifier.training_results.prediction_time
+    if validate_yta_ed(flow_selection):
+        if yet_to_arrive_model is None:
+            raise ValueError(
+                "ED yet-to-arrive model (fourth tuple slot) is required when "
+                "include_ed_yta is True and cohort includes emergency"
             )
+    if validate_yta_ed(flow_selection) and yet_to_arrive_model is not None:
+        if (
+            not hasattr(yet_to_arrive_model, "prediction_window")
+            or yet_to_arrive_model.prediction_window is None
+        ):
+            raise ValueError("Yet-to-arrive model has not been fit")
+        if prediction_window != yet_to_arrive_model.prediction_window:
+            raise ValueError(
+                "Requested prediction window {pw} does not match the prediction window of "
+                "the trained yet-to-arrive model {mw}".format(
+                    pw=prediction_window, mw=yet_to_arrive_model.prediction_window
+                )
+            )
+
+    if validate_non_ed_yta(flow_selection) and non_ed_yta_model is None:
+        raise ValueError(
+            "non-ED yet-to-arrive model is required when include_non_ed_yta is True "
+            "and cohort includes emergency"
         )
-    if (
-        inpatient_classifier is not None
-        and not inpatient_classifier.training_results.prediction_time == prediction_time
-    ):
+    if validate_elective_yta(flow_selection) and elective_yta_model is None:
         raise ValueError(
-            "Requested prediction time {pt} does not match the prediction time of the "
-            "trained inpatient classifier {ct}".format(
-                pt=prediction_time,
-                ct=inpatient_classifier.training_results.prediction_time,
-            )
-        )
-    if (
-        yet_to_arrive_model is not None
-        and prediction_window != yet_to_arrive_model.prediction_window
-    ):
-        raise ValueError(
-            "Requested prediction window {pw} does not match the prediction window of "
-            "the trained yet-to-arrive model {mw}".format(
-                pw=prediction_window, mw=yet_to_arrive_model.prediction_window
-            )
+            "Elective yet-to-arrive model is required when include_elective_yta is True "
+            "and cohort includes elective"
         )
 
-    # Ensure DirectAdmissionPredictors are fit and aligned to the requested prediction window
-    for name, model in (("non-ED", non_ed_yta_model), ("elective", elective_yta_model)):
-        if model is None:
+    for name, model, active in (
+        ("non-ED", non_ed_yta_model, validate_non_ed_yta(flow_selection)),
+        ("elective", elective_yta_model, validate_elective_yta(flow_selection)),
+    ):
+        if not active or model is None:
             continue
         if not hasattr(model, "prediction_window") or model.prediction_window is None:
             raise ValueError(
@@ -485,21 +536,40 @@ def _validate_models_and_data(
                 f"Requested prediction window {prediction_window} does not match the prediction window of the trained {name} model {model.prediction_window}"
             )
 
-    # Ensure TransferProbabilityEstimator has been fitted
-    if transfer_model is not None and (
-        not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_
-    ):
-        raise ValueError("Transfer model has not been fit")
+    if validate_transfer_model(flow_selection, transfer_model):
+        if (
+            not hasattr(transfer_model, "is_fitted_")
+            or not transfer_model.is_fitted_
+        ):
+            raise ValueError("Transfer model has not been fit")
 
-    # Validate that a specialty model is provided when needed
-    if spec_model is None and specialties and ed_snapshots is not None:
+    ed_nonempty = ed_snapshots is not None and len(ed_snapshots) > 0
+    if (
+        validate_spec_model_for_ed(flow_selection)
+        and ed_nonempty
+        and spec_model is None
+        and specialties
+    ):
         raise ValueError(
-            "Specialty model (spec_model) is required when specialties are requested "
-            "and ED snapshots are provided, but spec_model is None"
+            "Specialty model (spec_model) is required when current ED patients are present "
+            "and include_ed_current is active for an emergency-inclusive cohort"
         )
 
-    # Validate specialties alignment (warn only — filtering happens at call sites)
-    if yet_to_arrive_model is not None and hasattr(yet_to_arrive_model, "filters"):
+    if requires_admission_curve_params(
+        flow_selection, yet_to_arrive_model, use_admission_in_window_prob
+    ):
+        if None in (x1, y1, x2, y2):
+            raise ValueError(
+                "x1, y1, x2, y2 are required when a parametric ED yet-to-arrive model is "
+                "used with the selected flows (ED YTA and/or admission-in-window weighting "
+                "for current ED patients)"
+            )
+
+    if (
+        validate_yta_ed(flow_selection)
+        and yet_to_arrive_model is not None
+        and hasattr(yet_to_arrive_model, "filters")
+    ):
         warn_specialty_mismatch(
             set(specialties),
             set(yet_to_arrive_model.filters.keys()),
@@ -507,14 +577,16 @@ def _validate_models_and_data(
         )
 
     special_params = spec_model.special_params if spec_model is not None else None
-
     if special_params:
         special_category_dict = special_params["special_category_dict"]
     else:
         special_category_dict = None
 
-    if special_category_dict is not None and not set(specialties) == set(
-        special_category_dict.keys()
+    if (
+        validate_spec_model_for_ed(flow_selection)
+        and spec_model is not None
+        and special_category_dict is not None
+        and not set(specialties) == set(special_category_dict.keys())
     ):
         has_mapping = (
             hasattr(spec_model, "specialty_to_subgroups")
@@ -553,10 +625,10 @@ def _prepare_base_probabilities(
     ed_snapshots: Optional[pd.DataFrame],
     inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
     use_admission_in_window_prob: bool,
 ) -> Dict[str, Any]:
     """Prepare base probability calculations for all patients.
@@ -874,10 +946,10 @@ def _create_flow_inputs(
     non_ed_yta_model: Optional[DirectAdmissionPredictor],
     elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
 ) -> Dict[str, Dict[str, FlowInputs]]:
     """Create FlowInputs objects for inflows and outflows.
 
@@ -894,7 +966,10 @@ def _create_flow_inputs(
             return 0.0
         if hasattr(model, "weights") and spec not in model.weights:
             return 0.0
-        return float(model.predict_mean(context, **kwargs))
+        curve_kwargs = {
+            k: (0.0 if v is None else float(v)) for k, v in kwargs.items()
+        }
+        return float(model.predict_mean(context, **curve_kwargs))
 
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
@@ -975,8 +1050,8 @@ def _build_legacy_flows(
         Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
     specialties: List[str],
     prediction_window,
     x1: float,
@@ -1142,14 +1217,15 @@ def build_service_data(
         Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    flow_selection: FlowSelection,
     specialties: List[str],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    ed_snapshots: Optional[pd.DataFrame] = None,
+    inpatient_snapshots: Optional[pd.DataFrame] = None,
+    x1: Optional[float] = None,
+    y1: Optional[float] = None,
+    x2: Optional[float] = None,
+    y2: Optional[float] = None,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
 ) -> Dict[str, ServicePredictionInputs]:
@@ -1176,19 +1252,23 @@ def build_service_data(
         - transfer_model: TransferProbabilityEstimator for internal transfer predictions
     prediction_time : tuple of (int, int)
         Hour and minute for inference time
-    ed_snapshots : pandas.DataFrame or None
-        DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in the ED. If None, assumes no ED patients.
-    inpatient_snapshots : pandas.DataFrame or None
-        DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in a service ward. If None, assumes no inpatients.
+    flow_selection : FlowSelection
+        Which flow families are active; drives which snapshots, models, and curve
+        parameters are required.
     specialties : list of str
         List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
-    x1, y1, x2, y2 : float
-        Parameters for the parametric admission-in-window curve. Used when
-        ed_yta_model is parametric and for computing in-ED window probabilities.
+    ed_snapshots : pandas.DataFrame, optional
+        Current ED patients. Required when ``include_ed_current`` is True. If omitted
+        otherwise, treated as no ED patients.
+    inpatient_snapshots : pandas.DataFrame, optional
+        Current inpatients. Required when ``include_departures`` is True, or when
+        ``include_transfers_in`` is True and a transfer model is provided.
+    x1, y1, x2, y2 : float, optional
+        Parametric admission-in-window curve. Required when the fourth model is a
+        :class:`ParametricIncomingAdmissionPredictor` and ED YTA and/or weighted
+        current-ED paths are selected.
     cdf_cut_points : list of float, optional
         Ignored in this function; present for API compatibility. If provided,
         has no effect on output.
@@ -1230,7 +1310,18 @@ def build_service_data(
         inpatient_snapshots,
         prediction_window,
         specialties,
+        flow_selection,
+        use_admission_in_window_prob,
+        x1,
+        y1,
+        x2,
+        y2,
     )
+
+    cx1 = 0.0 if x1 is None else float(x1)
+    cx2 = 0.0 if x2 is None else float(x2)
+    cy1 = 0.0 if y1 is None else float(y1)
+    cy2 = 0.0 if y2 is None else float(y2)
 
     # 2. Prepare base probabilities
     base_probs = _prepare_base_probabilities(
@@ -1238,10 +1329,10 @@ def build_service_data(
         ed_snapshots,
         inpatient_snapshots,
         prediction_window,
-        x1,
-        y1,
-        x2,
-        y2,
+        cx1,
+        cy1,
+        cx2,
+        cy2,
         use_admission_in_window_prob,
     )
 
@@ -1253,10 +1344,10 @@ def build_service_data(
         inpatient_snapshots,
         specialties,
         prediction_window,
-        x1,
-        y1,
-        x2,
-        y2,
+        cx1,
+        cy1,
+        cx2,
+        cy2,
         base_probs,
     )
 

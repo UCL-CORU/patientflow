@@ -31,7 +31,7 @@ class PredictionResults(dict):
 
     Examples
     --------
-    >>> results = predictor.predict_all_levels(bottom_level_data)
+    >>> results = predictor.predict_all_levels(bottom_level_data, FlowSelection.default())
     >>> # Prefixed ID (always works)
     >>> bundle = results["hospital:UCLH"]
     >>>
@@ -158,8 +158,8 @@ class HierarchicalPredictor:
     def predict_all_levels(
         self,
         bottom_level_data: Dict[str, ServicePredictionInputs],
+        flow_selection: FlowSelection,
         top_level_id: Optional[str] = None,
-        flow_selection: Optional[FlowSelection] = None,
     ) -> "PredictionResults":
         """Run predictions for the entire hierarchy.
 
@@ -192,9 +192,8 @@ class HierarchicalPredictor:
             Root entity to start prediction from. If None, predicts for all
             top-level entities in the hierarchy. The entity ID must exist in the
             hierarchy and match exactly (case-sensitive).
-        flow_selection : FlowSelection, optional
-            Selection specifying which flows to include. If None, uses
-            FlowSelection.default() which includes all flows. Use this to restrict
+        flow_selection : FlowSelection
+            Selection specifying which flows to include. Use this to restrict
             predictions to specific patient flows (e.g., ED inflows only).
 
         Returns
@@ -209,7 +208,7 @@ class HierarchicalPredictor:
 
         Examples
         --------
-        >>> results = predictor.predict_all_levels(prediction_inputs)
+        >>> results = predictor.predict_all_levels(prediction_inputs, FlowSelection.default())
         >>> bundle = results["medical"]
         >>> print(f"Expected arrivals: {bundle.arrivals.expectation:.1f}")
 
@@ -217,7 +216,7 @@ class HierarchicalPredictor:
 
         >>> results = predictor.predict_all_levels(
         ...     prediction_inputs,
-        ...     flow_selection=FlowSelection.custom(
+        ...     FlowSelection.custom(
         ...         include_ed_current=True,
         ...         include_ed_yta=True,
         ...         include_non_ed_yta=False,
@@ -237,9 +236,6 @@ class HierarchicalPredictor:
         entity IDs at the bottom level of the hierarchy. Unmatched keys on
         either side are silently skipped.
         """
-        if flow_selection is None:
-            flow_selection = FlowSelection.default()
-
         # Validate flow selection configuration
         flow_selection.validate()
 
@@ -337,6 +333,7 @@ class HierarchicalPredictor:
                 entity_id,
                 entity_type.name,
                 child_bundles,
+                flow_selection,
                 arrivals_max_support,
                 departures_max_support,
             )

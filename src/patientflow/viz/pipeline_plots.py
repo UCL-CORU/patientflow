@@ -273,6 +273,7 @@ def build_pipeline_prediction_inputs(
     """
     from patientflow.load import get_model_key
     from patientflow.predict.service import build_service_data
+    from patientflow.predict.types import FlowSelection
 
     admission_models = prediction_inputs["admission_models"]
     specialty_model = prediction_inputs["specialty_model"]
@@ -310,10 +311,19 @@ def build_pipeline_prediction_inputs(
             None,
         ),
         prediction_time=prediction_time,
-        ed_snapshots=snapshots,
-        inpatient_snapshots=None,
+        flow_selection=FlowSelection.custom(
+            include_ed_current=True,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+            cohort="emergency",
+        ),
         specialties=specialties,
         prediction_window=prediction_window,
+        ed_snapshots=snapshots,
+        inpatient_snapshots=None,
         x1=x1,
         y1=y1,
         x2=x2,

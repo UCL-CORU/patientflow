@@ -299,7 +299,7 @@ class TestDemandPredictor:
             },
         )
 
-        bundle = predictor.predict_service(inputs)
+        bundle = predictor.predict_service(inputs, FlowSelection.default())
 
         assert bundle.entity_id == "cardio"
         assert bundle.entity_type == "service"
@@ -387,7 +387,7 @@ class TestDemandPredictor:
 
         # Should raise KeyError for missing inflow keys
         with pytest.raises(KeyError, match="Missing inflow keys"):
-            predictor.predict_service(inputs)
+            predictor.predict_service(inputs, FlowSelection.default())
 
     def test_compute_net_flow_helper(self):
         """Test the _compute_net_flow helper method."""
@@ -904,7 +904,7 @@ class TestFlowSelectionEdgeCases:
 
         # Should raise KeyError for missing outflow keys
         with pytest.raises(KeyError, match="Missing outflow keys"):
-            predictor.predict_service(inputs)
+            predictor.predict_service(inputs, FlowSelection.default())
 
 
 class TestHierarchyCollisionFix:
@@ -1261,7 +1261,7 @@ class TestHierarchicalPredictor:
         }
 
         results = hierarchical_predictor.predict_all_levels(
-            bottom_level_data, flow_selection=FlowSelection.default()
+            bottom_level_data, FlowSelection.default()
         )
 
         assert "hospital:UCLH" in results
@@ -1337,6 +1337,7 @@ class TestHierarchicalPredictor:
             entity_id="test_entity",
             entity_type="reporting_unit",
             child_bundles=[],  # Empty list
+            flow_selection=FlowSelection.default(),
         )
 
         # Verify the result is a PredictionBundle
@@ -1348,5 +1349,4 @@ class TestHierarchicalPredictor:
         assert hasattr(bundle, "net_flow")
         assert hasattr(bundle, "flow_selection")
 
-        # Should use default FlowSelection when no children
         assert bundle.flow_selection is not None

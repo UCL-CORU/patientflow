@@ -65,7 +65,7 @@ Run predictions and access results:
 
 >>> results = predictor.predict_all_levels(
 ...     prediction_inputs,
-...     flow_selection=FlowSelection.default(),
+...     FlowSelection.default(),
 ... )
 >>> bundle = results["medical"]
 >>> print(f"Expected arrivals: {bundle.arrivals.expectation:.1f}")

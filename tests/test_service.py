@@ -10,6 +10,7 @@ from patientflow.predict.service import (
     FlowInputs,
     compute_transfer_arrivals,
 )
+from patientflow.predict.types import FlowSelection
 from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
 from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 from patientflow.load import get_model_key
@@ -331,10 +332,11 @@ class TestBuildServiceData(unittest.TestCase):
         result = build_service_data(
             models=self.models,
             prediction_time=self.prediction_time,
-            ed_snapshots=ed_snapshots,
-            inpatient_snapshots=inpatient_snapshots,
+            flow_selection=FlowSelection.default(),
             specialties=self.specialties,
             prediction_window=self.prediction_window,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             x1=self.x1,
             y1=self.y1,
             x2=self.x2,
@@ -403,10 +405,11 @@ class TestBuildServiceData(unittest.TestCase):
         result = build_service_data(
             models=models,
             prediction_time=self.prediction_time,
-            ed_snapshots=ed_snapshots,
-            inpatient_snapshots=inpatient_snapshots,
+            flow_selection=FlowSelection.default(),
             specialties=self.specialties,
             prediction_window=self.prediction_window,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             x1=self.x1,
             y1=self.y1,
             x2=self.x2,
@@ -425,10 +428,11 @@ class TestBuildServiceData(unittest.TestCase):
             build_service_data(
                 models=self.models,
                 prediction_time=(8, 0),
-                ed_snapshots=ed_snapshots,
-                inpatient_snapshots=inpatient_snapshots,
+                flow_selection=FlowSelection.default(),
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots,
                 x1=self.x1,
                 y1=self.y1,
                 x2=self.x2,
@@ -453,10 +457,11 @@ class TestBuildServiceData(unittest.TestCase):
             build_service_data(
                 models=models,
                 prediction_time=self.prediction_time,
-                ed_snapshots=ed_snapshots,
-                inpatient_snapshots=inpatient_snapshots,
+                flow_selection=FlowSelection.default(),
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots,
                 x1=self.x1,
                 y1=self.y1,
                 x2=self.x2,
@@ -471,10 +476,11 @@ class TestBuildServiceData(unittest.TestCase):
             build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
-                ed_snapshots=ed_snapshots.drop(columns=["elapsed_los"]),
-                inpatient_snapshots=inpatient_snapshots,
+                flow_selection=FlowSelection.default(),
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots.drop(columns=["elapsed_los"]),
+                inpatient_snapshots=inpatient_snapshots,
                 x1=self.x1,
                 y1=self.y1,
                 x2=self.x2,
@@ -485,10 +491,11 @@ class TestBuildServiceData(unittest.TestCase):
             build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
-                ed_snapshots=ed_snapshots,
-                inpatient_snapshots=inpatient_snapshots.drop(columns=["elapsed_los"]),
+                flow_selection=FlowSelection.default(),
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=inpatient_snapshots.drop(columns=["elapsed_los"]),
                 x1=self.x1,
                 y1=self.y1,
                 x2=self.x2,
@@ -503,10 +510,11 @@ class TestBuildServiceData(unittest.TestCase):
             build_service_data(
                 models=self.models,
                 prediction_time=self.prediction_time,
-                ed_snapshots=ed_snapshots_bad,
-                inpatient_snapshots=inpatient_snapshots,
+                flow_selection=FlowSelection.default(),
                 specialties=self.specialties,
                 prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots_bad,
+                inpatient_snapshots=inpatient_snapshots,
                 x1=self.x1,
                 y1=self.y1,
                 x2=self.x2,
@@ -538,16 +546,105 @@ class TestBuildServiceData(unittest.TestCase):
         result = build_service_data(
             models=models,
             prediction_time=self.prediction_time,
-            ed_snapshots=ed_snapshots,
-            inpatient_snapshots=inpatient_snapshots,
+            flow_selection=FlowSelection.default(),
             specialties=self.specialties,
             prediction_window=self.prediction_window,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
             x1=self.x1,
             y1=self.y1,
             x2=self.x2,
             y2=self.y2,
         )
         self.assertIn("paediatric", result)
+
+    def test_rejects_missing_inpatient_when_departures_or_transfers_require_it(self):
+        """FlowSelection-driven validation: default selection needs inpatient snapshots."""
+        ed_snapshots = self._make_snapshots(5)
+        with self.assertRaises(ValueError) as ctx:
+            build_service_data(
+                models=self.models,
+                prediction_time=self.prediction_time,
+                flow_selection=FlowSelection.default(),
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                ed_snapshots=ed_snapshots,
+                inpatient_snapshots=None,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+        self.assertIn("inpatient_snapshots", str(ctx.exception).lower())
+
+    def test_rejects_missing_curve_params_for_parametric_ed_yta(self):
+        """Parametric ED YTA with this flow selection requires x1–y2."""
+        models_no_transfer = (
+            self.admissions_model,
+            self.inpatient_discharge_model,
+            self.spec_model,
+            self.param_yta_model,
+            None,
+            None,
+            None,
+        )
+        fs = FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=True,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+            cohort="emergency",
+        )
+        with self.assertRaises(ValueError) as ctx:
+            build_service_data(
+                models=models_no_transfer,
+                prediction_time=self.prediction_time,
+                flow_selection=fs,
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                ed_snapshots=None,
+                inpatient_snapshots=None,
+                x1=None,
+                y1=None,
+                x2=None,
+                y2=None,
+            )
+        self.assertIn("x1", str(ctx.exception).lower())
+
+
+class TestFlowSelectionChecks(unittest.TestCase):
+    """Regression tests for flow-selection consistency helpers."""
+
+    def test_assert_component_mismatch_raises(self):
+        from patientflow.predict.flow_selection_checks import (
+            assert_component_matches_flow_selection,
+        )
+
+        empty = FlowSelection(
+            include_ed_current=False,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+        )
+        with self.assertRaises(ValueError):
+            assert_component_matches_flow_selection("arrivals", empty)
+
+        in_only = FlowSelection.custom(
+            include_ed_current=True,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+        )
+        with self.assertRaises(ValueError):
+            assert_component_matches_flow_selection("departures", in_only)
+        with self.assertRaises(ValueError):
+            assert_component_matches_flow_selection("net_flow", in_only)
 
 
 class TestComputeTransferArrivals(unittest.TestCase):

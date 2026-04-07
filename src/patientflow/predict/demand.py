@@ -65,7 +65,7 @@ class DemandPredictor:
     def predict_service(
         self,
         inputs: ServicePredictionInputs,
-        flow_selection: Optional[FlowSelection] = None,
+        flow_selection: FlowSelection,
     ) -> PredictionBundle:
         """Predict service demand with flexible flow selection.
 
@@ -78,9 +78,8 @@ class DemandPredictor:
         inputs : ServicePredictionInputs
             Dataclass containing all prediction inputs for this service.
             See ServicePredictionInputs for field details.
-        flow_selection : FlowSelection, optional
-            Selection specifying which flows to include. If None, uses
-            FlowSelection.default() which includes all flows.
+        flow_selection : FlowSelection
+            Selection specifying which flows to include.
 
         Returns
         -------
@@ -95,9 +94,6 @@ class DemandPredictor:
         2. Departures: Convolution of all selected outflow distributions
         3. Net flow: Difference of expected values (arrivals - departures)
         """
-        if flow_selection is None:
-            flow_selection = FlowSelection.default()
-
         # Validate flow selection configuration
         flow_selection.validate()
 
@@ -334,6 +330,7 @@ class DemandPredictor:
         entity_id: str,
         entity_type: str,
         child_bundles: List[PredictionBundle],
+        flow_selection: FlowSelection,
         arrivals_max_support: Optional[int] = None,
         departures_max_support: Optional[int] = None,
     ) -> PredictionBundle:
@@ -369,13 +366,6 @@ class DemandPredictor:
             flow_type="departures",
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
-
-        # Use flow_selection from first child if available, otherwise use default
-        flow_selection = (
-            child_bundles[0].flow_selection
-            if child_bundles
-            else FlowSelection.default()
-        )
 
         is_aspirational = any(b.is_aspirational for b in child_bundles)
 
