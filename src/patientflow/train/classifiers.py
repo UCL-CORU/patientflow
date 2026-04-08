@@ -16,6 +16,8 @@ initialise_model
     Initialize a model with given hyperparameters
 create_column_transformer
     Create a column transformer for a dataframe with dynamic column handling
+infer_feature_kind
+    Classify each column for preprocessing (ordinal, numeric, timedelta, etc.)
 calculate_class_balance
     Calculate class balance ratios for target labels
 get_feature_metadata
@@ -32,6 +34,7 @@ train_multiple_classifiers
     Train admission prediction models for multiple prediction times
 """
 
+from enum import Enum, auto
 from typing import Dict, List, Any, Tuple, Optional, Union, TypedDict, Type
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +46,12 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import roc_auc_score, log_loss, average_precision_score
 from sklearn.model_selection import TimeSeriesSplit, ParameterGrid
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
+from sklearn.preprocessing import (
+    FunctionTransformer,
+    OneHotEncoder,
+    OrdinalEncoder,
+    StandardScaler,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn import __version__ as sk_version
@@ -60,21 +68,111 @@ from patientflow.model_artifacts import (
 )
 
 
-def _is_string_like_column(series: Series) -> bool:
-    """Check whether a Series holds string-like values that need encoding.
+class FeatureKind(Enum):
+    """How a column is preprocessed in ``create_column_transformer``."""
 
-    Uses an exclusion-based approach so that any current or future
-    string-like dtype (``object``, ``StringDtype``, ``ArrowDtype("string")``,
-    ``CategoricalDtype`` with string categories, etc.) is detected without
-    needing to enumerate each one explicitly.
+    ORDINAL = auto()
+    BOOLEAN = auto()
+    TIMEDELTA = auto()
+    DATETIME = auto()
+    NUMERIC_BINARY = auto()
+    NUMERIC_SCALED = auto()
+    CATEGORICAL = auto()
+
+
+def _timedelta_to_float_seconds(X: npt.NDArray[Any]) -> npt.NDArray[np.float64]:
+    arr = np.asarray(X)
+    if not np.issubdtype(arr.dtype, np.timedelta64):
+        return arr.astype(np.float64, copy=False)
+    flat = arr.ravel()
+    sec = pd.Series(flat).dt.total_seconds().to_numpy(dtype=np.float64)
+    return sec.reshape(arr.shape[0], -1)
+
+
+def infer_feature_kind(
+    series: Series,
+    col: str,
+    ordinal_mappings: Dict[str, List[Any]],
+) -> FeatureKind:
+    """Assign a single preprocessing role to a column.
+
+    This is the single source of truth for both ``create_column_transformer``
+    and ``FeatureColumnTransformer`` defaults. Checks are ordered from explicit
+    contracts (ordinal mapping, concrete dtypes) to broad fallbacks.
     """
+    if col in ordinal_mappings:
+        return FeatureKind.ORDINAL
+    if series.dtype == "bool":
+        return FeatureKind.BOOLEAN
+    if pd.api.types.is_timedelta64_dtype(series):
+        return FeatureKind.TIMEDELTA
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return FeatureKind.DATETIME
+
     if isinstance(series.dtype, pd.CategoricalDtype):
-        series = series.cat.categories.to_series()
-    return not (
-        pd.api.types.is_numeric_dtype(series)
-        or pd.api.types.is_bool_dtype(series)
-        or pd.api.types.is_datetime64_any_dtype(series)
-    )
+        cats = series.cat.categories.to_series()
+        if pd.api.types.is_numeric_dtype(cats):
+            nu = series.nunique(dropna=False)
+            return FeatureKind.NUMERIC_BINARY if nu == 2 else FeatureKind.NUMERIC_SCALED
+        return FeatureKind.CATEGORICAL
+
+    if pd.api.types.is_numeric_dtype(series):
+        nu = series.nunique(dropna=False)
+        return FeatureKind.NUMERIC_BINARY if nu == 2 else FeatureKind.NUMERIC_SCALED
+
+    return FeatureKind.CATEGORICAL
+
+
+def _default_for_feature_kind(series: Series, kind: FeatureKind) -> Any:
+    if kind == FeatureKind.BOOLEAN:
+        return False
+    if kind in (FeatureKind.NUMERIC_BINARY, FeatureKind.NUMERIC_SCALED):
+        return 0.0
+    if kind == FeatureKind.DATETIME:
+        return pd.NaT
+    if kind == FeatureKind.TIMEDELTA:
+        return pd.Timedelta(0)
+    if kind in (FeatureKind.CATEGORICAL, FeatureKind.ORDINAL):
+        mode = series.mode(dropna=True)
+        return mode.iloc[0] if not mode.empty else "Unknown"
+    return pd.NA
+
+
+def _make_transformer_for_kind(
+    col: str,
+    kind: FeatureKind,
+    ordinal_mappings: Dict[str, List[Any]],
+) -> Union[OrdinalEncoder, OneHotEncoder, StandardScaler, Pipeline, str]:
+    if kind == FeatureKind.ORDINAL:
+        return OrdinalEncoder(
+            categories=[ordinal_mappings[col]],
+            handle_unknown="use_encoded_value",
+            unknown_value=np.nan,
+        )
+    if kind == FeatureKind.BOOLEAN:
+        return "passthrough"
+    if kind == FeatureKind.TIMEDELTA:
+        return Pipeline(
+            [
+                (
+                    "to_seconds",
+                    FunctionTransformer(
+                        _timedelta_to_float_seconds,
+                        feature_names_out="one-to-one",
+                    ),
+                ),
+                ("scale", StandardScaler()),
+            ]
+        )
+    if kind == FeatureKind.DATETIME:
+        return StandardScaler()
+    if kind == FeatureKind.NUMERIC_BINARY:
+        return "passthrough"
+    if kind == FeatureKind.NUMERIC_SCALED:
+        return StandardScaler()
+    if kind == FeatureKind.CATEGORICAL:
+        return OneHotEncoder(handle_unknown="ignore")
+    raise ValueError(f"Unhandled FeatureKind: {kind!r}")
 
 
 class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
@@ -87,18 +185,21 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
     - Drops any extra columns that weren't in training.
     - Returns only the columns that match the training feature set, in the original order.
 
-    Defaults are derived from the training data rather than from hard-coded
-    name-based rules:
-    - Boolean columns -> False
-    - Numeric columns -> 0.0
-    - Datetime columns -> pd.NaT
-    - Object/categorical columns -> mode (most frequent non-null value), or "Unknown"
-      if no such value exists
-    - Other dtypes -> pd.NA
+    Defaults are derived from the training data using the same ``FeatureKind``
+    classification as ``create_column_transformer`` (via ``infer_feature_kind``):
+    - Boolean -> False
+    - Numeric -> 0.0
+    - Datetime -> pd.NaT
+    - Timedelta -> pd.Timedelta(0)
+    - Categorical / ordinal -> mode, or "Unknown" if empty
+    - Otherwise -> pd.NA
     """
 
     def __init__(
-        self, explicit_defaults: Optional[Dict[str, Any]] = None, verbose: bool = False
+        self,
+        explicit_defaults: Optional[Dict[str, Any]] = None,
+        ordinal_mappings: Optional[Dict[str, List[Any]]] = None,
+        verbose: bool = False,
     ):
         """
         Parameters
@@ -106,10 +207,14 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
         explicit_defaults : Dict[str, Any], optional
             Optional mapping of column name -> default value. These values take
             precedence over heuristics learned from the training data.
+        ordinal_mappings : Dict[str, List[Any]], optional
+            Same mapping passed to ``create_column_transformer`` so ordinal
+            columns get consistent kind and defaults.
         verbose : bool, default=False
             If True, prints which columns were added at transform time.
         """
         self.explicit_defaults = explicit_defaults or {}
+        self.ordinal_mappings: Dict[str, List[Any]] = ordinal_mappings or {}
         self.verbose = verbose
 
     def fit(
@@ -127,21 +232,8 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
                 continue
 
             series = X[col]
-            default: Any
-
-            if series.dtype == "bool":
-                default = False
-            elif pd.api.types.is_numeric_dtype(series):
-                default = 0.0
-            elif pd.api.types.is_datetime64_any_dtype(series):
-                default = pd.NaT
-            elif _is_string_like_column(series):
-                mode = series.mode(dropna=True)
-                default = mode.iloc[0] if not mode.empty else "Unknown"
-            else:
-                default = pd.NA
-
-            self.column_defaults_[col] = default
+            kind = infer_feature_kind(series, col, self.ordinal_mappings)
+            self.column_defaults_[col] = _default_for_feature_kind(series, kind)
 
         return self
 
@@ -308,7 +400,7 @@ def initialise_model(
 def create_column_transformer(
     df: DataFrame, ordinal_mappings: Optional[Dict[str, List[Any]]] = None
 ) -> ColumnTransformer:
-    """Create a column transformer for a dataframe with dynamic column handling.
+    """Create a column transformer using :func:`infer_feature_kind` per column.
 
     Parameters
     ----------
@@ -322,36 +414,20 @@ def create_column_transformer(
     ColumnTransformer
         Configured column transformer
     """
-    transformers: List[
-        Tuple[str, Union[OrdinalEncoder, OneHotEncoder, StandardScaler], List[str]]
-    ] = []
-
     if ordinal_mappings is None:
         ordinal_mappings = {}
 
+    transformers: List[
+        Tuple[
+            str,
+            Union[OrdinalEncoder, OneHotEncoder, StandardScaler, Pipeline, str],
+            List[str],
+        ]
+    ] = []
     for col in df.columns:
-        if col in ordinal_mappings:
-            transformers.append(
-                (
-                    col,
-                    OrdinalEncoder(
-                        categories=[ordinal_mappings[col]],
-                        handle_unknown="use_encoded_value",
-                        unknown_value=np.nan,
-                    ),
-                    [col],
-                )
-            )
-        # Keep boolean columns as single 0/1 features rather than one-hot encoding
-        elif df[col].dtype == "bool":
-            transformers.append((col, "passthrough", [col]))
-        elif _is_string_like_column(df[col]):
-            transformers.append((col, OneHotEncoder(handle_unknown="ignore"), [col]))
-        # Keep non-boolean binary (0/1) columns as single features
-        elif df[col].nunique() == 2:
-            transformers.append((col, "passthrough", [col]))
-        else:
-            transformers.append((col, StandardScaler(), [col]))
+        kind = infer_feature_kind(df[col], col, ordinal_mappings)
+        trans = _make_transformer_for_kind(col, kind, ordinal_mappings)
+        transformers.append((col, trans, [col]))
 
     return ColumnTransformer(transformers)
 
@@ -722,7 +798,7 @@ def train_classifier(
         model = initialise_model(model_class, params)
 
         column_transformer = create_column_transformer(X_train, ordinal_mappings)
-        feature_columns = FeatureColumnTransformer()
+        feature_columns = FeatureColumnTransformer(ordinal_mappings=ordinal_mappings)
         pipeline = Pipeline(
             [
                 ("feature_columns", feature_columns),
