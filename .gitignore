@@ -5,6 +5,8 @@ uv.lock
 *data-uclh*
 data-public/*
 !data-public/.gitkeep
+*.claude/worktrees/*
+notebooks/eval-output/*
 
 
 trained-models/*

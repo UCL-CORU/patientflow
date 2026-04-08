@@ -2,7 +2,16 @@ import unittest
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
-from patientflow.train.classifiers import train_classifier
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+from patientflow.train.classifiers import (
+    FeatureColumnTransformer,
+    FeatureKind,
+    create_column_transformer,
+    infer_feature_kind,
+    train_classifier,
+)
 from patientflow.model_artifacts import TrainedClassifier
 
 
@@ -277,6 +286,68 @@ class TestClassifiers(unittest.TestCase):
         # For XGBoost, we should have importance values
         self.assertTrue(features_info["has_importance_values"])
         self.assertEqual(len(features_info["names"]), len(features_info["importances"]))
+
+    def test_timedelta_column_uses_standard_scaler_not_one_hot(self):
+        """timedelta64 features must be scaled (via seconds), not one-hot encoded."""
+        df = pd.DataFrame(
+            {
+                "elapsed_los": pd.to_timedelta(np.arange(10), unit="h"),
+                "sex": pd.Series(["M", "F"] * 5, dtype="object"),
+            }
+        )
+        ct = create_column_transformer(df)
+        by_col = {cols[0]: trans for _, trans, cols in ct.transformers}
+        self.assertIsInstance(by_col["elapsed_los"], Pipeline)
+        self.assertIsInstance(
+            by_col["elapsed_los"].named_steps["scale"], StandardScaler
+        )
+        self.assertIsInstance(by_col["sex"], OneHotEncoder)
+
+    def test_timedelta_column_transform_matches_float_seconds(self):
+        """After fit on timedelta, transform accepts the same durations as float seconds."""
+        df_td = pd.DataFrame({"elapsed_los": pd.to_timedelta([1, 2, 3], unit="h")})
+        df_sec = pd.DataFrame({"elapsed_los": [3600.0, 7200.0, 10800.0]})
+        ct: ColumnTransformer = create_column_transformer(df_td)
+        ct.fit(df_td)
+        out_td = ct.transform(df_td)
+        out_sec = ct.transform(df_sec)
+        np.testing.assert_allclose(out_td, out_sec, rtol=1e-10, atol=1e-10)
+
+    def test_timedelta_binary_column_still_scaled_seconds(self):
+        """Durations are always seconds + scaler (no binary passthrough)."""
+        df = pd.DataFrame(
+            {
+                "elapsed_los": pd.to_timedelta([1, 2] * 5, unit="h"),
+            }
+        )
+        ct = create_column_transformer(df)
+        _, trans, cols = ct.transformers[0]
+        self.assertEqual(cols, ["elapsed_los"])
+        self.assertIsInstance(trans, Pipeline)
+        self.assertIsInstance(trans.named_steps["scale"], StandardScaler)
+
+    def test_infer_feature_kind_categorical_with_numeric_categories(self):
+        """Pandas categorical with numeric categories follows numeric routing."""
+        s = pd.Series(pd.Categorical.from_codes([0, 1, 0], categories=[1, 2]))
+        self.assertEqual(infer_feature_kind(s, "x", {}), FeatureKind.NUMERIC_BINARY)
+
+    def test_infer_feature_kind_two_string_object_is_categorical(self):
+        s = pd.Series(["a", "b"] * 3, dtype="object")
+        self.assertEqual(infer_feature_kind(s, "x", {}), FeatureKind.CATEGORICAL)
+
+    def test_feature_column_transformer_timedelta_default(self):
+        """Missing timedelta columns are filled with pd.Timedelta(0)."""
+        fit_df = pd.DataFrame({"elapsed_los": pd.to_timedelta([1, 2, 3], unit="h")})
+        fct = FeatureColumnTransformer()
+        fct.fit(fit_df)
+        self.assertEqual(fct.column_defaults_["elapsed_los"], pd.Timedelta(0))
+
+        out = fct.transform(pd.DataFrame({"other": [1, 2]}))
+        self.assertIn("elapsed_los", out.columns)
+        self.assertTrue(
+            (out["elapsed_los"] == pd.Timedelta(0)).all(),
+            msg="expected zero timedelta fill for missing column",
+        )
 
 
 if __name__ == "__main__":
