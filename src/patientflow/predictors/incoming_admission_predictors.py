@@ -3,9 +3,10 @@ Hospital Admissions Forecasting Predictors.
 
 This module implements custom predictors to estimate the number of hospital admissions
 within a specified prediction window using historical admission data. It provides three
-approaches: direct admission prediction, parametric curves with Poisson-binomial distributions,
-and empirical survival curves with convolution of Poisson distributions. All predictors
-accommodate different data filters for tailored predictions across various hospital settings.
+approaches: direct admission prediction (full admission probability), parametric
+aspirational curves with a Poisson thinning approximation, and empirical survival curves
+with convolution of Poisson distributions. All predictors accommodate different data
+filters for tailored predictions across various hospital settings.
 
 Classes
 -------
@@ -23,9 +24,8 @@ DirectAdmissionPredictor : IncomingAdmissionPredictor
     adjustments. Implemented via generating functions.
 
 ParametricIncomingAdmissionPredictor : IncomingAdmissionPredictor
-    Predicts the number of admissions within a given prediction window based on historical
-    data and Poisson-binomial distribution using parametric aspirational curves.
-    Now uses efficient generating functions for better performance.
+    Predicts admissions using parametric aspirational curves and a Poisson thinning
+    (independent filtering) approximation; see Notes for assumptions.
 
 EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
@@ -38,9 +38,9 @@ intervals and creating a single Poisson distribution. It assumes 100% admission 
 making it useful for scenarios where immediate admission is expected or as a baseline
 for comparison with more complex models.
 
-The ParametricIncomingAdmissionPredictor uses a combination of Poisson and binomial distributions to
-model the probability of admissions within a prediction window using parametric curves
-defined by transition points (x1, y1, x2, y2).
+The ParametricIncomingAdmissionPredictor uses Poisson arrivals per slice and
+slice-wise admission probabilities from aspirational curves (parameters x1, y1, x2, y2),
+under a Poisson thinning approximation; see *Assumptions*.
 
 The EmpiricalIncomingAdmissionPredictor inherits the arrival rate calculation and filtering logic
 but replaces the parametric approach with empirical survival probabilities and convolution
@@ -48,6 +48,18 @@ of individual Poisson distributions for each time interval.
 
 All predictors take into account historical data patterns and can be filtered for
 specific hospital settings or specialties.
+
+Prediction API (``predict`` / ``predict_mean``)
+---------------------------------------------
+After ``fit()``, pass ``prediction_time`` and ``prediction_window`` at predict
+time. Use ``filter_keys`` with ``predict()`` or ``filter_key`` with
+``predict_mean()`` to name which hospital **service** (or other stratum) to use —
+i.e. which key(s) appear in ``weights``, matching the names given in ``filters``
+when the model was fitted with filters. If ``weights`` has only one key,
+``filter_keys`` / ``filter_key`` may be omitted.
+
+The deprecated nested ``prediction_context`` dict (keyword or first positional
+argument) is still accepted and emits ``DeprecationWarning``.
 
 Assumptions
 -----------
@@ -82,7 +94,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple, Union, cast
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from patientflow.calculate.admission_in_prediction_window import (
@@ -245,12 +257,17 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     metrics : dict
         Stores metadata about the model and training data.
     weights : dict
-        Model parameters computed during fitting.
+        Parameters computed during fitting, keyed like ``filters`` (often a hospital
+        **service** name) or ``unfiltered`` when no filters were used.
 
     Notes
     -----
     The predictor implements scikit-learn's BaseEstimator and TransformerMixin
     interfaces for compatibility with scikit-learn pipelines.
+
+    For ``predict`` / ``predict_mean`` arguments (``prediction_time``,
+    ``filter_keys`` / ``filter_key``, legacy ``prediction_context``), see the
+    module docstring section *Prediction API*.
     """
 
     def __init__(self, filters=None, verbose=False, use_generating_functions=True):
@@ -314,7 +331,9 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             raise ValueError(f"{context} requires these parameters: {missing}.")
         return {k: kwargs[k] for k in required}
 
-    def _resolve_prediction_window(self, prediction_window):
+    def _resolve_prediction_window(
+        self, prediction_window: Optional[timedelta]
+    ) -> timedelta:
         """Return the effective prediction window.
 
         Resolution order:
@@ -357,44 +376,256 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             return (int(prediction_time), 0)
         return prediction_time
 
-    def _iter_prediction_inputs(self, prediction_context: Dict, prediction_window):
-        """Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.
+    def _parse_legacy_prediction_context(
+        self, prediction_context: Dict, *, for_predict_mean: bool
+    ) -> Tuple[Tuple[int, int], List[str]]:
+        """Parse deprecated ``prediction_context`` into one snapped time and filter keys.
 
-        Slices ``Ntimes`` intervals from the stored full 24-hour arrival-rate
-        dictionary, starting at the requested prediction time (snapped to the
-        nearest ``yta_time_interval`` boundary).
+        Raises ``ValueError`` if times differ after snapping, if keys are unknown,
+        or if ``for_predict_mean`` and more than one filter key is present.
         """
-        Ntimes = int(prediction_window / self.yta_time_interval)
+        if not isinstance(prediction_context, dict) or not prediction_context:
+            raise ValueError("prediction_context must be a non-empty dict")
+
+        if for_predict_mean and len(prediction_context) > 1:
+            raise ValueError(
+                "predict_mean legacy prediction_context must contain exactly one filter key; "
+                "use prediction_time= and filter_key= instead."
+            )
+
+        snapped_times: List[Tuple[int, int]] = []
+        filter_keys_order: List[str] = []
         for filter_key, filter_values in prediction_context.items():
             if filter_key not in self.weights:
                 raise ValueError(
                     f"Filter key '{filter_key}' is not recognized in the model weights."
                 )
-
+            if not isinstance(filter_values, dict):
+                raise ValueError(
+                    f"Values in prediction_context must be dicts; got {type(filter_values)!r} "
+                    f"for filter '{filter_key}'."
+                )
             prediction_time = filter_values.get("prediction_time")
             if prediction_time is None:
                 raise ValueError(
                     f"No 'prediction_time' provided for filter '{filter_key}'."
                 )
-
-            prediction_time = self._normalize_prediction_time(prediction_time)
-            snapped_prediction_time = self._snap_to_interval_boundary(prediction_time)
-            if snapped_prediction_time != prediction_time:
+            normalized = self._normalize_prediction_time(prediction_time)
+            snapped = self._snap_to_interval_boundary(normalized)
+            if snapped != normalized:
                 warnings.warn(
-                    f"Requested prediction_time {prediction_time} does not fall on a "
-                    f"yta_time_interval boundary; snapping to {snapped_prediction_time}.",
+                    f"Requested prediction_time {normalized} does not fall on a "
+                    f"yta_time_interval boundary; snapping to {snapped}.",
                     UserWarning,
-                    stacklevel=3,
+                    stacklevel=4,
                 )
+            snapped_times.append(snapped)
+            filter_keys_order.append(filter_key)
 
+        if len(set(snapped_times)) > 1:
+            raise ValueError(
+                "prediction_context must use the same prediction_time (after snapping to "
+                "yta_time_interval) for all filter keys."
+            )
+
+        return snapped_times[0], filter_keys_order
+
+    def _resolve_filter_keys(
+        self, filter_keys: Optional[Union[str, Sequence[str]]]
+    ) -> List[str]:
+        """Resolve ``filter_keys`` for ``predict()``.
+
+        If ``filter_keys`` is ``None`` and ``weights`` has a single key, that key
+        is used. If ``weights`` has more than one key, ``filter_keys`` must be
+        supplied explicitly.
+        """
+        if filter_keys is None:
+            if len(self.weights) == 1:
+                return [next(iter(self.weights.keys()))]
+            raise ValueError(
+                "filter_keys is required when weights has more than one key "
+                "(e.g. multiple fitted services)."
+            )
+        if isinstance(filter_keys, str):
+            keys = [filter_keys]
+        else:
+            keys = list(filter_keys)
+        for fk in keys:
+            if fk not in self.weights:
+                raise ValueError(
+                    f"Filter key '{fk}' is not recognized in the model weights."
+                )
+        return keys
+
+    def _resolve_filter_key_for_mean(self, filter_key: Optional[str]) -> str:
+        """Return the single weight key used by ``predict_mean()``."""
+        if filter_key is None:
+            if len(self.weights) == 1:
+                return next(iter(self.weights.keys()))
+            raise ValueError(
+                "filter_key is required for predict_mean() when weights has more than "
+                "one key (e.g. multiple fitted services)."
+            )
+        if filter_key not in self.weights:
+            raise ValueError(
+                f"Filter key '{filter_key}' is not recognized in the model weights."
+            )
+        return filter_key
+
+    def _prepare_prediction_targets_for_predict(
+        self,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        filter_keys: Optional[Union[str, Sequence[str]]] = None,
+        prediction_context: Optional[Dict] = None,
+    ) -> Tuple[Tuple[int, int], List[str]]:
+        """Resolve snapped prediction time and filter keys for ``predict()``."""
+        if prediction_context is not None:
+            if prediction_time is not None or filter_keys is not None:
+                raise ValueError(
+                    "Pass either prediction_context (deprecated) or prediction_time with "
+                    "filter_keys, not both."
+                )
+            if args:
+                raise ValueError(
+                    "When using prediction_context=, do not pass a dict as a positional argument."
+                )
+            warnings.warn(
+                "prediction_context dict is deprecated; use prediction_time= and filter_keys= "
+                "(omit filter_keys when weights has only one key).",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return self._parse_legacy_prediction_context(
+                prediction_context, for_predict_mean=False
+            )
+
+        if args:
+            if len(args) != 1 or not isinstance(args[0], dict):
+                raise TypeError(
+                    "predict() positional arguments are only accepted for the deprecated "
+                    "prediction_context dict; pass prediction_time as a keyword argument."
+                )
+            if prediction_time is not None or filter_keys is not None:
+                raise ValueError(
+                    "Do not combine a positional prediction_context dict with "
+                    "prediction_time= or filter_keys=."
+                )
+            warnings.warn(
+                "Passing prediction_context as the first positional argument is deprecated; "
+                "use prediction_time= and filter_keys=.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return self._parse_legacy_prediction_context(
+                cast(Dict, args[0]), for_predict_mean=False
+            )
+
+        if prediction_time is None:
+            raise TypeError(
+                "predict() requires prediction_time= when not using prediction_context."
+            )
+
+        normalized = self._normalize_prediction_time(prediction_time)
+        snapped = self._snap_to_interval_boundary(normalized)
+        if snapped != normalized:
+            warnings.warn(
+                f"Requested prediction_time {normalized} does not fall on a "
+                f"yta_time_interval boundary; snapping to {snapped}.",
+                UserWarning,
+                stacklevel=3,
+            )
+        resolved_keys = self._resolve_filter_keys(filter_keys)
+        return snapped, resolved_keys
+
+    def _prepare_prediction_targets_for_predict_mean(
+        self,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        filter_key: Optional[str] = None,
+        prediction_context: Optional[Dict] = None,
+    ) -> Tuple[Tuple[int, int], List[str]]:
+        """Resolve snapped prediction time and a single-element key list for ``predict_mean()``."""
+        if prediction_context is not None:
+            if prediction_time is not None or filter_key is not None:
+                raise ValueError(
+                    "Pass either prediction_context (deprecated) or prediction_time with "
+                    "filter_key, not both."
+                )
+            if args:
+                raise ValueError(
+                    "When using prediction_context=, do not pass a dict as a positional argument."
+                )
+            warnings.warn(
+                "prediction_context dict is deprecated; use prediction_time= and filter_key=.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            snapped, fk_list = self._parse_legacy_prediction_context(
+                prediction_context, for_predict_mean=True
+            )
+            return snapped, fk_list
+
+        if args:
+            if len(args) != 1 or not isinstance(args[0], dict):
+                raise TypeError(
+                    "predict_mean() positional arguments are only accepted for the deprecated "
+                    "prediction_context dict; pass prediction_time as a keyword argument."
+                )
+            if prediction_time is not None or filter_key is not None:
+                raise ValueError(
+                    "Do not combine a positional prediction_context dict with "
+                    "prediction_time= or filter_key=."
+                )
+            warnings.warn(
+                "Passing prediction_context as the first positional argument is deprecated; "
+                "use prediction_time= and filter_key=.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            snapped, fk_list = self._parse_legacy_prediction_context(
+                cast(Dict, args[0]), for_predict_mean=True
+            )
+            return snapped, fk_list
+
+        if prediction_time is None:
+            raise TypeError(
+                "predict_mean() requires prediction_time= when not using prediction_context."
+            )
+
+        normalized = self._normalize_prediction_time(prediction_time)
+        snapped = self._snap_to_interval_boundary(normalized)
+        if snapped != normalized:
+            warnings.warn(
+                f"Requested prediction_time {normalized} does not fall on a "
+                f"yta_time_interval boundary; snapping to {snapped}.",
+                UserWarning,
+                stacklevel=3,
+            )
+        fk = self._resolve_filter_key_for_mean(filter_key)
+        return snapped, [fk]
+
+    def _iter_prediction_inputs(
+        self,
+        snapped_prediction_time: Tuple[int, int],
+        prediction_window: timedelta,
+        filter_keys: List[str],
+    ):
+        """Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.
+
+        Slices ``Ntimes`` intervals from the stored full 24-hour arrival-rate
+        dictionary, starting at ``snapped_prediction_time`` (already on an
+        interval boundary).
+        """
+        Ntimes = int(prediction_window / self.yta_time_interval)
+        hr, mn = snapped_prediction_time
+        for filter_key in filter_keys:
             arrival_rates_dict = self.weights[filter_key].get("arrival_rates_dict")
             if arrival_rates_dict is None:
                 raise ValueError(
                     f"No arrival_rates_dict found under filter '{filter_key}'. "
                     "Has the model been fit?"
                 )
-
-            hr, mn = snapped_prediction_time
             try:
                 arrival_rates = [
                     arrival_rates_dict[
@@ -684,32 +915,15 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         return self.weights
 
     @abstractmethod
-    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
-        """Predict the number of admissions for the given context.
+    def predict(self, *args, **kwargs) -> Dict:
+        """Predict the bed-demand count distribution per ``weights`` key; subclasses implement.
 
-        This is an abstract method that must be implemented by subclasses.
-
-        Parameters
-        ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
-        **kwargs
-            Additional keyword arguments specific to the prediction method.
-
-        Returns
-        -------
-        dict
-            A dictionary with predictions for each specified context.
-
-        Raises
-        ------
-        ValueError
-            If filter key is not recognized or prediction_time is not provided.
-        KeyError
-            If required keys are missing from the prediction context.
+        Each key is typically a hospital **service** name (or ``unfiltered``). Callers
+        should use ``prediction_time``, ``prediction_window``, and ``filter_keys``
+        (see module *Prediction API*). Legacy ``prediction_context`` (keyword or dict
+        as first positional) remains supported with ``DeprecationWarning``.
         """
-        pass
+        ...
 
     @abstractmethod
     def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
@@ -729,61 +943,71 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         numpy.ndarray
             Array of admission probabilities for each time interval.
         """
-        pass
+        ...
 
     def predict_mean(
         self,
-        prediction_context: Dict,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         prediction_window: Optional[timedelta] = None,
+        filter_key: Optional[str] = None,
+        prediction_context: Optional[Dict] = None,
         **kwargs,
     ) -> float:
-        """Return just the Poisson mean (expected value) for each context.
-
-        This method extracts the underlying Poisson mean without computing
-        the full probability distribution, making it suitable for later generation
-        or when only the expected value is needed.
+        """Return the Poisson mean (expected value) for a single ``weights`` key.
 
         Parameters
         ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
+        prediction_time : tuple or list or int, optional
+            Time of day ``(hour, minute)`` for slicing arrival rates. Required
+            unless using the deprecated ``prediction_context`` dict.
         prediction_window : timedelta, optional
-            The prediction window. Required. If omitted, the value (if any)
-            supplied to ``fit()`` is used and a `DeprecationWarning`
-            is emitted.
+            The prediction window. Required unless the value supplied at ``fit()``
+            is used (deprecated; emits ``DeprecationWarning``).
+        filter_key : str, optional
+            Which hospital **service** (or other stratum) to use: a key present in
+            ``weights``, usually the same name as in ``filters``. Required when
+            ``weights`` has more than one key (unless using ``prediction_context``).
+        prediction_context : dict, optional
+            Deprecated. Former nested dict mapping filter key to
+            ``{"prediction_time": ...}``. Must contain exactly one filter key.
         **kwargs
-            Additional keyword arguments specific to the prediction method.
-            These are passed to the subclass-specific ``_get_admission_probabilities`` method.
+            Passed to ``_get_admission_probabilities`` (e.g. ``x1``, ``y1``, …).
 
         Returns
         -------
         float
-            The Poisson mean (expected value) for the single context specified in prediction_context.
+            Poisson mean for the requested service (``weights`` key).
 
         Raises
         ------
+        TypeError
+            If ``prediction_time`` is missing when not using ``prediction_context``.
         ValueError
-            If filter key is not recognized, ``prediction_time`` is not provided,
-            or ``prediction_window`` cannot be resolved.
-        KeyError
-            If required keys are missing from the prediction context.
+            If ``filter_key`` is required but omitted, keys are unknown, or legacy
+            ``prediction_context`` has multiple keys or inconsistent times.
         """
         prediction_window = self._resolve_prediction_window(prediction_window)
+
+        snapped_time, filter_keys_list = (
+            self._prepare_prediction_targets_for_predict_mean(
+                *args,
+                prediction_time=prediction_time,
+                filter_key=filter_key,
+                prediction_context=prediction_context,
+            )
+        )
 
         admission_probs = self._get_admission_probabilities(
             prediction_window=prediction_window, **kwargs
         )
 
-        for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context, prediction_window
+        for filter_key_i, _pt, arrival_rates in self._iter_prediction_inputs(
+            snapped_time, prediction_window, filter_keys_list
         ):
-            poisson_mean = float(
-                np.sum(np.array(arrival_rates) * np.array(admission_probs))
-            )
-            return poisson_mean
+            return float(np.sum(np.array(arrival_rates) * np.array(admission_probs)))
 
-        raise ValueError("No valid prediction context provided")
+        raise ValueError("No valid prediction targets provided")
 
 
 class DirectAdmissionPredictor(IncomingAdmissionPredictor):
@@ -812,49 +1036,63 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        prediction_context: Dict,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         prediction_window: Optional[timedelta] = None,
+        filter_keys: Optional[Union[str, Sequence[str]]] = None,
+        prediction_context: Optional[Dict] = None,
         **kwargs,
     ) -> Dict:
         """Predict the number of admissions assuming 100% admission rate.
 
         Parameters
         ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
+        prediction_time : tuple or list or int, optional
+            Time of day for slicing arrival rates. Required unless using the
+            deprecated ``prediction_context`` dict API.
         prediction_window : timedelta, optional
             The prediction window over which admissions are accumulated.
-            Required. If omitted, the value (if any) supplied to ``fit()`` is
-            used and a `DeprecationWarning` is emitted.
+            Required unless the value supplied at ``fit()`` is used (deprecated).
+        filter_keys : str or sequence of str, optional
+            Service name(s) or other ``weights`` key(s). Required when ``weights``
+            has more than one key (unless using ``prediction_context``).
+        prediction_context : dict, optional
+            Deprecated nested dict API.
         **kwargs
-            Additional keyword arguments for prediction configuration:
-
-            max_value : int, default=50
-                Maximum value for the discrete distribution support.
+            ``max_value`` : int, optional — maximum PMF support.
 
         Returns
         -------
         dict
-            A dictionary with predictions for each specified context.
+            Keys match ``weights`` (e.g. hospital service). Values are DataFrames
+            indexed by outcome count (``sum``) with column ``agg_proba`` (PMF).
 
         Raises
         ------
+        TypeError
+            If ``prediction_time`` is missing when not using legacy input.
         ValueError
-            If filter key is not recognized, ``prediction_time`` is not provided,
-            or ``prediction_window`` cannot be resolved.
-        KeyError
-            If required keys are missing from the prediction context.
+            If ``filter_keys`` is required but omitted, keys are invalid, or legacy
+            ``prediction_context`` has inconsistent times across keys.
         """
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
         prediction_window = self._resolve_prediction_window(prediction_window)
+
+        snapped_time, resolved_filter_keys = (
+            self._prepare_prediction_targets_for_predict(
+                *args,
+                prediction_time=prediction_time,
+                filter_keys=filter_keys,
+                prediction_context=prediction_context,
+            )
+        )
 
         max_value = kwargs.get("max_value")
 
         predictions = {}
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context, prediction_window
+            snapped_time, prediction_window, resolved_filter_keys
         ):
             # For direct case, admission probabilities are all 1.0 (100% admission rate)
             admission_probs = np.ones(len(arrival_rates))
@@ -908,9 +1146,10 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     """A predictor for estimating hospital admissions using parametric curves.
 
-    This predictor uses a combination of Poisson and binomial distributions to forecast
-    future admissions, excluding patients who have already arrived. The prediction is
-    based on historical data and can be filtered for specific hospital settings.
+    This predictor uses Poisson-distributed arrivals per time slice and slice-wise
+    admission probabilities from aspirational curves (Poisson thinning approximation).
+    The prediction is based on historical data and can be filtered for specific
+    hospital settings.
 
     Parameters
     ----------
@@ -928,7 +1167,8 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     metrics : dict
         Stores metadata about the model and training data.
     weights : dict
-        Model parameters computed during fitting.
+        Parameters computed during fitting, keyed like ``filters`` (often a hospital
+        **service** name) or ``unfiltered`` when no filters were used.
 
     Notes
     -----
@@ -948,59 +1188,43 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        prediction_context: Dict,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         prediction_window: Optional[timedelta] = None,
+        filter_keys: Optional[Union[str, Sequence[str]]] = None,
+        prediction_context: Optional[Dict] = None,
         **kwargs,
     ) -> Dict:
-        """Predict the number of admissions for the given context using parametric curves.
+        """Predict admissions using parametric curves (Poisson thinning route).
 
         Parameters
         ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
+        prediction_time : tuple or list or int, optional
+            Required unless using deprecated ``prediction_context``.
         prediction_window : timedelta, optional
-            The prediction window over which admissions are accumulated.
-            Required. If omitted, the value (if any) supplied to ``fit()`` is
-            used and a `DeprecationWarning` is emitted.
+            Required unless using deprecated fit-time default.
+        filter_keys : str or sequence of str, optional
+            Required when ``weights`` has more than one key unless using
+            ``prediction_context``.
+        prediction_context : dict, optional
+            Deprecated nested dict API.
         **kwargs
-            Additional keyword arguments for parametric curve configuration:
-
-            x1 : float, required
-                The x-coordinate of the first transition point on the aspirational curve,
-                where the growth phase ends and the decay phase begins.
-            y1 : float, required
-                The y-coordinate of the first transition point (x1), representing the target
-                proportion of patients admitted by time x1.
-            x2 : float, required
-                The x-coordinate of the second transition point on the curve, beyond which
-                all but a few patients are expected to be admitted.
-            y2 : float, required
-                The y-coordinate of the second transition point (x2), representing the target
-                proportion of patients admitted by time x2.
-            max_value : int, optional, default=50
-                Maximum value for the discrete distribution support.
+            ``x1``, ``y1``, ``x2``, ``y2`` (required); optional ``max_value``.
 
         Returns
         -------
         dict
-            A dictionary with predictions for each specified context.
+            Service (``weights`` key) → PMF DataFrame (index ``sum``, column ``agg_proba``).
 
         Raises
         ------
-        ValueError
-            If filter key is not recognized, ``prediction_time`` is not provided,
-            or ``prediction_window`` cannot be resolved.
-        KeyError
-            If required keys are missing from the prediction context.
+        TypeError, ValueError
+            Same rules as :meth:`DirectAdmissionPredictor.predict`.
 
-        Assumptions
-        -----------
-        Uses the Poisson arrivals with independent filtering (often called "Poisson thinning"):
-        - λ_t: expected arrivals in slice t; θ_t: probability of admission within window for arrivals in slice t
-        - Arrivals per slice t follow Poisson(λ_t), slices are independent
-        - Each arrival is admitted independently with probability θ_t (constant per slice)
-        Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t)
+        Notes
+        -----
+        Poisson thinning: admitted in slice t ~ Poisson(λ_t θ_t);
+        total ~ Poisson(Σ_t λ_t θ_t).
         """
         # Validate/collect kwargs
         required = {"x1", "y1", "x2", "y2"}
@@ -1010,6 +1234,15 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         prediction_window = self._resolve_prediction_window(prediction_window)
+
+        snapped_time, resolved_filter_keys = (
+            self._prepare_prediction_targets_for_predict(
+                *args,
+                prediction_time=prediction_time,
+                filter_keys=filter_keys,
+                prediction_context=prediction_context,
+            )
+        )
 
         predictions = {}
 
@@ -1034,7 +1267,7 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         max_value = kwargs.get("max_value")
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context, prediction_window
+            snapped_time, prediction_window, resolved_filter_keys
         ):
             # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
             mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
@@ -1105,7 +1338,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
     This predictor inherits all the arrival rate calculation and filtering logic from
     IncomingAdmissionPredictor but uses empirical survival probabilities and convolution
-    of Poisson distributions for prediction instead of the Poisson-binomial approach.
+    of Poisson distributions for prediction instead of the parametric curve route.
 
     The survival curve is automatically calculated from the training data during the
     fit process by analysing time-to-admission patterns.
@@ -1317,41 +1550,40 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        prediction_context: Dict,
+        *args,
+        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         prediction_window: Optional[timedelta] = None,
+        filter_keys: Optional[Union[str, Sequence[str]]] = None,
+        prediction_context: Optional[Dict] = None,
         **kwargs,
     ) -> Dict:
-        """Predict the number of admissions using empirical survival curves.
+        """Predict admissions using empirical survival curves.
 
         Parameters
         ----------
-        prediction_context : dict
-            A dictionary defining the context for which predictions are to be made.
-            It should specify either a general context or one based on the applied filters.
+        prediction_time : tuple or list or int, optional
+            Required unless using deprecated ``prediction_context``.
         prediction_window : timedelta, optional
-            The prediction window over which admissions are accumulated.
-            Required. If omitted, the value (if any) supplied to ``fit()`` is
-            used and a `DeprecationWarning` is emitted.
+            Required unless using deprecated fit-time default.
+        filter_keys : str or sequence of str, optional
+            Required when ``weights`` has more than one key unless using
+            ``prediction_context``.
+        prediction_context : dict, optional
+            Deprecated nested dict API.
         **kwargs
-            Additional keyword arguments for prediction configuration:
-
-            max_value : int, default=20
-                Maximum value for the discrete distribution support.
+            Optional ``max_value``.
 
         Returns
         -------
         dict
-            A dictionary with predictions for each specified context.
+            Service (``weights`` key) → PMF DataFrame (index ``sum``, column ``agg_proba``).
 
         Raises
         ------
-        ValueError
-            If filter key is not recognized, ``prediction_time`` is not provided,
-            or ``prediction_window`` cannot be resolved.
-        KeyError
-            If required keys are missing from the prediction context.
         RuntimeError
-            If survival_df was not provided during fitting.
+            If ``fit()`` has not been called (no survival curve).
+        TypeError, ValueError
+            Same rules as :meth:`DirectAdmissionPredictor.predict`.
         """
         if self.survival_df is None:
             raise RuntimeError(
@@ -1359,6 +1591,15 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             )
 
         prediction_window = self._resolve_prediction_window(prediction_window)
+
+        snapped_time, resolved_filter_keys = (
+            self._prepare_prediction_targets_for_predict(
+                *args,
+                prediction_time=prediction_time,
+                filter_keys=filter_keys,
+                prediction_context=prediction_context,
+            )
+        )
 
         max_value = kwargs.get("max_value")
 
@@ -1369,7 +1610,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context, prediction_window
+            snapped_time, prediction_window, resolved_filter_keys
         ):
             mv = (
                 max_value

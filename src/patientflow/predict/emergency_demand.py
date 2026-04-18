@@ -586,15 +586,17 @@ def create_predictions(
         )
 
         if specialty in trained_yta_keys:
-            prediction_context = {specialty: {"prediction_time": prediction_time}}
             if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
                 agg_predicted_yta = yet_to_arrive_model.predict(
-                    prediction_context, prediction_window=prediction_window
+                    prediction_time=prediction_time,
+                    prediction_window=prediction_window,
+                    filter_keys=specialty,
                 )
             else:
                 agg_predicted_yta = yet_to_arrive_model.predict(
-                    prediction_context,
+                    prediction_time=prediction_time,
                     prediction_window=prediction_window,
+                    filter_keys=specialty,
                     x1=x1,
                     y1=y1,
                     x2=x2,

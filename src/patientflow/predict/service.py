@@ -831,25 +831,29 @@ def _create_flow_inputs(
     dict
         Dictionary with 'inflows' and 'outflows' keys containing FlowInputs objects
     """
-    prediction_context = {spec: {"prediction_time": prediction_time}}
 
-    def _safe_predict_mean(model, context, **kwargs) -> float:
+    def _safe_predict_mean(model, **kwargs) -> float:
         # Return 0.0 when the model is None or doesn't recognise the filter key
         if model is None:
             return 0.0
         if hasattr(model, "weights") and spec not in model.weights:
             return 0.0
         return float(
-            model.predict_mean(context, prediction_window=prediction_window, **kwargs)
+            model.predict_mean(
+                prediction_time=prediction_time,
+                prediction_window=prediction_window,
+                filter_key=spec,
+                **kwargs,
+            )
         )
 
     # Parametric YTA models need x1/y1/x2/y2; empirical and direct do not.
     if isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
         ed_yta_mean = _safe_predict_mean(
-            yet_to_arrive_model, prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
+            yet_to_arrive_model, x1=x1, y1=y1, x2=x2, y2=y2
         )
     else:
-        ed_yta_mean = _safe_predict_mean(yet_to_arrive_model, prediction_context)
+        ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
 
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
@@ -872,13 +876,13 @@ def _create_flow_inputs(
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(non_ed_yta_model, prediction_context),
+            distribution=_safe_predict_mean(non_ed_yta_model),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(elective_yta_model, prediction_context),
+            distribution=_safe_predict_mean(elective_yta_model),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()

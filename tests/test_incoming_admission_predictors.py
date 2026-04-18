@@ -184,14 +184,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {
-            "medical": {"prediction_time": (8, 0)},
-            "surgical": {"prediction_time": (12, 0)},
-        }
-
         predictions = predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys=["medical", "surgical"],
             x1=2,
             y1=0.5,
             x2=4,
@@ -210,29 +206,29 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         # Missing curve parameters must raise
         with self.assertRaises(ValueError):
             predictor.predict(
-                prediction_context,
+                prediction_time=(8, 0),
                 prediction_window=self.prediction_window,
+                filter_keys=["medical"],
                 x1=2,
                 y1=0.5,
             )
 
         # Unknown filter key
-        invalid_context = {"invalid_key": {"prediction_time": (8, 0)}}
         with self.assertRaises(ValueError):
             predictor.predict(
-                invalid_context,
+                prediction_time=(8, 0),
                 prediction_window=self.prediction_window,
+                filter_keys=["invalid_key"],
                 x1=2,
                 y1=0.5,
                 x2=4,
                 y2=0.9,
             )
 
-        # Missing prediction_time
-        invalid_context = {"medical": {"wrong_key": (8, 0)}}
+        # filter_keys required when weights has multiple keys (e.g. services)
         with self.assertRaises(ValueError):
             predictor.predict(
-                invalid_context,
+                prediction_time=(8, 0),
                 prediction_window=self.prediction_window,
                 x1=2,
                 y1=0.5,
@@ -245,26 +241,39 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
         with self.assertRaises(ValueError):
-            predictor.predict(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
+            predictor.predict(
+                prediction_time=(8, 0),
+                filter_keys="medical",
+                x1=2,
+                y1=0.5,
+                x2=4,
+                y2=0.9,
+            )
 
     def test_predict_mean_requires_prediction_window(self):
         predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
         with self.assertRaises(ValueError):
-            predictor.predict_mean(prediction_context, x1=2, y1=0.5, x2=4, y2=0.9)
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                filter_key="medical",
+                x1=2,
+                y1=0.5,
+                x2=4,
+                y2=0.9,
+            )
 
     def test_predict_mean_with_prediction_window(self):
         """predict_mean returns a positive float when given prediction_window."""
         predictor = DirectAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
         mean = predictor.predict_mean(
-            prediction_context, prediction_window=self.prediction_window
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_key="medical",
         )
         self.assertIsInstance(mean, float)
         self.assertGreater(mean, 0.0)
@@ -308,14 +317,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictor = EmpiricalIncomingAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {
-            "medical": {"prediction_time": (8, 0)},
-            "surgical": {"prediction_time": (12, 0)},
-        }
-
         predictions = predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys=["medical", "surgical"],
             max_value=25,
         )
 
@@ -333,7 +338,9 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         )
         with self.assertRaises(RuntimeError):
             predictor_no_survival.predict(
-                prediction_context, prediction_window=self.prediction_window
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                filter_keys=["medical", "surgical"],
             )
 
     def test_predictor_comparison(self):
@@ -346,19 +353,19 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self._fit_new_api(parametric_predictor)
         self._fit_new_api(empirical_predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
-
         parametric_pred = parametric_predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys="medical",
             x1=2,
             y1=0.5,
             x2=4,
             y2=0.9,
         )
         empirical_pred = empirical_predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys="medical",
             max_value=25,
         )
 
@@ -383,8 +390,9 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self._fit_new_api(short_predictor)
 
         predictions = short_predictor.predict(
-            {"medical": {"prediction_time": (8, 0)}},
+            prediction_time=(8, 0),
             prediction_window=short_window,
+            filter_keys="medical",
             x1=2,
             y1=0.5,
             x2=4,
@@ -420,12 +428,11 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self._fit_new_api(predictor)
 
         # yta_time_interval is 30 minutes; (14, 15) is off-grid
-        prediction_context = {"medical": {"prediction_time": (14, 15)}}
-
         with self.assertWarns(UserWarning) as warning_context:
             predictions = predictor.predict(
-                prediction_context,
+                prediction_time=(14, 15),
                 prediction_window=self.prediction_window,
+                filter_keys="medical",
                 x1=2,
                 y1=0.5,
                 x2=4,
@@ -470,14 +477,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictor = DirectAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {
-            "medical": {"prediction_time": (8, 0)},
-            "surgical": {"prediction_time": (12, 0)},
-        }
-
         predictions = predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys=["medical", "surgical"],
             max_value=30,
         )
 
@@ -495,8 +498,9 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
 
         # Custom max_value
         predictions_small = predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys=["medical", "surgical"],
             max_value=10,
         )
         for pred_df in predictions_small.values():
@@ -506,14 +510,12 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             self.assertGreater(prob_sum, 0.5)
 
         # Invalid filter key
-        invalid_context = {"invalid_key": {"prediction_time": (8, 0)}}
         with self.assertRaises(ValueError):
-            predictor.predict(invalid_context, prediction_window=self.prediction_window)
-
-        # Missing prediction_time
-        invalid_context = {"medical": {"wrong_key": (8, 0)}}
-        with self.assertRaises(ValueError):
-            predictor.predict(invalid_context, prediction_window=self.prediction_window)
+            predictor.predict(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                filter_keys=["invalid_key"],
+            )
 
     def test_direct_predictor_mathematical_correctness(self):
         """Direct predictor's expected value matches the total arrival rate over the window."""
@@ -531,10 +533,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         ]
         total_expected_arrivals = sum(medical_arrival_rates)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
         predictions = predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys="medical",
             max_value=50,
         )
 
@@ -546,12 +548,15 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         predictor = DirectAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
         pred1 = predictor.predict(
-            prediction_context, prediction_window=self.prediction_window
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys="medical",
         )
         pred2 = predictor.predict(
-            prediction_context, prediction_window=self.prediction_window
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys="medical",
         )
 
         np.testing.assert_array_almost_equal(
@@ -565,7 +570,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self.assertIn("unfiltered", predictor.weights)
 
         predictions = predictor.predict(
-            {"unfiltered": {"prediction_time": (8, 0)}},
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
         )
 
@@ -587,22 +592,24 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self._fit_new_api(parametric_predictor)
         self._fit_new_api(empirical_predictor)
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
-
         direct_pred = direct_predictor.predict(
-            prediction_context, prediction_window=self.prediction_window
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys="medical",
         )
         parametric_pred = parametric_predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys="medical",
             x1=2,
             y1=0.5,
             x2=4,
             y2=0.9,
         )
         empirical_pred = empirical_predictor.predict(
-            prediction_context,
+            prediction_time=(8, 0),
             prediction_window=self.prediction_window,
+            filter_keys="medical",
             max_value=25,
         )
 
@@ -681,11 +688,11 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
                 num_days=self.num_days,
             )
 
-        prediction_context = {"medical": {"prediction_time": (8, 0)}}
-
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            predictions = predictor.predict(prediction_context)
+            predictions = predictor.predict(
+                prediction_time=(8, 0), filter_keys="medical"
+            )
 
         self.assertIn("medical", predictions)
         self.assertTrue(
@@ -710,6 +717,60 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             )
         self.assertIn("medical", predictor.weights)
         self.assertIn("arrival_rates_dict", predictor.weights["medical"])
+
+    def test_deprecated_prediction_context_dict_warns(self):
+        """Legacy prediction_context emits DeprecationWarning and matches new API results."""
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        self._fit_new_api(predictor)
+        legacy_ctx = {"medical": {"prediction_time": (8, 0)}}
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            legacy_pred = predictor.predict(
+                prediction_context=legacy_ctx,
+                prediction_window=self.prediction_window,
+            )
+        self.assertTrue(
+            any(
+                issubclass(w.category, DeprecationWarning)
+                and "prediction_context" in str(w.message).lower()
+                for w in caught
+            )
+        )
+        new_pred = predictor.predict(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys="medical",
+        )
+        np.testing.assert_array_almost_equal(
+            legacy_pred["medical"]["agg_proba"].values,
+            new_pred["medical"]["agg_proba"].values,
+        )
+
+    def test_legacy_prediction_context_mismatched_times_raise(self):
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        self._fit_new_api(predictor)
+        bad_ctx = {
+            "medical": {"prediction_time": (8, 0)},
+            "surgical": {"prediction_time": (12, 0)},
+        }
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            with self.assertRaises(ValueError) as cm:
+                predictor.predict(
+                    prediction_context=bad_ctx,
+                    prediction_window=self.prediction_window,
+                )
+        self.assertIn("same prediction_time", str(cm.exception).lower())
+
+    def test_predict_mean_requires_filter_key_when_multiple_services(self):
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        self._fit_new_api(predictor)
+        with self.assertRaises(ValueError) as cm:
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+            )
+        self.assertIn("filter_key", str(cm.exception).lower())
 
 
 if __name__ == "__main__":
