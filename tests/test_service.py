@@ -417,10 +417,10 @@ class TestBuildServiceData(unittest.TestCase):
             len(np.asarray(result["medical"].inflows["ed_current"].distribution)), 0
         )
 
-    def test_prediction_time_and_window_mismatch_errors(self):
+    def test_prediction_time_mismatch_errors(self):
         ed_snapshots = self._make_snapshots(10)
         inpatient_snapshots = self._make_inpatient_snapshots(5)
-        # Wrong prediction time
+        # Wrong prediction time should raise (classifier was trained for a different time)
         with self.assertRaises(ValueError):
             build_service_data(
                 models=self.models,
@@ -435,9 +435,12 @@ class TestBuildServiceData(unittest.TestCase):
                 y2=self.y2,
             )
 
-        # Mismatched elective window
+        # With the prediction_window now supplied at predict() time, YTA models
+        # trained for a different window should still be usable against any
+        # caller-supplied window. Verify a previously "mismatched" elective YTA
+        # model does not raise.
         other_window = timedelta(hours=10)
-        bad_elective = _create_direct_predictor(
+        other_window_elective = _create_direct_predictor(
             other_window, self.train_df, self.arrivals_df
         )
         models = (
@@ -446,22 +449,22 @@ class TestBuildServiceData(unittest.TestCase):
             self.spec_model,
             self.param_yta_model,
             self.direct_non_ed,
-            bad_elective,
+            other_window_elective,
             self.transfer_model,  # Transfer model
         )
-        with self.assertRaises(ValueError):
-            build_service_data(
-                models=models,
-                prediction_time=self.prediction_time,
-                ed_snapshots=ed_snapshots,
-                inpatient_snapshots=inpatient_snapshots,
-                specialties=self.specialties,
-                prediction_window=self.prediction_window,
-                x1=self.x1,
-                y1=self.y1,
-                x2=self.x2,
-                y2=self.y2,
-            )
+        result = build_service_data(
+            models=models,
+            prediction_time=self.prediction_time,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+        self.assertIn("medical", result)
 
     def test_missing_or_invalid_elapsed_los(self):
         ed_snapshots = self._make_snapshots(5)

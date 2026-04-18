@@ -31,11 +31,6 @@ EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions; implemented via generating functions.
 
-Functions
----------
-find_nearest_previous_prediction_time
-    Find the nearest previous prediction time for a requested time
-
 Notes
 -----
 The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
@@ -110,66 +105,6 @@ from patientflow.calculate.survival_curve import (
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from scipy.stats import poisson
-
-
-def find_nearest_previous_prediction_time(requested_time, prediction_times):
-    """Find the nearest previous time of day in prediction_times relative to requested time.
-
-    Parameters
-    ----------
-    requested_time : tuple
-        The requested time as (hour, minute).
-    prediction_times : list
-        List of available prediction times.
-
-    Returns
-    -------
-    tuple
-        The closest previous time of day from prediction_times.
-
-    Notes
-    -----
-    If the requested time is earlier than all times in prediction_times,
-    returns the latest time in prediction_times.
-    """
-    if requested_time in prediction_times:
-        return requested_time
-
-    original_prediction_time = requested_time
-    requested_datetime = datetime.strptime(
-        f"{requested_time[0]:02d}:{requested_time[1]:02d}", "%H:%M"
-    )
-    closest_prediction_time = max(
-        prediction_times,
-        key=lambda prediction_time_time: datetime.strptime(
-            f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
-            "%H:%M",
-        ),
-    )
-    min_diff = float("inf")
-
-    for prediction_time_time in prediction_times:
-        prediction_time_datetime = datetime.strptime(
-            f"{prediction_time_time[0]:02d}:{prediction_time_time[1]:02d}",
-            "%H:%M",
-        )
-        diff = (requested_datetime - prediction_time_datetime).total_seconds()
-
-        # If the difference is negative, it means the prediction_time_time is ahead of the requested_time,
-        # hence we calculate the difference by considering a day's wrap around.
-        if diff < 0:
-            diff += 24 * 60 * 60  # Add 24 hours in seconds
-
-        if 0 <= diff < min_diff:
-            closest_prediction_time = prediction_time_time
-            min_diff = diff
-
-    warnings.warn(
-        f"Time of day requested of {original_prediction_time} was not in model training. "
-        f"Reverting to predictions for {closest_prediction_time}."
-    )
-
-    return closest_prediction_time
 
 
 class AdmissionGeneratingFunction:
@@ -379,11 +314,57 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             raise ValueError(f"{context} requires these parameters: {missing}.")
         return {k: kwargs[k] for k in required}
 
-    def _iter_prediction_inputs(self, prediction_context: Dict):
-        """Yield (filter_key, resolved_prediction_time, arrival_rates_np).
+    def _resolve_prediction_window(self, prediction_window):
+        """Return the effective prediction window.
 
-        Centralizes validation, time resolution, and array conversion.
+        Resolution order:
+        1. Explicit ``prediction_window`` argument if provided.
+        2. ``prediction_window`` stored on the model at ``fit()`` time
+           (deprecated; emits `DeprecationWarning`).
+        3. Raise `ValueError`.
         """
+        if prediction_window is not None:
+            return prediction_window
+        fit_window = getattr(self, "_deprecated_fit_prediction_window", None)
+        if fit_window is not None:
+            warnings.warn(
+                "Relying on prediction_window stored at fit() time is deprecated. "
+                "Pass prediction_window explicitly to predict() / predict_mean().",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return fit_window
+        raise ValueError(
+            "prediction_window is required. Pass it as a keyword argument to "
+            "predict() / predict_mean()."
+        )
+
+    def _snap_to_interval_boundary(self, prediction_time):
+        """Snap a ``(hour, minute)`` tuple to the nearest ``yta_time_interval`` boundary within the 24-hour cycle."""
+        interval_minutes = self.yta_time_interval.total_seconds() / 60
+        if interval_minutes <= 0:
+            return prediction_time
+        total_minutes = prediction_time[0] * 60 + prediction_time[1]
+        snapped = round(total_minutes / interval_minutes) * interval_minutes
+        snapped_int = int(snapped) % (24 * 60)
+        return (snapped_int // 60, snapped_int % 60)
+
+    def _normalize_prediction_time(self, prediction_time):
+        """Coerce a prediction_time into a ``(hour, minute)`` tuple."""
+        if isinstance(prediction_time, (list, np.ndarray)):
+            return tuple(prediction_time)
+        if isinstance(prediction_time, (int, float)):
+            return (int(prediction_time), 0)
+        return prediction_time
+
+    def _iter_prediction_inputs(self, prediction_context: Dict, prediction_window):
+        """Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.
+
+        Slices ``Ntimes`` intervals from the stored full 24-hour arrival-rate
+        dictionary, starting at the requested prediction time (snapped to the
+        nearest ``yta_time_interval`` boundary).
+        """
+        Ntimes = int(prediction_window / self.yta_time_interval)
         for filter_key, filter_values in prediction_context.items():
             if filter_key not in self.weights:
                 raise ValueError(
@@ -396,27 +377,49 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                     f"No 'prediction_time' provided for filter '{filter_key}'."
                 )
 
-            if prediction_time not in self.prediction_times:
-                prediction_time = find_nearest_previous_prediction_time(
-                    prediction_time, self.prediction_times
+            prediction_time = self._normalize_prediction_time(prediction_time)
+            snapped_prediction_time = self._snap_to_interval_boundary(prediction_time)
+            if snapped_prediction_time != prediction_time:
+                warnings.warn(
+                    f"Requested prediction_time {prediction_time} does not fall on a "
+                    f"yta_time_interval boundary; snapping to {snapped_prediction_time}.",
+                    UserWarning,
+                    stacklevel=3,
                 )
 
-            arrival_rates = self.weights[filter_key][prediction_time].get(
-                "arrival_rates"
-            )
-            if arrival_rates is None:
+            arrival_rates_dict = self.weights[filter_key].get("arrival_rates_dict")
+            if arrival_rates_dict is None:
                 raise ValueError(
-                    f"No arrival_rates found for the time of day '{prediction_time}' under filter '{filter_key}'."
+                    f"No arrival_rates_dict found under filter '{filter_key}'. "
+                    "Has the model been fit?"
                 )
 
-            yield filter_key, prediction_time, np.array(arrival_rates)
+            hr, mn = snapped_prediction_time
+            try:
+                arrival_rates = [
+                    arrival_rates_dict[
+                        (
+                            datetime(1970, 1, 1, hr, mn) + i * self.yta_time_interval
+                        ).time()
+                    ]
+                    for i in range(Ntimes)
+                ]
+            except KeyError as e:
+                raise ValueError(
+                    f"No arrival_rates found for filter '{filter_key}' at "
+                    f"prediction_time {snapped_prediction_time}: missing key {e}"
+                )
 
-    def _get_window_and_interval_hours(self):
-        """Return (prediction_window_hours, interval_hours, NTimes)."""
+            yield filter_key, snapped_prediction_time, np.array(arrival_rates)
+
+    def _get_window_and_interval_hours(self, prediction_window):
+        """Return ``(prediction_window_hours, interval_hours, NTimes)`` for the given window."""
+        prediction_window_hours = prediction_window.total_seconds() / 3600
+        NTimes = int(prediction_window / self.yta_time_interval)
         return (
-            self.prediction_window_hours,
+            prediction_window_hours,
             self.yta_time_interval_hours,
-            self.NTimes,
+            NTimes,
         )
 
     def _default_max_value(self, arrival_rates, floor: int = 20, cap: int = 200) -> int:
@@ -466,86 +469,68 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     def _calculate_parameters(
         self,
         df,
-        prediction_window: timedelta,
         yta_time_interval: timedelta,
-        prediction_times,
         num_days,
     ):
-        """Calculate parameters required for the model.
+        """Calculate the full 24-hour arrival-rate dictionary for the given data.
 
         Parameters
         ----------
         df : pandas.DataFrame
             The data frame to process.
-        prediction_window : timedelta
-            The total prediction window for prediction.
         yta_time_interval : timedelta
-            The interval for splitting the prediction window.
-        prediction_times : list
-            Times of day at which predictions are made.
+            The granularity of arrival-rate buckets.
         num_days : int
             Number of days over which to calculate time-varying arrival rates.
 
         Returns
         -------
         dict
-            Calculated arrival_rates parameters organized by time of day.
+            A dictionary with a single key ``"arrival_rates_dict"`` whose value
+            is a dictionary mapping ``datetime.time`` to arrival rate,
+            covering the full 24-hour cycle at ``yta_time_interval`` granularity.
         """
-
-        # Calculate Ntimes - Python handles the division naturally
-        Ntimes = int(prediction_window / yta_time_interval)
-
-        # Pass original type to time_varying_arrival_rates
         arrival_rates_dict = time_varying_arrival_rates(
             df, yta_time_interval, num_days, verbose=self.verbose
         )
-        prediction_time_dict = {}
-
-        for prediction_time_ in prediction_times:
-            prediction_time_hr, prediction_time_min = (
-                (prediction_time_, 0)
-                if isinstance(prediction_time_, int)
-                else prediction_time_
-            )
-            arrival_rates = [
-                arrival_rates_dict[
-                    (
-                        datetime(1970, 1, 1, prediction_time_hr, prediction_time_min)
-                        + i * yta_time_interval
-                    ).time()
-                ]
-                for i in range(Ntimes)
-            ]
-            prediction_time_dict[(prediction_time_hr, prediction_time_min)] = {
-                "arrival_rates": arrival_rates
-            }
-
-        return prediction_time_dict
+        return {"arrival_rates_dict": arrival_rates_dict}
 
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window: timedelta,
-        yta_time_interval: timedelta,
-        prediction_times: List[float],
-        num_days: int,
+        prediction_window: Optional[timedelta] = None,
+        yta_time_interval: Optional[timedelta] = None,
+        prediction_times: Optional[List[float]] = None,
+        num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
     ) -> "IncomingAdmissionPredictor":
         """Fit the model to the training data.
 
+        The underlying arrival-rate calculation is independent of the prediction
+        window and the set of prediction times; these are now supplied at
+        ``predict()`` time. ``prediction_window`` and ``prediction_times`` are
+        therefore deprecated as ``fit()`` parameters: if provided, a
+        `DeprecationWarning` is emitted and the values are stored as
+        fall-back defaults for ``predict()``.
+
         Parameters
         ----------
         train_df : pandas.DataFrame
             The training dataset with historical admission data.
-        prediction_window : timedelta
-            The prediction window as a timedelta object.
+        prediction_window : timedelta, optional
+            Deprecated. Prefer passing ``prediction_window`` to
+            `predict()` / `predict_mean()` instead. If provided, will
+            be stored as a fall-back default for predict-time use.
         yta_time_interval : timedelta
-            The interval for splitting the prediction window as a timedelta object.
-        prediction_times : list
-            Times of day at which predictions are made, in hours.
+            The granularity of arrival-rate buckets. Required.
+        prediction_times : list, optional
+            Deprecated. Prediction times are no longer needed at fit time; any
+            prediction time can be served at predict time (snapped to the
+            nearest ``yta_time_interval`` boundary). Retained for backward
+            compatibility only.
         num_days : int
-            The number of days that the train_df spans.
+            The number of days that the train_df spans. Required.
         epsilon : float, default=1e-7
             A small value representing acceptable error rate to enable calculation
             of the maximum value of the random variable representing number of beds.
@@ -560,80 +545,123 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         Raises
         ------
         TypeError
-            If prediction_window or yta_time_interval are not timedelta objects.
+            If ``yta_time_interval`` is missing or not a timedelta, or if
+            ``prediction_window`` (when supplied) is not a timedelta, or if
+            ``num_days`` is missing.
         ValueError
-            If prediction_window/yta_time_interval is not greater than 1.
+            If ``yta_time_interval`` is not positive, or if
+            ``prediction_window`` (when supplied) is not positive or is not
+            significantly larger than ``yta_time_interval``.
         """
 
-        # Validate inputs
-        if not isinstance(prediction_window, timedelta):
-            raise TypeError("prediction_window must be a timedelta object")
+        # Validate required inputs
+        if yta_time_interval is None:
+            raise TypeError("yta_time_interval is required")
         if not isinstance(yta_time_interval, timedelta):
             raise TypeError("yta_time_interval must be a timedelta object")
-
-        if prediction_window.total_seconds() <= 0:
-            raise ValueError("prediction_window must be positive")
         if yta_time_interval.total_seconds() <= 0:
             raise ValueError("yta_time_interval must be positive")
         if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
             warnings.warn("yta_time_interval appears to be longer than 4 hours")
+        if num_days is None:
+            raise TypeError("num_days is required")
 
-        # Validate the ratio makes sense
-        ratio = prediction_window / yta_time_interval
-        if int(ratio) == 0:
-            raise ValueError(
-                "prediction_window must be significantly larger than yta_time_interval"
+        # Deprecation handling for prediction_window / prediction_times
+        if prediction_window is not None:
+            warnings.warn(
+                "Passing prediction_window to fit() is deprecated; pass it to "
+                "predict() / predict_mean() instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if not isinstance(prediction_window, timedelta):
+                raise TypeError("prediction_window must be a timedelta object")
+            if prediction_window.total_seconds() <= 0:
+                raise ValueError("prediction_window must be positive")
+            ratio = prediction_window / yta_time_interval
+            if int(ratio) == 0:
+                raise ValueError(
+                    "prediction_window must be significantly larger than yta_time_interval"
+                )
+        if prediction_times is not None:
+            warnings.warn(
+                "Passing prediction_times to fit() is deprecated; any prediction "
+                "time can be served at predict time. This argument is retained "
+                "for backward compatibility only and will be removed in a future "
+                "release.",
+                DeprecationWarning,
+                stacklevel=2,
             )
 
-        # Store original types
-        self.prediction_window = prediction_window
+        # Store required metadata
         self.yta_time_interval = yta_time_interval
+        self.yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
         self.epsilon = epsilon
-        self.prediction_times = [
-            tuple(x)
-            if isinstance(x, (list, np.ndarray))
-            else (x, 0)
-            if isinstance(x, (int, float))
-            else x
-            for x in prediction_times
-        ]
 
-        # Initialize yet_to_arrive_dict
+        # Store deprecated fit-time values as predict-time fall-backs
+        self._deprecated_fit_prediction_window = prediction_window
+        if prediction_times is not None:
+            normalized_times = [
+                tuple(x)
+                if isinstance(x, (list, np.ndarray))
+                else (x, 0)
+                if isinstance(x, (int, float))
+                else x
+                for x in prediction_times
+            ]
+        else:
+            normalized_times = None
+        self._deprecated_fit_prediction_times = normalized_times
+
+        # Maintain legacy attributes for backward compatibility with downstream
+        # "has been fit" checks and tests that read these directly. They are not
+        # used by the prediction code path.
+        self.prediction_window = prediction_window
+        self.prediction_times = normalized_times
+        self.prediction_window_hours: Optional[float] = (
+            prediction_window.total_seconds() / 3600
+            if prediction_window is not None
+            else None
+        )
+        self.NTimes: Optional[int] = (
+            int(prediction_window / yta_time_interval)
+            if prediction_window is not None
+            else None
+        )
+
+        # Initialise weights with the full 24-hour arrival-rate dictionary
         self.weights = {}
-
-        # If there are filters specified, calculate and store the parameters directly with the respective spec keys
         if self.filters:
             for spec, filters in self.filters.items():
                 self.weights[spec] = self._calculate_parameters(
                     self.filter_dataframe(train_df, filters),
-                    prediction_window,
                     yta_time_interval,
-                    prediction_times,
                     num_days,
                 )
         else:
-            # If there are no filters, store the parameters with a generic key of 'unfiltered'
             self.weights["unfiltered"] = self._calculate_parameters(
                 train_df,
-                prediction_window,
                 yta_time_interval,
-                prediction_times,
                 num_days,
             )
 
         if self.verbose:
+            if normalized_times is not None:
+                self.logger.info(
+                    f"{self.__class__.__name__} fit-time prediction_times "
+                    f"(deprecated): {normalized_times}"
+                )
+            if prediction_window is not None:
+                self.logger.info(
+                    f"fit-time prediction window (deprecated) of "
+                    f"{prediction_window} after the time of prediction"
+                )
             self.logger.info(
-                f"{self.__class__.__name__} trained for these times: {prediction_times}"
-            )
-            self.logger.info(
-                f"using prediction window of {prediction_window} after the time of prediction"
-            )
-            self.logger.info(
-                f"and time interval of {yta_time_interval} within the prediction window."
+                f"Time interval of {yta_time_interval} used to bucket arrival rates."
             )
             self.logger.info(f"The error value for prediction will be {epsilon}")
             self.logger.info(
-                "To see the weights saved by this model, used the get_weights() method"
+                "To see the weights saved by this model, use the get_weights() method"
             )
 
         # Store metrics about the training data
@@ -642,11 +670,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.metrics["start_date"] = train_df.index.min().date()
         self.metrics["end_date"] = train_df.index.max().date()
         self.metrics["num_days"] = num_days
-
-        # Cache commonly used interval metadata
-        self.NTimes = int(self.prediction_window / self.yta_time_interval)
-        self.prediction_window_hours = self.prediction_window.total_seconds() / 3600
-        self.yta_time_interval_hours = self.yta_time_interval.total_seconds() / 3600
 
         return self
 
@@ -708,7 +731,12 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         pass
 
-    def predict_mean(self, prediction_context: Dict, **kwargs) -> float:
+    def predict_mean(
+        self,
+        prediction_context: Dict,
+        prediction_window: Optional[timedelta] = None,
+        **kwargs,
+    ) -> float:
         """Return just the Poisson mean (expected value) for each context.
 
         This method extracts the underlying Poisson mean without computing
@@ -720,9 +748,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
+        prediction_window : timedelta, optional
+            The prediction window. Required. If omitted, the value (if any)
+            supplied to ``fit()`` is used and a `DeprecationWarning`
+            is emitted.
         **kwargs
             Additional keyword arguments specific to the prediction method.
-            These are passed to the subclass-specific _get_admission_probabilities method.
+            These are passed to the subclass-specific ``_get_admission_probabilities`` method.
 
         Returns
         -------
@@ -732,27 +764,25 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         Raises
         ------
         ValueError
-            If filter key is not recognized or prediction_time is not provided.
+            If filter key is not recognized, ``prediction_time`` is not provided,
+            or ``prediction_window`` cannot be resolved.
         KeyError
             If required keys are missing from the prediction context.
         """
-        # Get admission probabilities using subclass-specific method
-        admission_probs = self._get_admission_probabilities(**kwargs)
+        prediction_window = self._resolve_prediction_window(prediction_window)
 
-        # Iterate through the single filter_key (as per usage pattern)
+        admission_probs = self._get_admission_probabilities(
+            prediction_window=prediction_window, **kwargs
+        )
+
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context
+            prediction_context, prediction_window
         ):
-            # Calculate Poisson mean: sum of arrival_rates * admission_probs
             poisson_mean = float(
                 np.sum(np.array(arrival_rates) * np.array(admission_probs))
             )
-
-            # Return the single mean value immediately
             return poisson_mean
 
-        # This should never be reached due to validation in _iter_prediction_inputs,
-        # but included for mypy compliance
         raise ValueError("No valid prediction context provided")
 
 
@@ -780,7 +810,12 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
     for comparison with more complex models.
     """
 
-    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
+    def predict(
+        self,
+        prediction_context: Dict,
+        prediction_window: Optional[timedelta] = None,
+        **kwargs,
+    ) -> Dict:
         """Predict the number of admissions assuming 100% admission rate.
 
         Parameters
@@ -788,6 +823,10 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
+        prediction_window : timedelta, optional
+            The prediction window over which admissions are accumulated.
+            Required. If omitted, the value (if any) supplied to ``fit()`` is
+            used and a `DeprecationWarning` is emitted.
         **kwargs
             Additional keyword arguments for prediction configuration:
 
@@ -802,24 +841,21 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         Raises
         ------
         ValueError
-            If filter key is not recognized or prediction_time is not provided.
-            If parametric parameters (x1, y1, x2, y2) are provided (not used by direct predictor).
+            If filter key is not recognized, ``prediction_time`` is not provided,
+            or ``prediction_window`` cannot be resolved.
         KeyError
             If required keys are missing from the prediction context.
         """
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
+        prediction_window = self._resolve_prediction_window(prediction_window)
 
-        # legacy inline import removed
-
-        # Extract parameters from kwargs with defaults (unified default if not provided)
         max_value = kwargs.get("max_value")
 
         predictions = {}
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context
+            prediction_context, prediction_window
         ):
-            # Generating-function approach (always)
             # For direct case, admission probabilities are all 1.0 (100% admission rate)
             admission_probs = np.ones(len(arrival_rates))
 
@@ -842,7 +878,9 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         return predictions
 
-    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+    def _get_admission_probabilities(
+        self, prediction_window: Optional[timedelta] = None, **kwargs
+    ) -> np.ndarray:
         """Get admission probabilities for direct method (always 1.0).
 
         For the direct predictor, all arrivals are assumed to be admitted immediately,
@@ -850,6 +888,10 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
+        prediction_window : timedelta, optional
+            The prediction window. Used to determine the number of time
+            intervals. Resolved via `_resolve_prediction_window()` if
+            omitted.
         **kwargs
             Additional keyword arguments (ignored for direct method).
 
@@ -858,8 +900,8 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         numpy.ndarray
             Array of ones with length equal to the number of time intervals.
         """
-        # Use cached metadata to get the number of time intervals
-        _, _, NTimes = self._get_window_and_interval_hours()
+        prediction_window = self._resolve_prediction_window(prediction_window)
+        _, _, NTimes = self._get_window_and_interval_hours(prediction_window)
         return np.ones(NTimes)
 
 
@@ -904,7 +946,12 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t λ_t θ_t).
     """
 
-    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
+    def predict(
+        self,
+        prediction_context: Dict,
+        prediction_window: Optional[timedelta] = None,
+        **kwargs,
+    ) -> Dict:
         """Predict the number of admissions for the given context using parametric curves.
 
         Parameters
@@ -912,6 +959,10 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
+        prediction_window : timedelta, optional
+            The prediction window over which admissions are accumulated.
+            Required. If omitted, the value (if any) supplied to ``fit()`` is
+            used and a `DeprecationWarning` is emitted.
         **kwargs
             Additional keyword arguments for parametric curve configuration:
 
@@ -938,13 +989,14 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         Raises
         ------
         ValueError
-            If filter key is not recognized or prediction_time is not provided.
+            If filter key is not recognized, ``prediction_time`` is not provided,
+            or ``prediction_window`` cannot be resolved.
         KeyError
             If required keys are missing from the prediction context.
 
         Assumptions
         -----------
-        Uses the Poisson arrivals with independent filtering (often called “Poisson thinning”):
+        Uses the Poisson arrivals with independent filtering (often called "Poisson thinning"):
         - λ_t: expected arrivals in slice t; θ_t: probability of admission within window for arrivals in slice t
         - Arrivals per slice t follow Poisson(λ_t), slices are independent
         - Each arrival is admitted independently with probability θ_t (constant per slice)
@@ -957,15 +1009,16 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             kwargs, required | {"max_value"}, context=self.__class__.__name__
         )
 
+        prediction_window = self._resolve_prediction_window(prediction_window)
+
         predictions = {}
 
-        # Use cached metadata
         prediction_window_hours, yta_time_interval_hours, NTimes = (
-            self._get_window_and_interval_hours()
+            self._get_window_and_interval_hours(prediction_window)
         )
 
-        # Calculate theta, probability of admission in prediction window
-        # for each time interval, calculate time remaining before end of window
+        # Calculate theta, probability of admission in prediction window,
+        # for each time interval based on time remaining before end of window
         time_remaining_before_end_of_window = prediction_window_hours - np.arange(
             0, prediction_window_hours, yta_time_interval_hours
         )
@@ -981,7 +1034,7 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         max_value = kwargs.get("max_value")
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context
+            prediction_context, prediction_window
         ):
             # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
             mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
@@ -996,7 +1049,9 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return predictions
 
-    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+    def _get_admission_probabilities(
+        self, prediction_window: Optional[timedelta] = None, **kwargs
+    ) -> np.ndarray:
         """Get admission probabilities for parametric method using aspirational curves.
 
         Uses the parametric aspirational curve to calculate admission probabilities
@@ -1004,6 +1059,9 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
+        prediction_window : timedelta, optional
+            The prediction window. Resolved via
+            `_resolve_prediction_window()` if omitted.
         **kwargs
             Additional keyword arguments. Must include:
             - x1, y1, x2, y2: Parameters for the aspirational curve
@@ -1018,21 +1076,19 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         ValueError
             If required parameters (x1, y1, x2, y2) are missing.
         """
-        # Validate/collect kwargs
         required = {"x1", "y1", "x2", "y2"}
         params = self._ensure_required_kwargs(kwargs, required, self.__class__.__name__)
 
-        # Use cached metadata
+        prediction_window = self._resolve_prediction_window(prediction_window)
+
         prediction_window_hours, yta_time_interval_hours, NTimes = (
-            self._get_window_and_interval_hours()
+            self._get_window_and_interval_hours(prediction_window)
         )
 
-        # Calculate time remaining before end of window for each interval
         time_remaining_before_end_of_window = prediction_window_hours - np.arange(
             0, prediction_window_hours, yta_time_interval_hours
         )
 
-        # Calculate admission probabilities using aspirational curve
         theta = get_y_from_aspirational_curve(
             time_remaining_before_end_of_window,
             params["x1"],
@@ -1075,16 +1131,21 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window,
-        yta_time_interval,
-        prediction_times: List[float],
-        num_days: int,
-        epsilon=10**-7,
-        y=None,
-        start_time_col="arrival_datetime",
-        end_time_col="departure_datetime",
+        prediction_window: Optional[timedelta] = None,
+        yta_time_interval: Optional[timedelta] = None,
+        prediction_times: Optional[List[float]] = None,
+        num_days: Optional[int] = None,
+        epsilon: float = 10**-7,
+        y: Optional[None] = None,
+        start_time_col: str = "arrival_datetime",
+        end_time_col: str = "departure_datetime",
     ) -> "EmpiricalIncomingAdmissionPredictor":
         """Fit the model to the training data and calculate empirical survival curve.
+
+        The survival curve is independent of the prediction window and the set
+        of prediction times; these are now supplied at ``predict()`` time.
+        ``prediction_window`` and ``prediction_times`` are therefore deprecated
+        as ``fit()`` parameters; see `IncomingAdmissionPredictor.fit()`.
 
         Parameters
         ----------
@@ -1092,16 +1153,15 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             The training dataset with historical admission data.
             Expected to have start_time_col as the index and end_time_col as a column.
             Alternatively, both can be regular columns.
-        prediction_window : int or timedelta
-            The prediction window in minutes. If timedelta, will be converted to minutes.
-            If int, assumed to be in minutes.
-        yta_time_interval : int or timedelta
-            The interval in minutes for splitting the prediction window. If timedelta, will be converted to minutes.
-            If int, assumed to be in minutes.
-        prediction_times : list
-            Times of day at which predictions are made, in hours.
+        prediction_window : timedelta, optional
+            Deprecated. Prefer passing ``prediction_window`` to
+            `predict()` / `predict_mean()` instead.
+        yta_time_interval : timedelta
+            The granularity of arrival-rate buckets. Required.
+        prediction_times : list, optional
+            Deprecated. Retained for backward compatibility only.
         num_days : int
-            The number of days that the train_df spans.
+            The number of days that the train_df spans. Required.
         epsilon : float, default=1e-7
             A small value representing acceptable error rate to enable calculation
             of the maximum value of the random variable representing number of beds.
@@ -1118,15 +1178,10 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         EmpiricalIncomingAdmissionPredictor
             The instance itself, fitted with the training data.
         """
-        # Calculate survival curve from training data using existing function
-        # Handle case where start_time_col is in the index
         if start_time_col in train_df.columns:
-            # start_time_col is a regular column
             df_for_survival = train_df
         else:
-            # start_time_col is likely the index, reset it to make it a column
             df_for_survival = train_df.reset_index()
-            # Verify that start_time_col is now available
             if start_time_col not in df_for_survival.columns:
                 raise ValueError(
                     f"Column '{start_time_col}' not found in DataFrame columns or index"
@@ -1136,7 +1191,6 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             df_for_survival, start_time_col=start_time_col, end_time_col=end_time_col
         )
 
-        # Verify survival curve was calculated and saved successfully
         if self.survival_df is None or len(self.survival_df) == 0:
             raise RuntimeError("Failed to calculate survival curve from training data")
 
@@ -1144,13 +1198,12 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         if start_time_col in train_df.columns:
             train_df = train_df.set_index(start_time_col)
 
-        # Call parent fit method to handle arrival rate calculation and validation
         super().fit(
             train_df,
-            prediction_window,
-            yta_time_interval,
-            prediction_times,
-            num_days,
+            prediction_window=prediction_window,
+            yta_time_interval=yta_time_interval,
+            prediction_times=prediction_times,
+            num_days=num_days,
             epsilon=epsilon,
             y=y,
         )
@@ -1187,22 +1240,22 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
-        prediction_window : int or timedelta
+        prediction_window : timedelta
             The prediction window.
-        yta_time_interval : int or timedelta
-            The time interval for splitting the prediction window.
+        yta_time_interval : timedelta
+            The time interval for splitting the prediction window. Retained
+            for API stability; derived from ``self.yta_time_interval`` if not
+            otherwise needed.
 
         Returns
         -------
         numpy.ndarray
             Array of admission probabilities for each time interval.
         """
-        # Use cached metadata for consistency
         prediction_window_hours, yta_time_interval_hours, NTimes = (
-            self._get_window_and_interval_hours()
+            self._get_window_and_interval_hours(prediction_window)
         )
 
-        # Calculate admission probabilities for each time interval
         probabilities = []
         for i in range(NTimes):
             # Time remaining until end of prediction window
@@ -1262,7 +1315,12 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
         return gf.get_distribution(max_value=max_value)
 
-    def predict(self, prediction_context: Dict, **kwargs) -> Dict:
+    def predict(
+        self,
+        prediction_context: Dict,
+        prediction_window: Optional[timedelta] = None,
+        **kwargs,
+    ) -> Dict:
         """Predict the number of admissions using empirical survival curves.
 
         Parameters
@@ -1270,6 +1328,10 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict
             A dictionary defining the context for which predictions are to be made.
             It should specify either a general context or one based on the applied filters.
+        prediction_window : timedelta, optional
+            The prediction window over which admissions are accumulated.
+            Required. If omitted, the value (if any) supplied to ``fit()`` is
+            used and a `DeprecationWarning` is emitted.
         **kwargs
             Additional keyword arguments for prediction configuration:
 
@@ -1284,34 +1346,31 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         Raises
         ------
         ValueError
-            If filter key is not recognized or prediction_time is not provided.
-            If parametric parameters (x1, y1, x2, y2) are provided (not used by empirical predictor).
+            If filter key is not recognized, ``prediction_time`` is not provided,
+            or ``prediction_window`` cannot be resolved.
         KeyError
             If required keys are missing from the prediction context.
         RuntimeError
             If survival_df was not provided during fitting.
         """
-        # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
-
         if self.survival_df is None:
             raise RuntimeError(
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
             )
 
-        # Extract parameters from kwargs with unified default if not provided
+        prediction_window = self._resolve_prediction_window(prediction_window)
+
         max_value = kwargs.get("max_value")
 
         predictions = {}
 
-        # Calculate survival probabilities once (they're the same for all contexts)
         survival_probabilities = self._calculate_survival_probabilities(
-            self.prediction_window, self.yta_time_interval
+            prediction_window, self.yta_time_interval
         )
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            prediction_context
+            prediction_context, prediction_window
         ):
-            # Generate prediction using convolution approach
             mv = (
                 max_value
                 if max_value is not None
@@ -1323,7 +1382,9 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         return predictions
 
-    def _get_admission_probabilities(self, **kwargs) -> np.ndarray:
+    def _get_admission_probabilities(
+        self, prediction_window: Optional[timedelta] = None, **kwargs
+    ) -> np.ndarray:
         """Get admission probabilities for empirical method using survival curves.
 
         Uses the empirical survival curve calculated during fitting to determine
@@ -1332,6 +1393,9 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
+        prediction_window : timedelta, optional
+            The prediction window. Resolved via
+            `_resolve_prediction_window()` if omitted.
         **kwargs
             Additional keyword arguments (ignored for empirical method).
 
@@ -1350,9 +1414,10 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
                 "No survival data available. Please call fit() method first to calculate survival curve from training data."
             )
 
-        # Calculate survival probabilities using existing method
+        prediction_window = self._resolve_prediction_window(prediction_window)
+
         survival_probabilities = self._calculate_survival_probabilities(
-            self.prediction_window, self.yta_time_interval
+            prediction_window, self.yta_time_interval
         )
 
         return survival_probabilities

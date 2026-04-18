@@ -74,7 +74,7 @@ def warn_specialty_mismatch(
         Human-readable name for the trained artefact, used in messages
         (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
     stacklevel : int, optional
-        Passed to :func:`warnings.warn` so the warning points to the
+        Passed to `warnings.warn()` so the warning points to the
         caller rather than this helper.  Default is 3 (caller's caller).
     """
     new_in_request = requested - trained
@@ -425,22 +425,13 @@ def create_predictions(
         # MultiSubgroupPredictor path: require subgroup mapping to exist (set during fit)
         if not hasattr(spec_model, "specialty_to_subgroups"):
             raise ValueError("Specialty model has not been fit")
-    if (
-        not hasattr(yet_to_arrive_model, "prediction_window")
-        or yet_to_arrive_model.prediction_window is None
-    ):
+    if not hasattr(yet_to_arrive_model, "weights") or not yet_to_arrive_model.weights:
         raise ValueError("Yet-to-arrive model has not been fit")
 
-    # Validate that the correct models have been passed for the requested prediction time and prediction window
+    # Validate that the correct classifier has been passed for the requested prediction time
     if not classifier.training_results.prediction_time == prediction_time:
         raise ValueError(
             f"Requested prediction time {prediction_time} does not match the prediction time of the trained classifier {classifier.training_results.prediction_time}"
-        )
-
-    # Compare prediction windows directly
-    if prediction_window != yet_to_arrive_model.prediction_window:
-        raise ValueError(
-            f"Requested prediction window {prediction_window} does not match the prediction window of the trained yet-to-arrive model {yet_to_arrive_model.prediction_window}"
         )
 
     warn_specialty_mismatch(
@@ -596,9 +587,19 @@ def create_predictions(
 
         if specialty in trained_yta_keys:
             prediction_context = {specialty: {"prediction_time": prediction_time}}
-            agg_predicted_yta = yet_to_arrive_model.predict(
-                prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-            )
+            if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
+                agg_predicted_yta = yet_to_arrive_model.predict(
+                    prediction_context, prediction_window=prediction_window
+                )
+            else:
+                agg_predicted_yta = yet_to_arrive_model.predict(
+                    prediction_context,
+                    prediction_window=prediction_window,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                )
             yta_proba = agg_predicted_yta[specialty]["agg_proba"]
         else:
             yta_proba = pd.Series([1.0], name="agg_proba")

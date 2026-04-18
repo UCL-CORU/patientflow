@@ -579,7 +579,9 @@ def get_prob_dist_using_survival_curve(
                 prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
 
         # Get predictions from model
-        predictions = model.predict(prediction_context)
+        predictions = model.predict(
+            prediction_context, prediction_window=prediction_window
+        )
         prob_dist_dict[dt] = {"agg_predicted": predictions[category]}
 
         # Calculate observed values

@@ -130,10 +130,10 @@ def prepare_snapshot_data(
         ``(hour, minute)`` prediction time to select.
     location_mapping : dict or None, optional
         Mapping from raw ``current_location_type`` values to display
-        category names.  Defaults to :data:`DEFAULT_LOCATION_MAPPING`.
+        category names.  Defaults to `DEFAULT_LOCATION_MAPPING`.
     category_order : list of str or None, optional
         Ordered list of display category names for the y-axis.
-        Defaults to :data:`DEFAULT_CATEGORY_ORDER`.
+        Defaults to `DEFAULT_CATEGORY_ORDER`.
     exclude_locations : list of str or None, optional
         Raw location types to exclude.  Defaults to ``["OTF"]``.
 
