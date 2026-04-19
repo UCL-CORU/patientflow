@@ -853,6 +853,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using the EmpiricalIncomingAdmissionPredictor class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generate-a-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate a prediction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1451,6 +1468,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Using the EmpiricalIncomingAdmissionPredictor class">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generate-a-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate a prediction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -1929,9 +1963,9 @@ plot_prob_dist(combined_dist, title,
 <h3 id="using-the-empiricalincomingadmissionpredictor-class">Using the <code>EmpiricalIncomingAdmissionPredictor</code> class</h3>
 <p>A custom class <code>EmpiricalIncomingAdmissionPredictor</code> has been created, for this purpose, that follows the same logic as the code snippet above.</p>
 <p>A survival curve is generated from the training data, and used to determine the probability of admission before the end of the prediction window, for a patient who arrives at a particular moment in the window.</p>
-<p>To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time segments based on the <code>yta_time_interval</code> parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 segments.</p>
-<p>For each segment, the class calculates two key values: the expected patient arrival rate and the probability that patients arriving in that segment will be admitted by the end of the full window. These values are multiplied together to create a weighted mean for a Poisson distribution representing that segment.</p>
-<p>Finally, all 32 segment distributions are combined to produce an overall probability distribution showing the total number of beds likely needed during the prediction window.</p>
+<p>To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time intervals based on the yta_time_interval parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 intervals.</p>
+<p>For each interval, the class calculates two key values: the expected patient arrival rate and the probability that patients arriving in that interval will be admitted by the end of the full window. These values are multiplied together to create a weighted mean for a Poisson distribution representing that interval.</p>
+<p>Finally, all 32 interval distributions are combined to produce an overall probability distribution showing the total number of beds likely needed during the prediction window.</p>
 <p>I demonstrate how you fit the <code>EmpiricalIncomingAdmissionPredictor</code> below.</p>
 <pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
@@ -1945,9 +1979,9 @@ if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
 yta_model_empirical.fit(train_visits_copy,
-                        prediction_window=timedelta(hours=8),
+#                        prediction_window=timedelta(hours=8),  deprecated; prediction_window is now a parameter of the predict() method
                         yta_time_interval=timedelta(minutes=15),
-                        prediction_times=prediction_times,
+#                        prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
                         num_days=num_days,
                         start_time_col='arrival_datetime',
                         end_time_col='admitted_to_ward_datetime')
@@ -1955,19 +1989,13 @@ yta_model_empirical.fit(train_visits_copy,
 <pre><code>Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
-EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-using prediction window of 8:00:00 after the time of prediction
-
-
-and time interval of 0:15:00 within the prediction window.
+Time interval of 0:15:00 used to bucket arrival rates.
 
 
 The error value for prediction will be 1e-07
 
 
-To see the weights saved by this model, used the get_weights() method
+To see the weights saved by this model, use the get_weights() method
 
 
 EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
@@ -2478,19 +2506,54 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 <p>881 rows × 3 columns</p>
 </div>
 
-<pre><code class="language-python">arrival_rates_by_time_interval = yta_model_empirical.weights['unfiltered'][(12,0)]['arrival_rates']
+<p>The weights saved with the model contain an arrival rate for each interval. To generate the arrival rates for a given prediction time, we pass this as a parameter to the model.</p>
+<pre><code class="language-python">from datetime import datetime, timedelta
+
+prediction_window = timedelta(hours=8)
+yta_time_interval = timedelta(minutes=15)
+prediction_time = (12, 0)
+
+# The fitted model stores a single 24-hour arrival-rate profile per filter,
+# keyed by time-of-day. We slice out the portion starting at prediction_time
+# and covering prediction_window, stepping forward in yta_time_interval chunks.
+arrival_rates_dict = yta_model_empirical.weights['unfiltered']['arrival_rates_dict']
+
+# Number of discrete intervals that fit inside the prediction window
+# (e.g. 8 hours / 15 minutes = 32).
+Ntimes = int(prediction_window / yta_time_interval)
+
+# Use an arbitrary epoch date as a carrier so we can do timedelta arithmetic
+# on the (hour, minute) tuple and then take .time() to look up the rate.
+start = datetime(1970, 1, 1, *prediction_time)
+arrival_rates_by_time_interval = [
+    arrival_rates_dict[(start + i * yta_time_interval).time()]
+    for i in range(Ntimes)
+]
+
 print(
     f'The calculated arrival rates for the first 10 discrete time intervals '
-    f'for the 12:00 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
+    f'for the {prediction_time[0]:02d}:{prediction_time[1]:02d} prediction time are: '
+    f'{[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}'
+)
 </code></pre>
 <pre><code>The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 </code></pre>
-<pre><code class="language-python">prediction_context = {
-    'unfiltered': {
-        'prediction_time': tuple([12,0])
-    }
-}
-weighted_poisson_empirical = yta_model_empirical.predict(prediction_context)
+<h4 id="generate-a-prediction">Generate a prediction</h4>
+<p>We can now call <code>predict()</code> to get a distribution for how many yet-to-arrive patients are expected to need a bed within the prediction window.</p>
+<p>Pass <strong><code>prediction_time</code></strong> as the time of day to start from, as an <code>(hour, minute)</code> tuple. Pass <strong><code>prediction_window</code></strong> at predict time (not fit time), so the same fitted model can be used for different horizons.</p>
+<p>If the model was fitted <strong>without</strong> filters, there is only one key in <strong><code>weights</code></strong> (e.g. <code>unfiltered</code>), so <strong><code>filter_keys</code></strong> can be left out. If you fitted <strong>with</strong> filters, pass <strong><code>filter_keys</code></strong> as a single hospital <strong>service</strong> name or a list of names — the same names you used as keys in <strong><code>filters</code></strong>. Every service you ask for in one call shares the <strong>same</strong> <strong><code>prediction_time</code></strong>.</p>
+<p>The result is still a dict whose keys match <strong><code>weights</code></strong> (e.g. service name); each value is the weighted Poisson distribution for that service.</p>
+<p><strong>Note:</strong> the old nested <strong><code>prediction_context</code></strong> dict (<code>{service: {"prediction_time": ...}}</code>, as the first argument or as <code>prediction_context=...</code>) still works but triggers a <strong><code>DeprecationWarning</code></strong> and will be removed in a later version. Prefer <strong><code>prediction_time=</code></strong> and <strong><code>filter_keys=</code></strong> when you can.</p>
+<pre><code class="language-python"># # deprecated code retained for reference
+# prediction_context = {
+#     'unfiltered': {
+#         'prediction_time': tuple([12,0])
+#     }
+# }
+weighted_poisson_empirical = yta_model_empirical.predict(
+    prediction_time=(12,0),
+    prediction_window=timedelta(hours=8) # now passed at predict() method
+)
 
 </code></pre>
 <pre><code class="language-python">from patientflow.viz.probability_distribution import plot_prob_dist
@@ -2505,7 +2568,7 @@ title = (
 plot_prob_dist(weighted_poisson_empirical['unfiltered'], title,
     include_titles=True, truncate_at_beds=40, bar_colour=colour_dict[&quot;single&quot;][&quot;all&quot;])
 </code></pre>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_34_0.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_36_0.png" /></p>
 <p>It is also possible to generate predictions by specialty, by passing a dictionary comprised of the required subgroups (the key) and a nested dictionary (the value) specifying how to identify them, with a column name (the nested key) and the values to filter from that column.</p>
 <pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
@@ -2523,9 +2586,9 @@ specialty_filters = filters={
 yta_model_by_spec_empirical =  EmpiricalIncomingAdmissionPredictor(filters = specialty_filters, verbose=True)
 
 yta_model_by_spec_empirical.fit(train_visits_copy,
-                        prediction_window=timedelta(hours=8),
+#                        prediction_window=timedelta(hours=8), deprecated; prediction_window is now a parameter of the predict() method
                         yta_time_interval=timedelta(minutes=15),
-                        prediction_times=prediction_times,
+#                        prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
                         num_days=num_days,
                         start_time_col='arrival_datetime',
                         end_time_col='admitted_to_ward_datetime')
@@ -2542,19 +2605,13 @@ Calculating time-varying arrival rates for data provided, which spans 45 unique 
 Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
-EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-using prediction window of 8:00:00 after the time of prediction
-
-
-and time interval of 0:15:00 within the prediction window.
+Time interval of 0:15:00 used to bucket arrival rates.
 
 
 The error value for prediction will be 1e-07
 
 
-To see the weights saved by this model, used the get_weights() method
+To see the weights saved by this model, use the get_weights() method
 
 
 EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
@@ -2986,12 +3043,11 @@ plot_order = [&quot;medical&quot;, &quot;surgical&quot;, &quot;haem/onc&quot;, &
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
 for ax, specialty in zip(axes.flat, plot_order):
-    prediction_context = {
-        specialty: {
-            'prediction_time': tuple([12,0])
-        }
-    }
-    weighted_poisson_empirical = yta_model_by_spec_empirical.predict(prediction_context)
+    weighted_poisson_empirical = yta_model_by_spec_empirical.predict(
+        prediction_time=(12,0),
+        filter_keys=specialty,
+        prediction_window=timedelta(hours=8) # now passed at predict() method
+    )
 
     title = specialty.title()
     plot_prob_dist(weighted_poisson_empirical[specialty], title,
@@ -3011,7 +3067,7 @@ fig.suptitle(
 fig.tight_layout()
 plt.show()
 </code></pre>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_37_0.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_39_0.png" /></p>
 <h2 id="train-a-weighted-poisson-model-using-an-aspirational-approach">Train a weighted Poisson model using an aspirational approach</h2>
 <p>The model above has learned the rates of arrivals of patients who are later admitted within a prediction window from past data.</p>
 <p>A problem with this approach is that rates are learned from periods of poor performance. Currently, in England Emergency Departments have a target of processing all patients within four hours of their arrival time. However, EDs across the country have not hit targets since the end of the Covid pandemic.</p>
@@ -3020,7 +3076,7 @@ plt.show()
 <pre><code class="language-python">from IPython.display import Image
 Image(filename='img/thumbnail_KingsFund_AE_performance.png')
 </code></pre>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_39_0.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_41_0.png" /></p>
 <p><code>patientflow</code> offers an aspirational weighted Poisson model, that will calculate each patient's probability of being admitted within the prediction window, if targets are met. Targets are set using the parameters set in config.yaml, as shown below.</p>
 <pre><code class="language-python">from patientflow.load import load_config_file, set_file_paths, set_project_root
 project_root = set_project_root()
@@ -3053,7 +3109,7 @@ plot_curve(
 )
 
 </code></pre>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_43_0.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_45_0.png" /></p>
 <p>Below I demonstrate the use of a Weighted Poisson predictor.</p>
 <p>Its <code>fit()</code> method will, for each prediction time:</p>
 <ul>
@@ -3079,28 +3135,22 @@ if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
 yta_model_parametric.fit(train_visits_copy,
-              prediction_window=timedelta(hours=8),
+#              prediction_window=timedelta(hours=8), deprecated; prediction_window is now a parameter of the predict() method
               yta_time_interval=timedelta(minutes=15),
-              prediction_times=prediction_times,
+#              prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
               num_days=num_days)
 
 </code></pre>
 <pre><code>Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
-ParametricIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-using prediction window of 8:00:00 after the time of prediction
-
-
-and time interval of 0:15:00 within the prediction window.
+Time interval of 0:15:00 used to bucket arrival rates.
 
 
 The error value for prediction will be 1e-07
 
 
-To see the weights saved by this model, used the get_weights() method
+To see the weights saved by this model, use the get_weights() method
 </code></pre>
 <style>#sk-container-id-3 {
   /* Definition of color scheme common for light and dark mode */
@@ -3510,27 +3560,48 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 <div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 <p>Below we view the results of the fit method for the 12:00 prediction time.</p>
-<pre><code class="language-python">arrival_rates_by_time_interval = yta_model_parametric.weights['unfiltered'][(12,0)]['arrival_rates']
+<pre><code class="language-python">
+prediction_window = timedelta(hours=8)
+yta_time_interval = timedelta(minutes=15)
+prediction_time = (12, 0)
+
+# The fitted model stores a single 24-hour arrival-rate profile per filter,
+# keyed by time-of-day. We slice out the portion starting at prediction_time
+# and covering prediction_window, stepping forward in yta_time_interval chunks.
+arrival_rates_dict = yta_model_parametric.weights['unfiltered']['arrival_rates_dict']
+
+# Number of discrete intervals that fit inside the prediction window
+# (e.g. 8 hours / 15 minutes = 32).
+Ntimes = int(prediction_window / yta_time_interval)
+
+# Use an arbitrary epoch date as a carrier so we can do timedelta arithmetic
+# on the (hour, minute) tuple and then take .time() to look up the rate.
+start = datetime(1970, 1, 1, *prediction_time)
+arrival_rates_by_time_interval = [
+    arrival_rates_dict[(start + i * yta_time_interval).time()]
+    for i in range(Ntimes)
+]
 print(
-    f'The calculated arrival rates for the first 10 discrete time intervals '
-    f'for the 12:00 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
+    f'Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals '
+    f'for the {prediction_time[0]:02d}:{prediction_time[1]:02d} prediction time are: '
+    f'{[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}'
+)
+
 </code></pre>
-<pre><code>The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
+<pre><code>Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 </code></pre>
-<p>To use the weighted Poisson for prediction, a <code>prediction_context</code> argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.</p>
+<p>To use the weighted Poisson for prediction, the required prediction time and prediction window are passed. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 80% within 4 hours.</p>
 <pre><code class="language-python">from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
-prediction_context = {
-    'unfiltered': {
-        'prediction_time': tuple([12,0])
-    }
-}
 
-aspirational_prediction = yta_model_parametric.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+aspirational_prediction = yta_model_parametric.predict(
+    prediction_time=(12,0),
+    prediction_window=timedelta(hours=8), # now passed at predict() method
+    x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
 
 </code></pre>
-<p>The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 95% of patients. The numbers are higher than the equivalent chart above.</p>
+<p>The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 80% of patients. The numbers are higher than the equivalent chart above.</p>
 <pre><code class="language-python">colour_dict = create_colour_dict()
 
 title = (
@@ -3551,8 +3622,8 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
     include_titles=True,
     truncate_at_beds=40, bar_colour=colour_dict[&quot;single&quot;][&quot;all&quot;])
 </code></pre>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_51_0.png" /></p>
-<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_51_1.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_0.png" /></p>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_1.png" /></p>
 <h2 id="summary">Summary</h2>
 <p>Here I have demonstrated the use of <code>patientflow</code> to generate bed counts for groups of patients for which patient-level data is not yet available.</p>
 <p>If you have count data on past visits that approximate to a statistical distribution, preparing a model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need <code>patientflow</code> functions for that.</p>

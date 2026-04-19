@@ -1664,9 +1664,7 @@ if 'arrival_datetime' in train_visits_copy.columns:
 yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=True)
 yta_model_empirical.fit(
     train_visits_copy,
-    prediction_window=timedelta(hours=8),
     yta_time_interval=timedelta(minutes=15),
-    prediction_times=prediction_times,
     num_days=num_days,
     start_time_col='arrival_datetime',
     end_time_col='admitted_to_ward_datetime'
@@ -1676,19 +1674,13 @@ yta_model_empirical.fit(
 Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
-EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-using prediction window of 8:00:00 after the time of prediction
-
-
-and time interval of 0:15:00 within the prediction window.
+Time interval of 0:15:00 used to bucket arrival rates.
 
 
 The error value for prediction will be 1e-07
 
 
-To see the weights saved by this model, used the get_weights() method
+To see the weights saved by this model, use the get_weights() method
 
 
 EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
