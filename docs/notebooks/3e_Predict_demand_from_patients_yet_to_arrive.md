@@ -483,11 +483,11 @@ A custom class `EmpiricalIncomingAdmissionPredictor` has been created, for this 
 
 A survival curve is generated from the training data, and used to determine the probability of admission before the end of the prediction window, for a patient who arrives at a particular moment in the window.
 
-To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time segments based on the `yta_time_interval` parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 segments.
+To predict how many patients will arrive and need admission within a prediction window (e.g., the next 8 hours), the class breaks this window into smaller time intervals based on the yta_time_interval parameter. For example, with 15-minute intervals, an 8-hour window becomes 32 intervals.
 
-For each segment, the class calculates two key values: the expected patient arrival rate and the probability that patients arriving in that segment will be admitted by the end of the full window. These values are multiplied together to create a weighted mean for a Poisson distribution representing that segment.
+For each interval, the class calculates two key values: the expected patient arrival rate and the probability that patients arriving in that interval will be admitted by the end of the full window. These values are multiplied together to create a weighted mean for a Poisson distribution representing that interval.
 
-Finally, all 32 segment distributions are combined to produce an overall probability distribution showing the total number of beds likely needed during the prediction window.
+Finally, all 32 interval distributions are combined to produce an overall probability distribution showing the total number of beds likely needed during the prediction window.
 
 I demonstrate how you fit the `EmpiricalIncomingAdmissionPredictor` below.
 
@@ -504,37 +504,24 @@ if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
 yta_model_empirical.fit(train_visits_copy,
-                        prediction_window=timedelta(hours=8),
+#                        prediction_window=timedelta(hours=8),  deprecated; prediction_window is now a parameter of the predict() method
                         yta_time_interval=timedelta(minutes=15),
-                        prediction_times=prediction_times,
+#                        prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
                         num_days=num_days,
                         start_time_col='arrival_datetime',
                         end_time_col='admitted_to_ward_datetime')
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
-    EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-    using prediction window of 8:00:00 after the time of prediction
-
-
-    and time interval of 0:15:00 within the prediction window.
-
-
+    time interval of 0:15:00 within the prediction window.
     The error value for prediction will be 1e-07
-
-
-    To see the weights saved by this model, used the get_weights() method
-
-
+    To see the weights saved by this model, use the get_weights() method
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: black;
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -679,12 +666,21 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
-  display: block;
+  display: flex;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#sk-container-id-1 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-1 label.sk-toggleable__label-arrow:before {
@@ -837,7 +833,8 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 1ex;
+  margin-left: 0.5em;
+  text-align: center;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -936,7 +933,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 The survival curve that was calculated from the training set is saved with the returned object
 
@@ -1040,14 +1037,51 @@ yta_model_empirical.survival_df
 <p>881 rows × 3 columns</p>
 </div>
 
+The weights saved with the model contain an arrival rate for each interval. To generate the arrival rates for a given prediction time, we pass this as a parameter to the model.
+
 ```python
-arrival_rates_by_time_interval = yta_model_empirical.weights['unfiltered'][(12,0)]['arrival_rates']
+from datetime import datetime, timedelta
+
+prediction_window = timedelta(hours=8)
+yta_time_interval = timedelta(minutes=15)
+prediction_time = (12, 0)
+
+# The fitted model stores a single 24-hour arrival-rate profile per filter,
+# keyed by time-of-day. We slice out the portion starting at prediction_time
+# and covering prediction_window, stepping forward in yta_time_interval chunks.
+arrival_rates_dict = yta_model_empirical.weights['unfiltered']['arrival_rates_dict']
+
+# Number of discrete intervals that fit inside the prediction window
+# (e.g. 8 hours / 15 minutes = 32).
+Ntimes = int(prediction_window / yta_time_interval)
+
+# Use an arbitrary epoch date as a carrier so we can do timedelta arithmetic
+# on the (hour, minute) tuple and then take .time() to look up the rate.
+start = datetime(1970, 1, 1, *prediction_time)
+arrival_rates_by_time_interval = [
+    arrival_rates_dict[(start + i * yta_time_interval).time()]
+    for i in range(Ntimes)
+]
+
 print(
     f'The calculated arrival rates for the first 10 discrete time intervals '
-    f'for the 12:00 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
+    f'for the {prediction_time[0]:02d}:{prediction_time[1]:02d} prediction time are: '
+    f'{[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}'
+)
 ```
 
-    The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
+    The calculated arrival rates for the first 10 discrete time intervals for the 23:00 prediction time are: [0.089, 0.044, 0.044, 0.089, 0.044, 0.022, 0.0, 0.0, 0.022, 0.0]
+
+#### Generate a prediction
+
+Having inspected the inputs the model holds, we can now call `predict()` to produce a probability distribution for the number of patients yet to arrive who will need a bed within the prediction window.
+
+The `predict()` method takes two things:
+
+- A `prediction_context` dictionary keyed by filter. Because we fitted an unfiltered model, there is only one entry, `'unfiltered'`, whose value tells the model the time of day to predict from, given as an `(hour, minute)` tuple.
+- A `prediction_window` keyword argument. This is now supplied at predict time rather than fit time, so a single trained model can be reused across different windows without retraining.
+
+The return value is a dictionary (keyed by filter) of weighted Poisson distributions representing the number of patients yet to arrive who are expected to need admission within the requested window.
 
 ```python
 prediction_context = {
@@ -1055,7 +1089,10 @@ prediction_context = {
         'prediction_time': tuple([12,0])
     }
 }
-weighted_poisson_empirical = yta_model_empirical.predict(prediction_context)
+weighted_poisson_empirical = yta_model_empirical.predict(
+    prediction_context,
+    prediction_window=timedelta(hours=8) # now passed at predict() method
+)
 
 ```
 
@@ -1073,7 +1110,7 @@ plot_prob_dist(weighted_poisson_empirical['unfiltered'], title,
     include_titles=True, truncate_at_beds=40, bar_colour=colour_dict["single"]["all"])
 ```
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_34_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_36_0.png)
 
 It is also possible to generate predictions by specialty, by passing a dictionary comprised of the required subgroups (the key) and a nested dictionary (the value) specifying how to identify them, with a column name (the nested key) and the values to filter from that column.
 
@@ -1094,46 +1131,27 @@ specialty_filters = filters={
 yta_model_by_spec_empirical =  EmpiricalIncomingAdmissionPredictor(filters = specialty_filters, verbose=True)
 
 yta_model_by_spec_empirical.fit(train_visits_copy,
-                        prediction_window=timedelta(hours=8),
+#                        prediction_window=timedelta(hours=8), deprecated; prediction_window is now a parameter of the predict() method
                         yta_time_interval=timedelta(minutes=15),
-                        prediction_times=prediction_times,
+#                        prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
                         num_days=num_days,
                         start_time_col='arrival_datetime',
                         end_time_col='admitted_to_ward_datetime')
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
-    EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-    using prediction window of 8:00:00 after the time of prediction
-
-
-    and time interval of 0:15:00 within the prediction window.
-
-
+    Time interval of 0:15:00 used to bucket arrival rates.
     The error value for prediction will be 1e-07
-
-
-    To see the weights saved by this model, used the get_weights() method
-
-
+    To see the weights saved by this model, use the get_weights() method
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
-<style>#sk-container-id-2 {
+<style>#sk-container-id-4 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: black;
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -1161,15 +1179,15 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   }
 }
 
-#sk-container-id-2 {
+#sk-container-id-4 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-2 pre {
+#sk-container-id-4 pre {
   padding: 0;
 }
 
-#sk-container-id-2 input.sk-hidden--visually {
+#sk-container-id-4 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -1181,7 +1199,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   width: 1px;
 }
 
-#sk-container-id-2 div.sk-dashed-wrapped {
+#sk-container-id-4 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -1189,7 +1207,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-2 div.sk-container {
+#sk-container-id-4 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -1199,7 +1217,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   position: relative;
 }
 
-#sk-container-id-2 div.sk-text-repr-fallback {
+#sk-container-id-4 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -1215,14 +1233,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-2 div.sk-parallel-item::after {
+#sk-container-id-4 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-2 div.sk-parallel {
+#sk-container-id-4 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -1230,28 +1248,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-2 div.sk-parallel-item {
+#sk-container-id-4 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-2 div.sk-parallel-item:first-child::after {
+#sk-container-id-4 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-2 div.sk-parallel-item:last-child::after {
+#sk-container-id-4 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-2 div.sk-parallel-item:only-child::after {
+#sk-container-id-4 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-2 div.sk-serial {
+#sk-container-id-4 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1269,24 +1287,33 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-2 div.sk-toggleable {
+#sk-container-id-4 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-2 label.sk-toggleable__label {
+#sk-container-id-4 label.sk-toggleable__label {
   cursor: pointer;
-  display: block;
+  display: flex;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
 }
 
-#sk-container-id-2 label.sk-toggleable__label-arrow:before {
+#sk-container-id-4 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
+}
+
+#sk-container-id-4 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -1294,13 +1321,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-2 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-4 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-2 div.sk-toggleable__content {
+#sk-container-id-4 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -1309,12 +1336,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content.fitted {
+#sk-container-id-4 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content pre {
+#sk-container-id-4 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -1322,79 +1349,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content.fitted pre {
+#sk-container-id-4 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-2 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-4 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-2 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-4 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-2 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-4 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-4 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-2 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-4 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-4 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-2 div.sk-label label.sk-toggleable__label,
-#sk-container-id-2 div.sk-label label {
+#sk-container-id-4 div.sk-label label.sk-toggleable__label,
+#sk-container-id-4 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-2 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-4 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-2 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-4 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-2 div.sk-label label {
+#sk-container-id-4 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-2 div.sk-label-container {
+#sk-container-id-4 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-2 div.sk-estimator {
+#sk-container-id-4 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -1404,18 +1431,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted {
+#sk-container-id-4 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-2 div.sk-estimator:hover {
+#sk-container-id-4 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted:hover {
+#sk-container-id-4 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -1436,7 +1463,8 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 1ex;
+  margin-left: 0.5em;
+  text-align: center;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -1502,7 +1530,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-2 a.estimator_doc_link {
+#sk-container-id-4 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -1517,30 +1545,30 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-2 a.estimator_doc_link.fitted {
+#sk-container-id-4 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-2 a.estimator_doc_link:hover {
+#sk-container-id-4 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-2 a.estimator_doc_link.fitted:hover {
+#sk-container-id-4 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+</style><div id="sk-container-id-4" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
 
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
-                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
@@ -1563,7 +1591,10 @@ for ax, specialty in zip(axes.flat, plot_order):
             'prediction_time': tuple([12,0])
         }
     }
-    weighted_poisson_empirical = yta_model_by_spec_empirical.predict(prediction_context)
+    weighted_poisson_empirical = yta_model_by_spec_empirical.predict(
+        prediction_context,
+        prediction_window=timedelta(hours=8) # now passed at predict() method
+    )
 
     title = specialty.title()
     plot_prob_dist(weighted_poisson_empirical[specialty], title,
@@ -1584,7 +1615,7 @@ fig.tight_layout()
 plt.show()
 ```
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_37_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_39_0.png)
 
 ## Train a weighted Poisson model using an aspirational approach
 
@@ -1601,7 +1632,7 @@ from IPython.display import Image
 Image(filename='img/thumbnail_KingsFund_AE_performance.png')
 ```
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_39_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_41_0.png)
 
 `patientflow` offers an aspirational weighted Poisson model, that will calculate each patient's probability of being admitted within the prediction window, if targets are met. Targets are set using the parameters set in config.yaml, as shown below.
 
@@ -1642,7 +1673,7 @@ plot_curve(
 
 ```
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_43_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_45_0.png)
 
 Below I demonstrate the use of a Weighted Poisson predictor.
 
@@ -1671,33 +1702,22 @@ if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
 yta_model_parametric.fit(train_visits_copy,
-              prediction_window=timedelta(hours=8),
+#              prediction_window=timedelta(hours=8), deprecated; prediction_window is now a parameter of the predict() method
               yta_time_interval=timedelta(minutes=15),
-              prediction_times=prediction_times,
+#              prediction_times=prediction_times, deprecated; prediction times are now passed at predict() method
               num_days=num_days)
 
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
-    ParametricIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-    using prediction window of 8:00:00 after the time of prediction
-
-
-    and time interval of 0:15:00 within the prediction window.
-
-
+    time interval of 0:15:00 within the prediction window.
     The error value for prediction will be 1e-07
-
-
-    To see the weights saved by this model, used the get_weights() method
+    To see the weights saved by this model, use the get_weights() method
 
 <style>#sk-container-id-3 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: black;
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -1842,12 +1862,21 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-3 label.sk-toggleable__label {
   cursor: pointer;
-  display: block;
+  display: flex;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#sk-container-id-3 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-3 label.sk-toggleable__label-arrow:before {
@@ -2000,7 +2029,8 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 1ex;
+  margin-left: 0.5em;
+  text-align: center;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -2099,18 +2129,41 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>ParametricIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 Below we view the results of the fit method for the 12:00 prediction time.
 
 ```python
-arrival_rates_by_time_interval = yta_model_parametric.weights['unfiltered'][(12,0)]['arrival_rates']
+
+prediction_window = timedelta(hours=8)
+yta_time_interval = timedelta(minutes=15)
+prediction_time = (12, 0)
+
+# The fitted model stores a single 24-hour arrival-rate profile per filter,
+# keyed by time-of-day. We slice out the portion starting at prediction_time
+# and covering prediction_window, stepping forward in yta_time_interval chunks.
+arrival_rates_dict = yta_model_parametric.weights['unfiltered']['arrival_rates_dict']
+
+# Number of discrete intervals that fit inside the prediction window
+# (e.g. 8 hours / 15 minutes = 32).
+Ntimes = int(prediction_window / yta_time_interval)
+
+# Use an arbitrary epoch date as a carrier so we can do timedelta arithmetic
+# on the (hour, minute) tuple and then take .time() to look up the rate.
+start = datetime(1970, 1, 1, *prediction_time)
+arrival_rates_by_time_interval = [
+    arrival_rates_dict[(start + i * yta_time_interval).time()]
+    for i in range(Ntimes)
+]
 print(
-    f'The calculated arrival rates for the first 10 discrete time intervals '
-    f'for the 12:00 prediction time are: {[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}')
+    f'Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals '
+    f'for the {prediction_time[0]:02d}:{prediction_time[1]:02d} prediction time are: '
+    f'{[round(v, 3) for v in arrival_rates_by_time_interval[0:10]]}'
+)
+
 ```
 
-    The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
+    Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 
 To use the weighted Poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.
 
@@ -2124,7 +2177,10 @@ prediction_context = {
     }
 }
 
-aspirational_prediction = yta_model_parametric.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+aspirational_prediction = yta_model_parametric.predict(
+    prediction_context,
+    prediction_window=timedelta(hours=8), # now passed at predict() method
+    x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
 
 ```
 
@@ -2152,9 +2208,9 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
     truncate_at_beds=40, bar_colour=colour_dict["single"]["all"])
 ```
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_51_0.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_0.png)
 
-![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_51_1.png)
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_1.png)
 
 ## Summary
 

@@ -508,6 +508,7 @@ To make demand predictions at a given prediction moment, we call `build_service_
 
 ```python
 from patientflow.predict.service import build_service_data
+from patientflow.predict.demand import FlowSelection
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -520,10 +521,19 @@ prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snaps
 prediction_inputs = build_service_data(
     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
     prediction_time=random_prediction_time,
-    ed_snapshots=prediction_snapshots_processed,
-    inpatient_snapshots=None,
+    flow_selection=FlowSelection.custom(
+        include_ed_current=True,
+        include_ed_yta=True,
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,
+        cohort="emergency",
+    ),
     specialties=specialty_filters.keys(),
     prediction_window=timedelta(hours=8),
+    ed_snapshots=prediction_snapshots_processed,
+    inpatient_snapshots=None,
     x1=x1, y1=y1, x2=x2, y2=y2
 )
 
@@ -800,13 +810,13 @@ specialty_filters = filters={
     }
 
 yta_model_by_spec_empirical =  EmpiricalIncomingAdmissionPredictor(filters = specialty_filters, verbose=False)
-yta_model_by_spec_empirical.fit(train_inpatient_arrivals_df_copy,
-                        prediction_window=prediction_window,
-                        yta_time_interval=yta_time_interval,
-                        prediction_times=ed_visits.prediction_time.unique(),
-                        num_days=num_days,
-                        start_time_col='arrival_datetime',
-                        end_time_col='admitted_to_ward_datetime')
+yta_model_by_spec_empirical.fit(
+    train_inpatient_arrivals_df_copy,
+    yta_time_interval=yta_time_interval,
+    num_days=num_days,
+    start_time_col='arrival_datetime',
+    end_time_col='admitted_to_ward_datetime',
+)
 
 models = (admission_model, spec_model, yta_model_by_spec_empirical)
 

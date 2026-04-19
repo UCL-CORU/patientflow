@@ -563,8 +563,6 @@ def get_prob_dist_using_survival_curve(
 
     prob_dist_dict = {}
 
-    prediction_context = {category: {"prediction_time": prediction_time}}
-
     for dt in snapshot_dates:
         # Create prediction moment by combining snapshot date and prediction time
         prediction_moment = datetime.combine(
@@ -579,7 +577,11 @@ def get_prob_dist_using_survival_curve(
                 prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
 
         # Get predictions from model
-        predictions = model.predict(prediction_context)
+        predictions = model.predict(
+            prediction_time=prediction_time,
+            prediction_window=prediction_window,
+            filter_keys=category,
+        )
         prob_dist_dict[dt] = {"agg_predicted": predictions[category]}
 
         # Calculate observed values

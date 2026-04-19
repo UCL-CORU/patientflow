@@ -190,9 +190,7 @@ if 'arrival_datetime' in train_visits_copy.columns:
 yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=True)
 yta_model_empirical.fit(
     train_visits_copy,
-    prediction_window=timedelta(hours=8),
     yta_time_interval=timedelta(minutes=15),
-    prediction_times=prediction_times,
     num_days=num_days,
     start_time_col='arrival_datetime',
     end_time_col='admitted_to_ward_datetime'

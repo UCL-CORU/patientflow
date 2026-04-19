@@ -396,8 +396,7 @@ def _validate_models_and_data(
             if not hasattr(spec_model, "specialty_to_subgroups"):
                 raise ValueError("Specialty model has not been fit")
     if yet_to_arrive_model is not None and (
-        not hasattr(yet_to_arrive_model, "prediction_window")
-        or yet_to_arrive_model.prediction_window is None
+        not hasattr(yet_to_arrive_model, "weights") or not yet_to_arrive_model.weights
     ):
         raise ValueError("Yet-to-arrive model has not been fit")
 
@@ -423,29 +422,12 @@ def _validate_models_and_data(
                 ct=inpatient_classifier.training_results.prediction_time,
             )
         )
-    if (
-        yet_to_arrive_model is not None
-        and prediction_window != yet_to_arrive_model.prediction_window
-    ):
-        raise ValueError(
-            "Requested prediction window {pw} does not match the prediction window of "
-            "the trained yet-to-arrive model {mw}".format(
-                pw=prediction_window, mw=yet_to_arrive_model.prediction_window
-            )
-        )
-
-    # Ensure DirectAdmissionPredictors are fit and aligned to the requested prediction window
+    # Ensure DirectAdmissionPredictors are fit
     for name, model in (("non-ED", non_ed_yta_model), ("elective", elective_yta_model)):
         if model is None:
             continue
-        if not hasattr(model, "prediction_window") or model.prediction_window is None:
-            raise ValueError(
-                f"{name} DirectAdmissionPredictor has not been fit (missing prediction_window)"
-            )
-        if model.prediction_window != prediction_window:
-            raise ValueError(
-                f"Requested prediction window {prediction_window} does not match the prediction window of the trained {name} model {model.prediction_window}"
-            )
+        if not hasattr(model, "weights") or not model.weights:
+            raise ValueError(f"{name} DirectAdmissionPredictor has not been fit")
 
     # Ensure TransferProbabilityEstimator has been fitted
     if transfer_model is not None and (
@@ -836,6 +818,7 @@ def _create_flow_inputs(
     non_ed_yta_model: Optional[DirectAdmissionPredictor],
     elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
+    prediction_window,
     x1: float,
     y1: float,
     x2: float,
@@ -848,15 +831,29 @@ def _create_flow_inputs(
     dict
         Dictionary with 'inflows' and 'outflows' keys containing FlowInputs objects
     """
-    prediction_context = {spec: {"prediction_time": prediction_time}}
 
-    def _safe_predict_mean(model, context, **kwargs) -> float:
+    def _safe_predict_mean(model, **kwargs) -> float:
         # Return 0.0 when the model is None or doesn't recognise the filter key
         if model is None:
             return 0.0
         if hasattr(model, "weights") and spec not in model.weights:
             return 0.0
-        return float(model.predict_mean(context, **kwargs))
+        return float(
+            model.predict_mean(
+                prediction_time=prediction_time,
+                prediction_window=prediction_window,
+                filter_key=spec,
+                **kwargs,
+            )
+        )
+
+    # Parametric YTA models need x1/y1/x2/y2; empirical and direct do not.
+    if isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
+        ed_yta_mean = _safe_predict_mean(
+            yet_to_arrive_model, x1=x1, y1=y1, x2=x2, y2=y2
+        )
+    else:
+        ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
 
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
@@ -870,9 +867,7 @@ def _create_flow_inputs(
         "ed_yta": FlowInputs(
             flow_id="ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(
-                yet_to_arrive_model, prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-            ),
+            distribution=ed_yta_mean,
             display_name="ED yet-to-arrive admissions",
             aspirational=isinstance(
                 yet_to_arrive_model, ParametricIncomingAdmissionPredictor
@@ -881,13 +876,13 @@ def _create_flow_inputs(
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(non_ed_yta_model, prediction_context),
+            distribution=_safe_predict_mean(non_ed_yta_model),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(elective_yta_model, prediction_context),
+            distribution=_safe_predict_mean(elective_yta_model),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()
@@ -1016,6 +1011,7 @@ def _build_legacy_flows(
             non_ed_yta_model,
             elective_yta_model,
             prediction_time,
+            prediction_window,
             x1,
             y1,
             x2,
