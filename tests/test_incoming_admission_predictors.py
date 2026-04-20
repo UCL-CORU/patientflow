@@ -1,8 +1,10 @@
 import unittest
 import warnings
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
@@ -154,7 +156,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             self.assertEqual(len(predictor.weights[key]["arrival_rates_dict"]), 48)
 
     def test_parametric_predictor_fit_validation(self):
-        """yta_time_interval and num_days are required; types are validated."""
+        """yta_time_interval is required; num_days optional; types are validated."""
         predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
 
         with self.assertRaises(TypeError):
@@ -167,18 +169,34 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
                 num_days=self.num_days,
             )
 
-        with self.assertRaises(TypeError):
-            predictor.fit(
-                self.test_df,
-                yta_time_interval=self.yta_time_interval,
-            )  # missing num_days
-
         with self.assertRaises(ValueError):
             predictor.fit(
                 self.test_df,
                 yta_time_interval=timedelta(seconds=0),
                 num_days=self.num_days,
             )
+
+        with self.assertRaises(ValueError):
+            predictor.fit(
+                self.test_df,
+                yta_time_interval=self.yta_time_interval,
+                num_days=0,
+            )
+
+        with self.assertRaises(TypeError):
+            predictor.fit(
+                self.test_df,
+                yta_time_interval=self.yta_time_interval,
+                num_days="31",
+            )
+
+    def test_fit_infers_num_days_when_omitted(self):
+        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        predictor.fit(self.test_df, yta_time_interval=self.yta_time_interval)
+        expected = (
+            self.test_df.index.max().date() - self.test_df.index.min().date()
+        ).days + 1
+        self.assertEqual(predictor.metrics["num_days"], expected)
 
     def test_parametric_predictor_predict(self):
         predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
@@ -771,6 +789,189 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
                 prediction_window=self.prediction_window,
             )
         self.assertIn("filter_key", str(cm.exception).lower())
+
+    # ------------------------------------------------------------------
+    # Weekday-stratified arrival rates (λ) and prediction_date
+    # ------------------------------------------------------------------
+    def test_stratify_by_weekday_stores_profiles(self):
+        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        for key in self.filters:
+            self.assertIn("arrival_rates_by_weekday", predictor.weights[key])
+            self.assertEqual(len(predictor.weights[key]["arrival_rates_by_weekday"]), 7)
+
+    def test_identical_weekday_profiles_match_pooled_predict_mean(self):
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        pooled = predictor.weights["unfiltered"]["arrival_rates_dict"]
+        for d in range(7):
+            predictor.weights["unfiltered"]["arrival_rates_by_weekday"][d] = deepcopy(
+                pooled
+            )
+
+        mean_no_date = predictor.predict_mean(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+        )
+        mean_with_date = predictor.predict_mean(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            prediction_date=date(2024, 1, 15),
+        )
+        self.assertAlmostEqual(mean_no_date, mean_with_date, places=6)
+
+    def test_prediction_date_changes_mean_when_weekdays_differ(self):
+        """Synthetic Mondays-only arrivals at 10:00 → Tuesday anchor gives zero λ."""
+        times = [
+            pd.Timestamp(datetime(2024, 1, 1) + timedelta(weeks=w)).replace(
+                hour=10, minute=0, second=0, microsecond=0
+            )
+            for w in range(10)
+        ]
+        df = pd.DataFrame({"k": [1] * len(times)}, index=pd.DatetimeIndex(times))
+
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df,
+            yta_time_interval=timedelta(hours=1),
+            num_days=80,
+            stratify_by_weekday=True,
+        )
+
+        m_mon = predictor.predict_mean(
+            prediction_time=(10, 0),
+            prediction_window=timedelta(hours=1),
+            prediction_date=date(2024, 1, 1),
+        )
+        m_tue = predictor.predict_mean(
+            prediction_time=(10, 0),
+            prediction_window=timedelta(hours=1),
+            prediction_date=date(2024, 1, 2),
+        )
+        self.assertGreater(m_mon, 0.0)
+        self.assertEqual(m_tue, 0.0)
+
+    def test_cross_midnight_uses_distinct_weekday_rates(self):
+        rows = []
+        for w in range(8):
+            fri = datetime(2024, 1, 5) + timedelta(weeks=w)
+            sat = fri + timedelta(days=1)
+            rows.append(pd.Timestamp(fri.year, fri.month, fri.day, 23, 30))
+            rows.extend([pd.Timestamp(sat.year, sat.month, sat.day, 0, 30)] * 10)
+        df = pd.DataFrame(index=pd.DatetimeIndex(sorted(rows)))
+
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df,
+            yta_time_interval=timedelta(minutes=30),
+            num_days=60,
+            stratify_by_weekday=True,
+        )
+        _, _, rates = next(
+            predictor._iter_prediction_inputs(
+                (23, 30),
+                timedelta(hours=2),
+                ["unfiltered"],
+                prediction_date=date(2024, 1, 5),
+            )
+        )
+        self.assertEqual(len(rates), 4)
+        # First slice: Friday night; third slice: Saturday 00:30 → higher λ
+        self.assertGreater(float(rates[2]), float(rates[0]))
+
+    def test_multi_filter_keys_with_prediction_date(self):
+        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        predictions = predictor.predict(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys=["medical", "surgical"],
+            prediction_date=date(2024, 1, 8),
+            x1=2,
+            y1=0.5,
+            x2=4,
+            y2=0.9,
+        )
+        self.assertIn("medical", predictions)
+        self.assertIn("surgical", predictions)
+
+    def test_prediction_date_missing_weekday_profiles_warns_and_falls_back(self):
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=False,
+        )
+        with self.assertWarns(UserWarning):
+            mean = predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                prediction_date=date(2024, 1, 8),
+            )
+        self.assertIsInstance(mean, float)
+
+    def test_prediction_date_missing_weekday_profiles_strict_raises(self):
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=False,
+        )
+        with self.assertRaises(ValueError) as cm:
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                prediction_date=date(2024, 1, 8),
+                strict_prediction_date=True,
+            )
+        self.assertIn("arrival_rates_by_weekday", str(cm.exception))
+
+    def test_legacy_prediction_context_with_prediction_date(self):
+        predictor = DirectAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            p1 = predictor.predict(
+                prediction_context={
+                    "medical": {
+                        "prediction_time": (8, 0),
+                        "prediction_date": date(2024, 1, 1),
+                    }
+                },
+                prediction_window=self.prediction_window,
+            )
+        p2 = predictor.predict(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+            filter_keys="medical",
+            prediction_date=date(2024, 1, 1),
+        )
+        np.testing.assert_array_almost_equal(
+            p1["medical"]["agg_proba"].values,
+            p2["medical"]["agg_proba"].values,
+        )
 
 
 if __name__ == "__main__":

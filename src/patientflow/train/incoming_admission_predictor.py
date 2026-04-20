@@ -8,7 +8,7 @@ It includes utilities for creating specialty filters and training parametric adm
 The logic in this module is specific to the implementation at UCLH.
 """
 
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from pandas import DataFrame
 from datetime import timedelta
@@ -68,7 +68,7 @@ def train_parametric_admission_predictor(
     prediction_window: timedelta,
     yta_time_interval: timedelta,
     prediction_times: List[float],
-    num_days: int,
+    num_days: Optional[int] = None,
     epsilon: float = 10e-7,
 ) -> ParametricIncomingAdmissionPredictor:
     """
@@ -89,8 +89,9 @@ def train_parametric_admission_predictor(
     prediction_times : List[float]
         Kept in the signature for backward compatibility. No longer forwarded
         to the underlying model.
-    num_days : int
-        Number of days to consider.
+    num_days : int, optional
+        Divisor for pooled arrival rates; if omitted, inferred from ``train_yta``'s index
+        (same as :meth:`~patientflow.predictors.incoming_admission_predictors.IncomingAdmissionPredictor.fit`).
     epsilon : float, optional
         Epsilon parameter for model, by default 10e-7.
 
