@@ -40,19 +40,11 @@ params = prediction_inputs['config']
 
     Processing: (6, 0)
 
-
-
     Processing: (9, 30)
-
-
 
     Processing: (12, 0)
 
-
-
     Processing: (15, 30)
-
-
 
     Processing: (22, 0)
 
@@ -177,6 +169,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     start_test_set_fake,
     end_test_set_fake,
     col_name="arrival_datetime",
+    verbose=False
 )
 
 # Train the EmpiricalIncomingAdmissionPredictor
@@ -187,40 +180,21 @@ train_visits_copy = train_visits.copy(deep=True)
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
-yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=True)
+yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
 yta_model_empirical.fit(
     train_visits_copy,
     yta_time_interval=timedelta(minutes=15),
     num_days=num_days,
     start_time_col='arrival_datetime',
-    end_time_col='admitted_to_ward_datetime'
+    end_time_col='admitted_to_ward_datetime',
+    stratify_by_weekday=True
 )
 ```
 
-    Split sizes: [2214, 710, 1584]
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-
-
-    EmpiricalIncomingAdmissionPredictor trained for these times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
-
-    using prediction window of 8:00:00 after the time of prediction
-
-
-    and time interval of 0:15:00 within the prediction window.
-
-
-    The error value for prediction will be 1e-07
-
-
-    To see the weights saved by this model, used the get_weights() method
-
-
-    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
-
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: black;
+  --sklearn-color-text: #000;
+  --sklearn-color-text-muted: #666;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -365,12 +339,21 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
-  display: block;
+  display: flex;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+#sk-container-id-1 label.sk-toggleable__label .caption {
+  font-size: 0.6rem;
+  font-weight: lighter;
+  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-1 label.sk-toggleable__label-arrow:before {
@@ -523,7 +506,8 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 1ex;
+  margin-left: 0.5em;
+  text-align: center;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -622,7 +606,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
 
 ### Compare survival curves across train, validation and test sets
 
@@ -677,7 +661,7 @@ for prediction_time in prediction_times:
     )
 ```
 
-The result can be plotted using EPUDD plots. The model appears as a series of vertical lines because the `EmpiricalIncomingAdmissionPredictor` is trained only on time of day, so there is minimal variation in the predicted distributions. This is included as a placeholder, to show how modelling of yet-to-arrive patients using past data on time to admission could be evaluated. You could modify the function to include a weekday/weekend variable, or replace it with a different approach based on moving averages (such as ARIMA).
+The result can be plotted using EPUDD plots to allow for the evaluation of the model. (But note that this is showing the results of using fake data.)
 
 ```python
 from patientflow.viz.epudd import plot_epudd

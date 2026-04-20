@@ -14,7 +14,7 @@ In this notebook, I'll use the example of predicting the number of beds needed f
 - a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data
 - a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
 
-I also demonstrate making predictions by specialty for demand from incoming patients.
+I also demonstrate making predictions by specialty for demand from incoming patients, and how to stratify the predictions to take day of week into account.
 
 ```python
 # Reload functions every time
@@ -513,7 +513,7 @@ yta_model_empirical.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    time interval of 0:15:00 within the prediction window.
+    Time interval of 0:15:00 used to bucket arrival rates.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, use the get_weights() method
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
@@ -1070,27 +1070,29 @@ print(
 )
 ```
 
-    The calculated arrival rates for the first 10 discrete time intervals for the 23:00 prediction time are: [0.089, 0.044, 0.044, 0.089, 0.044, 0.022, 0.0, 0.0, 0.022, 0.0]
+    The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 
 #### Generate a prediction
 
-Having inspected the inputs the model holds, we can now call `predict()` to produce a probability distribution for the number of patients yet to arrive who will need a bed within the prediction window.
+We can now call `predict()` to get a distribution for how many yet-to-arrive patients are expected to need a bed within the prediction window.
 
-The `predict()` method takes two things:
+Pass **`prediction_time`** as the time of day to start from, as an `(hour, minute)` tuple. Pass **`prediction_window`** at predict time (not fit time), so the same fitted model can be used for different horizons.
 
-- A `prediction_context` dictionary keyed by filter. Because we fitted an unfiltered model, there is only one entry, `'unfiltered'`, whose value tells the model the time of day to predict from, given as an `(hour, minute)` tuple.
-- A `prediction_window` keyword argument. This is now supplied at predict time rather than fit time, so a single trained model can be reused across different windows without retraining.
+If the model was fitted **without** filters, there is only one key in **`weights`** (e.g. `unfiltered`), so **`filter_keys`** can be left out. If you fitted **with** filters, pass **`filter_keys`** as a single hospital **service** name or a list of names — the same names you used as keys in **`filters`**. Every service you ask for in one call shares the **same** **`prediction_time`**.
 
-The return value is a dictionary (keyed by filter) of weighted Poisson distributions representing the number of patients yet to arrive who are expected to need admission within the requested window.
+The result is still a dict whose keys match **`weights`** (e.g. service name); each value is the weighted Poisson distribution for that service.
+
+**Note:** the old nested **`prediction_context`** dict (`{service: {"prediction_time": ...}}`, as the first argument or as `prediction_context=...`) still works but triggers a **`DeprecationWarning`** and will be removed in a later version. Prefer **`prediction_time=`** and **`filter_keys=`** when you can.
 
 ```python
-prediction_context = {
-    'unfiltered': {
-        'prediction_time': tuple([12,0])
-    }
-}
+# # deprecated code retained for reference
+# prediction_context = {
+#     'unfiltered': {
+#         'prediction_time': tuple([12,0])
+#     }
+# }
 weighted_poisson_empirical = yta_model_empirical.predict(
-    prediction_context,
+    prediction_time=(12,0),
     prediction_window=timedelta(hours=8) # now passed at predict() method
 )
 
@@ -1148,7 +1150,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
     To see the weights saved by this model, use the get_weights() method
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
-<style>#sk-container-id-4 {
+<style>#sk-container-id-2 {
   /* Definition of color scheme common for light and dark mode */
   --sklearn-color-text: #000;
   --sklearn-color-text-muted: #666;
@@ -1179,15 +1181,15 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   }
 }
 
-#sk-container-id-4 {
+#sk-container-id-2 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-4 pre {
+#sk-container-id-2 pre {
   padding: 0;
 }
 
-#sk-container-id-4 input.sk-hidden--visually {
+#sk-container-id-2 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -1199,7 +1201,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   width: 1px;
 }
 
-#sk-container-id-4 div.sk-dashed-wrapped {
+#sk-container-id-2 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -1207,7 +1209,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-4 div.sk-container {
+#sk-container-id-2 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -1217,7 +1219,7 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
   position: relative;
 }
 
-#sk-container-id-4 div.sk-text-repr-fallback {
+#sk-container-id-2 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -1233,14 +1235,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-4 div.sk-parallel-item::after {
+#sk-container-id-2 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-4 div.sk-parallel {
+#sk-container-id-2 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -1248,28 +1250,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-4 div.sk-parallel-item {
+#sk-container-id-2 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-4 div.sk-parallel-item:first-child::after {
+#sk-container-id-2 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-4 div.sk-parallel-item:last-child::after {
+#sk-container-id-2 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-4 div.sk-parallel-item:only-child::after {
+#sk-container-id-2 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-4 div.sk-serial {
+#sk-container-id-2 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1287,14 +1289,14 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-4 div.sk-toggleable {
+#sk-container-id-2 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-4 label.sk-toggleable__label {
+#sk-container-id-2 label.sk-toggleable__label {
   cursor: pointer;
   display: flex;
   width: 100%;
@@ -1307,13 +1309,13 @@ clickable and can be expanded/collapsed.
   gap: 0.5em;
 }
 
-#sk-container-id-4 label.sk-toggleable__label .caption {
+#sk-container-id-2 label.sk-toggleable__label .caption {
   font-size: 0.6rem;
   font-weight: lighter;
   color: var(--sklearn-color-text-muted);
 }
 
-#sk-container-id-4 label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -1321,13 +1323,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-4 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-2 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-4 div.sk-toggleable__content {
+#sk-container-id-2 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -1336,12 +1338,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-4 div.sk-toggleable__content.fitted {
+#sk-container-id-2 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-4 div.sk-toggleable__content pre {
+#sk-container-id-2 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -1349,79 +1351,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-4 div.sk-toggleable__content.fitted pre {
+#sk-container-id-2 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-4 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-2 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-4 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-2 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-4 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-4 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-4 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-4 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-2 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-4 div.sk-label label.sk-toggleable__label,
-#sk-container-id-4 div.sk-label label {
+#sk-container-id-2 div.sk-label label.sk-toggleable__label,
+#sk-container-id-2 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-4 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-2 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-4 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-2 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-4 div.sk-label label {
+#sk-container-id-2 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-4 div.sk-label-container {
+#sk-container-id-2 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-4 div.sk-estimator {
+#sk-container-id-2 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -1431,18 +1433,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-4 div.sk-estimator.fitted {
+#sk-container-id-2 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-4 div.sk-estimator:hover {
+#sk-container-id-2 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-4 div.sk-estimator.fitted:hover {
+#sk-container-id-2 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -1530,7 +1532,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-4 a.estimator_doc_link {
+#sk-container-id-2 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -1545,30 +1547,30 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-4 a.estimator_doc_link.fitted {
+#sk-container-id-2 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-4 a.estimator_doc_link:hover {
+#sk-container-id-2 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-4 a.estimator_doc_link.fitted:hover {
+#sk-container-id-2 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-4" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+</style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
 
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
-                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-4" type="checkbox" checked><label for="sk-estimator-id-4" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
@@ -1586,13 +1588,9 @@ plot_order = ["medical", "surgical", "haem/onc", "paediatric"]
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
 for ax, specialty in zip(axes.flat, plot_order):
-    prediction_context = {
-        specialty: {
-            'prediction_time': tuple([12,0])
-        }
-    }
     weighted_poisson_empirical = yta_model_by_spec_empirical.predict(
-        prediction_context,
+        prediction_time=(12,0),
+        filter_keys=specialty,
         prediction_window=timedelta(hours=8) # now passed at predict() method
     )
 
@@ -1710,7 +1708,7 @@ yta_model_parametric.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
-    time interval of 0:15:00 within the prediction window.
+    Time interval of 0:15:00 used to bucket arrival rates.
     The error value for prediction will be 1e-07
     To see the weights saved by this model, use the get_weights() method
 
@@ -2165,26 +2163,22 @@ print(
 
     Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
 
-To use the weighted Poisson for prediction, a `prediction_context` argument specifies the required prediction time and filtering. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 95% within 4 hours.
+To use the weighted Poisson for prediction, the required prediction time and prediction window are passed. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 80% within 4 hours.
 
 ```python
 from patientflow.viz.probability_distribution import plot_prob_dist
 from patientflow.viz.utils import format_prediction_time
 
-prediction_context = {
-    'unfiltered': {
-        'prediction_time': tuple([12,0])
-    }
-}
 
 aspirational_prediction = yta_model_parametric.predict(
-    prediction_context,
+    prediction_time=(12,0),
     prediction_window=timedelta(hours=8), # now passed at predict() method
-    x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50)
 
 ```
 
-The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 95% of patients. The numbers are higher than the equivalent chart above.
+The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 80% of patients. The numbers are higher than the equivalent chart above.
 
 ```python
 colour_dict = create_colour_dict()
@@ -2211,6 +2205,113 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
 ![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_0.png)
 
 ![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_1.png)
+
+## Stratify by day of week
+
+It is also possible to incorporate day of week into the models. The arrival rates for each day of the week are saved in a nested dictionary keyed by 'arrival_rates_by_weekday' with subkeys for each day of the week, where 0 is Monday.
+
+```python
+from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+
+train_visits_copy = train_visits.copy(deep=True)
+
+yta_model_parametric =  ParametricIncomingAdmissionPredictor(verbose=False)
+num_days = (start_validation_set - start_training_set).days
+if 'arrival_datetime' in train_visits_copy.columns:
+    train_visits_copy.set_index('arrival_datetime', inplace=True)
+
+yta_model_parametric.fit(train_visits_copy,
+              yta_time_interval=timedelta(minutes=15),
+              stratify_by_weekday=True,
+              )
+
+print(f'Weekday keys: {yta_model_parametric.weights["unfiltered"]["arrival_rates_by_weekday"].keys()}')
+
+```
+
+    Weekday keys: dict_keys([0, 1, 2, 3, 4, 5, 6])
+
+```python
+from datetime import date, timedelta
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+colour_dict = create_colour_dict()
+
+# Two weekday anchors
+snapshot_date_1 = date(2023, 1, 2)  # Monday
+snapshot_date_2 = date(2023, 1, 7)  # Saturday
+
+pred_1 = yta_model_parametric.predict(
+    prediction_time=(12, 0),
+    prediction_window=timedelta(hours=8),
+    prediction_date=snapshot_date_1,
+    strict_prediction_date=True,
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50
+)["unfiltered"]
+
+pred_2 = yta_model_parametric.predict(
+    prediction_time=(12, 0),
+    prediction_window=timedelta(hours=8),
+    prediction_date=snapshot_date_2,
+    strict_prediction_date=True,
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50
+)["unfiltered"]
+
+truncate_at_beds = 40
+x = np.arange(truncate_at_beds + 1)
+
+# Align PMFs to same support
+pmf_1 = pred_1.reindex(x, fill_value=0)["agg_proba"].values
+pmf_2 = pred_2.reindex(x, fill_value=0)["agg_proba"].values
+
+title = (
+    f'Probability distribution for number of beds needed for patients '
+    f'who will arrive after {format_prediction_time((12,0))} on two different snapshot dates '
+    f'\nand need a bed before 20:00 '
+    f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
+)
+
+fig, ax = plt.subplots(figsize=(10, 4.5))
+base_colour = colour_dict["single"]["all"]
+bar_width = 0.42
+
+ax.bar(
+    x - bar_width / 2,
+    pmf_1,
+    width=bar_width,
+    color=base_colour,
+    alpha=0.45,
+    label=f"{snapshot_date_1} (Mon)",
+)
+ax.bar(
+    x + bar_width / 2,
+    pmf_2,
+    width=bar_width,
+    color=base_colour,
+    linewidth=0.4,
+    label=f"{snapshot_date_2} (Sat)",
+)
+
+# Overlay lines to make shape differences obvious
+ax.plot(x, pmf_1, color=base_colour, linewidth=1.6, alpha=0.8)
+ax.plot(x, pmf_2, color="black", linewidth=1.4, alpha=0.7)
+
+ax.set_title(title)
+ax.set_xlabel("Number of beds")
+ax.set_ylabel("Probability")
+ax.set_xlim(-0.5, truncate_at_beds + 0.5)
+ax.grid(axis="y", alpha=0.25)
+ax.legend(title="Snapshot date")
+
+plt.tight_layout()
+plt.show()
+```
+
+![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_56_0.png)
 
 ## Summary
 

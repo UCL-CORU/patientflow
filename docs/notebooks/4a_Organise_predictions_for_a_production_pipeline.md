@@ -111,8 +111,7 @@ yta_model.fit(
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: #000;
-  --sklearn-color-text-muted: #666;
+  --sklearn-color-text: black;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -257,21 +256,12 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
-  display: flex;
+  display: block;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5em;
-}
-
-#sk-container-id-1 label.sk-toggleable__label .caption {
-  font-size: 0.6rem;
-  font-weight: lighter;
-  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-1 label.sk-toggleable__label-arrow:before {
@@ -424,8 +414,7 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 0.5em;
-  text-align: center;
+  margin-left: 1ex;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -524,7 +513,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>ParametricIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
 
 We also need the aspirational curve parameters for the parametric model. These are loaded from the config file in the repository:
 
@@ -646,10 +635,10 @@ In notebook 3e, we used Poisson distributions to model yet-to-arrive patients. T
 Let's call `predict()` on the model we just trained to see the result.
 
 ```python
-prediction_context = {'unfiltered': {'prediction_time': prediction_time}}
 
 # predict() returns a full probability distribution
-yta_prediction = yta_model.predict(prediction_context,
+yta_prediction = yta_model.predict(
+    prediction_time=prediction_time,
     prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
 yta_distribution = yta_prediction['unfiltered']
@@ -746,7 +735,8 @@ Because this distribution is based on a Poisson model, the `DemandPredictor` can
 
 ```python
 # predict_mean() returns just the Poisson rate (a single float)
-yta_lambda = yta_model.predict_mean(prediction_context,
+yta_lambda = yta_model.predict_mean(
+    prediction_time=prediction_time,
     prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2)
 

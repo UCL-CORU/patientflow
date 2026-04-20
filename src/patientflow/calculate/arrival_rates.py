@@ -8,6 +8,11 @@ Functions
 ---------
 time_varying_arrival_rates : function
     Calculate arrival rates for each time interval across the dataset's date range.
+time_varying_arrival_rates_by_weekday : function
+    Same interval grid as ``time_varying_arrival_rates``, but one profile per weekday
+    (``datetime.weekday``: Monday = 0, …, Sunday = 6), normalised by weekday occurrence counts.
+weekday_occurrences_in_span : function
+    Count calendar occurrences of each weekday between two dates (inclusive).
 time_varying_arrival_rates_lagged : function
     Create lagged arrival rates based on time intervals.
 admission_probabilities : function
@@ -49,7 +54,7 @@ Examples
 
 import numpy as np
 import pandas as pd
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pandas import DataFrame
 from collections import OrderedDict
 from typing import Dict, List, Tuple, Optional, Union
@@ -198,6 +203,148 @@ def time_varying_arrival_rates(
         _start_datetime = _start_datetime + timedelta(minutes=yta_time_interval_minutes)
 
     return arrival_rates_dict
+
+
+def weekday_occurrences_in_span(start_date: date, end_date: date) -> List[int]:
+    """Count how often each weekday occurs in ``[start_date, end_date]`` (inclusive).
+
+    Indices follow :meth:`datetime.date.weekday`: Monday = 0, ..., Sunday = 6.
+
+    Parameters
+    ----------
+    start_date : datetime.date
+        First calendar date in the span (inclusive).
+    end_date : datetime.date
+        Last calendar date in the span (inclusive).
+
+    Returns
+    -------
+    list of int
+        Length-7 list; ``counts[d]`` is the number of dates in the span whose
+        weekday is ``d``.
+    """
+    counts = [0] * 7
+    current = start_date
+    while current <= end_date:
+        counts[current.weekday()] += 1
+        current = current + timedelta(days=1)
+    return counts
+
+
+def time_varying_arrival_rates_by_weekday(
+    df: DataFrame,
+    yta_time_interval: Union[int, timedelta],
+    num_days: Optional[int] = None,
+    verbose: bool = False,
+) -> Dict[int, OrderedDict[time, float]]:
+    """Time-varying arrival rates with a separate profile per weekday.
+
+    For each weekday ``d`` (``datetime.weekday()`` convention: Monday = 0,
+    ..., Sunday = 6), computes the same ``datetime.time`` grid as
+    :func:`time_varying_arrival_rates`, but counts only rows whose index falls
+    on weekday ``d``, and divides by the number of calendar occurrences of
+    weekday ``d`` in the training date span (from min index date to max index
+    date, inclusive)—not by ``num_days``.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Indexed by datetime (same requirements as ``time_varying_arrival_rates``).
+    yta_time_interval : int or timedelta
+        Bucket length in minutes (if int) or as timedelta.
+    num_days : int, optional
+        Unused; retained for API symmetry with ``time_varying_arrival_rates``.
+        The weekday divisor is always derived from the index date span.
+    verbose : bool, optional
+        If True, mirror logging behaviour of ``time_varying_arrival_rates``.
+
+    Returns
+    -------
+    dict[int, collections.OrderedDict[datetime.time, float]]
+        Keys ``0..6`` (weekday). Values are ordered time → rate for that weekday.
+    """
+    import logging
+    import sys
+
+    logger = None
+    if verbose:
+        logger = logging.getLogger(f"{__name__}.time_varying_arrival_rates_by_weekday")
+        if not logger.handlers:
+            logger.setLevel(logging.INFO if verbose else logging.WARNING)
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(logging.INFO if verbose else logging.WARNING)
+            handler.setFormatter(logging.Formatter("%(message)s"))
+            logger.addHandler(handler)
+            logger.propagate = False
+
+    if not isinstance(df, DataFrame):
+        raise TypeError("The input 'df' must be a pandas DataFrame.")
+    if not isinstance(yta_time_interval, (int, timedelta)):
+        raise TypeError(
+            "The parameter 'yta_time_interval' must be an integer or timedelta."
+        )
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise TypeError("The DataFrame index must be a pandas DatetimeIndex.")
+
+    if isinstance(yta_time_interval, timedelta):
+        yta_time_interval_minutes = int(yta_time_interval.total_seconds() / 60)
+    elif isinstance(yta_time_interval, int):
+        yta_time_interval_minutes = yta_time_interval
+    else:
+        raise TypeError("yta_time_interval must be a timedelta object or integer")
+
+    minutes_in_day = 24 * 60
+    if yta_time_interval_minutes <= 0:
+        raise ValueError("The parameter 'yta_time_interval' must be positive.")
+    if minutes_in_day % yta_time_interval_minutes != 0:
+        raise ValueError(
+            f"Time interval ({yta_time_interval_minutes} minutes) must divide evenly into 24 hours."
+        )
+
+    start_date = df.index.date.min()
+    end_date = df.index.date.max()
+    weekday_counts = weekday_occurrences_in_span(start_date, end_date)
+
+    if sum(weekday_counts) == 0:
+        raise ValueError("DataFrame contains no data.")
+
+    if verbose and logger is not None:
+        logger.info(
+            "Calculating weekday-stratified arrival rates for index span "
+            f"{start_date}–{end_date}"
+        )
+
+    arrival_rates_by_weekday: Dict[int, OrderedDict[time, float]] = {}
+    idx_weekday = df.index.weekday
+
+    for d in range(7):
+        arrival_rates_dict = OrderedDict()
+        df_d = df[idx_weekday == d]
+        occ = weekday_counts[d]
+
+        _start_datetime = datetime(1970, 1, 1, 0, 0, 0, 0)
+        _stop_datetime = _start_datetime + timedelta(days=1)
+
+        while _start_datetime != _stop_datetime:
+            _start_time = _start_datetime.time()
+            _end_time = (
+                _start_datetime + timedelta(minutes=yta_time_interval_minutes)
+            ).time()
+
+            _df = df_d.between_time(_start_time, _end_time, inclusive="left")
+
+            if occ == 0:
+                arrival_rates_dict[_start_time] = 0.0
+            else:
+                arrival_rates_dict[_start_time] = _df.shape[0] / occ
+
+            _start_datetime = _start_datetime + timedelta(
+                minutes=yta_time_interval_minutes
+            )
+
+        arrival_rates_by_weekday[d] = arrival_rates_dict
+
+    return arrival_rates_by_weekday
 
 
 def time_varying_arrival_rates_lagged(

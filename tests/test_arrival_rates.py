@@ -6,11 +6,14 @@ from collections import OrderedDict
 # Import the functions to test
 from patientflow.calculate.arrival_rates import (
     time_varying_arrival_rates,
+    time_varying_arrival_rates_by_weekday,
     time_varying_arrival_rates_lagged,
+    weekday_occurrences_in_span,
     admission_probabilities,
     weighted_arrival_rates,
     unfettered_demand_by_hour,
 )
+from datetime import date
 
 
 class TestArrivalRates(unittest.TestCase):
@@ -162,6 +165,20 @@ class TestArrivalRates(unittest.TestCase):
             unfettered_demand_by_hour(
                 self.test_df, self.x1, self.y1, self.x2, self.y2, yta_time_interval=43
             )
+
+    def test_weekday_occurrences_in_span(self):
+        counts = weekday_occurrences_in_span(date(2024, 1, 1), date(2024, 1, 7))
+        self.assertEqual(sum(counts), 7)
+        self.assertEqual(counts[0], 1)
+
+    def test_time_varying_arrival_rates_by_weekday(self):
+        rates_by_d = time_varying_arrival_rates_by_weekday(
+            self.test_df, self.yta_time_interval
+        )
+        self.assertEqual(len(rates_by_d), 7)
+        for d in range(7):
+            self.assertIsInstance(rates_by_d[d], OrderedDict)
+            self.assertEqual(len(rates_by_d[d]), 24)
 
     def test_edge_cases(self):
         """Test edge cases and boundary conditions."""

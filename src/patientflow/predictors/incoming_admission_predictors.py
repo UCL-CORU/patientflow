@@ -58,8 +58,16 @@ i.e. which key(s) appear in ``weights``, matching the names given in ``filters``
 when the model was fitted with filters. If ``weights`` has only one key,
 ``filter_keys`` / ``filter_key`` may be omitted.
 
+Optional ``prediction_date`` (a :class:`~datetime.date`) anchors the calendar day
+when the model was fit with ``stratify_by_weekday=True``. Each prediction slice
+then uses the arrival rate for that slice's **actual** weekday and time-of-day
+(``datetime.weekday()``: Monday = 0, …, Sunday = 6). If ``prediction_date`` is
+omitted, behaviour matches the legacy pooled 24-hour profile
+(``arrival_rates_dict``) only.
+
 The deprecated nested ``prediction_context`` dict (keyword or first positional
-argument) is still accepted and emits ``DeprecationWarning``.
+argument) is still accepted and emits ``DeprecationWarning``. It may include
+``prediction_date`` per filter key (same date required for all keys).
 
 Assumptions
 -----------
@@ -68,8 +76,9 @@ independent filtering. The following assumptions are required for the simplified
 parametric route to be exact:
 
 - Symbols and units:
-    - λ_t: expected arrivals within time-slice t (the value produced by
-      `time_varying_arrival_rates` for that slice; units match the slice length).
+    - λ_t: expected arrivals within time-slice t (from the pooled profile or, when
+      ``prediction_date`` is set and the model was fit with weekday stratification,
+      from the slice's weekday-specific profile; units match the slice length).
     - θ_t: probability an arrival in slice t is admitted within the prediction
       window (computed via `get_y_from_aspirational_curve`).
 
@@ -88,7 +97,7 @@ with probability θ_t reduces the effective rate from λ_t to λ_t θ_t.
 """
 
 import warnings
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, time as dt_time
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -104,6 +113,7 @@ from patientflow.calculate.admission_in_prediction_window import (
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from patientflow.calculate.arrival_rates import (
     time_varying_arrival_rates,
+    time_varying_arrival_rates_by_weekday,
 )
 
 from patientflow.calculate.survival_curve import (
@@ -378,11 +388,12 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
     def _parse_legacy_prediction_context(
         self, prediction_context: Dict, *, for_predict_mean: bool
-    ) -> Tuple[Tuple[int, int], List[str]]:
+    ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
         """Parse deprecated ``prediction_context`` into one snapped time and filter keys.
 
         Raises ``ValueError`` if times differ after snapping, if keys are unknown,
         or if ``for_predict_mean`` and more than one filter key is present.
+        Optional ``prediction_date`` must match across keys when provided.
         """
         if not isinstance(prediction_context, dict) or not prediction_context:
             raise ValueError("prediction_context must be a non-empty dict")
@@ -395,6 +406,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         snapped_times: List[Tuple[int, int]] = []
         filter_keys_order: List[str] = []
+        prediction_dates_raw: List[Optional[date]] = []
         for filter_key, filter_values in prediction_context.items():
             if filter_key not in self.weights:
                 raise ValueError(
@@ -422,13 +434,39 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             snapped_times.append(snapped)
             filter_keys_order.append(filter_key)
 
+            pd_raw = filter_values.get("prediction_date")
+            if pd_raw is not None:
+                if isinstance(pd_raw, datetime):
+                    pd_raw = pd_raw.date()
+                if not isinstance(pd_raw, date):
+                    raise TypeError(
+                        f"'prediction_date' for filter '{filter_key}' must be datetime.date "
+                        f"(or datetime.datetime), got {type(pd_raw)!r}."
+                    )
+            prediction_dates_raw.append(pd_raw)
+
         if len(set(snapped_times)) > 1:
             raise ValueError(
                 "prediction_context must use the same prediction_time (after snapping to "
                 "yta_time_interval) for all filter keys."
             )
 
-        return snapped_times[0], filter_keys_order
+        dates_defined = [d for d in prediction_dates_raw if d is not None]
+        if not dates_defined:
+            resolved_prediction_date = None
+        elif len(dates_defined) != len(prediction_dates_raw):
+            raise ValueError(
+                "prediction_context must provide 'prediction_date' for every filter key "
+                "when it is provided for any key."
+            )
+        elif len(set(dates_defined)) > 1:
+            raise ValueError(
+                "prediction_context must use the same prediction_date for all filter keys."
+            )
+        else:
+            resolved_prediction_date = dates_defined[0]
+
+        return snapped_times[0], filter_keys_order, resolved_prediction_date
 
     def _resolve_filter_keys(
         self, filter_keys: Optional[Union[str, Sequence[str]]]
@@ -478,13 +516,18 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
         prediction_context: Optional[Dict] = None,
-    ) -> Tuple[Tuple[int, int], List[str]]:
-        """Resolve snapped prediction time and filter keys for ``predict()``."""
+        prediction_date: Optional[date] = None,
+    ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
+        """Resolve snapped prediction time, filter keys, and optional calendar anchor."""
         if prediction_context is not None:
-            if prediction_time is not None or filter_keys is not None:
+            if (
+                prediction_time is not None
+                or filter_keys is not None
+                or prediction_date is not None
+            ):
                 raise ValueError(
                     "Pass either prediction_context (deprecated) or prediction_time with "
-                    "filter_keys, not both."
+                    "filter_keys / prediction_date, not both."
                 )
             if args:
                 raise ValueError(
@@ -496,9 +539,10 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 DeprecationWarning,
                 stacklevel=3,
             )
-            return self._parse_legacy_prediction_context(
+            snapped, keys, ctx_date = self._parse_legacy_prediction_context(
                 prediction_context, for_predict_mean=False
             )
+            return snapped, keys, ctx_date
 
         if args:
             if len(args) != 1 or not isinstance(args[0], dict):
@@ -506,10 +550,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                     "predict() positional arguments are only accepted for the deprecated "
                     "prediction_context dict; pass prediction_time as a keyword argument."
                 )
-            if prediction_time is not None or filter_keys is not None:
+            if (
+                prediction_time is not None
+                or filter_keys is not None
+                or prediction_date is not None
+            ):
                 raise ValueError(
                     "Do not combine a positional prediction_context dict with "
-                    "prediction_time= or filter_keys=."
+                    "prediction_time=, filter_keys=, or prediction_date=."
                 )
             warnings.warn(
                 "Passing prediction_context as the first positional argument is deprecated; "
@@ -517,13 +565,20 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 DeprecationWarning,
                 stacklevel=3,
             )
-            return self._parse_legacy_prediction_context(
+            snapped, keys, ctx_date = self._parse_legacy_prediction_context(
                 cast(Dict, args[0]), for_predict_mean=False
             )
+            return snapped, keys, ctx_date
 
         if prediction_time is None:
             raise TypeError(
                 "predict() requires prediction_time= when not using prediction_context."
+            )
+
+        if prediction_date is not None and not isinstance(prediction_date, date):
+            raise TypeError(
+                "prediction_date must be a datetime.date (values inside prediction_context "
+                "may use datetime.datetime, which is coerced to date)."
             )
 
         normalized = self._normalize_prediction_time(prediction_time)
@@ -536,7 +591,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 stacklevel=3,
             )
         resolved_keys = self._resolve_filter_keys(filter_keys)
-        return snapped, resolved_keys
+        return snapped, resolved_keys, prediction_date
 
     def _prepare_prediction_targets_for_predict_mean(
         self,
@@ -544,13 +599,18 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
         filter_key: Optional[str] = None,
         prediction_context: Optional[Dict] = None,
-    ) -> Tuple[Tuple[int, int], List[str]]:
+        prediction_date: Optional[date] = None,
+    ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
         """Resolve snapped prediction time and a single-element key list for ``predict_mean()``."""
         if prediction_context is not None:
-            if prediction_time is not None or filter_key is not None:
+            if (
+                prediction_time is not None
+                or filter_key is not None
+                or prediction_date is not None
+            ):
                 raise ValueError(
                     "Pass either prediction_context (deprecated) or prediction_time with "
-                    "filter_key, not both."
+                    "filter_key / prediction_date, not both."
                 )
             if args:
                 raise ValueError(
@@ -561,10 +621,10 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 DeprecationWarning,
                 stacklevel=3,
             )
-            snapped, fk_list = self._parse_legacy_prediction_context(
+            snapped, fk_list, ctx_date = self._parse_legacy_prediction_context(
                 prediction_context, for_predict_mean=True
             )
-            return snapped, fk_list
+            return snapped, fk_list, ctx_date
 
         if args:
             if len(args) != 1 or not isinstance(args[0], dict):
@@ -572,10 +632,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                     "predict_mean() positional arguments are only accepted for the deprecated "
                     "prediction_context dict; pass prediction_time as a keyword argument."
                 )
-            if prediction_time is not None or filter_key is not None:
+            if (
+                prediction_time is not None
+                or filter_key is not None
+                or prediction_date is not None
+            ):
                 raise ValueError(
                     "Do not combine a positional prediction_context dict with "
-                    "prediction_time= or filter_key=."
+                    "prediction_time=, filter_key=, or prediction_date=."
                 )
             warnings.warn(
                 "Passing prediction_context as the first positional argument is deprecated; "
@@ -583,14 +647,20 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 DeprecationWarning,
                 stacklevel=3,
             )
-            snapped, fk_list = self._parse_legacy_prediction_context(
+            snapped, fk_list, ctx_date = self._parse_legacy_prediction_context(
                 cast(Dict, args[0]), for_predict_mean=True
             )
-            return snapped, fk_list
+            return snapped, fk_list, ctx_date
 
         if prediction_time is None:
             raise TypeError(
                 "predict_mean() requires prediction_time= when not using prediction_context."
+            )
+
+        if prediction_date is not None and not isinstance(prediction_date, date):
+            raise TypeError(
+                "prediction_date must be a datetime.date (values inside prediction_context "
+                "may use datetime.datetime, which is coerced to date)."
             )
 
         normalized = self._normalize_prediction_time(prediction_time)
@@ -603,38 +673,77 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 stacklevel=3,
             )
         fk = self._resolve_filter_key_for_mean(filter_key)
-        return snapped, [fk]
+        return snapped, [fk], prediction_date
 
     def _iter_prediction_inputs(
         self,
         snapped_prediction_time: Tuple[int, int],
         prediction_window: timedelta,
         filter_keys: List[str],
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
     ):
         """Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.
 
-        Slices ``Ntimes`` intervals from the stored full 24-hour arrival-rate
-        dictionary, starting at ``snapped_prediction_time`` (already on an
-        interval boundary).
+        Slices ``Ntimes`` intervals starting at ``snapped_prediction_time`` (on an
+        interval boundary). When ``prediction_date`` is set and weights contain
+        ``arrival_rates_by_weekday`` (from ``fit(..., stratify_by_weekday=True)``),
+        each slice uses the rate for that slice's calendar weekday and time-of-day.
+        If ``prediction_date`` is set but weekday profiles are missing, behaviour
+        depends on ``strict_prediction_date``:
+        - ``False`` (default): fall back to pooled ``arrival_rates_dict`` and warn.
+        - ``True``: raise ``ValueError``.
         """
         Ntimes = int(prediction_window / self.yta_time_interval)
         hr, mn = snapped_prediction_time
         for filter_key in filter_keys:
-            arrival_rates_dict = self.weights[filter_key].get("arrival_rates_dict")
+            w = self.weights[filter_key]
+            arrival_rates_dict = w.get("arrival_rates_dict")
             if arrival_rates_dict is None:
                 raise ValueError(
                     f"No arrival_rates_dict found under filter '{filter_key}'. "
                     "Has the model been fit?"
                 )
+            by_weekday = w.get("arrival_rates_by_weekday")
+            use_weekday = prediction_date is not None and by_weekday is not None
+            if prediction_date is not None and by_weekday is None:
+                message = (
+                    "prediction_date was provided but no arrival_rates_by_weekday "
+                    f"were found for filter '{filter_key}'. Fit with "
+                    "stratify_by_weekday=True to enable weekday-stratified "
+                    "arrival rates."
+                )
+                if strict_prediction_date:
+                    raise ValueError(message)
+                warnings.warn(
+                    message + " Falling back to pooled arrival_rates_dict.",
+                    UserWarning,
+                    stacklevel=4,
+                )
+
             try:
-                arrival_rates = [
-                    arrival_rates_dict[
-                        (
-                            datetime(1970, 1, 1, hr, mn) + i * self.yta_time_interval
-                        ).time()
+                if use_weekday:
+                    assert prediction_date is not None
+                    assert by_weekday is not None
+                    anchor = datetime.combine(
+                        prediction_date, dt_time(hour=hr, minute=mn)
+                    )
+                    arrival_rates = []
+                    for i in range(Ntimes):
+                        dt_i = anchor + i * self.yta_time_interval
+                        d_i = dt_i.weekday()
+                        t_i = dt_i.time()
+                        arrival_rates.append(by_weekday[d_i][t_i])
+                else:
+                    arrival_rates = [
+                        arrival_rates_dict[
+                            (
+                                datetime(1970, 1, 1, hr, mn)
+                                + i * self.yta_time_interval
+                            ).time()
+                        ]
+                        for i in range(Ntimes)
                     ]
-                    for i in range(Ntimes)
-                ]
             except KeyError as e:
                 raise ValueError(
                     f"No arrival_rates found for filter '{filter_key}' at "
@@ -697,11 +806,36 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 filtered_df = filtered_df[filtered_df[column] == criteria]
         return filtered_df
 
+    def _resolve_num_days(self, df: pd.DataFrame, num_days: Optional[int]) -> int:
+        """Return ``num_days`` when given, otherwise infer from the dataframe index."""
+        if num_days is not None:
+            if not isinstance(num_days, int):
+                raise TypeError("num_days must be an integer or None")
+            if num_days <= 0:
+                raise ValueError("num_days must be positive")
+            return num_days
+        if not isinstance(df.index, pd.DatetimeIndex):
+            raise TypeError(
+                "When num_days is omitted, the DataFrame index must be a DatetimeIndex "
+                "so the training span can be inferred."
+            )
+        if len(df.index) == 0:
+            raise ValueError(
+                "Cannot infer num_days from an empty DataFrame when num_days is omitted."
+            )
+        start_date = df.index.min().date()
+        end_date = df.index.max().date()
+        inferred = (end_date - start_date).days + 1
+        if inferred <= 0:
+            raise ValueError("Could not infer a positive num_days from the index.")
+        return inferred
+
     def _calculate_parameters(
         self,
         df,
         yta_time_interval: timedelta,
-        num_days,
+        num_days: Optional[int],
+        stratify_by_weekday: bool = False,
     ):
         """Calculate the full 24-hour arrival-rate dictionary for the given data.
 
@@ -711,20 +845,28 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             The data frame to process.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets.
-        num_days : int
-            Number of days over which to calculate time-varying arrival rates.
+        num_days : int or None
+            Divisor for pooled rates; if ``None``, inferred from ``df``'s index span.
+        stratify_by_weekday : bool, default=False
+            If True, also compute ``arrival_rates_by_weekday`` (keys ``0..6``,
+            Monday=0) for use when ``prediction_date`` is passed at predict time.
 
         Returns
         -------
         dict
-            A dictionary with a single key ``"arrival_rates_dict"`` whose value
-            is a dictionary mapping ``datetime.time`` to arrival rate,
-            covering the full 24-hour cycle at ``yta_time_interval`` granularity.
+            Always contains ``arrival_rates_dict``. When ``stratify_by_weekday``,
+            also ``arrival_rates_by_weekday``: ``dict[int, OrderedDict[time, float]]``.
         """
+        effective_days = self._resolve_num_days(df, num_days)
         arrival_rates_dict = time_varying_arrival_rates(
-            df, yta_time_interval, num_days, verbose=self.verbose
+            df, yta_time_interval, effective_days, verbose=self.verbose
         )
-        return {"arrival_rates_dict": arrival_rates_dict}
+        out: Dict = {"arrival_rates_dict": arrival_rates_dict}
+        if stratify_by_weekday:
+            out["arrival_rates_by_weekday"] = time_varying_arrival_rates_by_weekday(
+                df, yta_time_interval, num_days, verbose=self.verbose
+            )
+        return out
 
     def fit(
         self,
@@ -735,6 +877,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
+        stratify_by_weekday: bool = False,
     ) -> "IncomingAdmissionPredictor":
         """Fit the model to the training data.
 
@@ -751,7 +894,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             The training dataset with historical admission data.
         prediction_window : timedelta, optional
             Deprecated. Prefer passing ``prediction_window`` to
-            `predict()` / `predict_mean()` instead. If provided, will
+            ``predict()`` / ``predict_mean()`` instead. If provided, will
             be stored as a fall-back default for predict-time use.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets. Required.
@@ -760,13 +903,24 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             prediction time can be served at predict time (snapped to the
             nearest ``yta_time_interval`` boundary). Retained for backward
             compatibility only.
-        num_days : int
-            The number of days that the train_df spans. Required.
+        num_days : int, optional
+            Divisor for **pooled** arrival rates (``arrival_rates_dict``). If omitted,
+            inferred from ``train_df``'s index as
+            ``(last_date - first_date).days + 1``. Use an explicit value when
+            the divisor should differ from that calendar span.
+            Weekday-stratified profiles always normalise using the index date
+            span for occurrence counts when fit uses
+            ``time_varying_arrival_rates_by_weekday``.
         epsilon : float, default=1e-7
             A small value representing acceptable error rate to enable calculation
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
+        stratify_by_weekday : bool, default=False
+            If True, fit an additional per-weekday arrival profile (``Monday=0`` …
+            ``Sunday=6``). Pass ``prediction_date`` at predict time to slice the
+            window using that profile; omit ``prediction_date`` to keep using the
+            pooled 24-hour profile only.
 
         Returns
         -------
@@ -778,7 +932,8 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         TypeError
             If ``yta_time_interval`` is missing or not a timedelta, or if
             ``prediction_window`` (when supplied) is not a timedelta, or if
-            ``num_days`` is missing.
+            ``num_days`` is omitted but cannot be inferred (e.g. index is not a
+            ``DatetimeIndex``).
         ValueError
             If ``yta_time_interval`` is not positive, or if
             ``prediction_window`` (when supplied) is not positive or is not
@@ -794,8 +949,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             raise ValueError("yta_time_interval must be positive")
         if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
             warnings.warn("yta_time_interval appears to be longer than 4 hours")
-        if num_days is None:
-            raise TypeError("num_days is required")
 
         # Deprecation handling for prediction_window / prediction_times
         if prediction_window is not None:
@@ -828,6 +981,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.yta_time_interval = yta_time_interval
         self.yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
         self.epsilon = epsilon
+        self.stratify_by_weekday = stratify_by_weekday
 
         # Store deprecated fit-time values as predict-time fall-backs
         self._deprecated_fit_prediction_window = prediction_window
@@ -868,13 +1022,17 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                     self.filter_dataframe(train_df, filters),
                     yta_time_interval,
                     num_days,
+                    stratify_by_weekday=stratify_by_weekday,
                 )
         else:
             self.weights["unfiltered"] = self._calculate_parameters(
                 train_df,
                 yta_time_interval,
                 num_days,
+                stratify_by_weekday=stratify_by_weekday,
             )
+
+        effective_metadata_days = self._resolve_num_days(train_df, num_days)
 
         if self.verbose:
             if normalized_times is not None:
@@ -900,7 +1058,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.metrics["train_set_no"] = len(train_df)
         self.metrics["start_date"] = train_df.index.min().date()
         self.metrics["end_date"] = train_df.index.max().date()
-        self.metrics["num_days"] = num_days
+        self.metrics["num_days"] = effective_metadata_days
 
         return self
 
@@ -952,6 +1110,8 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_window: Optional[timedelta] = None,
         filter_key: Optional[str] = None,
         prediction_context: Optional[Dict] = None,
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
         **kwargs,
     ) -> float:
         """Return the Poisson mean (expected value) for a single ``weights`` key.
@@ -971,6 +1131,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_context : dict, optional
             Deprecated. Former nested dict mapping filter key to
             ``{"prediction_time": ...}``. Must contain exactly one filter key.
+        prediction_date : datetime.date, optional
+            Calendar date at the snapped ``prediction_time``. When the model was fit
+            with ``stratify_by_weekday=True``, selects per-slice weekday arrival rates;
+            otherwise ignored for λ (pooled profile is used).
+        strict_prediction_date : bool, default=False
+            If ``True``, raise an error when ``prediction_date`` is provided but
+            weekday-stratified arrival rates are unavailable for the selected key.
+            If ``False``, warn and fall back to pooled arrival rates.
         **kwargs
             Passed to ``_get_admission_probabilities`` (e.g. ``x1``, ``y1``, …).
 
@@ -989,12 +1157,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """
         prediction_window = self._resolve_prediction_window(prediction_window)
 
-        snapped_time, filter_keys_list = (
+        snapped_time, filter_keys_list, resolved_date = (
             self._prepare_prediction_targets_for_predict_mean(
                 *args,
                 prediction_time=prediction_time,
                 filter_key=filter_key,
                 prediction_context=prediction_context,
+                prediction_date=prediction_date,
             )
         )
 
@@ -1003,7 +1172,11 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         )
 
         for filter_key_i, _pt, arrival_rates in self._iter_prediction_inputs(
-            snapped_time, prediction_window, filter_keys_list
+            snapped_time,
+            prediction_window,
+            filter_keys_list,
+            prediction_date=resolved_date,
+            strict_prediction_date=strict_prediction_date,
         ):
             return float(np.sum(np.array(arrival_rates) * np.array(admission_probs)))
 
@@ -1032,6 +1205,15 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
     time intervals and creates a single Poisson distribution, making it useful
     for scenarios where immediate admission is expected or as a baseline
     for comparison with more complex models.
+
+    Day-of-week stratification is supported through the inherited ``fit()``
+    interface:
+
+    - Use ``fit(..., stratify_by_weekday=True)`` to store weekday-specific
+      arrival profiles.
+    - Use ``predict(..., prediction_date=...)`` (or ``predict_mean``) to
+      activate weekday-aware slicing at predict time.
+    - If ``prediction_date`` is omitted, pooled 24-hour arrival rates are used.
     """
 
     def predict(
@@ -1041,6 +1223,8 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
         prediction_context: Optional[Dict] = None,
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
         **kwargs,
     ) -> Dict:
         """Predict the number of admissions assuming 100% admission rate.
@@ -1058,6 +1242,13 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
             has more than one key (unless using ``prediction_context``).
         prediction_context : dict, optional
             Deprecated nested dict API.
+        prediction_date : datetime.date, optional
+            Calendar anchor for weekday-stratified arrival rates when fitted with
+            ``stratify_by_weekday=True``. Otherwise λ uses the pooled profile only.
+        strict_prediction_date : bool, default=False
+            If ``True``, raise an error when ``prediction_date`` is provided but
+            weekday-stratified arrival rates are unavailable for a selected key.
+            If ``False``, warn and fall back to pooled arrival rates.
         **kwargs
             ``max_value`` : int, optional — maximum PMF support.
 
@@ -1078,12 +1269,13 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
         prediction_window = self._resolve_prediction_window(prediction_window)
 
-        snapped_time, resolved_filter_keys = (
+        snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
                 *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
                 prediction_context=prediction_context,
+                prediction_date=prediction_date,
             )
         )
 
@@ -1092,7 +1284,11 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         predictions = {}
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            snapped_time, prediction_window, resolved_filter_keys
+            snapped_time,
+            prediction_window,
+            resolved_filter_keys,
+            prediction_date=resolved_date,
+            strict_prediction_date=strict_prediction_date,
         ):
             # For direct case, admission probabilities are all 1.0 (100% admission rate)
             admission_probs = np.ones(len(arrival_rates))
@@ -1193,6 +1389,8 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
         prediction_context: Optional[Dict] = None,
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
         **kwargs,
     ) -> Dict:
         """Predict admissions using parametric curves (Poisson thinning route).
@@ -1208,6 +1406,13 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             ``prediction_context``.
         prediction_context : dict, optional
             Deprecated nested dict API.
+        prediction_date : datetime.date, optional
+            Calendar anchor for weekday-stratified λ when fitted with
+            ``stratify_by_weekday=True``.
+        strict_prediction_date : bool, default=False
+            If ``True``, raise an error when ``prediction_date`` is provided but
+            weekday-stratified arrival rates are unavailable for a selected key.
+            If ``False``, warn and fall back to pooled arrival rates.
         **kwargs
             ``x1``, ``y1``, ``x2``, ``y2`` (required); optional ``max_value``.
 
@@ -1235,12 +1440,13 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         prediction_window = self._resolve_prediction_window(prediction_window)
 
-        snapped_time, resolved_filter_keys = (
+        snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
                 *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
                 prediction_context=prediction_context,
+                prediction_date=prediction_date,
             )
         )
 
@@ -1267,7 +1473,11 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         max_value = kwargs.get("max_value")
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            snapped_time, prediction_window, resolved_filter_keys
+            snapped_time,
+            prediction_window,
+            resolved_filter_keys,
+            prediction_date=resolved_date,
+            strict_prediction_date=strict_prediction_date,
         ):
             # Simplified exact route under Poisson thinning: sum_t Poisson(lambda_t * theta_t) ~ Poisson(sum_t lambda_t * theta_t)
             mu = float(np.sum(np.array(arrival_rates) * np.array(theta)))
@@ -1370,6 +1580,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
+        stratify_by_weekday: bool = False,
+        *,
         start_time_col: str = "arrival_datetime",
         end_time_col: str = "departure_datetime",
     ) -> "EmpiricalIncomingAdmissionPredictor":
@@ -1388,18 +1600,20 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             Alternatively, both can be regular columns.
         prediction_window : timedelta, optional
             Deprecated. Prefer passing ``prediction_window`` to
-            `predict()` / `predict_mean()` instead.
+            ``predict()`` / ``predict_mean()`` instead.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets. Required.
         prediction_times : list, optional
             Deprecated. Retained for backward compatibility only.
-        num_days : int
-            The number of days that the train_df spans. Required.
+        num_days : int, optional
+            Same as :meth:`IncomingAdmissionPredictor.fit`.
         epsilon : float, default=1e-7
             A small value representing acceptable error rate to enable calculation
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
+        stratify_by_weekday : bool, default=False
+            Same as ``IncomingAdmissionPredictor.fit``.
         start_time_col : str, default='arrival_datetime'
             Name of the column containing the start time (e.g., arrival time).
             Expected to be the DataFrame index, but can also be a regular column.
@@ -1439,6 +1653,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             num_days=num_days,
             epsilon=epsilon,
             y=y,
+            stratify_by_weekday=stratify_by_weekday,
         )
 
         if self.verbose:
@@ -1555,6 +1770,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
         prediction_context: Optional[Dict] = None,
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
         **kwargs,
     ) -> Dict:
         """Predict admissions using empirical survival curves.
@@ -1570,6 +1787,13 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             ``prediction_context``.
         prediction_context : dict, optional
             Deprecated nested dict API.
+        prediction_date : datetime.date, optional
+            Calendar anchor for weekday-stratified λ when fitted with
+            ``stratify_by_weekday=True``.
+        strict_prediction_date : bool, default=False
+            If ``True``, raise an error when ``prediction_date`` is provided but
+            weekday-stratified arrival rates are unavailable for a selected key.
+            If ``False``, warn and fall back to pooled arrival rates.
         **kwargs
             Optional ``max_value``.
 
@@ -1592,12 +1816,13 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         prediction_window = self._resolve_prediction_window(prediction_window)
 
-        snapped_time, resolved_filter_keys = (
+        snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
                 *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
                 prediction_context=prediction_context,
+                prediction_date=prediction_date,
             )
         )
 
@@ -1610,7 +1835,11 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         )
 
         for filter_key, prediction_time, arrival_rates in self._iter_prediction_inputs(
-            snapped_time, prediction_window, resolved_filter_keys
+            snapped_time,
+            prediction_window,
+            resolved_filter_keys,
+            prediction_date=resolved_date,
+            strict_prediction_date=strict_prediction_date,
         ):
             mv = (
                 max_value
