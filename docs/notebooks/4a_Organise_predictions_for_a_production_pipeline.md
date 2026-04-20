@@ -12,10 +12,9 @@ This notebook introduces the data classes that `patientflow` uses to organise pr
 4. **`FlowSelection`** — a toggle for which flows to include in a prediction
 5. **`PredictionBundle`** — the output: arrivals, departures, and net flow bundled together
 
-The 4x_ notebooks use these classes extensively. By understanding them here, you will be well prepared for the full UCLH implementation that follows.
+The 4x\_ notebooks use these classes extensively. By understanding them here, you will be well prepared for the full UCLH implementation that follows.
 
 This notebook generates fake data on-the-fly, so you can run it immediately without any external data.
-
 
 ```python
 # Reload functions every time
@@ -23,14 +22,9 @@ This notebook generates fake data on-the-fly, so you can run it immediately with
 %autoreload 2
 ```
 
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
-
-
 ## Generate fake data and train simple models
 
 We reuse the fake data generation from notebooks 3a and 3c. First, fake ED snapshots for training an admission probability model:
-
 
 ```python
 from datetime import date, timedelta
@@ -72,7 +66,6 @@ model = train_classifier(
 )
 ```
 
-    
     Patient Set Overlaps (before random assignment):
     Train-Valid: 0 of 5318
     Valid-Test: 102 of 3690
@@ -80,9 +73,7 @@ model = train_classifier(
     All Sets: 0 of 7364 total patients
     Split sizes: [6406, 2122, 4304]
 
-
 Next, fake arrival data for training a yet-to-arrive model (as in notebook 3e):
-
 
 ```python
 import pandas as pd
@@ -111,23 +102,16 @@ num_days = (start_validation_set - start_training_set).days
 yta_model = ParametricIncomingAdmissionPredictor(verbose=False)
 yta_model.fit(
     train_arrivals_copy,
-    prediction_window=timedelta(hours=8),
     yta_time_interval=timedelta(minutes=15),
-    prediction_times=prediction_times,
     num_days=num_days
 )
 ```
 
     Split sizes: [2214, 710, 1584]
 
-
-
-
-
-<style>#sk-container-id-2 {
+<style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: #000;
-  --sklearn-color-text-muted: #666;
+  --sklearn-color-text: black;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -155,15 +139,15 @@ yta_model.fit(
   }
 }
 
-#sk-container-id-2 {
+#sk-container-id-1 {
   color: var(--sklearn-color-text);
 }
 
-#sk-container-id-2 pre {
+#sk-container-id-1 pre {
   padding: 0;
 }
 
-#sk-container-id-2 input.sk-hidden--visually {
+#sk-container-id-1 input.sk-hidden--visually {
   border: 0;
   clip: rect(1px 1px 1px 1px);
   clip: rect(1px, 1px, 1px, 1px);
@@ -175,7 +159,7 @@ yta_model.fit(
   width: 1px;
 }
 
-#sk-container-id-2 div.sk-dashed-wrapped {
+#sk-container-id-1 div.sk-dashed-wrapped {
   border: 1px dashed var(--sklearn-color-line);
   margin: 0 0.4em 0.5em 0.4em;
   box-sizing: border-box;
@@ -183,7 +167,7 @@ yta_model.fit(
   background-color: var(--sklearn-color-background);
 }
 
-#sk-container-id-2 div.sk-container {
+#sk-container-id-1 div.sk-container {
   /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
      but bootstrap.min.css set `[hidden] { display: none !important; }`
      so we also need the `!important` here to be able to override the
@@ -193,7 +177,7 @@ yta_model.fit(
   position: relative;
 }
 
-#sk-container-id-2 div.sk-text-repr-fallback {
+#sk-container-id-1 div.sk-text-repr-fallback {
   display: none;
 }
 
@@ -209,14 +193,14 @@ div.sk-item {
 
 /* Parallel-specific style estimator block */
 
-#sk-container-id-2 div.sk-parallel-item::after {
+#sk-container-id-1 div.sk-parallel-item::after {
   content: "";
   width: 100%;
   border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
   flex-grow: 1;
 }
 
-#sk-container-id-2 div.sk-parallel {
+#sk-container-id-1 div.sk-parallel {
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -224,28 +208,28 @@ div.sk-item {
   position: relative;
 }
 
-#sk-container-id-2 div.sk-parallel-item {
+#sk-container-id-1 div.sk-parallel-item {
   display: flex;
   flex-direction: column;
 }
 
-#sk-container-id-2 div.sk-parallel-item:first-child::after {
+#sk-container-id-1 div.sk-parallel-item:first-child::after {
   align-self: flex-end;
   width: 50%;
 }
 
-#sk-container-id-2 div.sk-parallel-item:last-child::after {
+#sk-container-id-1 div.sk-parallel-item:last-child::after {
   align-self: flex-start;
   width: 50%;
 }
 
-#sk-container-id-2 div.sk-parallel-item:only-child::after {
+#sk-container-id-1 div.sk-parallel-item:only-child::after {
   width: 0;
 }
 
 /* Serial-specific style estimator block */
 
-#sk-container-id-2 div.sk-serial {
+#sk-container-id-1 div.sk-serial {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -263,33 +247,24 @@ clickable and can be expanded/collapsed.
 
 /* Pipeline and ColumnTransformer style (default) */
 
-#sk-container-id-2 div.sk-toggleable {
+#sk-container-id-1 div.sk-toggleable {
   /* Default theme specific background. It is overwritten whether we have a
   specific estimator or a Pipeline/ColumnTransformer */
   background-color: var(--sklearn-color-background);
 }
 
 /* Toggleable label */
-#sk-container-id-2 label.sk-toggleable__label {
+#sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
-  display: flex;
+  display: block;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5em;
 }
 
-#sk-container-id-2 label.sk-toggleable__label .caption {
-  font-size: 0.6rem;
-  font-weight: lighter;
-  color: var(--sklearn-color-text-muted);
-}
-
-#sk-container-id-2 label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:before {
   /* Arrow on the left of the label */
   content: "▸";
   float: left;
@@ -297,13 +272,13 @@ clickable and can be expanded/collapsed.
   color: var(--sklearn-color-icon);
 }
 
-#sk-container-id-2 label.sk-toggleable__label-arrow:hover:before {
+#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
   color: var(--sklearn-color-text);
 }
 
 /* Toggleable content - dropdown */
 
-#sk-container-id-2 div.sk-toggleable__content {
+#sk-container-id-1 div.sk-toggleable__content {
   max-height: 0;
   max-width: 0;
   overflow: hidden;
@@ -312,12 +287,12 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content.fitted {
+#sk-container-id-1 div.sk-toggleable__content.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content pre {
+#sk-container-id-1 div.sk-toggleable__content pre {
   margin: 0.2em;
   border-radius: 0.25em;
   color: var(--sklearn-color-text);
@@ -325,79 +300,79 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-toggleable__content.fitted pre {
+#sk-container-id-1 div.sk-toggleable__content.fitted pre {
   /* unfitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
-#sk-container-id-2 input.sk-toggleable__control:checked~div.sk-toggleable__content {
+#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
   /* Expand drop-down */
   max-height: 200px;
   max-width: 100%;
   overflow: auto;
 }
 
-#sk-container-id-2 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
+#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
   content: "▾";
 }
 
 /* Pipeline/ColumnTransformer-specific style */
 
-#sk-container-id-2 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator-specific style */
 
 /* Colorize estimator box */
-#sk-container-id-2 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
+#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
-#sk-container-id-2 div.sk-label label.sk-toggleable__label,
-#sk-container-id-2 div.sk-label label {
+#sk-container-id-1 div.sk-label label.sk-toggleable__label,
+#sk-container-id-1 div.sk-label label {
   /* The background is the default theme color */
   color: var(--sklearn-color-text-on-default-background);
 }
 
 /* On hover, darken the color of the background */
-#sk-container-id-2 div.sk-label:hover label.sk-toggleable__label {
+#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
 /* Label box, darken color on hover, fitted */
-#sk-container-id-2 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
+#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
   color: var(--sklearn-color-text);
   background-color: var(--sklearn-color-fitted-level-2);
 }
 
 /* Estimator label */
 
-#sk-container-id-2 div.sk-label label {
+#sk-container-id-1 div.sk-label label {
   font-family: monospace;
   font-weight: bold;
   display: inline-block;
   line-height: 1.2em;
 }
 
-#sk-container-id-2 div.sk-label-container {
+#sk-container-id-1 div.sk-label-container {
   text-align: center;
 }
 
 /* Estimator-specific */
-#sk-container-id-2 div.sk-estimator {
+#sk-container-id-1 div.sk-estimator {
   font-family: monospace;
   border: 1px dotted var(--sklearn-color-border-box);
   border-radius: 0.25em;
@@ -407,18 +382,18 @@ clickable and can be expanded/collapsed.
   background-color: var(--sklearn-color-unfitted-level-0);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted {
+#sk-container-id-1 div.sk-estimator.fitted {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-0);
 }
 
 /* on hover */
-#sk-container-id-2 div.sk-estimator:hover {
+#sk-container-id-1 div.sk-estimator:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-2);
 }
 
-#sk-container-id-2 div.sk-estimator.fitted:hover {
+#sk-container-id-1 div.sk-estimator.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-2);
 }
@@ -439,8 +414,7 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 0.5em;
-  text-align: center;
+  margin-left: 1ex;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -506,7 +480,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
 
 /* "?"-specific style due to the `<a>` HTML tag */
 
-#sk-container-id-2 a.estimator_doc_link {
+#sk-container-id-1 a.estimator_doc_link {
   float: right;
   font-size: 1rem;
   line-height: 1em;
@@ -521,30 +495,27 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
 }
 
-#sk-container-id-2 a.estimator_doc_link.fitted {
+#sk-container-id-1 a.estimator_doc_link.fitted {
   /* fitted */
   border: var(--sklearn-color-fitted-level-1) 1pt solid;
   color: var(--sklearn-color-fitted-level-1);
 }
 
 /* On hover */
-#sk-container-id-2 a.estimator_doc_link:hover {
+#sk-container-id-1 a.estimator_doc_link:hover {
   /* unfitted */
   background-color: var(--sklearn-color-unfitted-level-3);
   color: var(--sklearn-color-background);
   text-decoration: none;
 }
 
-#sk-container-id-2 a.estimator_doc_link.fitted:hover {
+#sk-container-id-1 a.estimator_doc_link.fitted:hover {
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-2" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>ParametricIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
-
-
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
 
 We also need the aspirational curve parameters for the parametric model. These are loaded from the config file in the repository:
-
 
 ```python
 from patientflow.load import load_config_file, set_file_paths, set_project_root
@@ -561,13 +532,11 @@ print(f'Aspirational targets: {y1*100:.0f}% admitted within {x1:.0f} hours, '
     Inferred project root: /Users/zellaking/Repos/patientflow
     Aspirational targets: 80% admitted within 4 hours, 99% within 12 hours
 
-
 ## Step 1: Start with a familiar result — a raw PMF array
 
 In notebook 3a we used `get_prob_dist_for_prediction_moment()` to predict a bed count distribution for a group of patients. The result was a raw PMF array — an array where each element gives the probability of needing that many beds.
 
 Let's reproduce this here, selecting one group snapshot from the fake data and passing it through the trained model.
-
 
 ```python
 from patientflow.prepare import prepare_patient_snapshots, prepare_group_snapshot_dict
@@ -605,8 +574,6 @@ print(f'Sum of probabilities: {pmf_array.sum():.4f}')
     PMF array shape: (22,)
     Sum of probabilities: 1.0000
 
-
-
 ```python
 import numpy as np
 from patientflow.viz.probability_distribution import plot_prob_dist
@@ -621,13 +588,9 @@ title = (
 plot_prob_dist(pmf_array, title, include_titles=True)
 ```
 
-
-    
 ![png](4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_10_0.png)
-    
 
-
-This is exactly the kind of result we produced in the 3x_ notebooks — a numpy array of probabilities. Now let's see how `patientflow` wraps this in a named container.
+This is exactly the kind of result we produced in the 3x\_ notebooks — a numpy array of probabilities. Now let's see how `patientflow` wraps this in a named container.
 
 ## Step 2: Wrap the PMF in a `FlowInputs` container
 
@@ -639,7 +602,6 @@ A `FlowInputs` object is a lightweight, immutable container that holds a single 
 - **`aspirational`** — whether the flow reflects demand under target performance assumptions rather than empirically observed patterns (default `False`; see notebook 4d for evaluation implications)
 
 The distribution itself is stored in the `distribution` attribute — exactly the same numpy array we just plotted.
-
 
 ```python
 from patientflow.predict.service import FlowInputs
@@ -664,7 +626,6 @@ print(f'Same data?     {np.array_equal(ed_current_flow.distribution, pmf_array)}
     Distribution:  numpy array of shape (22,)
     Same data?     True
 
-
 The data inside `FlowInputs` is exactly the same PMF array. The container simply gives it a name and a type.
 
 ## Step 3: Wrap a Poisson rate in a `FlowInputs` container
@@ -673,12 +634,13 @@ In notebook 3e, we used Poisson distributions to model yet-to-arrive patients. T
 
 Let's call `predict()` on the model we just trained to see the result.
 
-
 ```python
-prediction_context = {'unfiltered': {'prediction_time': prediction_time}}
 
 # predict() returns a full probability distribution
-yta_prediction = yta_model.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+yta_prediction = yta_model.predict(
+    prediction_time=prediction_time,
+    prediction_window=timedelta(hours=8),
+    x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
 yta_distribution = yta_prediction['unfiltered']
 
 print('Yet-to-arrive distribution (first 10 rows):')
@@ -686,10 +648,6 @@ yta_distribution.head(10)
 ```
 
     Yet-to-arrive distribution (first 10 rows):
-
-
-
-
 
 <div>
 <style scoped>
@@ -704,6 +662,7 @@ yta_distribution.head(10)
     .dataframe thead th {
         text-align: right;
     }
+
 </style>
 <table border="1" class="dataframe">
   <thead>
@@ -761,9 +720,6 @@ yta_distribution.head(10)
 </table>
 </div>
 
-
-
-
 ```python
 title = (
     f'Probability distribution for number of beds needed for patients\n'
@@ -773,18 +729,16 @@ title = (
 plot_prob_dist(yta_distribution, title, include_titles=True, truncate_at_beds=40, bar_colour='green')
 ```
 
-
-    
 ![png](4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_17_0.png)
-    
 
-
-Because this distribution is based on a Poisson model, the `DemandPredictor` can regenerate it from just the Poisson mean (lambda). The model provides a `predict_mean()` method for this purpose. This is what `build_service_data()` uses internally in the 4x_ notebooks — it stores just the Poisson rate in the `FlowInputs` container, and the `DemandPredictor` reconstructs the full distribution when needed.
-
+Because this distribution is based on a Poisson model, the `DemandPredictor` can regenerate it from just the Poisson mean (lambda). The model provides a `predict_mean()` method for this purpose. This is what `build_service_data()` uses internally in the 4x\_ notebooks — it stores just the Poisson rate in the `FlowInputs` container, and the `DemandPredictor` reconstructs the full distribution when needed.
 
 ```python
 # predict_mean() returns just the Poisson rate (a single float)
-yta_lambda = yta_model.predict_mean(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2)
+yta_lambda = yta_model.predict_mean(
+    prediction_time=prediction_time,
+    prediction_window=timedelta(hours=8),
+    x1=x1, y1=y1, x2=x2, y2=y2)
 
 print(f'Yet-to-arrive Poisson rate (lambda): {yta_lambda:.3f}')
 
@@ -792,9 +746,7 @@ print(f'Yet-to-arrive Poisson rate (lambda): {yta_lambda:.3f}')
 
     Yet-to-arrive Poisson rate (lambda): 18.618
 
-
 We can wrap this Poisson rate in a `FlowInputs` container. The key difference from Step 2 is that `flow_type` is `"poisson"` and `distribution` is a float (the rate) rather than a numpy array.
-
 
 ```python
 ed_yta_flow = FlowInputs(
@@ -816,17 +768,15 @@ print(f'Distribution:  {ed_yta_flow.distribution} (Poisson lambda)')
     Display name:  ED yet-to-arrive admissions
     Distribution:  18.618075334578297 (Poisson lambda)
 
-
 Both PMF and Poisson flows use the same `FlowInputs` container, distinguished only by `flow_type`. This uniform interface means downstream code can handle any flow without special-casing.
 
-Because we used a `ParametricIncomingAdmissionPredictor` here, the Poisson rate reflects demand as if ED performance targets are met — an *aspirational* prediction. When `build_service_data()` constructs this flow automatically, it sets `aspirational=True` on the `ed_yta` `FlowInputs` so that downstream code can detect this. See notebook 4d for how this affects evaluation.
+Because we used a `ParametricIncomingAdmissionPredictor` here, the Poisson rate reflects demand as if ED performance targets are met — an _aspirational_ prediction. When `build_service_data()` constructs this flow automatically, it sets `aspirational=True` on the `ed_yta` `FlowInputs` so that downstream code can detect this. See notebook 4d for how this affects evaluation.
 
 ## Step 4: Group flows into a `ServicePredictionInputs`
 
 A hospital service (e.g. "medical") has multiple sources of incoming patients and potentially outgoing patients too. `ServicePredictionInputs` groups all of these into a single object, organised as **inflows** and **outflows**.
 
 Let's build one using the two flows we just created. For the departure flows, we'll create simple fake PMFs from a Poisson distribution to represent expected discharges. For transfers and other inflows where we don't have models, we use zero placeholders — a PMF of `[1.0]` (certainly zero patients) or a Poisson rate of `0.0`.
-
 
 ```python
 from patientflow.predict.service import ServicePredictionInputs
@@ -892,17 +842,15 @@ print(service_inputs)
         Emergency inpatient departures           PMF[0:10]: [0.007, 0.034, 0.084, 0.140, 0.175, 0.175, 0.146, 0.104, 0.065, 0.036] (E=5.0 of 29 emergency patients in service)
         Elective inpatient departures            PMF[0:10]: [0.135, 0.271, 0.271, 0.180, 0.090, 0.036, 0.012, 0.003, 0.001, 0.000] (E=2.0 of 19 elective patients in service)
 
-
 The printed representation shows all inflows and outflows at a glance. The `ed_current` flow shows the PMF from Step 1, and the `ed_yta` flow shows the Poisson rate from Step 3. The departure flows use fake Poisson PMFs (with expected values of ~5 and ~2 respectively), and the transfer flows are zero placeholders.
 
-In a production system, these departure distributions would come from discharge prediction models, and the transfer flows would also be populated. You'll see this in the 4x_ notebooks.
+In a production system, these departure distributions would come from discharge prediction models, and the transfer flows would also be populated. You'll see this in the 4x\_ notebooks.
 
 ## Step 5: Use `DemandPredictor` to generate a prediction
 
 The `DemandPredictor` takes a `ServicePredictionInputs` and convolves the selected flows into a combined probability distribution. This is the same convolution we performed manually in notebook 3e (where we convolved multiple Poisson distributions using `np.convolve`), but wrapped in a method that handles both PMF and Poisson flows automatically.
 
 Let's predict demand using only the current ED patients first.
-
 
 ```python
 from patientflow.predict.demand import DemandPredictor
@@ -927,7 +875,6 @@ current_ed_bundle = predictor.predict_service(
 
 The result is a `PredictionBundle` containing a `DemandPrediction` for arrivals. Let's look at the arrivals prediction — this corresponds to the PMF we started with.
 
-
 ```python
 arrivals = current_ed_bundle.arrivals
 
@@ -942,8 +889,6 @@ print(f'PMF shape:            {arrivals.probabilities.shape}')
     Percentiles:          {25: 6, 50: 7, 75: 8}
     PMF shape:            (22,)
 
-
-
 ```python
 title = (
     f'Predicted beds needed from current ED patients\n'
@@ -953,11 +898,7 @@ title = (
 plot_prob_dist(arrivals.probabilities, title, include_titles=True)
 ```
 
-
-    
 ![png](4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_30_0.png)
-    
-
 
 This is the same distribution as Step 1 — the `DemandPredictor` simply passes through the PMF when there is only one flow selected. The value is in what it provides: summary statistics (expectation, mode, percentiles) and the ability to combine multiple flows, as we'll see next.
 
@@ -966,7 +907,6 @@ This is the same distribution as Step 1 — the `DemandPredictor` simply passes 
 The `FlowSelection` class is a toggle for which flows to include in a prediction. It provides several presets and a `custom()` method for full control.
 
 Let's combine current ED patients with yet-to-arrive patients. This is where convolution happens — the `DemandPredictor` convolves the PMF from current patients with the Poisson distribution from yet-to-arrive patients to produce a single combined distribution.
-
 
 ```python
 # Include both current ED and yet-to-arrive patients
@@ -993,9 +933,7 @@ print(f'Combined — expected beds: {combined_bundle.arrivals.expectation:.1f}')
     Yet-to-arrive only — Poisson rate: 18.6
     Combined — expected beds: 25.5
 
-
 The expected value of the combined distribution equals the sum of the individual expected values — a property of convolution. But the full probability distribution captures the combined uncertainty, not just the means.
-
 
 ```python
 title = (
@@ -1012,14 +950,9 @@ plot_prob_dist(
 )
 ```
 
-
-    
 ![png](4a_Organise_predictions_for_a_production_pipeline_files/4a_Organise_predictions_for_a_production_pipeline_35_0.png)
-    
-
 
 Now let's compare two presets — `FlowSelection.incoming_only()` includes all inflows but no departures, while `FlowSelection.default()` includes everything.
-
 
 ```python
 incoming_bundle = predictor.predict_service(
@@ -1047,14 +980,14 @@ print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
       Expected arrivals:   25.5
       Expected departures: 0.0
       Expected net flow:   25.5
-    
+
     === FlowSelection.default() ===
       Expected arrivals:   25.5
       Expected departures: 7.0
       Expected net flow:   18.5
 
-
 The available presets are:
+
 - `FlowSelection.default()` — all flows
 - `FlowSelection.incoming_only()` — all inflows, no departures
 - `FlowSelection.outgoing_only()` — only departures
@@ -1072,7 +1005,6 @@ Every call to `predictor.predict_service()` returns a `PredictionBundle`. This b
 
 It also records which `FlowSelection` was used, so you can always trace what went into the prediction. The bundle's **`is_aspirational`** flag is `True` when any contributing inflow was generated under aspirational assumptions (e.g. ED performance targets), indicating that comparison against observed admissions requires care — see notebook 4d.
 
-
 ```python
 print(combined_bundle)
 ```
@@ -1083,9 +1015,7 @@ print(combined_bundle)
       Net flow:    PMF[20:30]: [0.046, 0.057, 0.068, 0.077, 0.082, 0.085, 0.083, 0.078, 0.070, 0.061] (E=25.5)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
-
 Each `DemandPrediction` carries useful summary statistics:
-
 
 ```python
 arrivals = combined_bundle.arrivals
@@ -1103,9 +1033,7 @@ print(f'PMF array length:    {len(arrivals.probabilities)}')
     90% probability:     need at least 20 beds
     PMF array length:    76
 
-
 The `flow_selection` attribute records which flows were included:
-
 
 ```python
 fs = combined_bundle.flow_selection
@@ -1126,17 +1054,16 @@ print(f'Cohort:           {fs.cohort}')
     Departures:       False
     Cohort:           emergency
 
-
 ## Summary
 
-In this notebook we traced the path from familiar 3x_ outputs to the structured data classes used in the 4x_ notebooks:
+In this notebook we traced the path from familiar 3x* outputs to the structured data classes used in the 4x* notebooks:
 
-| 3x_ concept | 4x_ equivalent | What changed? |
-|---|---|---|
-| Raw PMF array from `get_prob_dist_for_prediction_moment()` | `FlowInputs(flow_type="pmf", distribution=pmf_array)` | Same numbers, named container |
-| Poisson distribution from yet-to-arrive model | `FlowInputs(flow_type="poisson", distribution=lambda)` | Rate stored; full distribution regenerated when needed |
-| Manual `np.convolve()` of multiple distributions | `DemandPredictor.predict_service()` | Same maths, handled automatically |
-| Ad-hoc selection of which inputs to include | `FlowSelection.incoming_only()`, `.default()`, `.custom(...)` | Explicit, reproducible toggle |
-| Individual result arrays | `PredictionBundle` with arrivals, departures, net flow | Structured output with summary statistics |
+| 3x\_ concept                                               | 4x\_ equivalent                                               | What changed?                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
+| Raw PMF array from `get_prob_dist_for_prediction_moment()` | `FlowInputs(flow_type="pmf", distribution=pmf_array)`         | Same numbers, named container                          |
+| Poisson distribution from yet-to-arrive model              | `FlowInputs(flow_type="poisson", distribution=lambda)`        | Rate stored; full distribution regenerated when needed |
+| Manual `np.convolve()` of multiple distributions           | `DemandPredictor.predict_service()`                           | Same maths, handled automatically                      |
+| Ad-hoc selection of which inputs to include                | `FlowSelection.incoming_only()`, `.default()`, `.custom(...)` | Explicit, reproducible toggle                          |
+| Individual result arrays                                   | `PredictionBundle` with arrivals, departures, net flow        | Structured output with summary statistics              |
 
 In notebook 4c, you'll see how `build_service_data()` constructs all of these automatically from trained models for the full UCLH implementation — building a dictionary of `ServicePredictionInputs` for every specialty in a single call.

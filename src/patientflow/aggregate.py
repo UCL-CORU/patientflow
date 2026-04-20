@@ -529,7 +529,14 @@ def get_prob_dist_using_survival_curve(
     model : EmpiricalIncomingAdmissionPredictor
         A fitted instance of EmpiricalIncomingAdmissionPredictor
     verbose : bool, optional (default=False)
-        If True, print progress information
+        If True, print progress information.
+
+    Notes
+    -----
+    The current snapshot date ``dt`` is forwarded to the YTA model as
+    ``prediction_date=dt`` on each predict call. This enables weekday-stratified
+    arrival-rate slicing for models fitted with ``stratify_by_weekday=True``.
+    Models without weekday stratification remain on pooled behaviour.
 
     Returns
     -------
@@ -565,8 +572,6 @@ def get_prob_dist_using_survival_curve(
 
     prob_dist_dict = {}
 
-    prediction_context = {category: {"prediction_time": prediction_time}}
-
     for dt in snapshot_dates:
         # Create prediction moment by combining snapshot date and prediction time
         prediction_moment = datetime.combine(
@@ -581,7 +586,12 @@ def get_prob_dist_using_survival_curve(
                 prediction_moment = prediction_moment.replace(tzinfo=timezone.utc)
 
         # Get predictions from model
-        predictions = model.predict(prediction_context)
+        predictions = model.predict(
+            prediction_time=prediction_time,
+            prediction_window=prediction_window,
+            prediction_date=dt,
+            filter_keys=category,
+        )
         prob_dist_dict[dt] = {"agg_predicted": predictions[category]}
 
         # Calculate observed values

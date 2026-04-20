@@ -8,7 +8,7 @@ It includes utilities for creating specialty filters and training parametric adm
 The logic in this module is specific to the implementation at UCLH.
 """
 
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from pandas import DataFrame
 from datetime import timedelta
@@ -68,7 +68,7 @@ def train_parametric_admission_predictor(
     prediction_window: timedelta,
     yta_time_interval: timedelta,
     prediction_times: List[float],
-    num_days: int,
+    num_days: Optional[int] = None,
     epsilon: float = 10e-7,
 ) -> ParametricIncomingAdmissionPredictor:
     """
@@ -81,13 +81,17 @@ def train_parametric_admission_predictor(
     train_yta : DataFrame
         Training data for yet-to-arrive predictions.
     prediction_window : timedelta
-        Time window for predictions as a timedelta.
+        Kept in the signature for backward compatibility. No longer required
+        by the underlying model at training time; the window is supplied at
+        ``predict()`` time. Validated here for early type-checking.
     yta_time_interval : timedelta
         Time interval for predictions as a timedelta.
     prediction_times : List[float]
-        List of prediction times.
-    num_days : int
-        Number of days to consider.
+        Kept in the signature for backward compatibility. No longer forwarded
+        to the underlying model.
+    num_days : int, optional
+        Divisor for pooled arrival rates; if omitted, inferred from ``train_yta``'s index
+        (same as :meth:`~patientflow.predictors.incoming_admission_predictors.IncomingAdmissionPredictor.fit`).
     epsilon : float, optional
         Epsilon parameter for model, by default 10e-7.
 
@@ -107,9 +111,11 @@ def train_parametric_admission_predictor(
     if not isinstance(yta_time_interval, timedelta):
         raise TypeError("yta_time_interval must be a timedelta object")
 
+    # prediction_times is retained only for signature compatibility
+    del prediction_times
+
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:
-            # Convert to datetime using the actual values, not pandas objects
             train_yta = train_yta.copy()
             train_yta["arrival_datetime"] = pd.to_datetime(
                 train_yta["arrival_datetime"].values, utc=True
@@ -124,11 +130,9 @@ def train_parametric_admission_predictor(
     yta_model = ParametricIncomingAdmissionPredictor(filters=specialty_filters)
     yta_model.fit(
         train_df=train_yta,
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
-        epsilon=epsilon,
         num_days=num_days,
+        epsilon=epsilon,
     )
 
     return yta_model

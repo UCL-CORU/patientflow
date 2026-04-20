@@ -400,7 +400,7 @@ def initialise_model(
 def create_column_transformer(
     df: DataFrame, ordinal_mappings: Optional[Dict[str, List[Any]]] = None
 ) -> ColumnTransformer:
-    """Create a column transformer using :func:`infer_feature_kind` per column.
+    """Create a column transformer using `infer_feature_kind()` per column.
 
     Parameters
     ----------

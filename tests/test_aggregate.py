@@ -15,6 +15,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timezone, timedelta
+from unittest.mock import MagicMock
 
 from patientflow.aggregate import (
     BernoulliGeneratingFunction,
@@ -478,3 +479,45 @@ class TestAggregateRefactored(unittest.TestCase):
             self.assertIsInstance(result[dt]["agg_predicted"], pd.DataFrame)
             self.assertIn("agg_proba", result[dt]["agg_predicted"].columns)
             self.assertIsInstance(result[dt]["agg_observed"], int)
+
+    def test_get_prob_dist_using_survival_curve_passes_prediction_date(self):
+        """Snapshot date should be forwarded as prediction_date on model.predict."""
+        test_df = pd.DataFrame(
+            {
+                "arrival_datetime": [
+                    datetime(2023, 1, 1, 10, 15, tzinfo=timezone.utc),
+                    datetime(2023, 1, 2, 10, 30, tzinfo=timezone.utc),
+                ],
+                "departure_datetime": [
+                    datetime(2023, 1, 1, 12, 15, tzinfo=timezone.utc),
+                    datetime(2023, 1, 2, 14, 30, tzinfo=timezone.utc),
+                ],
+            }
+        )
+
+        # Mock just enough predictor interface for this helper.
+        model = MagicMock()
+        model.survival_df = pd.DataFrame(
+            {"time_hours": [0.0, 1.0], "survival_probability": [1.0, 0.9]}
+        )
+        model.predict.return_value = {
+            "unfiltered": pd.DataFrame({"agg_proba": [0.5, 0.5]}, index=[0, 1])
+        }
+
+        snapshot_dates = [date(2023, 1, 1), date(2023, 1, 2)]
+        _ = get_prob_dist_using_survival_curve(
+            snapshot_dates=snapshot_dates,
+            test_visits=test_df,
+            category="unfiltered",
+            prediction_time=(10, 0),
+            prediction_window=timedelta(hours=8),
+            start_time_col="arrival_datetime",
+            end_time_col="departure_datetime",
+            model=model,
+        )
+
+        self.assertEqual(model.predict.call_count, 2)
+        called_prediction_dates = [
+            call.kwargs["prediction_date"] for call in model.predict.call_args_list
+        ]
+        self.assertEqual(called_prediction_dates, snapshot_dates)

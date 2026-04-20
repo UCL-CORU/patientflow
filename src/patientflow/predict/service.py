@@ -489,6 +489,12 @@ def _validate_models_and_data(
         else:
             if not hasattr(spec_model, "specialty_to_subgroups"):
                 raise ValueError("Specialty model has not been fit")
+    if validate_yta_ed(flow_selection) and yet_to_arrive_model is not None:
+        if (
+            not hasattr(yet_to_arrive_model, "weights")
+            or not yet_to_arrive_model.weights
+        ):
+            raise ValueError("Yet-to-arrive model has not been fit")
 
     if validate_yta_ed(flow_selection):
         if yet_to_arrive_model is None:
@@ -496,20 +502,6 @@ def _validate_models_and_data(
                 "ED yet-to-arrive model (fourth tuple slot) is required when "
                 "include_ed_yta is True and cohort includes emergency"
             )
-    if validate_yta_ed(flow_selection) and yet_to_arrive_model is not None:
-        if (
-            not hasattr(yet_to_arrive_model, "prediction_window")
-            or yet_to_arrive_model.prediction_window is None
-        ):
-            raise ValueError("Yet-to-arrive model has not been fit")
-        if prediction_window != yet_to_arrive_model.prediction_window:
-            raise ValueError(
-                "Requested prediction window {pw} does not match the prediction window of "
-                "the trained yet-to-arrive model {mw}".format(
-                    pw=prediction_window, mw=yet_to_arrive_model.prediction_window
-                )
-            )
-
     if validate_non_ed_yta(flow_selection) and non_ed_yta_model is None:
         raise ValueError(
             "non-ED yet-to-arrive model is required when include_non_ed_yta is True "
@@ -517,8 +509,8 @@ def _validate_models_and_data(
         )
     if validate_elective_yta(flow_selection) and elective_yta_model is None:
         raise ValueError(
-            "Elective yet-to-arrive model is required when include_elective_yta is True "
-            "and cohort includes elective"
+            "Elective yet-to-arrive model is required when include_elective_yta is "
+            "True and cohort includes elective"
         )
 
     for name, model, active in (
@@ -527,14 +519,8 @@ def _validate_models_and_data(
     ):
         if not active or model is None:
             continue
-        if not hasattr(model, "prediction_window") or model.prediction_window is None:
-            raise ValueError(
-                f"{name} DirectAdmissionPredictor has not been fit (missing prediction_window)"
-            )
-        if model.prediction_window != prediction_window:
-            raise ValueError(
-                f"Requested prediction window {prediction_window} does not match the prediction window of the trained {name} model {model.prediction_window}"
-            )
+        if not hasattr(model, "weights") or not model.weights:
+            raise ValueError(f"{name} DirectAdmissionPredictor has not been fit")
 
     if validate_transfer_model(flow_selection, transfer_model):
         if (
@@ -946,6 +932,7 @@ def _create_flow_inputs(
     non_ed_yta_model: Optional[DirectAdmissionPredictor],
     elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
+    prediction_window,
     x1: Optional[float],
     y1: Optional[float],
     x2: Optional[float],
@@ -958,18 +945,29 @@ def _create_flow_inputs(
     dict
         Dictionary with 'inflows' and 'outflows' keys containing FlowInputs objects
     """
-    prediction_context = {spec: {"prediction_time": prediction_time}}
 
-    def _safe_predict_mean(model, context, **kwargs) -> float:
+    def _safe_predict_mean(model, **kwargs) -> float:
         # Return 0.0 when the model is None or doesn't recognise the filter key
         if model is None:
             return 0.0
         if hasattr(model, "weights") and spec not in model.weights:
             return 0.0
-        curve_kwargs = {
-            k: (0.0 if v is None else float(v)) for k, v in kwargs.items()
-        }
-        return float(model.predict_mean(context, **curve_kwargs))
+        return float(
+            model.predict_mean(
+                prediction_time=prediction_time,
+                prediction_window=prediction_window,
+                filter_key=spec,
+                **kwargs,
+            )
+        )
+
+    # Parametric YTA models need x1/y1/x2/y2; empirical and direct do not.
+    if isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
+        ed_yta_mean = _safe_predict_mean(
+            yet_to_arrive_model, x1=x1, y1=y1, x2=x2, y2=y2
+        )
+    else:
+        ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
 
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
@@ -983,9 +981,7 @@ def _create_flow_inputs(
         "ed_yta": FlowInputs(
             flow_id="ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(
-                yet_to_arrive_model, prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-            ),
+            distribution=ed_yta_mean,
             display_name="ED yet-to-arrive admissions",
             aspirational=isinstance(
                 yet_to_arrive_model, ParametricIncomingAdmissionPredictor
@@ -994,13 +990,13 @@ def _create_flow_inputs(
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(non_ed_yta_model, prediction_context),
+            distribution=_safe_predict_mean(non_ed_yta_model),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(elective_yta_model, prediction_context),
+            distribution=_safe_predict_mean(elective_yta_model),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()
@@ -1129,6 +1125,7 @@ def _build_legacy_flows(
             non_ed_yta_model,
             elective_yta_model,
             prediction_time,
+            prediction_window,
             x1,
             y1,
             x2,

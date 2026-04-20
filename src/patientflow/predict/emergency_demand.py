@@ -55,6 +55,44 @@ if hasattr(pd.errors, "SettingWithCopyWarning"):
     warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 
+def warn_specialty_mismatch(
+    requested: set,
+    trained: set,
+    source_label: str,
+    *,
+    stacklevel: int = 3,
+) -> None:
+    """Emit warnings when requested and trained specialty sets diverge.
+
+    Parameters
+    ----------
+    requested : set
+        Specialties coming from the current request (e.g. Clarity).
+    trained : set
+        Specialties the model was trained on.
+    source_label : str
+        Human-readable name for the trained artefact, used in messages
+        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
+    stacklevel : int, optional
+        Passed to `warnings.warn()` so the warning points to the
+        caller rather than this helper.  Default is 3 (caller's caller).
+    """
+    new_in_request = requested - trained
+    missing_from_request = trained - requested
+    if new_in_request:
+        warnings.warn(
+            f"{len(new_in_request)} specialties found in the request but absent "
+            f"from the trained {source_label} (models may need retraining).",
+            stacklevel=stacklevel,
+        )
+    if missing_from_request:
+        warnings.warn(
+            f"{len(missing_from_request)} specialties present in the trained "
+            f"{source_label} but absent from the request.",
+            stacklevel=stacklevel,
+        )
+
+
 def add_missing_columns(pipeline, df):
     """Add missing columns required by the prediction pipeline from the training data.
 
@@ -387,22 +425,13 @@ def create_predictions(
         # MultiSubgroupPredictor path: require subgroup mapping to exist (set during fit)
         if not hasattr(spec_model, "specialty_to_subgroups"):
             raise ValueError("Specialty model has not been fit")
-    if (
-        not hasattr(yet_to_arrive_model, "prediction_window")
-        or yet_to_arrive_model.prediction_window is None
-    ):
+    if not hasattr(yet_to_arrive_model, "weights") or not yet_to_arrive_model.weights:
         raise ValueError("Yet-to-arrive model has not been fit")
 
-    # Validate that the correct models have been passed for the requested prediction time and prediction window
+    # Validate that the correct classifier has been passed for the requested prediction time
     if not classifier.training_results.prediction_time == prediction_time:
         raise ValueError(
             f"Requested prediction time {prediction_time} does not match the prediction time of the trained classifier {classifier.training_results.prediction_time}"
-        )
-
-    # Compare prediction windows directly
-    if prediction_window != yet_to_arrive_model.prediction_window:
-        raise ValueError(
-            f"Requested prediction window {prediction_window} does not match the prediction window of the trained yet-to-arrive model {yet_to_arrive_model.prediction_window}"
         )
 
     # Local import: patientflow.predict.service imports this module at load time.
@@ -560,10 +589,22 @@ def create_predictions(
         )
 
         if specialty in trained_yta_keys:
-            prediction_context = {specialty: {"prediction_time": prediction_time}}
-            agg_predicted_yta = yet_to_arrive_model.predict(
-                prediction_context, x1=x1, y1=y1, x2=x2, y2=y2
-            )
+            if isinstance(yet_to_arrive_model, EmpiricalIncomingAdmissionPredictor):
+                agg_predicted_yta = yet_to_arrive_model.predict(
+                    prediction_time=prediction_time,
+                    prediction_window=prediction_window,
+                    filter_keys=specialty,
+                )
+            else:
+                agg_predicted_yta = yet_to_arrive_model.predict(
+                    prediction_time=prediction_time,
+                    prediction_window=prediction_window,
+                    filter_keys=specialty,
+                    x1=x1,
+                    y1=y1,
+                    x2=x2,
+                    y2=y2,
+                )
             yta_proba = agg_predicted_yta[specialty]["agg_proba"]
         else:
             yta_proba = pd.Series([1.0], name="agg_proba")
