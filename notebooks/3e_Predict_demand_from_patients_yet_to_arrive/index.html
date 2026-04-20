@@ -889,6 +889,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stratify-by-day-of-week" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stratify by day of week
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1504,6 +1515,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#stratify-by-day-of-week" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stratify by day of week
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1553,7 +1575,7 @@
 <li>a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data</li>
 <li>a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.</li>
 </ul>
-<p>I also demonstrate making predictions by specialty for demand from incoming patients.</p>
+<p>I also demonstrate making predictions by specialty for demand from incoming patients, and how to stratify the predictions to take day of week into account.</p>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload
 %autoreload 2
@@ -3598,7 +3620,8 @@ from patientflow.viz.utils import format_prediction_time
 aspirational_prediction = yta_model_parametric.predict(
     prediction_time=(12,0),
     prediction_window=timedelta(hours=8), # now passed at predict() method
-    x1=x1, y1=y1, x2=x2, y2=y2, max_value=50)
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50)
 
 </code></pre>
 <p>The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 80% of patients. The numbers are higher than the equivalent chart above.</p>
@@ -3624,6 +3647,106 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
 </code></pre>
 <p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_0.png" /></p>
 <p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_1.png" /></p>
+<h2 id="stratify-by-day-of-week">Stratify by day of week</h2>
+<p>It is also possible to incorporate day of week into the models. The arrival rates for each day of the week are saved in a nested dictionary keyed by 'arrival_rates_by_weekday' with subkeys for each day of the week, where 0 is Monday.</p>
+<pre><code class="language-python">from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
+
+train_visits_copy = train_visits.copy(deep=True)
+
+yta_model_parametric =  ParametricIncomingAdmissionPredictor(verbose=False)
+num_days = (start_validation_set - start_training_set).days
+if 'arrival_datetime' in train_visits_copy.columns:
+    train_visits_copy.set_index('arrival_datetime', inplace=True)
+
+yta_model_parametric.fit(train_visits_copy,
+              yta_time_interval=timedelta(minutes=15),
+              stratify_by_weekday=True,
+              )
+
+print(f'Weekday keys: {yta_model_parametric.weights[&quot;unfiltered&quot;][&quot;arrival_rates_by_weekday&quot;].keys()}')
+
+</code></pre>
+<pre><code>Weekday keys: dict_keys([0, 1, 2, 3, 4, 5, 6])
+</code></pre>
+<pre><code class="language-python">from datetime import date, timedelta
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+colour_dict = create_colour_dict()
+
+# Two weekday anchors
+snapshot_date_1 = date(2023, 1, 2)  # Monday
+snapshot_date_2 = date(2023, 1, 7)  # Saturday
+
+pred_1 = yta_model_parametric.predict(
+    prediction_time=(12, 0),
+    prediction_window=timedelta(hours=8),
+    prediction_date=snapshot_date_1,
+    strict_prediction_date=True,
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50
+)[&quot;unfiltered&quot;]
+
+pred_2 = yta_model_parametric.predict(
+    prediction_time=(12, 0),
+    prediction_window=timedelta(hours=8),
+    prediction_date=snapshot_date_2,
+    strict_prediction_date=True,
+    x1=x1, y1=y1, x2=x2, y2=y2,
+    max_value=50
+)[&quot;unfiltered&quot;]
+
+truncate_at_beds = 40
+x = np.arange(truncate_at_beds + 1)
+
+# Align PMFs to same support
+pmf_1 = pred_1.reindex(x, fill_value=0)[&quot;agg_proba&quot;].values
+pmf_2 = pred_2.reindex(x, fill_value=0)[&quot;agg_proba&quot;].values
+
+title = (
+    f'Probability distribution for number of beds needed for patients '
+    f'who will arrive after {format_prediction_time((12,0))} on two different snapshot dates '
+    f'\nand need a bed before 20:00 '
+    f'if the ED is meeting the target of {int(x1)} hours for {y1*100}% of patients'
+)
+
+fig, ax = plt.subplots(figsize=(10, 4.5))
+base_colour = colour_dict[&quot;single&quot;][&quot;all&quot;]
+bar_width = 0.42
+
+ax.bar(
+    x - bar_width / 2,
+    pmf_1,
+    width=bar_width,
+    color=base_colour,
+    alpha=0.45,
+    label=f&quot;{snapshot_date_1} (Mon)&quot;,
+)
+ax.bar(
+    x + bar_width / 2,
+    pmf_2,
+    width=bar_width,
+    color=base_colour,
+    linewidth=0.4,
+    label=f&quot;{snapshot_date_2} (Sat)&quot;,
+)
+
+# Overlay lines to make shape differences obvious
+ax.plot(x, pmf_1, color=base_colour, linewidth=1.6, alpha=0.8)
+ax.plot(x, pmf_2, color=&quot;black&quot;, linewidth=1.4, alpha=0.7)
+
+ax.set_title(title)
+ax.set_xlabel(&quot;Number of beds&quot;)
+ax.set_ylabel(&quot;Probability&quot;)
+ax.set_xlim(-0.5, truncate_at_beds + 0.5)
+ax.grid(axis=&quot;y&quot;, alpha=0.25)
+ax.legend(title=&quot;Snapshot date&quot;)
+
+plt.tight_layout()
+plt.show()
+</code></pre>
+<p><img alt="png" src="../3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_56_0.png" /></p>
 <h2 id="summary">Summary</h2>
 <p>Here I have demonstrated the use of <code>patientflow</code> to generate bed counts for groups of patients for which patient-level data is not yet available.</p>
 <p>If you have count data on past visits that approximate to a statistical distribution, preparing a model to predict a bed count distribution is simple to do with standard libraries like scipy. You don't need <code>patientflow</code> functions for that.</p>
