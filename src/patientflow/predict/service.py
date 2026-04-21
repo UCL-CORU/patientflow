@@ -14,6 +14,7 @@ schemes) implemented elsewhere.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Dict, List, Optional, Tuple, Union, Any
 import warnings
 
@@ -933,6 +934,7 @@ def _create_flow_inputs(
     elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
     prediction_window,
+    prediction_date: Optional[date],
     x1: Optional[float],
     y1: Optional[float],
     x2: Optional[float],
@@ -964,10 +966,17 @@ def _create_flow_inputs(
     # Parametric YTA models need x1/y1/x2/y2; empirical and direct do not.
     if isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
         ed_yta_mean = _safe_predict_mean(
-            yet_to_arrive_model, x1=x1, y1=y1, x2=x2, y2=y2
+            yet_to_arrive_model,
+            prediction_date=prediction_date,
+            x1=x1,
+            y1=y1,
+            x2=x2,
+            y2=y2,
         )
     else:
-        ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
+        ed_yta_mean = _safe_predict_mean(
+            yet_to_arrive_model, prediction_date=prediction_date
+        )
 
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
@@ -1046,6 +1055,7 @@ def _build_legacy_flows(
         Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
+    prediction_date: Optional[date],
     ed_snapshots: Optional[pd.DataFrame],
     inpatient_snapshots: Optional[pd.DataFrame],
     specialties: List[str],
@@ -1126,6 +1136,7 @@ def _build_legacy_flows(
             elective_yta_model,
             prediction_time,
             prediction_window,
+            prediction_date,
             x1,
             y1,
             x2,
@@ -1217,6 +1228,7 @@ def build_service_data(
     flow_selection: FlowSelection,
     specialties: List[str],
     prediction_window,
+    prediction_date: Optional[date] = None,
     ed_snapshots: Optional[pd.DataFrame] = None,
     inpatient_snapshots: Optional[pd.DataFrame] = None,
     x1: Optional[float] = None,
@@ -1256,6 +1268,10 @@ def build_service_data(
         List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
+    prediction_date : datetime.date, optional
+        Calendar date of the prediction moment. When provided, this is passed to
+        ED yet-to-arrive predictor calls so weekday-stratified models can select
+        the matching weekday profile.
     ed_snapshots : pandas.DataFrame, optional
         Current ED patients. Required when ``include_ed_current`` is True. If omitted
         otherwise, treated as no ED patients.
@@ -1337,6 +1353,7 @@ def build_service_data(
     temp_service_data = _build_legacy_flows(
         models,
         prediction_time,
+        prediction_date,
         ed_snapshots,
         inpatient_snapshots,
         specialties,

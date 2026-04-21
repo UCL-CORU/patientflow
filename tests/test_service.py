@@ -1,5 +1,6 @@
 import unittest
-from datetime import timedelta
+from datetime import date, timedelta
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -419,6 +420,48 @@ class TestBuildServiceData(unittest.TestCase):
         self.assertGreater(
             len(np.asarray(result["medical"].inflows["ed_current"].distribution)), 0
         )
+
+    def test_build_service_data_passes_prediction_date_to_ed_yta(self):
+        empirical_arrivals = _create_random_arrivals_with_departures(n=400)
+        empirical_yta = _create_empirical_yta_model(
+            self.prediction_window, self.train_df, empirical_arrivals
+        )
+        models = (
+            self.admissions_model,
+            self.inpatient_discharge_model,
+            self.spec_model,
+            empirical_yta,
+            self.direct_non_ed,
+            self.direct_elective,
+            self.transfer_model,
+        )
+        prediction_date = date(2024, 1, 8)
+
+        with patch.object(
+            empirical_yta, "predict_mean", wraps=empirical_yta.predict_mean
+        ) as wrapped_predict_mean:
+            build_service_data(
+                models=models,
+                prediction_time=self.prediction_time,
+                flow_selection=FlowSelection.default(),
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                prediction_date=prediction_date,
+                ed_snapshots=self._make_snapshots(30),
+                inpatient_snapshots=self._make_inpatient_snapshots(20),
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+
+        seen_dates = [
+            call.kwargs.get("prediction_date")
+            for call in wrapped_predict_mean.call_args_list
+            if "prediction_date" in call.kwargs
+        ]
+        self.assertGreater(len(seen_dates), 0)
+        self.assertTrue(all(d == prediction_date for d in seen_dates))
 
     def test_prediction_time_mismatch_errors(self):
         ed_snapshots = self._make_snapshots(10)

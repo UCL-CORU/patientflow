@@ -15,7 +15,7 @@ import unittest
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timezone, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from patientflow.aggregate import (
     BernoulliGeneratingFunction,
@@ -23,8 +23,10 @@ from patientflow.aggregate import (
     get_prob_dist_for_prediction_moment,
     get_prob_dist,
     get_prob_dist_using_survival_curve,
+    get_prob_dist_by_service,
     model_input_to_pred_proba,
 )
+from patientflow.predict.types import FlowSelection
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
@@ -519,5 +521,53 @@ class TestAggregateRefactored(unittest.TestCase):
         self.assertEqual(model.predict.call_count, 2)
         called_prediction_dates = [
             call.kwargs["prediction_date"] for call in model.predict.call_args_list
+        ]
+        self.assertEqual(called_prediction_dates, snapshot_dates)
+
+    def test_get_prob_dist_by_service_passes_prediction_date_to_build_service_data(self):
+        snapshot_dates = [date(2023, 1, 1), date(2023, 1, 2)]
+        specialties = ["medical"]
+
+        ed_visits = pd.DataFrame(
+            {
+                "snapshot_date": [snapshot_dates[0], snapshot_dates[1]],
+                "prediction_time": [(7, 0), (7, 0)],
+                "elapsed_los": [3600, 7200],
+            }
+        )
+        inpatient_visits = pd.DataFrame(
+            {
+                "snapshot_date": [snapshot_dates[0], snapshot_dates[1]],
+                "prediction_time": [(7, 0), (7, 0)],
+                "elapsed_los": [3600, 5400],
+            }
+        )
+
+        flow_selection = FlowSelection.default()
+        fake_models = (None, None, None, None, None, None, None)
+        fake_bundle = MagicMock()
+        fake_bundle.arrivals.probabilities = np.array([0.6, 0.4])
+
+        with patch("patientflow.predict.service.build_service_data") as mock_build, patch(
+            "patientflow.predict.demand.DemandPredictor"
+        ) as mock_predictor_cls:
+            mock_build.return_value = {"medical": object()}
+            mock_predictor = mock_predictor_cls.return_value
+            mock_predictor.predict_service.return_value = fake_bundle
+
+            get_prob_dist_by_service(
+                snapshot_dates=snapshot_dates,
+                prediction_time=(7, 0),
+                models=fake_models,
+                specialties=specialties,
+                prediction_window=timedelta(hours=8),
+                flow_selection=flow_selection,
+                ed_visits=ed_visits,
+                inpatient_visits=inpatient_visits,
+                component="arrivals",
+            )
+
+        called_prediction_dates = [
+            call.kwargs["prediction_date"] for call in mock_build.call_args_list
         ]
         self.assertEqual(called_prediction_dates, snapshot_dates)

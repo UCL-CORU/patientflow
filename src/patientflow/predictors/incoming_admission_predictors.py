@@ -835,7 +835,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         df,
         yta_time_interval: timedelta,
         num_days: Optional[int],
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: bool = True,
     ):
         """Calculate the full 24-hour arrival-rate dictionary for the given data.
 
@@ -847,7 +847,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             The granularity of arrival-rate buckets.
         num_days : int or None
             Divisor for pooled rates; if ``None``, inferred from ``df``'s index span.
-        stratify_by_weekday : bool, default=False
+        stratify_by_weekday : bool, default=True
             If True, also compute ``arrival_rates_by_weekday`` (keys ``0..6``,
             Monday=0) for use when ``prediction_date`` is passed at predict time.
 
@@ -877,7 +877,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: bool = True,
     ) -> "IncomingAdmissionPredictor":
         """Fit the model to the training data.
 
@@ -916,7 +916,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
-        stratify_by_weekday : bool, default=False
+        stratify_by_weekday : bool, default=True
             If True, fit an additional per-weekday arrival profile (``Monday=0`` …
             ``Sunday=6``). Pass ``prediction_date`` at predict time to slice the
             window using that profile; omit ``prediction_date`` to keep using the
@@ -1580,7 +1580,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: bool = True,
         *,
         start_time_col: str = "arrival_datetime",
         end_time_col: str = "departure_datetime",
@@ -1612,7 +1612,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
-        stratify_by_weekday : bool, default=False
+        stratify_by_weekday : bool, default=True
             Same as ``IncomingAdmissionPredictor.fit``.
         start_time_col : str, default='arrival_datetime'
             Name of the column containing the start time (e.g., arrival time).

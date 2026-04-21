@@ -866,6 +866,7 @@ def get_prob_dist_by_service(
             flow_selection=flow_selection,
             specialties=specialties,
             prediction_window=prediction_window,
+            prediction_date=dt,
             ed_snapshots=ed_snapshot_processed,
             inpatient_snapshots=inpatient_snapshot,
             x1=x1,
