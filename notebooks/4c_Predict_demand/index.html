@@ -1718,9 +1718,13 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
 </code></pre>
 <pre><code>Inferred project root: /Users/zellaking/Repos/patientflow
 
+
+
 Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
 Validation set starts on 2031-09-01 and ends on 2031-09-30 inclusive
 Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
+
+
 Split sizes: [62071, 10415, 29134]
 Split sizes: [7716, 1285, 3898]
 </code></pre>
@@ -1798,9 +1802,17 @@ for prediction_time in ed_visits.prediction_time.unique():
     admissions_models[model_key] = model
 </code></pre>
 <pre><code>Training model for (22, 0)
+
+
 Training model for (15, 30)
+
+
 Training model for (6, 0)
+
+
 Training model for (12, 0)
+
+
 Training model for (9, 30)
 </code></pre>
 <p>The <code>SequenceToOutcomePredictor</code> is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model.</p>
@@ -1866,9 +1878,9 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
               prediction_times=ed_visits.prediction_time.unique(),
               num_days=num_days )
 </code></pre>
-<pre><code>/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1213350650.py:24: DeprecationWarning: Passing prediction_window to fit() is deprecated; pass it to predict() / predict_mean() instead.
+<pre><code>/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_window to fit() is deprecated; pass it to predict() / predict_mean() instead.
   yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1213350650.py:24: DeprecationWarning: Passing prediction_times to fit() is deprecated; any prediction time can be served at predict time. This argument is retained for backward compatibility only and will be removed in a future release.
+/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_times to fit() is deprecated; any prediction time can be served at predict time. This argument is retained for backward compatibility only and will be removed in a future release.
   yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
 </code></pre>
 <h2 id="1-make-predictions-for-the-group-of-patients-currently-in-the-ed">1. Make predictions for the group of patients currently in the ED</h2>
@@ -2070,7 +2082,7 @@ fig.suptitle(
 fig.tight_layout()
 plt.show()
 </code></pre>
-<pre><code>/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1915240381.py:5: DeprecationWarning: Relying on prediction_window stored at fit() time is deprecated. Pass prediction_window explicitly to predict() / predict_mean().
+<pre><code>/var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1915240381.py:5: DeprecationWarning: Relying on prediction_window stored at fit() time is deprecated. Pass prediction_window explicitly to predict() / predict_mean().
   weighted_poisson_prediction = yta_model_by_spec.predict(
 </code></pre>
 <p><img alt="png" src="../4c_Predict_demand_files/4c_Predict_demand_22_1.png" /></p>
@@ -2079,7 +2091,6 @@ plt.show()
 <h3 id="use-of-build_service_data-from-the-predictservice-module">Use of <code>build_service_data</code> from the <code>predict.service</code> module</h3>
 <p>To make demand predictions at a given prediction moment, we call <code>build_service_data</code> with the trained models, the snapshot data for that moment, the yet-to-arrive parameters, and the requested prediction window. This single call replaces all of the step-through code above.</p>
 <pre><code class="language-python">from patientflow.predict.service import build_service_data
-from patientflow.predict.demand import FlowSelection
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -2092,54 +2103,28 @@ prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snaps
 prediction_inputs = build_service_data(
     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
     prediction_time=random_prediction_time,
-    flow_selection=FlowSelection.custom(
-        include_ed_current=True,
-        include_ed_yta=True,
-        include_non_ed_yta=False,
-        include_elective_yta=False,
-        include_transfers_in=False,
-        include_departures=False,
-        cohort=&quot;emergency&quot;,
-    ),
-    specialties=specialty_filters.keys(),
-    prediction_window=timedelta(hours=8),
     ed_snapshots=prediction_snapshots_processed,
     inpatient_snapshots=None,
+    specialties=specialty_filters.keys(),
+    prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2
 )
 
 </code></pre>
-<pre><code>---------------------------------------------------------------------------
-
-TypeError                                 Traceback (most recent call last)
-
-Cell In[13], line 12
-      9 prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snapshots_processed['elapsed_los'], unit='s')
-     11 # generate the prediction inputs
----&gt; 12 prediction_inputs = build_service_data(
-     13     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
-     14     prediction_time=random_prediction_time,
-     15     flow_selection=FlowSelection.custom(
-     16         include_ed_current=True,
-     17         include_ed_yta=True,
-     18         include_non_ed_yta=False,
-     19         include_elective_yta=False,
-     20         include_transfers_in=False,
-     21         include_departures=False,
-     22         cohort="emergency",
-     23     ),
-     24     specialties=specialty_filters.keys(),
-     25     prediction_window=timedelta(hours=8),
-     26     ed_snapshots=prediction_snapshots_processed,
-     27     inpatient_snapshots=None,
-     28     x1=x1, y1=y1, x2=x2, y2=y2
-     29 )
-
-
-TypeError: build_service_data() got an unexpected keyword argument 'flow_selection'
-</code></pre>
 <p>The returned object is a dictionary mapping each specialty to a <code>ServicePredictionInputs</code> instance (as introduced in <a href="../4a_Organise_predictions_for_a_production_pipeline/">notebook 4a</a>). Below I show the result for one specialty. The structure handles different types of flow, including elective inflows and discharges. It contains both inflows via the ED (used here), and (not used here) elective admissions, transfers and outflows. The latter show predictions of zero patients when no models are trained.</p>
 <pre><code class="language-python">prediction_inputs['medical']
+</code></pre>
+<pre><code>ServicePredictionInputs(service='medical')
+  INFLOWS:
+    Admissions from current ED               PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6 of 79 patients in ED)
+    ED yet-to-arrive admissions              λ = 2.131
+    Non-ED emergency admissions              λ = 0.000
+    Elective admissions                      λ = 0.000
+    Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
+    Emergency transfers from other services  PMF[0:1]: [1.000] (E=0.0)
+  OUTFLOWS:
+    Emergency inpatient departures           PMF[0:1]: [1.000] (E=0.0 of 0 emergency patients in service)
+    Elective inpatient departures            PMF[0:1]: [1.000] (E=0.0 of 0 elective patients in service)
 </code></pre>
 <p>We now use <code>DemandPredictor</code> and <code>FlowSelection</code> (both introduced in <a href="../4a_Organise_predictions_for_a_production_pipeline/">notebook 4a</a>) to generate predictions from these inputs. Here I use <code>FlowSelection.custom()</code> to include only patients currently in the ED and exclude all other flows.</p>
 <p>The <code>k_sigma</code> parameter controls truncation of probability mass — it specifies the maximum level of support (maximum number of beds in our case) to return. This is useful when convolving multiple distributions; for example, if some flows are modelled as Poisson distributions, which are by definition unbounded, this parameter controls where they are capped.</p>
@@ -2163,11 +2148,23 @@ current_ed_bundle = predictor.predict_service(
 <p>To view the constituent elements of the bundle, we can print it to get pretty output. A pmf range of 10 values is included in the printed output, centred around the mode. The output also records which flows were included.</p>
 <pre><code class="language-python">print(current_ed_bundle)
 </code></pre>
+<pre><code>PredictionBundle(service: medical)
+  Arrivals:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+  Departures:  PMF[0:1]: [1.000] (E=0.0)
+  Net flow:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+  Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=False, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
+</code></pre>
 <p>From the bundle, we can extract a probability distribution for the number of beds needed for patients currently in the ED. We can view the expectation, or view the percentiles of the distribution as shown below.</p>
 <pre><code class="language-python">print('For patients currently in the ED:\n')
 print(f'Most likely number of beds needed for the medical specialty: {current_ed_bundle.arrivals.mode}')
 print(f&quot;Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability&quot;)
 print(f&quot;Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability&quot;)
+</code></pre>
+<pre><code>For patients currently in the ED:
+
+Most likely number of beds needed for the medical specialty: 7
+Need at least 4 beds with 90% probability
+Need at least 5 beds with 70% probability
 </code></pre>
 <p>To derive the yet-to-arrive predictions, we can set the FlowSelection accordingly.</p>
 <pre><code class="language-python">yet_to_arrive_to_ed_bundle = predictor.predict_service(
@@ -2186,6 +2183,12 @@ print(f&quot;Need at least {current_ed_bundle.arrivals.min_beds_with_probability
 print(f'Most likely number of beds needed for the medical specialty: {yet_to_arrive_to_ed_bundle.arrivals.mode}')
 print(f&quot;Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability&quot;)
 print(f&quot;Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability&quot;)
+</code></pre>
+<pre><code>For patients yet-to-arrive to the ED:
+
+Most likely number of beds needed for the medical specialty: 2
+Need at least 0 beds with 90% probability
+Need at least 1 beds with 70% probability
 </code></pre>
 <pre><code class="language-python">title = (
     f'Probability distribution for number of medical beds needed within {int(prediction_window.total_seconds()/3600)} hours\n'
@@ -2210,6 +2213,7 @@ plot_prob_dist(bundle.arrivals.probabilities, title,
     probability_levels=[0.7,0.9],
     show_probability_thresholds=True, bar_colour=spec_colour_dict[&quot;single&quot;][&quot;medical&quot;])
 </code></pre>
+<p><img alt="png" src="../4c_Predict_demand_files/4c_Predict_demand_37_0.png" /></p>
 <h2 id="summary">Summary</h2>
 <p>Here I have shown how <code>patientflow</code> is used at UCLH to generate predictions of emergency demand for beds in the next 8 hours. There are two elements to the predictions:</p>
 <ul>
@@ -2238,6 +2242,11 @@ create_predictions(
     y1 = y1,
     x2 = x2,
     y2 = y2)
+</code></pre>
+<pre><code>{'medical': {'in_ed': [5, 4], 'yet_to_arrive': [1, 0]},
+ 'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+ 'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+ 'paediatric': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]}}
 </code></pre>
 <h3 id="alternative-using-an-empirical-survival-curve">Alternative: using an empirical survival curve</h3>
 <p>Not all hospitals set ED performance targets, or you may prefer predictions that reflect actual past performance rather than aspirational targets. In this case, the probability of admission within the prediction window can be calculated from an empirical survival curve fitted to historical data.</p>
@@ -2275,6 +2284,7 @@ survival_df = plot_admission_time_survival_curve(train_inpatient_arrivals_df.res
                                    return_figure=False
 )
 </code></pre>
+<p><img alt="png" src="../4c_Predict_demand_files/4c_Predict_demand_44_0.png" /></p>
 <p><code>patientflow</code> includes a function to look up the probability of admission within a prediction window, using the survival curve. This is demonstrated below. It is used in the <code>create_predictions</code> function if the optional parameter <code>use_admission_in_window_prob</code> is set.</p>
 <pre><code class="language-python">from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
 
@@ -2285,6 +2295,8 @@ prob_admission_in_window_from_survival_curve = calculate_admission_probability_f
 )
 
 print(f'Probability of admission in prediction window of {prediction_window.total_seconds() / 3600:.0f} hours, assuming patient has been in ED for 1 hour: {prob_admission_in_window_from_survival_curve:.2}')
+</code></pre>
+<pre><code>Probability of admission in prediction window of 8 hours, assuming patient has been in ED for 1 hour: 0.48
 </code></pre>
 <p>For an array of patients, the probability of admission within the window would be created as shown below.</p>
 <pre><code class="language-python">from patientflow.calculate.admission_in_prediction_window import calculate_admission_probability_from_survival_curve
@@ -2346,6 +2358,11 @@ create_predictions(
     x2 = x2,
     y2 = y2,
     use_admission_in_window_prob = True)
+</code></pre>
+<pre><code>{'medical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+ 'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+ 'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
+ 'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
 </code></pre>
 
 
