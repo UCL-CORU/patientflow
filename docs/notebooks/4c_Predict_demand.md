@@ -92,14 +92,6 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
 )
 ```
 
-    Inferred project root: /Users/zellaking/Repos/patientflow
-
-    Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
-    Validation set starts on 2031-09-01 and ends on 2031-09-30 inclusive
-    Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
-    Split sizes: [62071, 10415, 29134]
-    Split sizes: [7716, 1285, 3898]
-
 The data has been prepared as a series of snapshots of each patient's data at five moments during the day. These five moments are the times when the bed managers wish to receive predictive models of emergency demand. If a patient arrives in the ED at 4 am, and leaves at 11 am, they will be represented in the 06:00 and 09:30 prediction times. Everything known about a patient up until that moment is included in that snapshot.
 
 The prediction times are presented as tuples in the form (hour, minute).
@@ -111,22 +103,10 @@ print("\nTimes of day at which predictions will be made")
 print(ed_visits.prediction_time.unique())
 ```
 
-    Times of day at which predictions will be made
-    [(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
-
 ```python
 print("\nNumber of observations for each prediction time")
 print(ed_visits.prediction_time.value_counts())
 ```
-
-    Number of observations for each prediction time
-    prediction_time
-    (15, 30)    35310
-    (12, 0)     29942
-    (22, 0)     28457
-    (9, 30)     17642
-    (6, 0)      11984
-    Name: count, dtype: int64
 
 ## Train models
 
@@ -183,12 +163,6 @@ for prediction_time in ed_visits.prediction_time.unique():
 
     admissions_models[model_key] = model
 ```
-
-    Training model for (22, 0)
-    Training model for (15, 30)
-    Training model for (6, 0)
-    Training model for (12, 0)
-    Training model for (9, 30)
 
 The `SequenceToOutcomePredictor` is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model.
 
@@ -261,11 +235,6 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
               num_days=num_days )
 ```
 
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1213350650.py:24: DeprecationWarning: Passing prediction_window to fit() is deprecated; pass it to predict() / predict_mean() instead.
-      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1213350650.py:24: DeprecationWarning: Passing prediction_times to fit() is deprecated; any prediction time can be served at predict time. This argument is retained for backward compatibility only and will be removed in a future release.
-      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-
 ## 1. Make predictions for the group of patients currently in the ED
 
 We now have models trained that we can use to create predicted probability distributions. Here is a detailed step-through of how to use those models to generate predictions at a particular moment.
@@ -310,9 +279,6 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots
     )
 ```
-
-    Number of adult patients in the ED at 22:00 on 2031-10-09: 69
-    Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 
 The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots:
 
@@ -451,8 +417,6 @@ fig.tight_layout()
 plt.show()
 ```
 
-![png](4c_Predict_demand_files/4c_Predict_demand_20_0.png)
-
 ## 2. Make predictions for patients yet-to-arrive to the ED who will need admission
 
 The trained yet-to-arrive model generates the same distribution for each prediction time, irrespective of day of week, for each specialty. Passing the randomly chosen prediction time, for each specialty, will return the required distributions.
@@ -485,11 +449,6 @@ fig.suptitle(
 fig.tight_layout()
 plt.show()
 ```
-
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85397/1915240381.py:5: DeprecationWarning: Relying on prediction_window stored at fit() time is deprecated. Pass prediction_window explicitly to predict() / predict_mean().
-      weighted_poisson_prediction = yta_model_by_spec.predict(
-
-![png](4c_Predict_demand_files/4c_Predict_demand_22_1.png)
 
 ## 3. Production prediction pipeline
 
@@ -531,35 +490,6 @@ prediction_inputs = build_service_data(
 )
 
 ```
-
-    ---------------------------------------------------------------------------
-
-    TypeError                                 Traceback (most recent call last)
-
-    Cell In[13], line 12
-          9 prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snapshots_processed['elapsed_los'], unit='s')
-         11 # generate the prediction inputs
-    ---> 12 prediction_inputs = build_service_data(
-         13     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
-         14     prediction_time=random_prediction_time,
-         15     flow_selection=FlowSelection.custom(
-         16         include_ed_current=True,
-         17         include_ed_yta=True,
-         18         include_non_ed_yta=False,
-         19         include_elective_yta=False,
-         20         include_transfers_in=False,
-         21         include_departures=False,
-         22         cohort="emergency",
-         23     ),
-         24     specialties=specialty_filters.keys(),
-         25     prediction_window=timedelta(hours=8),
-         26     ed_snapshots=prediction_snapshots_processed,
-         27     inpatient_snapshots=None,
-         28     x1=x1, y1=y1, x2=x2, y2=y2
-         29 )
-
-
-    TypeError: build_service_data() got an unexpected keyword argument 'flow_selection'
 
 The returned object is a dictionary mapping each specialty to a `ServicePredictionInputs` instance (as introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md)). Below I show the result for one specialty. The structure handles different types of flow, including elective inflows and discharges. It contains both inflows via the ED (used here), and (not used here) elective admissions, transfers and outflows. The latter show predictions of zero patients when no models are trained.
 
