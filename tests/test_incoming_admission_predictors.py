@@ -805,6 +805,30 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             self.assertIn("arrival_rates_by_weekday", predictor.weights[key])
             self.assertEqual(len(predictor.weights[key]["arrival_rates_by_weekday"]), 7)
 
+    def test_empty_filtered_subset_falls_back_to_zero_rates_and_counts(self):
+        filters = {
+            "medical": {"specialty": "medical"},
+            "missing": {"specialty": "not-a-real-specialty"},
+        }
+        predictor = ParametricIncomingAdmissionPredictor(filters=filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+
+        self.assertEqual(predictor.empty_filter_count, 1)
+        self.assertIn("missing", predictor.weights)
+        self.assertTrue(
+            all(v == 0.0 for v in predictor.weights["missing"]["arrival_rates_dict"].values())
+        )
+        for weekday in range(7):
+            weekday_rates = predictor.weights["missing"]["arrival_rates_by_weekday"][
+                weekday
+            ]
+            self.assertTrue(all(v == 0.0 for v in weekday_rates.values()))
+
     def test_identical_weekday_profiles_match_pooled_predict_mean(self):
         predictor = DirectAdmissionPredictor(filters=None)
         predictor.fit(

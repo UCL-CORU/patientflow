@@ -293,6 +293,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 stacklevel=2,
             )
         self.metrics = {}  # Add metrics dictionary to store metadata
+        self.empty_filter_count = 0
 
         if verbose:
             # Configure logging for Jupyter notebook compatibility
@@ -857,6 +858,21 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             Always contains ``arrival_rates_dict``. When ``stratify_by_weekday``,
             also ``arrival_rates_by_weekday``: ``dict[int, OrderedDict[time, float]]``.
         """
+        if len(df.index) == 0:
+            interval_minutes = int(yta_time_interval.total_seconds() / 60)
+            full_day_slots = int((24 * 60) / interval_minutes)
+            base_dt = datetime(1970, 1, 1, 0, 0)
+            zero_rates = {
+                (base_dt + timedelta(minutes=i * interval_minutes)).time(): 0.0
+                for i in range(full_day_slots)
+            }
+            out: Dict = {"arrival_rates_dict": zero_rates}
+            if stratify_by_weekday:
+                out["arrival_rates_by_weekday"] = {
+                    weekday: zero_rates.copy() for weekday in range(7)
+                }
+            return out
+
         effective_days = self._resolve_num_days(df, num_days)
         arrival_rates_dict = time_varying_arrival_rates(
             df, yta_time_interval, effective_days, verbose=self.verbose
@@ -1016,10 +1032,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         # Initialise weights with the full 24-hour arrival-rate dictionary
         self.weights = {}
+        self.empty_filter_count = 0
         if self.filters:
             for spec, filters in self.filters.items():
+                filtered_df = self.filter_dataframe(train_df, filters)
+                if len(filtered_df.index) == 0:
+                    self.empty_filter_count += 1
                 self.weights[spec] = self._calculate_parameters(
-                    self.filter_dataframe(train_df, filters),
+                    filtered_df,
                     yta_time_interval,
                     num_days,
                     stratify_by_weekday=stratify_by_weekday,
