@@ -123,12 +123,31 @@ class ArrivalDeltaPayload:
         Forecast window associated with each prediction time.
     yta_time_interval
         Yet-to-arrive time interval used in cumulative delta calculations.
+    predictor
+        Optional fitted incoming-admission predictor whose stored arrival
+        rates should be used as the expected baseline. When provided, the
+        diagnostic compares observed cumulative arrivals against the same
+        rate profile the deployed model uses (including weekday-stratified
+        rates when the predictor was fit with ``stratify_by_weekday=True``).
+        When absent, the diagnostic falls back to the pooled rates derived
+        from ``df``.
+    filter_key
+        Filter key used to select which weight bundle of ``predictor`` to
+        read arrival rates from. Only required when ``predictor`` is
+        provided and the predictor has more than one weight key.
+    strict_prediction_date
+        When ``predictor`` is weekday-aware, controls how missing weekday
+        profiles are handled (passed through to the predictor's
+        ``_iter_prediction_inputs``). Default False.
     """
 
     df: pd.DataFrame
     snapshot_dates: List[date]
     prediction_window: timedelta
     yta_time_interval: timedelta = field(default_factory=lambda: timedelta(minutes=15))
+    predictor: Optional[Any] = None
+    filter_key: Optional[str] = None
+    strict_prediction_date: bool = False
 
 
 @dataclass

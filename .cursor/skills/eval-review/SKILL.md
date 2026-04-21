@@ -48,6 +48,22 @@ eval-output/
 
 Where `{diagnostic}` is `epudd` or `obs_exp`. Classifier charts that show all prediction times on one figure omit `{prediction_time}`. Aspirational flows produce no files in the services folder.
 
+### Per-weekday outputs (when `group_by=("weekday",)`)
+
+When `run_evaluation` is called with `group_by=("weekday",)`, distribution and arrival-delta targets emit additional plots stratified by weekday, alongside the headline ones:
+
+```
+services/{service_name}/
+├── {flow}_{component}_epudd.png                       # headline (all weekdays)
+├── {flow}_{component}_epudd_weekday_{mon,tue,...}.png # per-weekday
+├── {flow}_{component}_obs_exp.png
+├── {flow}_{component}_obs_exp_weekday_{mon,tue,...}.png
+├── {flow}_{component}_{prediction_time}_deltas.png
+└── {flow}_{component}_{prediction_time}_deltas_weekday_{mon,tue,...}.png
+```
+
+Each per-weekday plot is rendered from snapshots that fall on that weekday only. Weekdays with fewer than `min_group_snapshots` are skipped and recorded in `scalars.json` as non-evaluated rows with a reason. These diagnostics matter most for YTA flows whose predictors were fit with `stratify_by_weekday=True`, because aggregate plots can mask per-weekday calibration issues.
+
 ### Inactive services
 
 When `run_evaluation` is called with `skip_inactive_services=True`, services whose distribution snapshots show negligible activity (zero observed counts and near-zero predicted means) are **not given a service folder or chart files**. Their scalar rows are still recorded in `scalars.json` with `"charts_generated": false` and `"skip_reason": "inactive_service"`. In production environments with hundreds of subspecialties, the majority of services may be inactive.
@@ -81,7 +97,7 @@ File name prefixes map to flow groups:
 
 These correspond to **`docs/evaluation_plan.md` matrix rows built on 4-hour-style targets** (rows **4a**, **5a**, **7a**) and **combined flows that include those components** (e.g. rows **16**, **18**). The plan states **no formal test-set evaluation** for those rows: predictions are scenario / target-based, not expected to match observed counts on the test set (row 7a explicitly: no test-set evaluation; optional charts in model-in-use are a separate question).
 
-In `scalars.json`, they are marked `"aspirational": true`. **Implementation may still emit scalar rows** (e.g. MAE/MPE) for debugging or downstream tooling; that does **not** override the plan — **do not** treat those metrics as measures of operational forecast quality or apply the usual “positive MPE = dangerous under-prediction” reading to them.
+In `scalars.json`, they are marked `"aspirational": true`. **Implementation may still emit scalar rows** (e.g. MAE/MPE) for debugging or downstream tooling; that does **not** override the plan — **do not** treat those metrics as measures of operational forecast quality.
 
 Named targets in this category include: `ed_current_window_beds_aspirational`, `ed_yta_beds_aspirational`, `combined_emergency_arrivals`, `combined_net_emergency`. Combined predictions that include any aspirational component are themselves aspirational.
 
@@ -129,16 +145,21 @@ Training/test survival curves overlaid. Similar curves = no temporal drift. Clea
 
 Cumulative observed arrivals vs cumulative mean arrival rate from training, overlaid per test date, average delta in red. Systematic positive/negative average indicates arrival rates have shifted between training and test.
 
+The plot subtitle names the source of the expected baseline:
+
+- **"weekday-specific rates (from fitted predictor)"** — the expected profile is read directly from the deployed ED YTA predictor's stored weights, matching the rate profile used by the model at prediction time. When the predictor was fit with `stratify_by_weekday=True`, each snapshot date uses its own weekday profile.
+- **"pooled rates (from dataframe)"** — legacy baseline derived by pooling arrivals across all weekdays in the supplied dataframe. Residual drift against a weekday-aware model may reflect weekday mix rather than true arrival-rate shift; prefer the predictor-driven variant for weekday-stratified YTA models.
+
 ## Scalar metrics
 
-One `scalars.json` at the output root, keyed by flow name and prediction time. Each entry includes `flow_type` and `aspirational`.
+One `scalars.json` at the output root. Each row is keyed by `(flow, service, component, prediction_time, group_weekday)` — the `group_weekday` field is `"all"` for headline rows and a weekday abbreviation (`"mon"`…`"sun"`) for rows emitted under `group_by=("weekday",)`. Each entry includes `flow_type` and `aspirational`. `_meta.schema_version` is `4`; when grouping is active, `_meta.group_by` lists the active dimensions.
 
 | Metric | Applies to | Watch for |
 |--------|-----------|-----------|
 | Log loss | Classifiers | Primary classifier metric. Lower is better. |
 | AUROC, AUPRC | Classifiers | Secondary. Useful for comparison across times/folds. |
 | MAE | Distributions | Average error magnitude. Scale-dependent — interpret relative to typical counts. |
-| MPE | Distributions | Systematic bias. **Positive = under-prediction. Flag prominently.** (Not for aspirational rows — see above.) |
+| MPE | Distributions | Mean absolute percentage error on snapshots with non-zero observed count. **`calc_mae_mpe` takes `np.abs(expected - observed)` before dividing, so this value is always ≥ 0 and carries no sign information.** Use it as a scale-free error magnitude only; read direction of bias from the obs-exp histogram or EPUDD plot, not from MPE. Skip for aspirational rows (see above). |
 | n_snapshots | Distributions | Sample size for reliability. |
 
 ### Minimum sample sizes
@@ -148,10 +169,11 @@ Flag metrics as unreliable below these thresholds: 50 positive cases (classifier
 ## Review workflow
 
 1. **Inventory**: List folders present. Note which flows and services are covered. Gaps are themselves a finding.
-2. **Scan scalars**: Load scalars.json. For **non-aspirational** distribution rows only, flag positive MPE (under-prediction) prominently. **Skip** MAE/MPE interpretation for `aspirational: true` rows (see **Aspirational flows** above and `docs/evaluation_plan.md`). Note MAE relative to typical counts for each service where applicable. If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
-3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD for distribution flows (coloured points should track grey — not the diagonal). Describe what you see. Only active services (those with chart folders) need visual review.
-4. **Cross-flow checks**: Do component flows explain the combined views? If combined is poor but components look fine, the convolution or a specific flow may be the issue.
-5. **Prioritise findings**: Under-prediction of demand and poor calibration of feeding classifiers are higher priority than slight over-prediction or noisy metrics at low-volume services.
+2. **Scan scalars**: Load scalars.json. For **non-aspirational** distribution rows only, flag large MAE or MPE (relative to typical service counts) and use the obs-exp histogram or EPUDD to determine the direction of any bias — **MPE alone cannot tell you under- vs over-prediction** because `calc_mae_mpe` uses absolute errors. Flag systematic under-prediction of demand prominently whenever the plots reveal it. **Skip** MAE/MPE interpretation for `aspirational: true` rows (see **Aspirational flows** above and `docs/evaluation_plan.md`). If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
+3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD and obs-exp for distribution flows (coloured points should track grey on EPUDD — not the diagonal; obs-exp histograms reveal the sign of any bias). Describe what you see. Only active services (those with chart folders) need visual review.
+4. **Per-weekday review** *(when `group_by=("weekday",)`)*: For YTA-heavy services (`ed_yta_*`, `non_ed_yta_*`, `elective_yta_*`), compare the `_weekday_{mon,tue,...}` EPUDD/obs-exp/deltas plots against the headline plot. Flag any weekday where the per-weekday obs-exp histogram shifts away from zero while the headline sits near zero — this is a cancellation pattern that aggregate metrics can hide. Cross-check with the arrival-delta plot's baseline label: weekday-specific drift is meaningful only when the expected baseline is also weekday-aware.
+5. **Cross-flow checks**: Do component flows explain the combined views? If combined is poor but components look fine, the convolution or a specific flow may be the issue.
+6. **Prioritise findings**: Under-prediction of demand and poor calibration of feeding classifiers are higher priority than slight over-prediction or noisy metrics at low-volume services.
 
 ## Outputs
 

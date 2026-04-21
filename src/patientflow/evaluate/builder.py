@@ -181,6 +181,9 @@ class EvaluationInputsBuilder:
         prediction_window: timedelta,
         yta_time_interval: timedelta = timedelta(minutes=15),
         prediction_times: Optional[Iterable[Tuple[int, int]]] = None,
+        predictors_by_service: Optional[Mapping[str, Any]] = None,
+        filter_keys_by_service: Optional[Mapping[str, str]] = None,
+        strict_prediction_date: bool = False,
     ) -> "EvaluationInputsBuilder":
         """Register arrival-delta payloads for multiple services and times.
 
@@ -198,6 +201,21 @@ class EvaluationInputsBuilder:
             Yet-to-arrive interval used by delta calculations.
         prediction_times
             Optional subset of prediction times. Defaults to builder times.
+        predictors_by_service
+            Optional mapping from service name to a fitted
+            ``IncomingAdmissionPredictor`` (or compatible object). When
+            provided for a service, the diagnostic uses the predictor's
+            stored arrival rates as the expected baseline — matching the
+            rate profile the deployed model uses. Services without a
+            predictor fall back to the pooled rates derived from the
+            arrivals dataframe.
+        filter_keys_by_service
+            Optional mapping from service name to the predictor filter
+            key to read rates from. Only required when the fitted
+            predictor has more than one weight key.
+        strict_prediction_date
+            When a weekday-aware predictor lacks per-weekday profiles,
+            raise instead of silently falling back to pooled rates.
 
         Returns
         -------
@@ -205,13 +223,20 @@ class EvaluationInputsBuilder:
             Builder instance for fluent chaining.
         """
         selected_times = list(prediction_times or self.prediction_times)
+        predictors_by_service = predictors_by_service or {}
+        filter_keys_by_service = filter_keys_by_service or {}
         for service_name, arrivals_df in arrivals_by_service.items():
+            predictor = predictors_by_service.get(service_name)
+            filter_key = filter_keys_by_service.get(service_name)
             for prediction_time in selected_times:
                 payload = ArrivalDeltaPayload(
                     df=arrivals_df,
                     snapshot_dates=snapshot_dates,
                     prediction_window=prediction_window,
                     yta_time_interval=yta_time_interval,
+                    predictor=predictor,
+                    filter_key=filter_key,
+                    strict_prediction_date=strict_prediction_date,
                 )
                 self.flow_inputs_by_service.setdefault(service_name, {}).setdefault(
                     flow_name, {}

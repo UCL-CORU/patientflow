@@ -88,11 +88,38 @@ class TestEvaluationInputsBuilder(unittest.TestCase):
             (9, 30)
         ]
         self.assertIsInstance(delta_payload, ArrivalDeltaPayload)
+        self.assertIsNone(delta_payload.predictor)
+        self.assertIsNone(delta_payload.filter_key)
+        self.assertFalse(delta_payload.strict_prediction_date)
 
         survival_payload = built.flow_inputs_by_service["medical"][
             "ed_current_window_prob"
         ][(12, 0)]
         self.assertIsInstance(survival_payload, SurvivalCurvePayload)
+
+    def test_add_arrival_deltas_with_predictors(self) -> None:
+        builder = EvaluationInputsBuilder(
+            prediction_times=[(9, 30)],
+            evaluation_targets={},
+        )
+        arrivals_df = pd.DataFrame({"arrival_datetime": ["2026-01-01T09:00:00Z"]})
+        stub_predictor = object()
+        builder.add_arrival_deltas(
+            "ed_yta_arrival_rates",
+            arrivals_by_service={"medical": arrivals_df},
+            snapshot_dates=[date(2026, 1, 1)],
+            prediction_window=timedelta(hours=4),
+            predictors_by_service={"medical": stub_predictor},
+            filter_keys_by_service={"medical": "all"},
+            strict_prediction_date=True,
+        )
+        built = builder.build()
+        payload = built.flow_inputs_by_service["medical"]["ed_yta_arrival_rates"][
+            (9, 30)
+        ]
+        self.assertIs(payload.predictor, stub_predictor)
+        self.assertEqual(payload.filter_key, "all")
+        self.assertTrue(payload.strict_prediction_date)
 
     def test_add_distribution_observations(self) -> None:
         builder = EvaluationInputsBuilder(

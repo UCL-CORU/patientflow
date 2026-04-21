@@ -10,9 +10,9 @@ rows through ``ScalarsCollector``.
 
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -68,6 +68,7 @@ def _record_not_evaluated(
     prediction_time: Tuple[int, int],
     reason: str,
     service_name: Optional[str],
+    group: Optional[Dict[str, str]] = None,
 ) -> None:
     collector.record(
         flow=flow_name,
@@ -78,6 +79,7 @@ def _record_not_evaluated(
         aspirational=target.aspirational,
         evaluated=False,
         reason=reason,
+        group=group,
     )
 
 
@@ -179,6 +181,109 @@ def evaluate_aspirational_skip(
         )
 
 
+WEEKDAY_NAMES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _render_distribution_group(
+    *,
+    service_name: str,
+    flow_name: str,
+    target: EvaluationTarget,
+    snapshots_by_time: Mapping[Tuple[int, int], Mapping[Any, SnapshotResult]],
+    collector: ScalarsCollector,
+    service_dir: Path,
+    group: Optional[Dict[str, str]] = None,
+    file_suffix: str = "",
+) -> None:
+    """Render EPUDD/obs-exp plots and per-time scalar rows for one group.
+
+    ``group`` is a mapping like ``{"weekday": "mon"}``.  When ``None``,
+    the headline ("all") set is rendered with default filenames.  Any
+    filename suffix (e.g. ``"_weekday_mon"``) is appended before the
+    ``.png`` extension.
+    """
+    legacy_prob_dist_dict_all = to_legacy_prob_dist_dict_all(
+        snapshots_by_time=snapshots_by_time,
+        model_name=flow_name,
+    )
+
+    fig = plot_epudd(
+        prediction_times=list(snapshots_by_time.keys()),
+        prob_dist_dict_all=legacy_prob_dist_dict_all,
+        model_name=flow_name,
+        media_file_path=service_dir,
+        file_name=f"{flow_name}_{target.component}_epudd{file_suffix}.png",
+        return_figure=True,
+    )
+    _close_fig(fig)
+
+    results = calc_mae_mpe(legacy_prob_dist_dict_all)
+    fig = plot_deltas(
+        results1=results,
+        media_file_path=service_dir,
+        file_name=f"{flow_name}_{target.component}_obs_exp{file_suffix}.png",
+        return_figure=True,
+    )
+    _close_fig(fig)
+
+    for prediction_time in snapshots_by_time:
+        prediction_time_key = _format_prediction_time(prediction_time)
+        model_key = get_model_key(flow_name, prediction_time)
+        if model_key not in results:
+            _record_not_evaluated(
+                collector,
+                flow_name=flow_name,
+                target=target,
+                prediction_time=prediction_time,
+                reason="No distribution metrics produced for this prediction time",
+                service_name=service_name,
+                group=group,
+            )
+            continue
+
+        result_for_time = results[model_key]
+        n_snapshots = int(len(legacy_prob_dist_dict_all[model_key]))
+        metrics = {
+            "mae": float(result_for_time["mae"]),
+            "mpe": float(result_for_time["mpe"]),
+            "n_snapshots": n_snapshots,
+            "reliable": n_snapshots >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
+            "reliability_threshold": RELIABILITY_THRESHOLDS["distribution_snapshots"],
+            "reliability_basis": "snapshots",
+        }
+        collector.record(
+            flow=flow_name,
+            service=service_name,
+            component=target.component,
+            prediction_time=prediction_time_key,
+            flow_type=target.flow_type,
+            aspirational=target.aspirational,
+            evaluated=True,
+            metrics=metrics,
+            group=group,
+        )
+
+
+def _partition_snapshots_by_weekday(
+    snapshots_by_time: Mapping[Tuple[int, int], Mapping[Any, SnapshotResult]],
+) -> Dict[int, Dict[Tuple[int, int], Dict[Any, SnapshotResult]]]:
+    """Split ``snapshots_by_time`` into per-weekday sub-mappings.
+
+    Only snapshot dates whose ``weekday()`` can be determined are split;
+    keys that are not ``date`` instances are skipped for that weekday
+    stratification (this is a defensive guard; pipeline callers pass
+    ``datetime.date`` keys).
+    """
+    by_weekday: Dict[int, Dict[Tuple[int, int], Dict[Any, SnapshotResult]]] = {}
+    for pt, by_date in snapshots_by_time.items():
+        for snapshot_date, snap in by_date.items():
+            if not isinstance(snapshot_date, date):
+                continue
+            d = snapshot_date.weekday()
+            by_weekday.setdefault(d, {}).setdefault(pt, {})[snapshot_date] = snap
+    return by_weekday
+
+
 def evaluate_distribution(
     *,
     service_name: str,
@@ -191,6 +296,8 @@ def evaluate_distribution(
         Mapping[Tuple[int, int], Mapping[Any, SnapshotResult]]
     ] = None,
     skip_inactive: bool = False,
+    group_by: Sequence[str] = (),
+    min_group_snapshots: int = 10,
 ) -> None:
     """Evaluate one service-level distribution target.
 
@@ -220,6 +327,16 @@ def evaluate_distribution(
         observed counts and near-zero predicted means) are recorded in
         scalars with ``charts_generated: false`` and no chart files are
         written.  Defaults to False for backward compatibility.
+    group_by
+        Optional sequence of grouping dimensions to stratify the output
+        by.  Currently only ``"weekday"`` is recognised, which splits
+        snapshots by the weekday of their snapshot_date and emits an
+        additional EPUDD/obs-exp plot and scalar row per weekday.
+        Per-group rows are tagged with ``group_weekday`` in scalars.
+    min_group_snapshots
+        Minimum snapshots required within a weekday group before
+        rendering per-group diagnostics.  Smaller groups record a row
+        with ``evaluated=false`` and a reason.
     """
     by_time = snapshots_by_time or {}
     available = {pt: by_time[pt] for pt in prediction_times if pt in by_time}
@@ -268,64 +385,114 @@ def evaluate_distribution(
     service_dir = output_root / "services" / service_name.replace("/", "_")
     service_dir.mkdir(parents=True, exist_ok=True)
 
-    legacy_prob_dist_dict_all = to_legacy_prob_dist_dict_all(
+    _render_distribution_group(
+        service_name=service_name,
+        flow_name=flow_name,
+        target=target,
         snapshots_by_time=available,
-        model_name=flow_name,
+        collector=collector,
+        service_dir=service_dir,
+        group=None,
+        file_suffix="",
     )
 
-    fig = plot_epudd(
-        prediction_times=list(available.keys()),
-        prob_dist_dict_all=legacy_prob_dist_dict_all,
-        model_name=flow_name,
-        media_file_path=service_dir,
-        file_name=f"{flow_name}_{target.component}_epudd.png",
-        return_figure=True,
-    )
-    _close_fig(fig)
-
-    results = calc_mae_mpe(legacy_prob_dist_dict_all)
-    fig = plot_deltas(
-        results1=results,
-        media_file_path=service_dir,
-        file_name=f"{flow_name}_{target.component}_obs_exp.png",
-        return_figure=True,
-    )
-    _close_fig(fig)
-
-    for prediction_time in available:
-        prediction_time_key = _format_prediction_time(prediction_time)
-        model_key = get_model_key(flow_name, prediction_time)
-        if model_key not in results:
-            _record_not_evaluated(
-                collector,
+    if "weekday" in group_by:
+        weekday_partitions = _partition_snapshots_by_weekday(available)
+        for weekday_idx in range(7):
+            wname = WEEKDAY_NAMES[weekday_idx]
+            wpart = weekday_partitions.get(weekday_idx, {})
+            if not wpart:
+                continue
+            for prediction_time, snaps in wpart.items():
+                if len(snaps) < min_group_snapshots:
+                    collector.record(
+                        flow=flow_name,
+                        service=service_name,
+                        component=target.component,
+                        prediction_time=_format_prediction_time(prediction_time),
+                        flow_type=target.flow_type,
+                        aspirational=target.aspirational,
+                        evaluated=False,
+                        reason=(
+                            f"Only {len(snaps)} snapshots for weekday={wname}; "
+                            f"below min_group_snapshots={min_group_snapshots}"
+                        ),
+                        metrics={"n_snapshots": len(snaps)},
+                        group={"weekday": wname},
+                    )
+            renderable = {
+                pt: snaps
+                for pt, snaps in wpart.items()
+                if len(snaps) >= min_group_snapshots
+            }
+            if not renderable:
+                continue
+            _render_distribution_group(
+                service_name=service_name,
                 flow_name=flow_name,
                 target=target,
-                prediction_time=prediction_time,
-                reason="No distribution metrics produced for this prediction time",
-                service_name=service_name,
+                snapshots_by_time=renderable,
+                collector=collector,
+                service_dir=service_dir,
+                group={"weekday": wname},
+                file_suffix=f"_weekday_{wname}",
             )
-            continue
 
-        result_for_time = results[model_key]
-        n_snapshots = int(len(legacy_prob_dist_dict_all[model_key]))
-        metrics = {
-            "mae": float(result_for_time["mae"]),
-            "mpe": float(result_for_time["mpe"]),
+
+def _render_arrival_deltas_group(
+    *,
+    service_name: str,
+    flow_name: str,
+    target: EvaluationTarget,
+    prediction_time: Tuple[int, int],
+    payload: ArrivalDeltaPayload,
+    snapshot_dates: List[Any],
+    collector: ScalarsCollector,
+    service_dir: Path,
+    group: Optional[Dict[str, str]] = None,
+    file_suffix: str = "",
+) -> None:
+    """Render one arrival-delta plot for a subset of snapshot dates."""
+    service_dir.mkdir(parents=True, exist_ok=True)
+    fig = plot_arrival_deltas(
+        df=payload.df,
+        prediction_time=prediction_time,
+        snapshot_dates=snapshot_dates,
+        prediction_window=payload.prediction_window,
+        yta_time_interval=payload.yta_time_interval,
+        suptitle=f"{flow_name} — {service_name}",
+        media_file_path=service_dir,
+        file_name=(
+            f"{flow_name}_{target.component}_{_format_prediction_time(prediction_time)}"
+            f"_deltas{file_suffix}.png"
+        ),
+        return_figure=True,
+        predictor=payload.predictor,
+        filter_key=payload.filter_key,
+        strict_prediction_date=payload.strict_prediction_date,
+    )
+    _close_fig(fig)
+
+    n_snapshots = int(len(snapshot_dates))
+    collector.record(
+        flow=flow_name,
+        service=service_name,
+        component=target.component,
+        prediction_time=_format_prediction_time(prediction_time),
+        flow_type=target.flow_type,
+        aspirational=target.aspirational,
+        evaluated=True,
+        metrics={
             "n_snapshots": n_snapshots,
-            "reliable": n_snapshots >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
-            "reliability_threshold": RELIABILITY_THRESHOLDS["distribution_snapshots"],
+            "reliable": n_snapshots
+            >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
+            "reliability_threshold": RELIABILITY_THRESHOLDS[
+                "distribution_snapshots"
+            ],
             "reliability_basis": "snapshots",
-        }
-        collector.record(
-            flow=flow_name,
-            service=service_name,
-            component=target.component,
-            prediction_time=prediction_time_key,
-            flow_type=target.flow_type,
-            aspirational=target.aspirational,
-            evaluated=True,
-            metrics=metrics,
-        )
+        },
+        group=group,
+    )
 
 
 def evaluate_arrival_deltas(
@@ -337,6 +504,8 @@ def evaluate_arrival_deltas(
     collector: ScalarsCollector,
     output_root: Path,
     payloads_by_time: Optional[Mapping[Tuple[int, int], ArrivalDeltaPayload]] = None,
+    group_by: Sequence[str] = (),
+    min_group_snapshots: int = 10,
 ) -> None:
     """Evaluate arrival-rate deltas per prediction time.
 
@@ -357,6 +526,14 @@ def evaluate_arrival_deltas(
     payloads_by_time
         Optional mapping ``prediction_time -> ArrivalDeltaPayload``.
         Missing times are recorded as non-evaluated rows.
+    group_by
+        Optional grouping dimensions.  ``"weekday"`` emits an additional
+        arrival-delta plot per weekday, restricted to that weekday's
+        snapshot dates.
+    min_group_snapshots
+        Minimum snapshot dates required within a weekday group before
+        emitting a per-group plot.  Smaller groups record a row with
+        ``evaluated=false``.
     """
     by_time = payloads_by_time or {}
     service_dir = output_root / "services" / service_name.replace("/", "_")
@@ -398,41 +575,59 @@ def evaluate_arrival_deltas(
             )
             continue
 
-        service_dir.mkdir(parents=True, exist_ok=True)
-        fig = plot_arrival_deltas(
-            df=payload.df,
+        _render_arrival_deltas_group(
+            service_name=service_name,
+            flow_name=flow_name,
+            target=target,
             prediction_time=prediction_time,
-            snapshot_dates=payload.snapshot_dates,
-            prediction_window=payload.prediction_window,
-            yta_time_interval=payload.yta_time_interval,
-            suptitle=f"{flow_name} — {service_name}",
-            media_file_path=service_dir,
-            file_name=(
-                f"{flow_name}_{target.component}_{_format_prediction_time(prediction_time)}"
-                "_deltas.png"
-            ),
-            return_figure=True,
+            payload=payload,
+            snapshot_dates=list(payload.snapshot_dates),
+            collector=collector,
+            service_dir=service_dir,
+            group=None,
+            file_suffix="",
         )
-        _close_fig(fig)
 
-        collector.record(
-            flow=flow_name,
-            service=service_name,
-            component=target.component,
-            prediction_time=_format_prediction_time(prediction_time),
-            flow_type=target.flow_type,
-            aspirational=target.aspirational,
-            evaluated=True,
-            metrics={
-                "n_snapshots": n_snapshots,
-                "reliable": n_snapshots
-                >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
-                "reliability_threshold": RELIABILITY_THRESHOLDS[
-                    "distribution_snapshots"
-                ],
-                "reliability_basis": "snapshots",
-            },
-        )
+        if "weekday" in group_by:
+            snapshots_by_weekday: Dict[int, List[Any]] = {}
+            for d in payload.snapshot_dates:
+                if not isinstance(d, date):
+                    continue
+                snapshots_by_weekday.setdefault(d.weekday(), []).append(d)
+            for weekday_idx in range(7):
+                wname = WEEKDAY_NAMES[weekday_idx]
+                wdates = snapshots_by_weekday.get(weekday_idx, [])
+                if not wdates:
+                    continue
+                if len(wdates) < min_group_snapshots:
+                    collector.record(
+                        flow=flow_name,
+                        service=service_name,
+                        component=target.component,
+                        prediction_time=_format_prediction_time(prediction_time),
+                        flow_type=target.flow_type,
+                        aspirational=target.aspirational,
+                        evaluated=False,
+                        reason=(
+                            f"Only {len(wdates)} snapshots for weekday={wname}; "
+                            f"below min_group_snapshots={min_group_snapshots}"
+                        ),
+                        metrics={"n_snapshots": len(wdates)},
+                        group={"weekday": wname},
+                    )
+                    continue
+                _render_arrival_deltas_group(
+                    service_name=service_name,
+                    flow_name=flow_name,
+                    target=target,
+                    prediction_time=prediction_time,
+                    payload=payload,
+                    snapshot_dates=wdates,
+                    collector=collector,
+                    service_dir=service_dir,
+                    group={"weekday": wname},
+                    file_suffix=f"_weekday_{wname}",
+                )
 
 
 def evaluate_survival_curve(

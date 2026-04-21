@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import shutil
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from patientflow.evaluate.constants import RELIABILITY_THRESHOLDS
 from patientflow.evaluate.handlers import (
@@ -33,6 +33,9 @@ from patientflow.evaluate.types import (
 )
 
 
+SUPPORTED_GROUP_DIMS = ("weekday",)
+
+
 def run_evaluation(
     output_root: Union[str, Path],
     inputs: EvaluationInputs,
@@ -41,6 +44,8 @@ def run_evaluation(
     run_label: Optional[str] = None,
     services: Optional[List[str]] = None,
     skip_inactive_services: bool = True,
+    group_by: Sequence[str] = (),
+    min_group_snapshots: int = 10,
     verbose: bool = True,
 ) -> Dict[str, Any]:
     """Run typed evaluation targets and write plots/scalars to disk.
@@ -64,6 +69,18 @@ def run_evaluation(
         recorded in scalars with ``charts_generated: false`` but no chart
         files are written.  This dramatically reduces output volume when
         many services have zero activity.  Defaults to True.
+    group_by
+        Optional sequence of additional grouping dimensions applied to
+        distribution and arrival-delta targets.  Supported values:
+        ``"weekday"`` — re-emits EPUDD/obs-exp plots and scalar rows per
+        weekday for distribution targets, and arrival-delta plots
+        restricted to snapshots of each weekday for arrival-delta
+        targets.  Empty by default for backward compatibility.
+    min_group_snapshots
+        Minimum number of snapshots required within a single group (e.g.
+        one weekday) before per-group diagnostics are rendered.  Smaller
+        groups are recorded as ``evaluated=false`` rows with a reason.
+        Defaults to 10.
     verbose
         Whether to print progress messages. Defaults to True.
 
@@ -79,6 +96,14 @@ def run_evaluation(
     """
     if not inputs.prediction_times:
         raise ValueError("prediction_times must be provided explicitly.")
+
+    group_by = tuple(group_by)
+    for dim in group_by:
+        if dim not in SUPPORTED_GROUP_DIMS:
+            raise ValueError(
+                f"Unsupported group_by dimension {dim!r}. "
+                f"Supported values: {SUPPORTED_GROUP_DIMS}."
+            )
 
     root = Path(output_root)
     effective_run_label = run_label or datetime.now(timezone.utc).strftime(
@@ -202,6 +227,8 @@ def run_evaluation(
                     output_root=root,
                     snapshots_by_time=resolved_snapshots_by_time,
                     skip_inactive=skip_inactive_services,
+                    group_by=group_by,
+                    min_group_snapshots=min_group_snapshots,
                 )
             elif mode == "arrival_deltas":
                 evaluate_arrival_deltas(
@@ -212,6 +239,8 @@ def run_evaluation(
                     collector=collector,
                     output_root=root,
                     payloads_by_time=payload_by_time,
+                    group_by=group_by,
+                    min_group_snapshots=min_group_snapshots,
                 )
             elif mode == "survival_curve":
                 evaluate_survival_curve(
@@ -244,7 +273,9 @@ def run_evaluation(
                         reason=f"Unsupported evaluation mode: {mode}",
                     )
 
-    meta = default_scalars_meta(RELIABILITY_THRESHOLDS, schema_version=3)
+    meta = default_scalars_meta(RELIABILITY_THRESHOLDS, schema_version=4)
+    if group_by:
+        meta["group_by"] = list(group_by)
     include_summary = skip_inactive_services
     scalars_path.write_text(
         json.dumps(

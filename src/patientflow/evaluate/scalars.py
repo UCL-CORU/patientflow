@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 def default_scalars_meta(
     reliability_thresholds: Dict[str, int],
-    schema_version: int = 3,
+    schema_version: int = 4,
 ) -> Dict[str, Any]:
     """Build default metadata block for flat scalar outputs.
 
@@ -67,6 +67,7 @@ class ScalarsCollector:
             row.get("service"),
             row.get("component"),
             row.get("prediction_time"),
+            row.get("group_weekday", "all"),
         )
 
     def load_prior(self, rows: List[Dict[str, Any]]) -> None:
@@ -108,6 +109,7 @@ class ScalarsCollector:
         evaluated: bool,
         reason: Optional[str] = None,
         metrics: Optional[Dict[str, Any]] = None,
+        group: Optional[Dict[str, str]] = None,
     ) -> None:
         """Append one scalar row.
 
@@ -131,6 +133,14 @@ class ScalarsCollector:
             Optional reason when a row is not evaluated.
         metrics
             Optional mode-specific metric fields merged into the row.
+        group
+            Optional mapping of grouping dimensions for this row (for
+            example ``{"weekday": "mon"}``).  Keys are prefixed with
+            ``group_`` in the output row so that an ungrouped (``"all"``)
+            row and a per-weekday row with the same flow/service/
+            component/prediction_time coexist without colliding.  When
+            omitted, a ``group_weekday`` column with value ``"all"`` is
+            written so every row has a consistent shape.
         """
         row: Dict[str, Any] = {
             "flow": flow,
@@ -141,7 +151,11 @@ class ScalarsCollector:
             "aspirational": aspirational,
             "evaluated": evaluated,
             "reason": reason,
+            "group_weekday": "all",
         }
+        if group:
+            for dim, value in group.items():
+                row[f"group_{dim}"] = value
         if metrics:
             row.update(metrics)
         self.rows.append(row)
@@ -166,6 +180,11 @@ class ScalarsCollector:
         for row in self.merged_rows():
             svc = row.get("service")
             if svc is None:
+                continue
+            # Only consider the headline ("all") rows for service-level
+            # activity classification.  Per-group rows (e.g. group_weekday
+            # = "mon") would otherwise flip an inactive service to active.
+            if row.get("group_weekday", "all") != "all":
                 continue
             all_services.add(svc)
             if row.get("charts_generated") is not False:

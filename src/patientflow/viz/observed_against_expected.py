@@ -15,6 +15,7 @@ plot_arrival_deltas : function
 """
 
 from datetime import timedelta, datetime, time
+from typing import Any, Optional
 from patientflow.calculate.arrival_rates import time_varying_arrival_rates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -200,7 +201,12 @@ def _prepare_arrival_data(
 def _calculate_arrival_rates(
     df_copy, prediction_time_obj, prediction_window, yta_time_interval
 ):
-    """Helper function to calculate arrival rates and prepare time points."""
+    """Helper function to calculate pooled arrival rates and prepare time points.
+
+    This is the legacy (weekday-agnostic) path that computes expected rates
+    directly from the full arrivals dataframe. It is used as a fallback when
+    no fitted predictor is supplied to :func:`plot_arrival_deltas`.
+    """
     arrival_rates = time_varying_arrival_rates(
         df_copy, yta_time_interval=yta_time_interval
     )
@@ -219,6 +225,66 @@ def _calculate_arrival_rates(
     }
 
     return mean_arrival_rates
+
+
+def _arrival_rates_from_predictor(
+    predictor: Any,
+    *,
+    prediction_time,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta,
+    snapshot_date,
+    filter_key: Optional[str] = None,
+    strict_prediction_date: bool = False,
+):
+    """Extract per-slice arrival rates from a fitted predictor.
+
+    Returns a list of ``(datetime.time, rate)`` tuples, one per slice of
+    length ``yta_time_interval`` starting at ``prediction_time`` and
+    spanning ``prediction_window``. When the predictor was fit with
+    ``stratify_by_weekday=True``, slices use the rate for the weekday of
+    ``snapshot_date`` (crossing into the next weekday for windows that
+    straddle midnight).
+
+    This helper depends only on the predictor's public(ish) iteration
+    surface and therefore works for any subclass that implements
+    ``_iter_prediction_inputs`` (``Empirical``, ``Direct``, and
+    ``Parametric`` incoming-admission predictors).
+    """
+    snapped_pt = tuple(prediction_time)
+    fk = predictor._resolve_filter_key_for_mean(filter_key)
+    # _iter_prediction_inputs yields one (filter_key, snapped_time, rates_np)
+    gen = predictor._iter_prediction_inputs(
+        snapped_prediction_time=snapped_pt,
+        prediction_window=prediction_window,
+        filter_keys=[fk],
+        prediction_date=snapshot_date,
+        strict_prediction_date=strict_prediction_date,
+    )
+    _, _, rates = next(iter(gen))
+    rates = np.asarray(rates, dtype=float)
+
+    interval = yta_time_interval
+    # Rates returned from the predictor are already bucketed at
+    # ``predictor.yta_time_interval`` granularity.  The diagnostic passes its
+    # own ``yta_time_interval``; we assume they agree (runtime check).
+    predictor_interval = getattr(predictor, "yta_time_interval", interval)
+    if predictor_interval != interval:
+        raise ValueError(
+            "yta_time_interval supplied to plot_arrival_deltas "
+            f"({interval}) does not match predictor.yta_time_interval "
+            f"({predictor_interval}). Use the same interval for both."
+        )
+
+    hr, mn = snapped_pt
+    anchor = datetime.combine(
+        snapshot_date, time(hour=hr, minute=mn)
+    )
+    rates_by_time = {}
+    for i, rate in enumerate(rates):
+        t = (anchor + i * interval).time()
+        rates_by_time[t] = float(rate)
+    return rates_by_time
 
 
 def _prepare_arrival_times(mean_arrival_rates, prediction_time_obj, default_date):
@@ -494,6 +560,9 @@ def plot_arrival_deltas(
     file_name=None,
     return_figure=False,
     fig_size=(15, 6),
+    predictor: Optional[Any] = None,
+    filter_key: Optional[str] = None,
+    strict_prediction_date: bool = False,
 ):
     """Plot delta charts for multiple snapshot dates on the same figure.
 
@@ -520,6 +589,20 @@ def plot_arrival_deltas(
         If True, returns the figure instead of displaying it
     fig_size : tuple, default=(15, 6)
         Figure size as (width, height) in inches
+    predictor : object, optional
+        Fitted incoming-admission predictor whose stored arrival rates
+        provide the expected baseline. When supplied, the diagnostic
+        compares observed cumulative arrivals against the same rate
+        profile the deployed model uses — including weekday-stratified
+        rates when the predictor was fit with ``stratify_by_weekday=True``.
+        When ``None``, the diagnostic falls back to pooled rates derived
+        from ``df`` (legacy behaviour).
+    filter_key : str, optional
+        Filter key for the predictor weight bundle. Required only when
+        the predictor has more than one weight key.
+    strict_prediction_date : bool, default=False
+        When True and the predictor lacks per-weekday rates, raise an
+        error instead of silently falling back to pooled rates.
 
     Returns
     -------
@@ -561,10 +644,24 @@ def plot_arrival_deltas(
         arrivals = arrivals.sort_values("arrival_datetime")
         arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
-        # Calculate arrival rates and prepare time points
-        mean_arrival_rates = _calculate_arrival_rates(
-            df_copy, prediction_time_obj, prediction_window, yta_time_interval
-        )
+        # Calculate arrival rates and prepare time points.  When a fitted
+        # predictor is supplied we read its stored rates for this snapshot
+        # date (and weekday, if applicable); otherwise fall back to the
+        # pooled rates derived from the arrivals dataframe.
+        if predictor is not None:
+            mean_arrival_rates = _arrival_rates_from_predictor(
+                predictor,
+                prediction_time=prediction_time,
+                prediction_window=prediction_window,
+                yta_time_interval=yta_time_interval,
+                snapshot_date=snapshot_date,
+                filter_key=filter_key,
+                strict_prediction_date=strict_prediction_date,
+            )
+        else:
+            mean_arrival_rates = _calculate_arrival_rates(
+                df_copy, prediction_time_obj, prediction_window, yta_time_interval
+            )
 
         # Prepare arrival times
         arrival_times_piecewise = _prepare_arrival_times(
@@ -678,11 +775,17 @@ def plot_arrival_deltas(
     end_time = f"{end_time_obj.hour:02d}:{end_time_obj.minute:02d}"
     interval_mins = int(yta_time_interval.total_seconds() / 60)
 
+    baseline_label = (
+        "weekday-specific rates (from fitted predictor)"
+        if predictor is not None
+        else "pooled rates (from dataframe)"
+    )
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Cumulative difference (observed \u2212 expected)")
     ax1.set_title(
         f"Cumulative difference between observed and expected arrivals"
         f" over {interval_mins}-min intervals, {start_time}\u2013{end_time}"
+        f"\nExpected baseline: {baseline_label}"
     )
 
     # Format time axis when timeline data exists

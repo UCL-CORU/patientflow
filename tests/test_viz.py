@@ -342,6 +342,141 @@ class TestPlotRendering(unittest.TestCase):
         )
         self.assertIsInstance(fig, Figure)
 
+    def test_plot_arrival_deltas_uses_predictor_baseline_when_supplied(self):
+        """When a fitted predictor is supplied, the expected baseline is
+        read from the predictor's weight bundle rather than pooled across
+        the arrivals dataframe.
+
+        Uses a stub predictor that exposes the minimal surface required
+        by ``_arrival_rates_from_predictor`` so the test does not depend
+        on fitting a real ParametricIncomingAdmissionPredictor.
+        """
+
+        class _StubPredictor:
+            yta_time_interval = timedelta(minutes=15)
+
+            def _resolve_filter_key_for_mean(self, filter_key):
+                return filter_key or "all"
+
+            def _iter_prediction_inputs(
+                self,
+                *,
+                snapped_prediction_time,
+                prediction_window,
+                filter_keys,
+                prediction_date,
+                strict_prediction_date,
+            ):
+                Ntimes = int(prediction_window / self.yta_time_interval)
+                # Monday gets rate 5, other weekdays get rate 1 — so the
+                # expected baseline clearly depends on ``prediction_date``.
+                rate = 5.0 if prediction_date.weekday() == 0 else 1.0
+                rates = np.full(Ntimes, rate)
+                yield filter_keys[0], snapped_prediction_time, rates
+
+        df = pd.DataFrame(
+            {
+                "arrival_datetime": [
+                    pd.Timestamp("2026-01-05 09:45:00+00:00"),  # Monday
+                    pd.Timestamp("2026-01-06 09:45:00+00:00"),  # Tuesday
+                ]
+            }
+        )
+        fig = plot_arrival_deltas(
+            df=df,
+            prediction_time=(9, 30),
+            snapshot_dates=[
+                pd.Timestamp("2026-01-05").date(),
+                pd.Timestamp("2026-01-06").date(),
+            ],
+            prediction_window=timedelta(hours=2),
+            yta_time_interval=timedelta(minutes=15),
+            return_figure=True,
+            predictor=_StubPredictor(),
+            filter_key="all",
+        )
+        self.assertIsInstance(fig, Figure)
+        main_ax = fig.axes[0]
+        self.assertIn(
+            "weekday-specific rates (from fitted predictor)", main_ax.get_title()
+        )
+
+    def test_plot_arrival_deltas_default_baseline_label_is_pooled(self):
+        df = pd.DataFrame(
+            {
+                "arrival_datetime": [
+                    pd.Timestamp("2024-01-01 09:45:00+00:00"),
+                    pd.Timestamp("2024-01-01 10:15:00+00:00"),
+                ]
+            }
+        )
+        fig = plot_arrival_deltas(
+            df=df,
+            prediction_time=(9, 30),
+            snapshot_dates=[pd.Timestamp("2024-01-01").date()],
+            prediction_window=timedelta(hours=2),
+            yta_time_interval=timedelta(minutes=15),
+            return_figure=True,
+        )
+        self.assertIn("pooled rates (from dataframe)", fig.axes[0].get_title())
+
+    def test_plot_arrival_deltas_end_to_end_with_weekday_stratified_predictor(self):
+        """Smoke test: render with a real weekday-aware DirectAdmissionPredictor.
+
+        Verifies that the public predictor→diagnostic wiring works end to
+        end (fitted predictor's ``_iter_prediction_inputs`` is callable
+        from the viz layer and returns rates that line up with the
+        diagnostic's time grid).
+        """
+        from patientflow.predictors.incoming_admission_predictors import (
+            DirectAdmissionPredictor,
+        )
+
+        rng = np.random.default_rng(0)
+        times = pd.DatetimeIndex(
+            [
+                pd.Timestamp("2024-01-01")
+                + pd.Timedelta(days=int(rng.integers(0, 56)))
+                + pd.Timedelta(hours=int(rng.integers(0, 24)))
+                + pd.Timedelta(minutes=int(rng.integers(0, 60)))
+                for _ in range(300)
+            ]
+        )
+        df = pd.DataFrame(index=times)
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df,
+            yta_time_interval=timedelta(minutes=15),
+            num_days=56,
+            stratify_by_weekday=True,
+        )
+
+        arrivals = pd.DataFrame(
+            {
+                "arrival_datetime": [
+                    pd.Timestamp("2024-02-05 10:00:00+00:00"),  # Monday
+                    pd.Timestamp("2024-02-06 10:15:00+00:00"),  # Tuesday
+                ]
+            }
+        )
+        fig = plot_arrival_deltas(
+            df=arrivals,
+            prediction_time=(9, 30),
+            snapshot_dates=[
+                pd.Timestamp("2024-02-05").date(),
+                pd.Timestamp("2024-02-06").date(),
+            ],
+            prediction_window=timedelta(hours=2),
+            yta_time_interval=timedelta(minutes=15),
+            return_figure=True,
+            predictor=predictor,
+        )
+        self.assertIsInstance(fig, Figure)
+        self.assertIn(
+            "weekday-specific rates (from fitted predictor)",
+            fig.axes[0].get_title(),
+        )
+
     def test_plot_arrival_rates(self):
         np.random.seed(42)
         times = sorted(
