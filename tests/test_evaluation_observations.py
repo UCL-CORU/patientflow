@@ -63,7 +63,9 @@ class TestAdmittedInWindow(unittest.TestCase):
                 "departure_datetime": [
                     pd.Timestamp("2026-01-01 10:30:00+00:00"),  # within window
                     pd.Timestamp("2026-01-01 13:00:00+00:00"),  # after window
-                    pd.Timestamp("2026-01-01 11:00:00+00:00"),  # within but arrived after
+                    pd.Timestamp(
+                        "2026-01-01 11:00:00+00:00"
+                    ),  # within but arrived after
                 ],
                 "specialty": ["medical", "medical", "medical"],
             }

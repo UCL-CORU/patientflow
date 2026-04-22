@@ -2,7 +2,7 @@
 
 ## What transfers represent
 
-When a patient departs one subspecialty, they either leave the hospital (discharge) or move to another subspecialty (transfer). From the perspective of the *destination* service, a transfer is an inflow — another source of arrivals. From the perspective of the *source* service, it is part of departures (already covered by the departure predictions in rows 11/12).
+When a patient departs one subspecialty, they either leave the hospital (discharge) or move to another subspecialty (transfer). From the perspective of the _destination_ service, a transfer is an inflow — another source of arrivals. From the perspective of the _source_ service, it is part of departures (already covered by the departure predictions in rows 11/12).
 
 ## Prediction side — fully modelled
 
@@ -46,12 +46,12 @@ Transfers are selectively includable:
 
 Transfers are included in the combined-flow evaluation targets, which use `FlowSelection.emergency_only()` or `FlowSelection.elective_only()` (both have `include_transfers_in=True`):
 
-| Target | Evaluation plan row | Includes transfers | Observation mode |
-|---|---|---|---|
-| `combined_emergency_arrivals` | Row 16 | Yes (emergency) | aspirational_skip (no evaluation) |
-| `combined_elective_arrivals` | Row 17 | Yes (elective) | arrived_in_window |
-| `combined_net_emergency` | Row 18 | Yes (emergency) | aspirational_skip (no evaluation) |
-| `combined_net_elective` | Row 19 | Yes (elective) | admitted_in_window |
+| Target                        | Evaluation plan row | Includes transfers | Observation mode                  |
+| ----------------------------- | ------------------- | ------------------ | --------------------------------- |
+| `combined_emergency_arrivals` | Row 16              | Yes (emergency)    | aspirational_skip (no evaluation) |
+| `combined_elective_arrivals`  | Row 17              | Yes (elective)     | arrived_in_window                 |
+| `combined_net_emergency`      | Row 18              | Yes (emergency)    | aspirational_skip (no evaluation) |
+| `combined_net_elective`       | Row 19              | Yes (elective)     | admitted_in_window                |
 
 So currently, emergency combined predictions that include transfers are aspirational (no observed-vs-predicted evaluation). Only the elective combined targets (rows 17, 19) are evaluated, and they include elective transfers in the prediction.
 
@@ -83,15 +83,15 @@ If standalone evaluation of transfers is ever needed, it would require:
 
 ## What exists and what is missing
 
-| Aspect | Status |
-|---|---|
-| Transfer probability model | Implemented (`TransferProbabilityEstimator`) |
-| Transfer arrival PMF computation | Implemented (`compute_transfer_arrivals`) |
-| FlowSelection toggle for transfers | Implemented (`include_transfers_in`) |
-| Standalone evaluation targets (rows 13–15) | Not defined |
-| Transition matrix comparison (row 13) | Not implemented; evaluation mode does not exist |
+| Aspect                                     | Status                                             |
+| ------------------------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transfer probability model                 | Implemented (`TransferProbabilityEstimator`)       |
+| Transfer arrival PMF computation           | Implemented (`compute_transfer_arrivals`)          |
+| FlowSelection toggle for transfers         | Implemented (`include_transfers_in`)               |
+| Standalone evaluation targets (rows 13–15) | Not defined                                        |
+| Transition matrix comparison (row 13)      | Not implemented; evaluation mode does not exist    |
 | Observation counting for transfer arrivals | Not implemented, but data is available (see below) |
-AGG| Transfers in combined evaluated targets | Included in prediction (rows 17, 19); observation counting subject to the same issues as other window-based targets (see `observation_counting_requirement.md`) |
+| AGG                                        | Transfers in combined evaluated targets            | Included in prediction (rows 17, 19); observation counting subject to the same issues as other window-based targets (see `observation_counting_requirement.md`) |
 
 ## Data available for transfer observation counting
 

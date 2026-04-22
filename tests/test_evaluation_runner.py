@@ -57,7 +57,9 @@ class TestEvaluationRunner(unittest.TestCase):
             self.assertIn("results", payload)
             self.assertEqual(len(payload["results"]), 2)
             rows_by_flow = {row["flow"]: row for row in payload["results"]}
-            self.assertFalse(rows_by_flow["ed_current_admission_classifier"]["evaluated"])
+            self.assertFalse(
+                rows_by_flow["ed_current_admission_classifier"]["evaluated"]
+            )
             self.assertFalse(rows_by_flow["combined_net_emergency"]["evaluated"])
             self.assertTrue(rows_by_flow["combined_net_emergency"]["aspirational"])
 

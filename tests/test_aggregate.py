@@ -524,7 +524,9 @@ class TestAggregateRefactored(unittest.TestCase):
         ]
         self.assertEqual(called_prediction_dates, snapshot_dates)
 
-    def test_get_prob_dist_by_service_passes_prediction_date_to_build_service_data(self):
+    def test_get_prob_dist_by_service_passes_prediction_date_to_build_service_data(
+        self,
+    ):
         snapshot_dates = [date(2023, 1, 1), date(2023, 1, 2)]
         specialties = ["medical"]
 
@@ -548,9 +550,10 @@ class TestAggregateRefactored(unittest.TestCase):
         fake_bundle = MagicMock()
         fake_bundle.arrivals.probabilities = np.array([0.6, 0.4])
 
-        with patch("patientflow.predict.service.build_service_data") as mock_build, patch(
-            "patientflow.predict.demand.DemandPredictor"
-        ) as mock_predictor_cls:
+        with (
+            patch("patientflow.predict.service.build_service_data") as mock_build,
+            patch("patientflow.predict.demand.DemandPredictor") as mock_predictor_cls,
+        ):
             mock_build.return_value = {"medical": object()}
             mock_predictor = mock_predictor_cls.return_value
             mock_predictor.predict_service.return_value = fake_bundle
@@ -571,3 +574,118 @@ class TestAggregateRefactored(unittest.TestCase):
             call.kwargs["prediction_date"] for call in mock_build.call_args_list
         ]
         self.assertEqual(called_prediction_dates, snapshot_dates)
+
+    def test_get_prob_dist_by_service_forwards_strict_prediction_date(self):
+        snapshot_dates = [date(2023, 1, 1)]
+        specialties = ["medical"]
+
+        ed_visits = pd.DataFrame(
+            {
+                "snapshot_date": [snapshot_dates[0]],
+                "prediction_time": [(7, 0)],
+                "elapsed_los": [3600],
+            }
+        )
+        inpatient_visits = pd.DataFrame(
+            {
+                "snapshot_date": [snapshot_dates[0]],
+                "prediction_time": [(7, 0)],
+                "elapsed_los": [3600],
+            }
+        )
+
+        flow_selection = FlowSelection.default()
+        fake_models = (None, None, None, None, None, None, None)
+        fake_bundle = MagicMock()
+        fake_bundle.arrivals.probabilities = np.array([0.6, 0.4])
+
+        with (
+            patch("patientflow.predict.service.build_service_data") as mock_build,
+            patch("patientflow.predict.demand.DemandPredictor") as mock_predictor_cls,
+        ):
+            mock_build.return_value = {"medical": object()}
+            mock_predictor = mock_predictor_cls.return_value
+            mock_predictor.predict_service.return_value = fake_bundle
+
+            get_prob_dist_by_service(
+                snapshot_dates=snapshot_dates,
+                prediction_time=(7, 0),
+                models=fake_models,
+                specialties=specialties,
+                prediction_window=timedelta(hours=8),
+                flow_selection=flow_selection,
+                ed_visits=ed_visits,
+                inpatient_visits=inpatient_visits,
+                component="arrivals",
+                strict_prediction_date=True,
+            )
+
+        strict_flags = [
+            call.kwargs.get("strict_prediction_date")
+            for call in mock_build.call_args_list
+        ]
+        self.assertTrue(all(f is True for f in strict_flags))
+        self.assertGreater(len(strict_flags), 0)
+
+    def test_get_prob_dist_by_service_rejects_missing_ed_visits_for_ed_current(self):
+        """ed_visits is required when include_ed_current=True."""
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                snapshot_dates=[date(2023, 1, 1)],
+                prediction_time=(7, 0),
+                models=(None, None, None, None, None, None, None),
+                specialties=["medical"],
+                prediction_window=timedelta(hours=8),
+                flow_selection=FlowSelection.default(),
+                ed_visits=None,
+                inpatient_visits=pd.DataFrame(
+                    {
+                        "snapshot_date": [date(2023, 1, 1)],
+                        "prediction_time": [(7, 0)],
+                        "elapsed_los": [3600],
+                    }
+                ),
+                component="arrivals",
+            )
+        self.assertIn("ed_visits", str(ctx.exception))
+        self.assertIn("include_ed_current", str(ctx.exception))
+
+    def test_get_prob_dist_by_service_allows_omitted_ed_visits_for_yta_only(self):
+        """ed_visits is not required when only yet-to-arrive flows are selected."""
+        snapshot_dates = [date(2023, 1, 1)]
+        specialties = ["medical"]
+
+        fs = FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=True,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+            cohort="emergency",
+        )
+        fake_models = (None, None, None, None, None, None, None)
+        fake_bundle = MagicMock()
+        fake_bundle.arrivals.probabilities = np.array([0.6, 0.4])
+
+        with (
+            patch("patientflow.predict.service.build_service_data") as mock_build,
+            patch("patientflow.predict.demand.DemandPredictor") as mock_predictor_cls,
+        ):
+            mock_build.return_value = {"medical": object()}
+            mock_predictor = mock_predictor_cls.return_value
+            mock_predictor.predict_service.return_value = fake_bundle
+
+            get_prob_dist_by_service(
+                snapshot_dates=snapshot_dates,
+                prediction_time=(7, 0),
+                models=fake_models,
+                specialties=specialties,
+                prediction_window=timedelta(hours=8),
+                flow_selection=fs,
+                ed_visits=None,
+                inpatient_visits=None,
+                component="arrivals",
+            )
+
+        self.assertEqual(mock_build.call_count, 1)

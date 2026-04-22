@@ -463,6 +463,131 @@ class TestBuildServiceData(unittest.TestCase):
         self.assertGreater(len(seen_dates), 0)
         self.assertTrue(all(d == prediction_date for d in seen_dates))
 
+    def test_build_service_data_passes_prediction_date_to_non_ed_and_elective_yta(self):
+        prediction_date = date(2024, 1, 8)
+
+        with (
+            patch.object(
+                self.direct_non_ed,
+                "predict_mean",
+                wraps=self.direct_non_ed.predict_mean,
+            ) as wrapped_non_ed,
+            patch.object(
+                self.direct_elective,
+                "predict_mean",
+                wraps=self.direct_elective.predict_mean,
+            ) as wrapped_elective,
+        ):
+            build_service_data(
+                models=self.models,
+                prediction_time=self.prediction_time,
+                flow_selection=FlowSelection.default(),
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                prediction_date=prediction_date,
+                ed_snapshots=self._make_snapshots(30),
+                inpatient_snapshots=self._make_inpatient_snapshots(20),
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+            )
+
+        non_ed_dates = [
+            call.kwargs.get("prediction_date")
+            for call in wrapped_non_ed.call_args_list
+            if "prediction_date" in call.kwargs
+        ]
+        elective_dates = [
+            call.kwargs.get("prediction_date")
+            for call in wrapped_elective.call_args_list
+            if "prediction_date" in call.kwargs
+        ]
+        self.assertGreater(len(non_ed_dates), 0)
+        self.assertGreater(len(elective_dates), 0)
+        self.assertTrue(all(d == prediction_date for d in non_ed_dates))
+        self.assertTrue(all(d == prediction_date for d in elective_dates))
+
+    def test_build_service_data_forwards_strict_prediction_date_to_yta_models(self):
+        with (
+            patch.object(
+                self.param_yta_model,
+                "predict_mean",
+                wraps=self.param_yta_model.predict_mean,
+            ) as wrapped_param,
+            patch.object(
+                self.direct_non_ed,
+                "predict_mean",
+                wraps=self.direct_non_ed.predict_mean,
+            ) as wrapped_non_ed,
+            patch.object(
+                self.direct_elective,
+                "predict_mean",
+                wraps=self.direct_elective.predict_mean,
+            ) as wrapped_elective,
+        ):
+            build_service_data(
+                models=self.models,
+                prediction_time=self.prediction_time,
+                flow_selection=FlowSelection.default(),
+                specialties=self.specialties,
+                prediction_window=self.prediction_window,
+                prediction_date=date(2024, 1, 8),
+                ed_snapshots=self._make_snapshots(30),
+                inpatient_snapshots=self._make_inpatient_snapshots(20),
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
+                strict_prediction_date=True,
+            )
+
+        for wrapped in (wrapped_param, wrapped_non_ed, wrapped_elective):
+            strict_flags = [
+                call.kwargs.get("strict_prediction_date")
+                for call in wrapped.call_args_list
+                if "strict_prediction_date" in call.kwargs
+            ]
+            self.assertGreater(len(strict_flags), 0)
+            self.assertTrue(all(f is True for f in strict_flags))
+
+    def test_build_service_data_ed_yta_only_omits_ed_snapshots(self):
+        """With include_ed_yta=True but include_ed_current=False, ed_snapshots is not required."""
+        models = (
+            None,  # no ed_classifier
+            None,  # no inpatient_classifier
+            None,  # no spec_model
+            self.param_yta_model,
+            None,
+            None,
+            None,
+        )
+        fs = FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=True,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+            cohort="emergency",
+        )
+        result = build_service_data(
+            models=models,
+            prediction_time=self.prediction_time,
+            flow_selection=fs,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            prediction_date=date(2024, 1, 8),
+            ed_snapshots=None,
+            inpatient_snapshots=None,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+        for spec in self.specialties:
+            self.assertIn(spec, result)
+
     def test_prediction_time_mismatch_errors(self):
         ed_snapshots = self._make_snapshots(10)
         inpatient_snapshots = self._make_inpatient_snapshots(5)

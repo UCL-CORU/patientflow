@@ -83,15 +83,15 @@ When `skip_inactive_services` is enabled, `scalars.json` includes a `_service_su
 
 File name prefixes map to flow groups:
 
-| Prefix | What it covers |
-|--------|---------------|
-| `ed_current` | Patients currently in ED: admission classifier, subspecialty mapping, bed counts (with and without prediction window) |
-| `ed_yta` | Patients yet to arrive via ED: arrival rates, bed counts |
-| `non_ed_yta` | Emergency admissions not via ED |
-| `elective_yta` | Elective admissions |
-| `discharge` | Discharge classifier, emergency and elective departures |
-| `transfer` | Transfers between services (not yet in scope) |
-| `combined` | Convolutions across flow groups: emergency/elective arrivals, net flow |
+| Prefix         | What it covers                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `ed_current`   | Patients currently in ED: admission classifier, subspecialty mapping, bed counts (with and without prediction window) |
+| `ed_yta`       | Patients yet to arrive via ED: arrival rates, bed counts                                                              |
+| `non_ed_yta`   | Emergency admissions not via ED                                                                                       |
+| `elective_yta` | Elective admissions                                                                                                   |
+| `discharge`    | Discharge classifier, emergency and elective departures                                                               |
+| `transfer`     | Transfers between services (not yet in scope)                                                                         |
+| `combined`     | Convolutions across flow groups: emergency/elective arrivals, net flow                                                |
 
 ### Aspirational flows
 
@@ -154,13 +154,13 @@ The plot subtitle names the source of the expected baseline:
 
 One `scalars.json` at the output root. Each row is keyed by `(flow, service, component, prediction_time, group_weekday)` — the `group_weekday` field is `"all"` for headline rows and a weekday abbreviation (`"mon"`…`"sun"`) for rows emitted under `group_by=("weekday",)`. Each entry includes `flow_type` and `aspirational`. `_meta.schema_version` is `4`; when grouping is active, `_meta.group_by` lists the active dimensions.
 
-| Metric | Applies to | Watch for |
-|--------|-----------|-----------|
-| Log loss | Classifiers | Primary classifier metric. Lower is better. |
-| AUROC, AUPRC | Classifiers | Secondary. Useful for comparison across times/folds. |
-| MAE | Distributions | Average error magnitude. Scale-dependent — interpret relative to typical counts. |
-| MPE | Distributions | Mean absolute percentage error on snapshots with non-zero observed count. **`calc_mae_mpe` takes `np.abs(expected - observed)` before dividing, so this value is always ≥ 0 and carries no sign information.** Use it as a scale-free error magnitude only; read direction of bias from the obs-exp histogram or EPUDD plot, not from MPE. Skip for aspirational rows (see above). |
-| n_snapshots | Distributions | Sample size for reliability. |
+| Metric       | Applies to    | Watch for                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Log loss     | Classifiers   | Primary classifier metric. Lower is better.                                                                                                                                                                                                                                                                                                                                        |
+| AUROC, AUPRC | Classifiers   | Secondary. Useful for comparison across times/folds.                                                                                                                                                                                                                                                                                                                               |
+| MAE          | Distributions | Average error magnitude. Scale-dependent — interpret relative to typical counts.                                                                                                                                                                                                                                                                                                   |
+| MPE          | Distributions | Mean absolute percentage error on snapshots with non-zero observed count. **`calc_mae_mpe` takes `np.abs(expected - observed)` before dividing, so this value is always ≥ 0 and carries no sign information.** Use it as a scale-free error magnitude only; read direction of bias from the obs-exp histogram or EPUDD plot, not from MPE. Skip for aspirational rows (see above). |
+| n_snapshots  | Distributions | Sample size for reliability.                                                                                                                                                                                                                                                                                                                                                       |
 
 ### Minimum sample sizes
 
@@ -171,7 +171,7 @@ Flag metrics as unreliable below these thresholds: 50 positive cases (classifier
 1. **Inventory**: List folders present. Note which flows and services are covered. Gaps are themselves a finding.
 2. **Scan scalars**: Load scalars.json. For **non-aspirational** distribution rows only, flag large MAE or MPE (relative to typical service counts) and use the obs-exp histogram or EPUDD to determine the direction of any bias — **MPE alone cannot tell you under- vs over-prediction** because `calc_mae_mpe` uses absolute errors. Flag systematic under-prediction of demand prominently whenever the plots reveal it. **Skip** MAE/MPE interpretation for `aspirational: true` rows (see **Aspirational flows** above and `docs/evaluation_plan.md`). If a `_service_summary` block is present, report the headline counts (e.g. "199 of 511 services had sufficient activity for chart generation; 312 inactive services are recorded in scalars only") and move on — do not examine inactive services individually.
 3. **Examine visual diagnostics**: MADCAP for classifiers. EPUDD and obs-exp for distribution flows (coloured points should track grey on EPUDD — not the diagonal; obs-exp histograms reveal the sign of any bias). Describe what you see. Only active services (those with chart folders) need visual review.
-4. **Per-weekday review** *(when `group_by=("weekday",)`)*: For YTA-heavy services (`ed_yta_*`, `non_ed_yta_*`, `elective_yta_*`), compare the `_weekday_{mon,tue,...}` EPUDD/obs-exp/deltas plots against the headline plot. Flag any weekday where the per-weekday obs-exp histogram shifts away from zero while the headline sits near zero — this is a cancellation pattern that aggregate metrics can hide. Cross-check with the arrival-delta plot's baseline label: weekday-specific drift is meaningful only when the expected baseline is also weekday-aware.
+4. **Per-weekday review** _(when `group_by=("weekday",)`)_: For YTA-heavy services (`ed_yta_*`, `non_ed_yta_*`, `elective_yta_*`), compare the `_weekday_{mon,tue,...}` EPUDD/obs-exp/deltas plots against the headline plot. Flag any weekday where the per-weekday obs-exp histogram shifts away from zero while the headline sits near zero — this is a cancellation pattern that aggregate metrics can hide. Cross-check with the arrival-delta plot's baseline label: weekday-specific drift is meaningful only when the expected baseline is also weekday-aware.
 5. **Cross-flow checks**: Do component flows explain the combined views? If combined is poor but components look fine, the convolution or a specific flow may be the issue.
 6. **Prioritise findings**: Under-prediction of demand and poor calibration of feeding classifiers are higher priority than slight over-prediction or noisy metrics at low-volume services.
 

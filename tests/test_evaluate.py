@@ -49,7 +49,6 @@ def _make_trained_model(prediction_time=(9, 30), metrics=None):
 
 
 class TestCalculateResults(unittest.TestCase):
-
     def test_basic_computation(self):
         result = calculate_results([10, 20, 30], [12.0, 18.0, 33.0])
         self.assertAlmostEqual(result["mae"], np.mean([2, 2, 3]))
@@ -72,7 +71,6 @@ class TestCalculateResults(unittest.TestCase):
 
 
 class TestCalcMaeMpe(unittest.TestCase):
-
     def test_single_time(self):
         prob_dist_dict_all = {
             "admissions_0930": {
@@ -95,7 +93,6 @@ class TestCalcMaeMpe(unittest.TestCase):
 
 
 class TestMetricsFromTrainingArtifacts(unittest.TestCase):
-
     def test_selected_eval_metrics(self):
         model = _make_trained_model()
         result = _metrics_from_training_artifacts(model)
@@ -136,7 +133,6 @@ class TestMetricsFromTrainingArtifacts(unittest.TestCase):
 
 
 class TestDefaultTargetRegistry(unittest.TestCase):
-
     def test_returns_typed_targets(self):
         targets = get_default_evaluation_targets()
         self.assertIsInstance(targets, dict)
@@ -147,9 +143,7 @@ class TestDefaultTargetRegistry(unittest.TestCase):
 
     def test_aspirational_property(self):
         targets = get_default_evaluation_targets()
-        aspirational_targets = {
-            k: v for k, v in targets.items() if v.aspirational
-        }
+        aspirational_targets = {k: v for k, v in targets.items() if v.aspirational}
         self.assertGreater(len(aspirational_targets), 0)
         for target in aspirational_targets.values():
             self.assertEqual(target.evaluation_mode, "aspirational_skip")

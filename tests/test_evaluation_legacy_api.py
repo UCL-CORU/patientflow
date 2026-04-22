@@ -20,7 +20,9 @@ class TestEvaluationLegacyApi(unittest.TestCase):
         prob_dist_dict_all = {
             "admissions_0930": {
                 "2026-01-01": {
-                    "agg_predicted": pd.DataFrame({"agg_proba": [0.0, 1.0]}, index=[0, 1]),
+                    "agg_predicted": pd.DataFrame(
+                        {"agg_proba": [0.0, 1.0]}, index=[0, 1]
+                    ),
                     "agg_observed": 1,
                 }
             }

@@ -15,8 +15,12 @@ class TestEvaluationInputsBuilder(unittest.TestCase):
     """Tests for builder-based input assembly."""
 
     def test_add_classifier(self) -> None:
-        visits_df = pd.DataFrame({"visit_number": [1, 2], "snapshot_date": ["2026-01-01", "2026-01-01"]})
-        builder = EvaluationInputsBuilder(prediction_times=[(9, 30)], evaluation_targets={})
+        visits_df = pd.DataFrame(
+            {"visit_number": [1, 2], "snapshot_date": ["2026-01-01", "2026-01-01"]}
+        )
+        builder = EvaluationInputsBuilder(
+            prediction_times=[(9, 30)], evaluation_targets={}
+        )
         builder.add_classifier(
             "ed_current_admission_classifier",
             trained_models=[object()],
@@ -142,9 +146,9 @@ class TestEvaluationInputsBuilder(unittest.TestCase):
             end_time_col="departure_datetime",
         )
         built = builder.build()
-        observation_input = built.observation_inputs_by_service["medical"]["ed_yta_beds"][
-            (9, 30)
-        ]
+        observation_input = built.observation_inputs_by_service["medical"][
+            "ed_yta_beds"
+        ][(9, 30)]
         self.assertEqual(observation_input.start_time_col, "arrival_datetime")
         self.assertEqual(observation_input.end_time_col, "departure_datetime")
         self.assertEqual(observation_input.prediction_window, timedelta(hours=4))

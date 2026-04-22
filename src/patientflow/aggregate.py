@@ -719,6 +719,7 @@ def get_prob_dist_by_service(
     component: str = "arrivals",
     verbose: bool = False,
     use_admission_in_window_prob: bool = True,
+    strict_prediction_date: bool = False,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
@@ -776,6 +777,12 @@ def get_prob_dist_by_service(
         If ``True``, print a one-line summary on completion.
     use_admission_in_window_prob : bool, default True
         Passed to ``build_service_data`` for weighting current ED patients.
+    strict_prediction_date : bool, default False
+        Forwarded to ``build_service_data``. When ``True``, yet-to-arrive
+        predictors fit with ``stratify_by_weekday=True`` but missing weekday
+        weights for a requested snapshot date raise ``ValueError`` instead of
+        silently falling back to pooled rates. Recommended for per-snapshot
+        evaluation where a silent fallback would invalidate the diagnostic.
 
     Returns
     -------
@@ -874,6 +881,7 @@ def get_prob_dist_by_service(
             x2=x2,
             y2=y2,
             use_admission_in_window_prob=use_admission_in_window_prob,
+            strict_prediction_date=strict_prediction_date,
         )
 
         for svc in services:

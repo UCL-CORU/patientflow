@@ -277,9 +277,7 @@ def _arrival_rates_from_predictor(
         )
 
     hr, mn = snapped_pt
-    anchor = datetime.combine(
-        snapshot_date, time(hour=hr, minute=mn)
-    )
+    anchor = datetime.combine(snapshot_date, time(hour=hr, minute=mn))
     rates_by_time = {}
     for i, rate in enumerate(rates):
         t = (anchor + i * interval).time()

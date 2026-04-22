@@ -164,8 +164,8 @@ def run_evaluation(
             )
 
         for service_name in services_to_process:
-            payload_by_time = (
-                inputs.flow_inputs_by_service.get(service_name, {}).get(flow_name, {})
+            payload_by_time = inputs.flow_inputs_by_service.get(service_name, {}).get(
+                flow_name, {}
             )
 
             if mode == "distribution":
@@ -279,9 +279,7 @@ def run_evaluation(
     include_summary = skip_inactive_services
     scalars_path.write_text(
         json.dumps(
-            collector.to_payload(
-                meta=meta, include_service_summary=include_summary
-            ),
+            collector.to_payload(meta=meta, include_service_summary=include_summary),
             indent=2,
             sort_keys=True,
         )
@@ -303,5 +301,7 @@ def run_evaluation(
         "scalars_path": str(scalars_path),
         "n_flows": len(inputs.evaluation_targets),
         "n_services": len(services_to_process),
-        "prediction_times": [f"{pt[0]:02d}{pt[1]:02d}" for pt in inputs.prediction_times],
+        "prediction_times": [
+            f"{pt[0]:02d}{pt[1]:02d}" for pt in inputs.prediction_times
+        ],
     }

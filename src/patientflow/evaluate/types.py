@@ -262,7 +262,9 @@ class EvaluationTarget:
 
 DistributionSnapshotPayload = Dict[date, Union[SnapshotResult, PredictedSnapshotResult]]
 
-FlowInputPayload = Union[DistributionSnapshotPayload, ArrivalDeltaPayload, SurvivalCurvePayload]
+FlowInputPayload = Union[
+    DistributionSnapshotPayload, ArrivalDeltaPayload, SurvivalCurvePayload
+]
 
 
 @dataclass
@@ -292,7 +294,9 @@ class EvaluationInputs:
     prediction_times: List[Tuple[int, int]]
     evaluation_targets: Dict[str, EvaluationTarget]
     classifier_inputs: Dict[str, ClassifierInput]
-    flow_inputs_by_service: Dict[str, Dict[str, Dict[Tuple[int, int], FlowInputPayload]]]
+    flow_inputs_by_service: Dict[
+        str, Dict[str, Dict[Tuple[int, int], FlowInputPayload]]
+    ]
     observation_inputs_by_service: Dict[
         str, Dict[str, Dict[Tuple[int, int], ObservationInput]]
     ] = field(default_factory=dict)

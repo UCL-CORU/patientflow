@@ -91,9 +91,7 @@ class ScalarsCollector:
             ``(flow, service, component, prediction_time)``.
         """
         current_keys = {self._row_key(r) for r in self.rows}
-        merged = [
-            r for r in self._prior_rows if self._row_key(r) not in current_keys
-        ]
+        merged = [r for r in self._prior_rows if self._row_key(r) not in current_keys]
         merged.extend(self.rows)
         return merged
 

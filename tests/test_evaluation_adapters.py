@@ -33,7 +33,9 @@ class TestEvaluationAdapters(unittest.TestCase):
         self.assertIn(dt, converted)
         self.assertEqual(converted[dt].observed, 1)
         self.assertEqual(converted[dt].offset, 0)
-        np.testing.assert_allclose(converted[dt].predicted_pmf, np.array([0.2, 0.5, 0.3]))
+        np.testing.assert_allclose(
+            converted[dt].predicted_pmf, np.array([0.2, 0.5, 0.3])
+        )
 
     def test_from_legacy_prediction_dict_accepts_prediction_only_payload(self):
         dt = date(2026, 1, 1)

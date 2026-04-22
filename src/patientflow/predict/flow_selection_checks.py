@@ -56,9 +56,7 @@ def validate_elective_yta(fs: FlowSelection) -> bool:
     return fs.include_elective_yta and cohort_allows_elective(fs)
 
 
-def validate_transfer_model(
-    fs: FlowSelection, transfer_model: Optional[Any]
-) -> bool:
+def validate_transfer_model(fs: FlowSelection, transfer_model: Optional[Any]) -> bool:
     return fs.include_transfers_in and transfer_model is not None
 
 

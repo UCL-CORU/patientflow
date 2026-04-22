@@ -55,7 +55,9 @@ class TestScalarsCollector(unittest.TestCase):
             evaluated=False,
             reason="Aspirational flow: observed-vs-predicted diagnostics skipped",
         )
-        payload = collector.to_payload(default_scalars_meta({"distribution_snapshots": 30}))
+        payload = collector.to_payload(
+            default_scalars_meta({"distribution_snapshots": 30})
+        )
         df = pd.DataFrame(payload["results"])
         self.assertEqual(df.shape[0], 2)
         self.assertIn("flow", df.columns)
@@ -65,7 +67,9 @@ class TestScalarsCollector(unittest.TestCase):
         self.assertIn("aspirational", df.columns)
         self.assertIn("evaluated", df.columns)
         self.assertIn("auroc", df.columns)
-        self.assertTrue(df.loc[df["flow"] == "combined_net_emergency", "aspirational"].item())
+        self.assertTrue(
+            df.loc[df["flow"] == "combined_net_emergency", "aspirational"].item()
+        )
 
     def test_default_meta_contains_expected_keys(self):
         meta = default_scalars_meta({"distribution_snapshots": 30}, schema_version=3)

@@ -10,7 +10,7 @@ rows through ``ScalarsCollector``.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -106,9 +106,7 @@ def _is_inactive_distribution(
     for by_date in snapshots_by_time.values():
         for snap in by_date.values():
             total_observed += snap.observed
-            support = np.arange(
-                snap.offset, snap.offset + len(snap.predicted_pmf)
-            )
+            support = np.arange(snap.offset, snap.offset + len(snap.predicted_pmf))
             mean = float(np.dot(support, snap.predicted_pmf))
             if mean > peak_mean:
                 peak_mean = mean
@@ -484,11 +482,8 @@ def _render_arrival_deltas_group(
         evaluated=True,
         metrics={
             "n_snapshots": n_snapshots,
-            "reliable": n_snapshots
-            >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
-            "reliability_threshold": RELIABILITY_THRESHOLDS[
-                "distribution_snapshots"
-            ],
+            "reliable": n_snapshots >= RELIABILITY_THRESHOLDS["distribution_snapshots"],
+            "reliability_threshold": RELIABILITY_THRESHOLDS["distribution_snapshots"],
             "reliability_basis": "snapshots",
         },
         group=group,
@@ -750,9 +745,7 @@ def _metrics_from_training_artifacts(trained_model: Any) -> Optional[Dict[str, A
 
             best_trial = min(
                 cv_trials,
-                key=lambda t: _trial_cv_results(t).get(
-                    "valid_logloss", float("inf")
-                ),
+                key=lambda t: _trial_cv_results(t).get("valid_logloss", float("inf")),
             )
             cv = _trial_cv_results(best_trial)
             logloss = cv.get("valid_logloss", logloss)
@@ -761,24 +754,18 @@ def _metrics_from_training_artifacts(trained_model: Any) -> Optional[Dict[str, A
 
             dataset_info = training_info.get("dataset_info", {})
             split_sizes = dataset_info.get("train_valid_test_set_no", {})
-            split_positives = dataset_info.get(
-                "train_valid_test_positive_cases", {}
-            )
+            split_positives = dataset_info.get("train_valid_test_positive_cases", {})
             if n_samples is None:
                 n_samples = split_sizes.get("valid_set_no")
             if n_positive is None:
                 n_positive = split_positives.get("valid_positive_cases")
             if n_positive is None:
-                split_balances = dataset_info.get(
-                    "train_valid_test_class_balance", {}
-                )
+                split_balances = dataset_info.get("train_valid_test_class_balance", {})
                 valid_balance = split_balances.get("y_valid_class_balance")
                 if valid_balance is not None and n_samples is not None:
                     positive_rate = valid_balance.get(1, valid_balance.get("1"))
                     if positive_rate is not None:
-                        n_positive = int(
-                            round(float(n_samples) * float(positive_rate))
-                        )
+                        n_positive = int(round(float(n_samples) * float(positive_rate)))
 
     if logloss is None or auroc is None or auprc is None:
         return None

@@ -54,7 +54,9 @@ class EvaluationInputsBuilder:
         self.prediction_times = prediction_times
         self.evaluation_targets = evaluation_targets or get_default_evaluation_targets()
         self.classifier_inputs: Dict[str, ClassifierInput] = {}
-        self.flow_inputs_by_service: Dict[str, Dict[str, Dict[Tuple[int, int], Any]]] = {}
+        self.flow_inputs_by_service: Dict[
+            str, Dict[str, Dict[Tuple[int, int], Any]]
+        ] = {}
         self.observation_inputs_by_service: Dict[
             str, Dict[str, Dict[Tuple[int, int], ObservationInput]]
         ] = {}
@@ -85,7 +87,11 @@ class EvaluationInputsBuilder:
         EvaluationInputsBuilder
             Builder instance for fluent chaining.
         """
-        models = list(trained_models.values()) if isinstance(trained_models, dict) else list(trained_models)
+        models = (
+            list(trained_models.values())
+            if isinstance(trained_models, dict)
+            else list(trained_models)
+        )
         self.classifier_inputs[flow_name] = ClassifierInput(
             trained_models=models,
             visits_df=visits_df,
@@ -97,7 +103,9 @@ class EvaluationInputsBuilder:
         self,
         flow_name: str,
         *,
-        prob_dist_by_service: Mapping[str, Mapping[str, Mapping[date, Mapping[str, Any]]]],
+        prob_dist_by_service: Mapping[
+            str, Mapping[str, Mapping[date, Mapping[str, Any]]]
+        ],
         model_name: str,
     ) -> "EvaluationInputsBuilder":
         """Ingest service distribution outputs for one flow target.
@@ -159,9 +167,9 @@ class EvaluationInputsBuilder:
         selected_times = list(prediction_times or self.prediction_times)
         for service_name, visits in observations_by_service.items():
             for prediction_time in selected_times:
-                self.observation_inputs_by_service.setdefault(service_name, {}).setdefault(
-                    flow_name, {}
-                )[prediction_time] = ObservationInput(
+                self.observation_inputs_by_service.setdefault(
+                    service_name, {}
+                ).setdefault(flow_name, {})[prediction_time] = ObservationInput(
                     visits=visits,
                     prediction_window=prediction_window,
                     label_col=label_col,

@@ -15,7 +15,11 @@ from patientflow.evaluate.handlers import (
     evaluate_distribution,
 )
 from patientflow.evaluate.scalars import ScalarsCollector
-from patientflow.evaluate.types import ArrivalDeltaPayload, EvaluationTarget, SnapshotResult
+from patientflow.evaluate.types import (
+    ArrivalDeltaPayload,
+    EvaluationTarget,
+    SnapshotResult,
+)
 
 
 class TestEvaluationHandlers(unittest.TestCase):
@@ -182,9 +186,7 @@ class TestEvaluationHandlers(unittest.TestCase):
         self.assertIsNone(row.get("charts_generated"))
 
     @patch("patientflow.evaluate.handlers.plot_arrival_deltas", return_value=None)
-    def test_evaluate_arrival_deltas_passes_predictor_to_plot(
-        self, mock_plot
-    ) -> None:
+    def test_evaluate_arrival_deltas_passes_predictor_to_plot(self, mock_plot) -> None:
         target = EvaluationTarget(
             name="ed_yta_arrival_rates",
             flow_type="special",
@@ -269,12 +271,12 @@ class TestEvaluationHandlers(unittest.TestCase):
         # At least some weekdays present (spans 20 consecutive days => all 7)
         self.assertTrue(len(weekday_rows) >= 3)
         for r in weekday_rows:
-            self.assertIn(r["group_weekday"], {"mon", "tue", "wed", "thu", "fri", "sat", "sun"})
+            self.assertIn(
+                r["group_weekday"], {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+            )
 
     @patch("patientflow.evaluate.handlers.plot_arrival_deltas", return_value=None)
-    def test_evaluate_arrival_deltas_emits_per_weekday_plots(
-        self, mock_plot
-    ) -> None:
+    def test_evaluate_arrival_deltas_emits_per_weekday_plots(self, mock_plot) -> None:
         target = EvaluationTarget(
             name="ed_yta_arrival_rates",
             flow_type="special",

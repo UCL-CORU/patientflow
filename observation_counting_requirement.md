@@ -8,13 +8,13 @@
 
 Assumes every arrival is admitted immediately — arrival time equals admission time. Produces a single Poisson distribution with rate equal to the sum of arrival rates across time intervals. No survival curve or admission probability adjustment.
 
-**Observation needed:** patients who *arrive* (= are admitted) within the prediction window. There is no separate departure/admission timestamp — the arrival is the event.
+**Observation needed:** patients who _arrive_ (= are admitted) within the prediction window. There is no separate departure/admission timestamp — the arrival is the event.
 
 ### ParametricIncomingAdmissionPredictor (ED YTA, aspirational)
 
 Uses an aspirational curve to determine, for each time interval, the probability that a patient arriving in that interval will be admitted within the remaining prediction window. Arrival rates are thinned by these probabilities: total admitted ~ Poisson(Σ λ_t θ_t).
 
-**Observation needed:** patients who arrive at ED *after* the prediction moment and whose admission (ED departure) falls *within* the prediction window.
+**Observation needed:** patients who arrive at ED _after_ the prediction moment and whose admission (ED departure) falls _within_ the prediction window.
 
 ### EmpiricalIncomingAdmissionPredictor (ED YTA, empirical)
 
@@ -76,15 +76,15 @@ Semantics: "how many patients arrived after the prediction moment and were admit
 
 ## What each target needs
 
-| Target | Predictor type | Observation dataset | Observation mode |
-|---|---|---|---|
-| **ed_current_beds** | Classifier | ED snapshot | `admitted_at_some_point` |
-| **ed_current_window_beds** | Classifier + survival curve | ED visits | `admitted_in_window` |
-| **ed_yta_beds** | Parametric or Empirical | ED arrivals | `arrived_and_admitted_in_window` |
-| **non_ed_yta_beds** | Direct | Non-ED emergency inpatient arrivals | `arrived_in_window` |
-| **elective_yta_beds** | Direct | Elective inpatient arrivals | `arrived_in_window` |
-| **discharge_emergency** | Classifier | Emergency inpatients | `departed_in_window` |
-| **discharge_elective** | Classifier | Elective inpatients | `departed_in_window` |
+| Target                     | Predictor type              | Observation dataset                 | Observation mode                 |
+| -------------------------- | --------------------------- | ----------------------------------- | -------------------------------- |
+| **ed_current_beds**        | Classifier                  | ED snapshot                         | `admitted_at_some_point`         |
+| **ed_current_window_beds** | Classifier + survival curve | ED visits                           | `admitted_in_window`             |
+| **ed_yta_beds**            | Parametric or Empirical     | ED arrivals                         | `arrived_and_admitted_in_window` |
+| **non_ed_yta_beds**        | Direct                      | Non-ED emergency inpatient arrivals | `arrived_in_window`              |
+| **elective_yta_beds**      | Direct                      | Elective inpatient arrivals         | `arrived_in_window`              |
+| **discharge_emergency**    | Classifier                  | Emergency inpatients                | `departed_in_window`             |
+| **discharge_elective**     | Classifier                  | Elective inpatients                 | `departed_in_window`             |
 
 Note: `arrived_in_window` and `arrived_and_admitted_in_window` give the same result when `arrival_datetime == departure_datetime` in the data, which is the case for non-ED/elective records in `inpatient_arrivals`. The separate modes exist for conceptual clarity about what each target is testing.
 

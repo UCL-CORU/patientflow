@@ -524,10 +524,7 @@ def _validate_models_and_data(
             raise ValueError(f"{name} DirectAdmissionPredictor has not been fit")
 
     if validate_transfer_model(flow_selection, transfer_model):
-        if (
-            not hasattr(transfer_model, "is_fitted_")
-            or not transfer_model.is_fitted_
-        ):
+        if not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_:
             raise ValueError("Transfer model has not been fit")
 
     ed_nonempty = ed_snapshots is not None and len(ed_snapshots) > 0
@@ -939,6 +936,7 @@ def _create_flow_inputs(
     y1: Optional[float],
     x2: Optional[float],
     y2: Optional[float],
+    strict_prediction_date: bool = False,
 ) -> Dict[str, Dict[str, FlowInputs]]:
     """Create FlowInputs objects for inflows and outflows.
 
@@ -959,6 +957,7 @@ def _create_flow_inputs(
                 prediction_time=prediction_time,
                 prediction_window=prediction_window,
                 filter_key=spec,
+                strict_prediction_date=strict_prediction_date,
                 **kwargs,
             )
         )
@@ -999,13 +998,17 @@ def _create_flow_inputs(
         "non_ed_yta": FlowInputs(
             flow_id="non_ed_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(non_ed_yta_model),
+            distribution=_safe_predict_mean(
+                non_ed_yta_model, prediction_date=prediction_date
+            ),
             display_name="Non-ED emergency admissions",
         ),
         "elective_yta": FlowInputs(
             flow_id="elective_yta",
             flow_type="poisson",
-            distribution=_safe_predict_mean(elective_yta_model),
+            distribution=_safe_predict_mean(
+                elective_yta_model, prediction_date=prediction_date
+            ),
             display_name="Elective admissions",
         ),
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()
@@ -1065,6 +1068,7 @@ def _build_legacy_flows(
     x2: float,
     y2: float,
     base_probs: Dict[str, Any],
+    strict_prediction_date: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """Build flows for all specialties using processing logic.
 
@@ -1141,6 +1145,7 @@ def _build_legacy_flows(
             y1,
             x2,
             y2,
+            strict_prediction_date=strict_prediction_date,
         )
 
         # Store in temporary dictionary structure
@@ -1237,6 +1242,7 @@ def build_service_data(
     y2: Optional[float] = None,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
+    strict_prediction_date: bool = False,
 ) -> Dict[str, ServicePredictionInputs]:
     """Build per-service inputs for downstream roll-up.
 
@@ -1288,6 +1294,12 @@ def build_service_data(
     use_admission_in_window_prob : bool, default=True
         Whether to weight current ED admissions by their probability of being
         admitted within the prediction window.
+    strict_prediction_date : bool, default=False
+        If ``True``, a yet-to-arrive predictor that was fit with
+        ``stratify_by_weekday=True`` but is missing weekday weights for the
+        requested date raises ``ValueError`` instead of silently falling back
+        to pooled rates. Useful for per-snapshot evaluation where a silent
+        fallback would invalidate the diagnostic.
 
     Returns
     -------
@@ -1363,6 +1375,7 @@ def build_service_data(
         cx2,
         cy2,
         base_probs,
+        strict_prediction_date=strict_prediction_date,
     )
 
     # 4. Finalize with transfers

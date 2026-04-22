@@ -36,9 +36,7 @@ def _resolve_start_series(visits: pd.DataFrame, start_time_col: str) -> pd.Serie
         return visits[start_time_col]
     if visits.index.name == start_time_col:
         return visits.index.to_series()
-    raise ValueError(
-        f"'{start_time_col}' not found in DataFrame columns or index"
-    )
+    raise ValueError(f"'{start_time_col}' not found in DataFrame columns or index")
 
 
 def _prediction_moment(
@@ -145,9 +143,11 @@ def count_observed_admitted_in_window(
     moment = _prediction_moment(snapshot_date, prediction_time, start_series)
     window_end = moment + prediction_window
 
-    mask = (start_series <= moment) & (
-        visits[end_time_col] > moment
-    ) & (visits[end_time_col] <= window_end)
+    mask = (
+        (start_series <= moment)
+        & (visits[end_time_col] > moment)
+        & (visits[end_time_col] <= window_end)
+    )
 
     if specialty is not None:
         mask = mask & (visits[service_col] == specialty)

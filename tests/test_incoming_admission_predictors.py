@@ -821,7 +821,10 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self.assertEqual(predictor.empty_filter_count, 1)
         self.assertIn("missing", predictor.weights)
         self.assertTrue(
-            all(v == 0.0 for v in predictor.weights["missing"]["arrival_rates_dict"].values())
+            all(
+                v == 0.0
+                for v in predictor.weights["missing"]["arrival_rates_dict"].values()
+            )
         )
         for weekday in range(7):
             weekday_rates = predictor.weights["missing"]["arrival_rates_by_weekday"][

@@ -1,6 +1,6 @@
 # 4d. Evaluate demand predictions
 
-In the 3x_ notebooks, I showed how to evaluate individual model components in isolation: group snapshot predictions (3b), bed demand by hospital service (3d), and demand from patients yet to arrive (3f). Each of those notebooks contained evaluation functions for one component at a time.
+In the 3x\_ notebooks, I showed how to evaluate individual model components in isolation: group snapshot predictions (3b), bed demand by hospital service (3d), and demand from patients yet to arrive (3f). Each of those notebooks contained evaluation functions for one component at a time.
 
 In this notebook, I show how to evaluate all components of a configured pipeline in a uniform, systematic way — with the goal of being able to segment the evaluation by flow type, cohort, or service. The same evaluation methods are used: EPUDD plots, delta plots, MAE/MPE, and arrival rate comparisons. A `run_evaluation` function iterates over services of interest, using the data structures introduced in 4a to control which flow types are evaluated.
 
@@ -22,7 +22,6 @@ A single call to `run_evaluation(...)` iterates over evaluation targets and serv
 
 The run directory structure and sample scalar entries are inspected to verify the outputs.
 
-
 ```python
 # Reload functions every time
 %load_ext autoreload
@@ -32,13 +31,11 @@ The run directory structure and sample scalar entries are inspected to verify th
     The autoreload extension is already loaded. To reload it, use:
       %reload_ext autoreload
 
-
 ## Load data and train models
 
 The data loading, configuration, and model training steps are identical to those demonstrated in detail in notebook 4c. Here we use `prepare_prediction_inputs` to perform all of these steps in a single call.
 
 You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
-
 
 ```python
 from patientflow.train.emergency_demand import prepare_prediction_inputs
@@ -101,7 +98,6 @@ The function `get_prob_dist_by_service` bridges composed service-level predictio
 4. Counts actual admissions from the data for each service
 5. Returns the result in a `{service: {date: {'agg_predicted': DataFrame, 'agg_observed': int}}}` structure
 
-
 ```python
 from patientflow.aggregate import get_prob_dist_by_service
 from patientflow.predict.demand import FlowSelection
@@ -156,12 +152,10 @@ print(f"\nBuilt evaluation data for {len(ed_current_prob_dist_by_service)} predi
     prediction_time=(12, 0): 4 services × 92 dates
     prediction_time=(15, 30): 4 services × 92 dates
     prediction_time=(22, 0): 4 services × 92 dates
-    
+
     Built evaluation data for 5 prediction times, 4 services each
 
-
 The EPUDD (Evaluating Predictions for Unique, Discrete, Distributions) plot below visualises the prepared distributions for a single service. For a well-calibrated model, the observations should lie close to the diagonal. `run_evaluation(...)` in section 3 produces these plots automatically for all services.
-
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -181,11 +175,7 @@ plot_epudd(
 )
 ```
 
-
-    
 ![png](4d_Evaluate_demand_predictions_files/4d_Evaluate_demand_predictions_7_0.png)
-    
-
 
 ## 2. Prepare evaluation inputs
 
@@ -200,7 +190,6 @@ Inputs are assembled in two structures:
 
 - **`classifier_inputs`**: keyed by classifier target name, containing trained models and a test visits dataframe.
 - **`flow_inputs_by_service`**: keyed by `service → flow → prediction_time → payload`, containing probability distributions and arrival data prepared in section 1.
-
 
 ```python
 from datetime import datetime
@@ -284,15 +273,13 @@ print(f"Prediction times: {prediction_times}")
       ed_current_beds: distribution (pmf)
       ed_yta_beds_aspirational: aspirational_skip (aspirational)
       ed_yta_arrival_rates: arrival_deltas (special)
-    
+
     Services: ['medical', 'surgical', 'haem/onc', 'paediatric']
     Prediction times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-
 
 ## 3. Run evaluation
 
 A single call to `run_evaluation(...)` iterates over the evaluation targets and services defined above, writing diagnostic plots and a `scalars.json` summary to an output directory. Evaluation targets without matching inputs are recorded as skipped rather than raising errors.
-
 
 ```python
 # run_label = f"notebook4d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -312,11 +299,9 @@ print(out)
 
     {'output_root': 'eval-output/demo', 'run_label': 'demo', 'scalars_path': 'eval-output/demo/scalars.json', 'n_flows': 4, 'n_services': 4, 'prediction_times': ['0600', '0930', '1200', '1530', '2200']}
 
-
 ## 4. Review outputs
 
 The run directory contains classifier-level plots (calibration, discrimination, madcap) and service-level diagnostic plots (EPUDD, observed-vs-expected, arrival deltas), alongside a global `scalars.json`. Below we inspect the directory structure and sample scalar entries for an evaluated target, an aspirational target (skipped by design), and a distribution target.
-
 
 ```python
 import json
@@ -332,7 +317,6 @@ print("Scalars path:", scalars_path)
 
     Run directory: eval-output/demo
     Scalars path: eval-output/demo/scalars.json
-
 
 ## Summary
 

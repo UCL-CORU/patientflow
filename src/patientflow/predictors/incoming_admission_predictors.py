@@ -1100,6 +1100,21 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         should use ``prediction_time``, ``prediction_window``, and ``filter_keys``
         (see module *Prediction API*). Legacy ``prediction_context`` (keyword or dict
         as first positional) remains supported with ``DeprecationWarning``.
+
+        Weekday contract
+        ----------------
+        When the model was fit with ``stratify_by_weekday=True``, callers must pass
+        ``prediction_date`` for each call so the model can select the matching
+        weekday-specific arrival profile. Calling without ``prediction_date`` (or
+        with one while the model lacks weekday weights) silently falls back to the
+        pooled 24-hour profile and emits a ``UserWarning``; set
+        ``strict_prediction_date=True`` to raise instead.
+
+        For per-snapshot evaluation, prefer
+        :func:`patientflow.aggregate.get_prob_dist_by_service`, which threads
+        ``prediction_date`` into ``build_service_data`` for every snapshot date and
+        therefore honours weekday stratification without requiring callers to
+        manage the contract themselves.
         """
         ...
 
