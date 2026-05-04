@@ -4,7 +4,9 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from xgboost import XGBClassifier
 
+from patientflow.predict.emergency_demand import dataframe_for_classifier_predict_proba
 from patientflow.train.classifiers import (
     FeatureColumnTransformer,
     FeatureKind,
@@ -348,6 +350,87 @@ class TestClassifiers(unittest.TestCase):
             (out["elapsed_los"] == pd.Timedelta(0)).all(),
             msg="expected zero timedelta fill for missing column",
         )
+
+    def test_dataframe_for_classifier_predict_proba_modern_keeps_timedelta(self):
+        """Modern pipelines receive timedelta ``elapsed_los`` through predict_proba."""
+        df = pd.DataFrame(
+            {
+                "elapsed_los": pd.to_timedelta([1, 2, 3, 4], unit="h"),
+                "sex": ["M", "F", "M", "F"],
+                "y": [0, 1, 0, 1],
+            }
+        )
+        X = df[["elapsed_los", "sex"]]
+        y = df["y"]
+        fct = FeatureColumnTransformer()
+        ct = create_column_transformer(X)
+        pipe = Pipeline(
+            [
+                ("feature_columns", fct),
+                ("feature_transformer", ct),
+                (
+                    "classifier",
+                    XGBClassifier(n_estimators=5, max_depth=2, eval_metric="logloss"),
+                ),
+            ]
+        )
+        pipe.fit(X, y)
+
+        snap = pd.DataFrame(
+            {
+                "elapsed_los": pd.to_timedelta([30, 45], unit="m"),
+                "sex": ["F", "M"],
+            }
+        )
+        prepared = dataframe_for_classifier_predict_proba(pipe, snap)
+        self.assertTrue(pd.api.types.is_timedelta64_dtype(prepared["elapsed_los"]))
+        probs = pipe.predict_proba(prepared)
+        self.assertEqual(probs.shape[0], 2)
+
+    def test_dataframe_for_classifier_predict_proba_legacy_seconds(self):
+        """Legacy pipelines (no ``feature_columns``) get numeric seconds."""
+        df = pd.DataFrame(
+            {
+                "elapsed_los": [3600, 7200],
+                "sex": ["M", "F"],
+                "y": [0, 1],
+            }
+        )
+        X = df[["elapsed_los", "sex"]]
+        y = df["y"]
+        ct = ColumnTransformer(
+            [
+                ("oh", OneHotEncoder(handle_unknown="ignore"), ["sex"]),
+                ("num", "passthrough", ["elapsed_los"]),
+            ]
+        )
+        pipe = Pipeline(
+            [
+                ("feature_transformer", ct),
+                (
+                    "classifier",
+                    XGBClassifier(n_estimators=5, max_depth=2, eval_metric="logloss"),
+                ),
+            ]
+        )
+        pipe.fit(X, y)
+
+        snap = pd.DataFrame(
+            {
+                "elapsed_los": pd.to_timedelta([30, 60], unit="m"),
+                "sex": ["F", "M"],
+            }
+        )
+        prepared = dataframe_for_classifier_predict_proba(pipe, snap)
+        self.assertTrue(
+            pd.api.types.is_float_dtype(prepared["elapsed_los"]),
+            msg="legacy path should convert elapsed_los to float seconds",
+        )
+        np.testing.assert_allclose(
+            prepared["elapsed_los"].values, [1800.0, 3600.0], rtol=0, atol=1e-9
+        )
+        probs = pipe.predict_proba(prepared)
+        self.assertEqual(probs.shape[0], 2)
 
 
 if __name__ == "__main__":

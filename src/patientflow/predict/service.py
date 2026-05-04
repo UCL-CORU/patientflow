@@ -23,6 +23,7 @@ import pandas as pd
 
 from patientflow.predict.emergency_demand import (
     add_missing_columns,
+    dataframe_for_classifier_predict_proba,
     get_specialty_probs,
 )
 from patientflow.predictors.incoming_admission_predictors import (
@@ -654,20 +655,28 @@ def _prepare_base_probabilities(
     else:
         inpatient_pipeline = None
 
-    # Ensure model expects columns exist
-    if ed_pipeline is not None and ed_snapshots is not None:
+    # Legacy only: add missing columns before the ColumnTransformer step.
+    if (
+        ed_pipeline is not None
+        and ed_snapshots is not None
+        and "feature_columns" not in ed_pipeline.named_steps
+    ):
         ed_snapshots = add_missing_columns(ed_pipeline, ed_snapshots.copy())
-    if inpatient_pipeline is not None and inpatient_snapshots is not None:
+    if (
+        inpatient_pipeline is not None
+        and inpatient_snapshots is not None
+        and "feature_columns" not in inpatient_pipeline.named_steps
+    ):
         inpatient_snapshots = add_missing_columns(
             inpatient_pipeline, inpatient_snapshots.copy()
         )
 
-    # Convert elapsed_los to seconds for the ED classifier pipeline
-    if ed_snapshots is not None:
+    if ed_snapshots is not None and ed_pipeline is not None:
+        ed_snapshots_temp = dataframe_for_classifier_predict_proba(
+            ed_pipeline, ed_snapshots
+        )
+    elif ed_snapshots is not None:
         ed_snapshots_temp = ed_snapshots.copy()
-        ed_snapshots_temp["elapsed_los"] = ed_snapshots_temp[
-            "elapsed_los"
-        ].dt.total_seconds()
     else:
         ed_snapshots_temp = None
 
@@ -681,14 +690,18 @@ def _prepare_base_probabilities(
     else:
         prob_admission_after_ed = pd.Series(dtype=float)
 
-    # Convert elapsed_los to seconds for the inpatient classifier pipeline
-    if inpatient_snapshots is not None:
+    if inpatient_snapshots is not None and inpatient_pipeline is not None:
+        inpatient_snapshots_temp = dataframe_for_classifier_predict_proba(
+            inpatient_pipeline, inpatient_snapshots
+        )
+        elective_snapshots = inpatient_snapshots_temp[
+            inpatient_snapshots_temp["admission_type"] == "elective"
+        ]
+        emergency_snapshots = inpatient_snapshots_temp[
+            inpatient_snapshots_temp["admission_type"] == "emergency"
+        ]
+    elif inpatient_snapshots is not None:
         inpatient_snapshots_temp = inpatient_snapshots.copy()
-        inpatient_snapshots_temp["elapsed_los"] = inpatient_snapshots_temp[
-            "elapsed_los"
-        ].dt.total_seconds()
-
-        # Split inpatient snapshots into elective and emergency
         elective_snapshots = inpatient_snapshots_temp[
             inpatient_snapshots_temp["admission_type"] == "elective"
         ]

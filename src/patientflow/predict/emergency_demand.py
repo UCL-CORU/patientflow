@@ -167,6 +167,33 @@ def add_missing_columns(pipeline, df):
     return df
 
 
+def dataframe_for_classifier_predict_proba(pipeline, df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy of ``df`` for ``pipeline.predict_proba``.
+
+    Pipelines with a ``feature_columns`` step (``FeatureColumnTransformer``) are
+    fitted with ``elapsed_los`` as ``timedelta64`` and convert to seconds inside
+    the column transformer. Legacy pipelines expect numeric seconds for
+    ``elapsed_los`` (training matched that layout).
+
+    Parameters
+    ----------
+    pipeline : sklearn.pipeline.Pipeline
+        Trained classifier pipeline (calibrated or not).
+    df : pandas.DataFrame
+        Snapshot rows; ``elapsed_los`` must be timedelta when required by callers.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Copy suitable to pass to ``predict_proba``.
+    """
+    if "feature_columns" in pipeline.named_steps:
+        return df.copy()
+    out = df.copy()
+    out["elapsed_los"] = out["elapsed_los"].dt.total_seconds()
+    return out
+
+
 def find_probability_threshold_index(sequence: List[float], threshold: float) -> int:
     """Find index k such that P(X >= k) >= threshold.
 
@@ -489,13 +516,9 @@ def create_predictions(
         # Legacy path: use external helper for older model artifacts
         prediction_snapshots = add_missing_columns(pipeline, prediction_snapshots)
 
-    # Before we get predictions, we need to create a temp copy with the elapsed_los column in seconds.
-    # In the training data, elapsed_los is stored as seconds, so this conversion ensures
-    # the model sees the same representation at inference time.
-    prediction_snapshots_temp = prediction_snapshots.copy()
-    prediction_snapshots_temp["elapsed_los"] = prediction_snapshots_temp[
-        "elapsed_los"
-    ].dt.total_seconds()
+    prediction_snapshots_temp = dataframe_for_classifier_predict_proba(
+        pipeline, prediction_snapshots
+    )
 
     # Get predictions of admissions for ED patients
     prob_admission_after_ed = model_input_to_pred_proba(
