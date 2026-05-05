@@ -595,8 +595,9 @@ def prepare_patient_snapshots(
         df_single = select_one_snapshot_per_visit(df_tod, visit_col)
         # Create label array with the same index
         y = df_single.pop(label_col).astype(int)
-        # Drop specified columns and ensure we do not reset the index
-        df_single.drop(columns=exclude_columns, inplace=True)
+        # Drop specified columns and ensure we do not reset the index.
+        # Ignore missing column names so behavior matches the multi-snapshot path.
+        df_single.drop(columns=exclude_columns, inplace=True, errors="ignore")
         return df_single, y
     else:
         # Directly modify df_tod without resetting the index
