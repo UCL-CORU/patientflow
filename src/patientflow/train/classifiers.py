@@ -632,6 +632,10 @@ def train_classifier(
     calibrate_probabilities: bool = True,
     calibration_method: str = "sigmoid",
     single_snapshot_per_visit: bool = True,
+    single_snapshot_per_visit_train: Optional[bool] = None,
+    single_snapshot_per_visit_valid: Optional[bool] = None,
+    single_snapshot_per_visit_test: Optional[bool] = None,
+    calibrate_on_deployment_like_validation: bool = True,
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
 ) -> TrainedClassifier:
@@ -668,7 +672,21 @@ def train_classifier(
     calibration_method : str, default='sigmoid'
         Method for probability calibration ('isotonic' or 'sigmoid')
     single_snapshot_per_visit : bool, default=True
-        Whether to select only one snapshot per visit. If True, visit_col must be provided.
+        Legacy snapshot selection flag applied to all roles unless role-specific
+        overrides are provided.
+    single_snapshot_per_visit_train : bool, optional
+        Whether to use one snapshot per visit for training data preparation.
+        Defaults to `single_snapshot_per_visit` when not provided.
+    single_snapshot_per_visit_valid : bool, optional
+        Whether to use one snapshot per visit for validation data preparation.
+        Defaults to `single_snapshot_per_visit` when not provided.
+    single_snapshot_per_visit_test : bool, optional
+        Whether to use one snapshot per visit for test data preparation.
+        Defaults to `single_snapshot_per_visit` when not provided.
+    calibrate_on_deployment_like_validation : bool, default=True
+        If True, fit probability calibration on validation snapshots prepared with
+        `single_snapshot_per_visit=False` to preserve deployment-like prevalence and
+        case mix for calibration.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
     evaluate_on_test : bool, default=False
@@ -681,9 +699,30 @@ def train_classifier(
         Trained model, including metrics, and feature information
 
     """
-    if single_snapshot_per_visit and visit_col is None:
+    single_snapshot_per_visit_train = (
+        single_snapshot_per_visit
+        if single_snapshot_per_visit_train is None
+        else single_snapshot_per_visit_train
+    )
+    single_snapshot_per_visit_valid = (
+        single_snapshot_per_visit
+        if single_snapshot_per_visit_valid is None
+        else single_snapshot_per_visit_valid
+    )
+    single_snapshot_per_visit_test = (
+        single_snapshot_per_visit
+        if single_snapshot_per_visit_test is None
+        else single_snapshot_per_visit_test
+    )
+
+    if (
+        single_snapshot_per_visit_train
+        or single_snapshot_per_visit_valid
+        or single_snapshot_per_visit_test
+    ) and visit_col is None:
         raise ValueError(
-            "visit_col must be provided when single_snapshot_per_visit is True"
+            "visit_col must be provided when any "
+            "single_snapshot_per_visit_* setting is True"
         )
 
     if evaluate_on_test and test_visits is None:
@@ -713,7 +752,7 @@ def train_classifier(
         prediction_time,
         exclude_from_training_data,
         visit_col=visit_col,
-        single_snapshot_per_visit=single_snapshot_per_visit,
+        single_snapshot_per_visit=single_snapshot_per_visit_train,
         label_col=label_col,
     )
     X_valid, y_valid = prepare_patient_snapshots(
@@ -721,7 +760,7 @@ def train_classifier(
         prediction_time,
         exclude_from_training_data,
         visit_col=visit_col,
-        single_snapshot_per_visit=single_snapshot_per_visit,
+        single_snapshot_per_visit=single_snapshot_per_visit_valid,
         label_col=label_col,
     )
 
@@ -732,7 +771,7 @@ def train_classifier(
             prediction_time,
             exclude_from_training_data,
             visit_col=visit_col,
-            single_snapshot_per_visit=single_snapshot_per_visit,
+            single_snapshot_per_visit=single_snapshot_per_visit_test,
             label_col=label_col,
         )
     else:
@@ -742,6 +781,34 @@ def train_classifier(
     dataset_metadata = get_dataset_metadata(
         X_train, X_valid, y_train, y_valid, X_test, y_test
     )
+    snapshot_metadata = {
+        "single_snapshot_per_visit": {
+            "legacy": single_snapshot_per_visit,
+            "train": single_snapshot_per_visit_train,
+            "valid": single_snapshot_per_visit_valid,
+            "test": single_snapshot_per_visit_test,
+        }
+    }
+
+    calibration_single_snapshot_per_visit = (
+        False
+        if calibrate_on_deployment_like_validation
+        else single_snapshot_per_visit_valid
+    )
+    if calibrate_probabilities:
+        if calibration_single_snapshot_per_visit == single_snapshot_per_visit_valid:
+            X_calibration, y_calibration = X_valid, y_valid
+        else:
+            X_calibration, y_calibration = prepare_patient_snapshots(
+                valid_visits,
+                prediction_time,
+                exclude_from_training_data,
+                visit_col=visit_col,
+                single_snapshot_per_visit=calibration_single_snapshot_per_visit,
+                label_col=label_col,
+            )
+    else:
+        X_calibration, y_calibration = X_valid, y_valid
 
     # Store original size and positive rate before any balancing
     original_size = len(X_train)
@@ -842,10 +909,20 @@ def train_classifier(
                     "has_importance_values": has_feature_importance,
                 },
                 "dataset_info": dataset_metadata,
+                "dataset_preparation": snapshot_metadata,
             }
 
             if calibrate_probabilities:
-                best_training.calibration_info = {"method": calibration_method}
+                best_training.calibration_info = {
+                    "method": calibration_method,
+                    "source": {
+                        "dataset": "validation",
+                        "single_snapshot_per_visit": calibration_single_snapshot_per_visit,
+                        "deployment_like_validation": calibrate_on_deployment_like_validation,
+                        "n_samples": len(y_calibration),
+                        "positive_rate": float(y_calibration.mean()),
+                    },
+                }
 
     # Apply probability calibration to the best model if requested
     if calibrate_probabilities and best_model.pipeline is not None:
@@ -856,9 +933,9 @@ def train_classifier(
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
         if best_feature_columns is not None:
-            X_valid_preprocessed = best_feature_columns.transform(X_valid)
+            X_valid_preprocessed = best_feature_columns.transform(X_calibration)
         else:
-            X_valid_preprocessed = X_valid
+            X_valid_preprocessed = X_calibration
 
         X_valid_transformed = best_feature_transformer.transform(X_valid_preprocessed)
 
@@ -873,7 +950,7 @@ def train_classifier(
             calibrated_classifier = CalibratedClassifierCV(
                 estimator=best_classifier, method=calibration_method, cv="prefit"
             )
-        calibrated_classifier.fit(X_valid_transformed, y_valid)
+        calibrated_classifier.fit(X_valid_transformed, y_calibration)
 
         calibrated_steps = []
         if best_feature_columns is not None:
@@ -923,6 +1000,11 @@ def train_multiple_classifiers(
     calibration_method: str = "isotonic",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
+    single_snapshot_per_visit: bool = True,
+    single_snapshot_per_visit_train: Optional[bool] = None,
+    single_snapshot_per_visit_valid: Optional[bool] = None,
+    single_snapshot_per_visit_test: Optional[bool] = None,
+    calibrate_on_deployment_like_validation: bool = True,
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
     verbose: bool = True,
@@ -957,6 +1039,18 @@ def train_multiple_classifiers(
         Whether to use balanced training, by default True
     majority_to_minority_ratio : float, optional
         Ratio for class balancing, by default 1.0
+    single_snapshot_per_visit : bool, optional
+        Legacy snapshot selection flag applied to all roles unless role-specific
+        flags are provided.
+    single_snapshot_per_visit_train : bool, optional
+        Training snapshot selection override.
+    single_snapshot_per_visit_valid : bool, optional
+        Validation snapshot selection override.
+    single_snapshot_per_visit_test : bool, optional
+        Test snapshot selection override.
+    calibrate_on_deployment_like_validation : bool, optional
+        Whether to fit probability calibration on deployment-like validation
+        snapshots (`single_snapshot_per_visit=False`), by default True.
     label_col : str, optional
         Name of the label column, by default "is_admitted"
     evaluate_on_test : bool, optional
@@ -993,6 +1087,11 @@ def train_multiple_classifiers(
             majority_to_minority_ratio=majority_to_minority_ratio,
             calibrate_probabilities=calibrate_probabilities,
             calibration_method=calibration_method,
+            single_snapshot_per_visit=single_snapshot_per_visit,
+            single_snapshot_per_visit_train=single_snapshot_per_visit_train,
+            single_snapshot_per_visit_valid=single_snapshot_per_visit_valid,
+            single_snapshot_per_visit_test=single_snapshot_per_visit_test,
+            calibrate_on_deployment_like_validation=calibrate_on_deployment_like_validation,
             label_col=label_col,
             evaluate_on_test=evaluate_on_test,
         )
