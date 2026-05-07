@@ -189,6 +189,33 @@ class TestClassifiers(unittest.TestCase):
         # Check calibration info
         self.assertIsNotNone(model.training_results.calibration_info)
         self.assertEqual(model.training_results.calibration_info["method"], "sigmoid")
+        self.assertIn("source", model.training_results.calibration_info)
+        self.assertFalse(
+            model.training_results.calibration_info["source"][
+                "single_snapshot_per_visit"
+            ]
+        )
+
+    def test_role_specific_snapshot_overrides_without_visit_col(self):
+        """visit_col is not required when all role-specific snapshot flags are False."""
+        model = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            single_snapshot_per_visit=False,
+            single_snapshot_per_visit_train=False,
+            single_snapshot_per_visit_valid=False,
+            calibrate_on_deployment_like_validation=False,
+        )
+        self.assertIsInstance(model, TrainedClassifier)
+        prep = model.training_results.training_info["dataset_preparation"][
+            "single_snapshot_per_visit"
+        ]
+        self.assertFalse(prep["train"])
+        self.assertFalse(prep["valid"])
 
     def test_custom_model_class(self):
         """Test training with a custom model class."""
