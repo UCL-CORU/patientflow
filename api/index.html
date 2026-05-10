@@ -55394,12 +55394,22 @@ time. Use <code>filter_keys</code> with <code>predict()</code> or <code>filter_k
 i.e. which key(s) appear in <code>weights</code>, matching the names given in <code>filters</code>
 when the model was fitted with filters. If <code>weights</code> has only one key,
 <code>filter_keys</code> / <code>filter_key</code> may be omitted.</p>
-<p>Optional <code>prediction_date</code> (a :class:<code>~datetime.date</code>) anchors the calendar day
-when the model was fit with <code>stratify_by_weekday=True</code>. Each prediction slice
-then uses the arrival rate for that slice's <strong>actual</strong> weekday and time-of-day
-(<code>datetime.weekday()</code>: Monday = 0, …, Sunday = 6). If <code>prediction_date</code> is
-omitted, behaviour matches the legacy pooled 24-hour profile
-(<code>arrival_rates_dict</code>) only.</p>
+<p>Optional <code>prediction_date</code> (a :class:<code>~datetime.date</code>) anchors the calendar
+day. The library fits weekday profiles by default, but the predict-time
+warning behaviour depends on whether <code>stratify_by_weekday</code> was explicitly
+opted into at fit time:</p>
+<ul>
+<li>Default fit (<code>stratify_by_weekday=None</code>): weekday profiles are stored,
+  but omitting <code>prediction_date</code> is silent — predictions match the legacy
+  pooled 24-hour profile (<code>arrival_rates_dict</code>) and no warning fires.</li>
+<li>Explicit opt-in (<code>stratify_by_weekday=True</code>): each slice uses the rate
+  for its actual weekday and time-of-day when <code>prediction_date</code> is passed
+  (<code>datetime.weekday()</code>: Monday = 0, …, Sunday = 6). Omitting
+  <code>prediction_date</code> emits a <code>UserWarning</code> and falls back to pooled rates
+  so existing predictions remain numerically unchanged.</li>
+<li><code>strict_prediction_date=True</code> at predict time turns any pooled fallback
+  into a <code>ValueError</code> regardless of how <code>stratify_by_weekday</code> was set.</li>
+</ul>
 <p>The deprecated nested <code>prediction_context</code> dict (keyword or first positional
 argument) is still accepted and emits <code>DeprecationWarning</code>. It may include
 <code>prediction_date</code> per filter key (same date required for all keys).</p>
@@ -55596,17 +55606,7 @@ appropriate than FFT-based methods which add unnecessary complexity.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
 <span class="normal">143</span>
 <span class="normal">144</span>
 <span class="normal">145</span>
@@ -55708,7 +55708,17 @@ appropriate than FFT-based methods which add unnecessary complexity.</p>
 <span class="normal">241</span>
 <span class="normal">242</span>
 <span class="normal">243</span>
-<span class="normal">244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AdmissionGeneratingFunction</span><span class="p">:</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AdmissionGeneratingFunction</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Unified generating function for admission prediction distributions.</span>
 
 <span class="sd">    This class provides efficient computation of probability distributions for</span>
@@ -55909,17 +55919,7 @@ but can be provided explicitly for custom truncation.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">180</span>
 <span class="normal">181</span>
 <span class="normal">182</span>
 <span class="normal">183</span>
@@ -55931,7 +55931,17 @@ but can be provided explicitly for custom truncation.</p>
 <span class="normal">189</span>
 <span class="normal">190</span>
 <span class="normal">191</span>
-<span class="normal">192</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_value</span><span class="p">):</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_value</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the probability distribution for the specified method.</span>
 
 <span class="sd">    Parameters</span>
@@ -56065,76 +56075,7 @@ interface:</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1186</span>
-<span class="normal">1187</span>
-<span class="normal">1188</span>
-<span class="normal">1189</span>
-<span class="normal">1190</span>
-<span class="normal">1191</span>
-<span class="normal">1192</span>
-<span class="normal">1193</span>
-<span class="normal">1194</span>
-<span class="normal">1195</span>
-<span class="normal">1196</span>
-<span class="normal">1197</span>
-<span class="normal">1198</span>
-<span class="normal">1199</span>
-<span class="normal">1200</span>
-<span class="normal">1201</span>
-<span class="normal">1202</span>
-<span class="normal">1203</span>
-<span class="normal">1204</span>
-<span class="normal">1205</span>
-<span class="normal">1206</span>
-<span class="normal">1207</span>
-<span class="normal">1208</span>
-<span class="normal">1209</span>
-<span class="normal">1210</span>
-<span class="normal">1211</span>
-<span class="normal">1212</span>
-<span class="normal">1213</span>
-<span class="normal">1214</span>
-<span class="normal">1215</span>
-<span class="normal">1216</span>
-<span class="normal">1217</span>
-<span class="normal">1218</span>
-<span class="normal">1219</span>
-<span class="normal">1220</span>
-<span class="normal">1221</span>
-<span class="normal">1222</span>
-<span class="normal">1223</span>
-<span class="normal">1224</span>
-<span class="normal">1225</span>
-<span class="normal">1226</span>
-<span class="normal">1227</span>
-<span class="normal">1228</span>
-<span class="normal">1229</span>
-<span class="normal">1230</span>
-<span class="normal">1231</span>
-<span class="normal">1232</span>
-<span class="normal">1233</span>
-<span class="normal">1234</span>
-<span class="normal">1235</span>
-<span class="normal">1236</span>
-<span class="normal">1237</span>
-<span class="normal">1238</span>
-<span class="normal">1239</span>
-<span class="normal">1240</span>
-<span class="normal">1241</span>
-<span class="normal">1242</span>
-<span class="normal">1243</span>
-<span class="normal">1244</span>
-<span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span>
-<span class="normal">1248</span>
-<span class="normal">1249</span>
-<span class="normal">1250</span>
-<span class="normal">1251</span>
-<span class="normal">1252</span>
-<span class="normal">1253</span>
-<span class="normal">1254</span>
-<span class="normal">1255</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1255</span>
 <span class="normal">1256</span>
 <span class="normal">1257</span>
 <span class="normal">1258</span>
@@ -56218,7 +56159,82 @@ interface:</p>
 <span class="normal">1336</span>
 <span class="normal">1337</span>
 <span class="normal">1338</span>
-<span class="normal">1339</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DirectAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
+<span class="normal">1339</span>
+<span class="normal">1340</span>
+<span class="normal">1341</span>
+<span class="normal">1342</span>
+<span class="normal">1343</span>
+<span class="normal">1344</span>
+<span class="normal">1345</span>
+<span class="normal">1346</span>
+<span class="normal">1347</span>
+<span class="normal">1348</span>
+<span class="normal">1349</span>
+<span class="normal">1350</span>
+<span class="normal">1351</span>
+<span class="normal">1352</span>
+<span class="normal">1353</span>
+<span class="normal">1354</span>
+<span class="normal">1355</span>
+<span class="normal">1356</span>
+<span class="normal">1357</span>
+<span class="normal">1358</span>
+<span class="normal">1359</span>
+<span class="normal">1360</span>
+<span class="normal">1361</span>
+<span class="normal">1362</span>
+<span class="normal">1363</span>
+<span class="normal">1364</span>
+<span class="normal">1365</span>
+<span class="normal">1366</span>
+<span class="normal">1367</span>
+<span class="normal">1368</span>
+<span class="normal">1369</span>
+<span class="normal">1370</span>
+<span class="normal">1371</span>
+<span class="normal">1372</span>
+<span class="normal">1373</span>
+<span class="normal">1374</span>
+<span class="normal">1375</span>
+<span class="normal">1376</span>
+<span class="normal">1377</span>
+<span class="normal">1378</span>
+<span class="normal">1379</span>
+<span class="normal">1380</span>
+<span class="normal">1381</span>
+<span class="normal">1382</span>
+<span class="normal">1383</span>
+<span class="normal">1384</span>
+<span class="normal">1385</span>
+<span class="normal">1386</span>
+<span class="normal">1387</span>
+<span class="normal">1388</span>
+<span class="normal">1389</span>
+<span class="normal">1390</span>
+<span class="normal">1391</span>
+<span class="normal">1392</span>
+<span class="normal">1393</span>
+<span class="normal">1394</span>
+<span class="normal">1395</span>
+<span class="normal">1396</span>
+<span class="normal">1397</span>
+<span class="normal">1398</span>
+<span class="normal">1399</span>
+<span class="normal">1400</span>
+<span class="normal">1401</span>
+<span class="normal">1402</span>
+<span class="normal">1403</span>
+<span class="normal">1404</span>
+<span class="normal">1405</span>
+<span class="normal">1406</span>
+<span class="normal">1407</span>
+<span class="normal">1408</span>
+<span class="normal">1409</span>
+<span class="normal">1410</span>
+<span class="normal">1411</span>
+<span class="normal">1412</span>
+<span class="normal">1413</span>
+<span class="normal">1414</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DirectAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A predictor that assumes every arrival is admitted immediately.</span>
 
 <span class="sd">    This predictor uses only the arrival rates calculated from historical data</span>
@@ -56278,12 +56294,18 @@ interface:</p>
 <span class="sd">        prediction_context : dict, optional</span>
 <span class="sd">            Deprecated nested dict API.</span>
 <span class="sd">        prediction_date : datetime.date, optional</span>
-<span class="sd">            Calendar anchor for weekday-stratified arrival rates when fitted with</span>
-<span class="sd">            ``stratify_by_weekday=True``. Otherwise λ uses the pooled profile only.</span>
+<span class="sd">            Calendar anchor for weekday-stratified arrival rates. Pass it to</span>
+<span class="sd">            use the matching weekday profile for each prediction slice; the</span>
+<span class="sd">            window crosses correctly into the next weekday after midnight.</span>
+<span class="sd">            When the predictor was fit with explicit</span>
+<span class="sd">            ``stratify_by_weekday=True`` and ``prediction_date`` is omitted, a</span>
+<span class="sd">            ``UserWarning`` is emitted; under the library default the fallback</span>
+<span class="sd">            is silent. See ``patientflow.aggregate.get_prob_dist_by_service``</span>
+<span class="sd">            for the service-level helper that supplies ``prediction_date``</span>
+<span class="sd">            automatically per snapshot date.</span>
 <span class="sd">        strict_prediction_date : bool, default=False</span>
-<span class="sd">            If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">            weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">            If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">            would occur — independent of fit-time opt-in.</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            ``max_value`` : int, optional — maximum PMF support.</span>
 
@@ -56489,8 +56511,15 @@ has more than one key (unless using <code>prediction_context</code>).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Calendar anchor for weekday-stratified arrival rates when fitted with
-<code>stratify_by_weekday=True</code>. Otherwise λ uses the pooled profile only.</p>
+                <p>Calendar anchor for weekday-stratified arrival rates. Pass it to
+use the matching weekday profile for each prediction slice; the
+window crosses correctly into the next weekday after midnight.
+When the predictor was fit with explicit
+<code>stratify_by_weekday=True</code> and <code>prediction_date</code> is omitted, a
+<code>UserWarning</code> is emitted; under the library default the fallback
+is silent. See <code>patientflow.aggregate.get_prob_dist_by_service</code>
+for the service-level helper that supplies <code>prediction_date</code>
+automatically per snapshot date.</p>
               </div>
             </td>
             <td>
@@ -56506,9 +56535,8 @@ has more than one key (unless using <code>prediction_context</code>).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>True</code>, raise an error when <code>prediction_date</code> is provided but
-weekday-stratified arrival rates are unavailable for a selected key.
-If <code>False</code>, warn and fall back to pooled arrival rates.</p>
+                <p>If <code>True</code>, raise <code>ValueError</code> whenever a pooled-rate fallback
+would occur — independent of fit-time opt-in.</p>
               </div>
             </td>
             <td>
@@ -56594,76 +56622,7 @@ indexed by outcome count (<code>sum</code>) with column <code>agg_proba</code> (
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1219</span>
-<span class="normal">1220</span>
-<span class="normal">1221</span>
-<span class="normal">1222</span>
-<span class="normal">1223</span>
-<span class="normal">1224</span>
-<span class="normal">1225</span>
-<span class="normal">1226</span>
-<span class="normal">1227</span>
-<span class="normal">1228</span>
-<span class="normal">1229</span>
-<span class="normal">1230</span>
-<span class="normal">1231</span>
-<span class="normal">1232</span>
-<span class="normal">1233</span>
-<span class="normal">1234</span>
-<span class="normal">1235</span>
-<span class="normal">1236</span>
-<span class="normal">1237</span>
-<span class="normal">1238</span>
-<span class="normal">1239</span>
-<span class="normal">1240</span>
-<span class="normal">1241</span>
-<span class="normal">1242</span>
-<span class="normal">1243</span>
-<span class="normal">1244</span>
-<span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span>
-<span class="normal">1248</span>
-<span class="normal">1249</span>
-<span class="normal">1250</span>
-<span class="normal">1251</span>
-<span class="normal">1252</span>
-<span class="normal">1253</span>
-<span class="normal">1254</span>
-<span class="normal">1255</span>
-<span class="normal">1256</span>
-<span class="normal">1257</span>
-<span class="normal">1258</span>
-<span class="normal">1259</span>
-<span class="normal">1260</span>
-<span class="normal">1261</span>
-<span class="normal">1262</span>
-<span class="normal">1263</span>
-<span class="normal">1264</span>
-<span class="normal">1265</span>
-<span class="normal">1266</span>
-<span class="normal">1267</span>
-<span class="normal">1268</span>
-<span class="normal">1269</span>
-<span class="normal">1270</span>
-<span class="normal">1271</span>
-<span class="normal">1272</span>
-<span class="normal">1273</span>
-<span class="normal">1274</span>
-<span class="normal">1275</span>
-<span class="normal">1276</span>
-<span class="normal">1277</span>
-<span class="normal">1278</span>
-<span class="normal">1279</span>
-<span class="normal">1280</span>
-<span class="normal">1281</span>
-<span class="normal">1282</span>
-<span class="normal">1283</span>
-<span class="normal">1284</span>
-<span class="normal">1285</span>
-<span class="normal">1286</span>
-<span class="normal">1287</span>
-<span class="normal">1288</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1288</span>
 <span class="normal">1289</span>
 <span class="normal">1290</span>
 <span class="normal">1291</span>
@@ -56688,7 +56647,82 @@ indexed by outcome count (<code>sum</code>) with column <code>agg_proba</code> (
 <span class="normal">1310</span>
 <span class="normal">1311</span>
 <span class="normal">1312</span>
-<span class="normal">1313</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
+<span class="normal">1313</span>
+<span class="normal">1314</span>
+<span class="normal">1315</span>
+<span class="normal">1316</span>
+<span class="normal">1317</span>
+<span class="normal">1318</span>
+<span class="normal">1319</span>
+<span class="normal">1320</span>
+<span class="normal">1321</span>
+<span class="normal">1322</span>
+<span class="normal">1323</span>
+<span class="normal">1324</span>
+<span class="normal">1325</span>
+<span class="normal">1326</span>
+<span class="normal">1327</span>
+<span class="normal">1328</span>
+<span class="normal">1329</span>
+<span class="normal">1330</span>
+<span class="normal">1331</span>
+<span class="normal">1332</span>
+<span class="normal">1333</span>
+<span class="normal">1334</span>
+<span class="normal">1335</span>
+<span class="normal">1336</span>
+<span class="normal">1337</span>
+<span class="normal">1338</span>
+<span class="normal">1339</span>
+<span class="normal">1340</span>
+<span class="normal">1341</span>
+<span class="normal">1342</span>
+<span class="normal">1343</span>
+<span class="normal">1344</span>
+<span class="normal">1345</span>
+<span class="normal">1346</span>
+<span class="normal">1347</span>
+<span class="normal">1348</span>
+<span class="normal">1349</span>
+<span class="normal">1350</span>
+<span class="normal">1351</span>
+<span class="normal">1352</span>
+<span class="normal">1353</span>
+<span class="normal">1354</span>
+<span class="normal">1355</span>
+<span class="normal">1356</span>
+<span class="normal">1357</span>
+<span class="normal">1358</span>
+<span class="normal">1359</span>
+<span class="normal">1360</span>
+<span class="normal">1361</span>
+<span class="normal">1362</span>
+<span class="normal">1363</span>
+<span class="normal">1364</span>
+<span class="normal">1365</span>
+<span class="normal">1366</span>
+<span class="normal">1367</span>
+<span class="normal">1368</span>
+<span class="normal">1369</span>
+<span class="normal">1370</span>
+<span class="normal">1371</span>
+<span class="normal">1372</span>
+<span class="normal">1373</span>
+<span class="normal">1374</span>
+<span class="normal">1375</span>
+<span class="normal">1376</span>
+<span class="normal">1377</span>
+<span class="normal">1378</span>
+<span class="normal">1379</span>
+<span class="normal">1380</span>
+<span class="normal">1381</span>
+<span class="normal">1382</span>
+<span class="normal">1383</span>
+<span class="normal">1384</span>
+<span class="normal">1385</span>
+<span class="normal">1386</span>
+<span class="normal">1387</span>
+<span class="normal">1388</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="n">args</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -56715,12 +56749,18 @@ indexed by outcome count (<code>sum</code>) with column <code>agg_proba</code> (
 <span class="sd">    prediction_context : dict, optional</span>
 <span class="sd">        Deprecated nested dict API.</span>
 <span class="sd">    prediction_date : datetime.date, optional</span>
-<span class="sd">        Calendar anchor for weekday-stratified arrival rates when fitted with</span>
-<span class="sd">        ``stratify_by_weekday=True``. Otherwise λ uses the pooled profile only.</span>
+<span class="sd">        Calendar anchor for weekday-stratified arrival rates. Pass it to</span>
+<span class="sd">        use the matching weekday profile for each prediction slice; the</span>
+<span class="sd">        window crosses correctly into the next weekday after midnight.</span>
+<span class="sd">        When the predictor was fit with explicit</span>
+<span class="sd">        ``stratify_by_weekday=True`` and ``prediction_date`` is omitted, a</span>
+<span class="sd">        ``UserWarning`` is emitted; under the library default the fallback</span>
+<span class="sd">        is silent. See ``patientflow.aggregate.get_prob_dist_by_service``</span>
+<span class="sd">        for the service-level helper that supplies ``prediction_date``</span>
+<span class="sd">        automatically per snapshot date.</span>
 <span class="sd">    strict_prediction_date : bool, default=False</span>
-<span class="sd">        If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">        weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">        If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">        If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">        would occur — independent of fit-time opt-in.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        ``max_value`` : int, optional — maximum PMF support.</span>
 
@@ -56903,86 +56943,7 @@ information for empirical probability calculations.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1546</span>
-<span class="normal">1547</span>
-<span class="normal">1548</span>
-<span class="normal">1549</span>
-<span class="normal">1550</span>
-<span class="normal">1551</span>
-<span class="normal">1552</span>
-<span class="normal">1553</span>
-<span class="normal">1554</span>
-<span class="normal">1555</span>
-<span class="normal">1556</span>
-<span class="normal">1557</span>
-<span class="normal">1558</span>
-<span class="normal">1559</span>
-<span class="normal">1560</span>
-<span class="normal">1561</span>
-<span class="normal">1562</span>
-<span class="normal">1563</span>
-<span class="normal">1564</span>
-<span class="normal">1565</span>
-<span class="normal">1566</span>
-<span class="normal">1567</span>
-<span class="normal">1568</span>
-<span class="normal">1569</span>
-<span class="normal">1570</span>
-<span class="normal">1571</span>
-<span class="normal">1572</span>
-<span class="normal">1573</span>
-<span class="normal">1574</span>
-<span class="normal">1575</span>
-<span class="normal">1576</span>
-<span class="normal">1577</span>
-<span class="normal">1578</span>
-<span class="normal">1579</span>
-<span class="normal">1580</span>
-<span class="normal">1581</span>
-<span class="normal">1582</span>
-<span class="normal">1583</span>
-<span class="normal">1584</span>
-<span class="normal">1585</span>
-<span class="normal">1586</span>
-<span class="normal">1587</span>
-<span class="normal">1588</span>
-<span class="normal">1589</span>
-<span class="normal">1590</span>
-<span class="normal">1591</span>
-<span class="normal">1592</span>
-<span class="normal">1593</span>
-<span class="normal">1594</span>
-<span class="normal">1595</span>
-<span class="normal">1596</span>
-<span class="normal">1597</span>
-<span class="normal">1598</span>
-<span class="normal">1599</span>
-<span class="normal">1600</span>
-<span class="normal">1601</span>
-<span class="normal">1602</span>
-<span class="normal">1603</span>
-<span class="normal">1604</span>
-<span class="normal">1605</span>
-<span class="normal">1606</span>
-<span class="normal">1607</span>
-<span class="normal">1608</span>
-<span class="normal">1609</span>
-<span class="normal">1610</span>
-<span class="normal">1611</span>
-<span class="normal">1612</span>
-<span class="normal">1613</span>
-<span class="normal">1614</span>
-<span class="normal">1615</span>
-<span class="normal">1616</span>
-<span class="normal">1617</span>
-<span class="normal">1618</span>
-<span class="normal">1619</span>
-<span class="normal">1620</span>
-<span class="normal">1621</span>
-<span class="normal">1622</span>
-<span class="normal">1623</span>
-<span class="normal">1624</span>
-<span class="normal">1625</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1625</span>
 <span class="normal">1626</span>
 <span class="normal">1627</span>
 <span class="normal">1628</span>
@@ -57250,7 +57211,93 @@ information for empirical probability calculations.</p>
 <span class="normal">1890</span>
 <span class="normal">1891</span>
 <span class="normal">1892</span>
-<span class="normal">1893</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmpiricalIncomingAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
+<span class="normal">1893</span>
+<span class="normal">1894</span>
+<span class="normal">1895</span>
+<span class="normal">1896</span>
+<span class="normal">1897</span>
+<span class="normal">1898</span>
+<span class="normal">1899</span>
+<span class="normal">1900</span>
+<span class="normal">1901</span>
+<span class="normal">1902</span>
+<span class="normal">1903</span>
+<span class="normal">1904</span>
+<span class="normal">1905</span>
+<span class="normal">1906</span>
+<span class="normal">1907</span>
+<span class="normal">1908</span>
+<span class="normal">1909</span>
+<span class="normal">1910</span>
+<span class="normal">1911</span>
+<span class="normal">1912</span>
+<span class="normal">1913</span>
+<span class="normal">1914</span>
+<span class="normal">1915</span>
+<span class="normal">1916</span>
+<span class="normal">1917</span>
+<span class="normal">1918</span>
+<span class="normal">1919</span>
+<span class="normal">1920</span>
+<span class="normal">1921</span>
+<span class="normal">1922</span>
+<span class="normal">1923</span>
+<span class="normal">1924</span>
+<span class="normal">1925</span>
+<span class="normal">1926</span>
+<span class="normal">1927</span>
+<span class="normal">1928</span>
+<span class="normal">1929</span>
+<span class="normal">1930</span>
+<span class="normal">1931</span>
+<span class="normal">1932</span>
+<span class="normal">1933</span>
+<span class="normal">1934</span>
+<span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span>
+<span class="normal">1940</span>
+<span class="normal">1941</span>
+<span class="normal">1942</span>
+<span class="normal">1943</span>
+<span class="normal">1944</span>
+<span class="normal">1945</span>
+<span class="normal">1946</span>
+<span class="normal">1947</span>
+<span class="normal">1948</span>
+<span class="normal">1949</span>
+<span class="normal">1950</span>
+<span class="normal">1951</span>
+<span class="normal">1952</span>
+<span class="normal">1953</span>
+<span class="normal">1954</span>
+<span class="normal">1955</span>
+<span class="normal">1956</span>
+<span class="normal">1957</span>
+<span class="normal">1958</span>
+<span class="normal">1959</span>
+<span class="normal">1960</span>
+<span class="normal">1961</span>
+<span class="normal">1962</span>
+<span class="normal">1963</span>
+<span class="normal">1964</span>
+<span class="normal">1965</span>
+<span class="normal">1966</span>
+<span class="normal">1967</span>
+<span class="normal">1968</span>
+<span class="normal">1969</span>
+<span class="normal">1970</span>
+<span class="normal">1971</span>
+<span class="normal">1972</span>
+<span class="normal">1973</span>
+<span class="normal">1974</span>
+<span class="normal">1975</span>
+<span class="normal">1976</span>
+<span class="normal">1977</span>
+<span class="normal">1978</span>
+<span class="normal">1979</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmpiricalIncomingAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A predictor that uses empirical survival curves instead of parameterised curves.</span>
 
 <span class="sd">    This predictor inherits all the arrival rate calculation and filtering logic from</span>
@@ -57287,7 +57334,7 @@ information for empirical probability calculations.</p>
         <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">7</span><span class="p">,</span>
         <span class="n">y</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="o">*</span><span class="p">,</span>
         <span class="n">start_time_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arrival_datetime&quot;</span><span class="p">,</span>
         <span class="n">end_time_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;departure_datetime&quot;</span><span class="p">,</span>
@@ -57319,8 +57366,11 @@ information for empirical probability calculations.</p>
 <span class="sd">            of the maximum value of the random variable representing number of beds.</span>
 <span class="sd">        y : None, optional</span>
 <span class="sd">            Ignored, present for compatibility with scikit-learn&#39;s fit method.</span>
-<span class="sd">        stratify_by_weekday : bool, default=False</span>
-<span class="sd">            Same as ``IncomingAdmissionPredictor.fit``.</span>
+<span class="sd">        stratify_by_weekday : bool or None, default=None</span>
+<span class="sd">            Same as ``IncomingAdmissionPredictor.fit``. The sentinel default</span>
+<span class="sd">            (``None``) fits weekday profiles silently; pass ``True`` explicitly</span>
+<span class="sd">            to activate the predict-time weekday contract (warns when</span>
+<span class="sd">            ``prediction_date`` is omitted), or ``False`` to opt out entirely.</span>
 <span class="sd">        start_time_col : str, default=&#39;arrival_datetime&#39;</span>
 <span class="sd">            Name of the column containing the start time (e.g., arrival time).</span>
 <span class="sd">            Expected to be the DataFrame index, but can also be a regular column.</span>
@@ -57495,12 +57545,16 @@ information for empirical probability calculations.</p>
 <span class="sd">        prediction_context : dict, optional</span>
 <span class="sd">            Deprecated nested dict API.</span>
 <span class="sd">        prediction_date : datetime.date, optional</span>
-<span class="sd">            Calendar anchor for weekday-stratified λ when fitted with</span>
-<span class="sd">            ``stratify_by_weekday=True``.</span>
+<span class="sd">            Calendar anchor for weekday-stratified λ. Under the library</span>
+<span class="sd">            default the pooled fallback is silent when ``prediction_date`` is</span>
+<span class="sd">            omitted; explicit ``stratify_by_weekday=True`` at fit time turns</span>
+<span class="sd">            that fallback into a ``UserWarning``. See</span>
+<span class="sd">            ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">            service-level helper that supplies ``prediction_date``</span>
+<span class="sd">            automatically per snapshot date.</span>
 <span class="sd">        strict_prediction_date : bool, default=False</span>
-<span class="sd">            If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">            weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">            If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">            would occur — independent of fit-time opt-in.</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            Optional ``max_value``.</span>
 
@@ -57618,7 +57672,7 @@ information for empirical probability calculations.</p>
 
 
 <h5 id="patientflow.predictors.incoming_admission_predictors.EmpiricalIncomingAdmissionPredictor.fit" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">fit</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">prediction_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prediction_times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">start_time_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">end_time_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">fit</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">prediction_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prediction_times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">start_time_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">end_time_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
 
 </h5>
 
@@ -57764,15 +57818,18 @@ of the maximum value of the random variable representing number of beds.</p>
                 <code>stratify_by_weekday</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> or None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Same as <code>IncomingAdmissionPredictor.fit</code>.</p>
+                <p>Same as <code>IncomingAdmissionPredictor.fit</code>. The sentinel default
+(<code>None</code>) fits weekday profiles silently; pass <code>True</code> explicitly
+to activate the predict-time weekday contract (warns when
+<code>prediction_date</code> is omitted), or <code>False</code> to opt out entirely.</p>
               </div>
             </td>
             <td>
-                  <code>False</code>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -57837,86 +57894,7 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1574</span>
-<span class="normal">1575</span>
-<span class="normal">1576</span>
-<span class="normal">1577</span>
-<span class="normal">1578</span>
-<span class="normal">1579</span>
-<span class="normal">1580</span>
-<span class="normal">1581</span>
-<span class="normal">1582</span>
-<span class="normal">1583</span>
-<span class="normal">1584</span>
-<span class="normal">1585</span>
-<span class="normal">1586</span>
-<span class="normal">1587</span>
-<span class="normal">1588</span>
-<span class="normal">1589</span>
-<span class="normal">1590</span>
-<span class="normal">1591</span>
-<span class="normal">1592</span>
-<span class="normal">1593</span>
-<span class="normal">1594</span>
-<span class="normal">1595</span>
-<span class="normal">1596</span>
-<span class="normal">1597</span>
-<span class="normal">1598</span>
-<span class="normal">1599</span>
-<span class="normal">1600</span>
-<span class="normal">1601</span>
-<span class="normal">1602</span>
-<span class="normal">1603</span>
-<span class="normal">1604</span>
-<span class="normal">1605</span>
-<span class="normal">1606</span>
-<span class="normal">1607</span>
-<span class="normal">1608</span>
-<span class="normal">1609</span>
-<span class="normal">1610</span>
-<span class="normal">1611</span>
-<span class="normal">1612</span>
-<span class="normal">1613</span>
-<span class="normal">1614</span>
-<span class="normal">1615</span>
-<span class="normal">1616</span>
-<span class="normal">1617</span>
-<span class="normal">1618</span>
-<span class="normal">1619</span>
-<span class="normal">1620</span>
-<span class="normal">1621</span>
-<span class="normal">1622</span>
-<span class="normal">1623</span>
-<span class="normal">1624</span>
-<span class="normal">1625</span>
-<span class="normal">1626</span>
-<span class="normal">1627</span>
-<span class="normal">1628</span>
-<span class="normal">1629</span>
-<span class="normal">1630</span>
-<span class="normal">1631</span>
-<span class="normal">1632</span>
-<span class="normal">1633</span>
-<span class="normal">1634</span>
-<span class="normal">1635</span>
-<span class="normal">1636</span>
-<span class="normal">1637</span>
-<span class="normal">1638</span>
-<span class="normal">1639</span>
-<span class="normal">1640</span>
-<span class="normal">1641</span>
-<span class="normal">1642</span>
-<span class="normal">1643</span>
-<span class="normal">1644</span>
-<span class="normal">1645</span>
-<span class="normal">1646</span>
-<span class="normal">1647</span>
-<span class="normal">1648</span>
-<span class="normal">1649</span>
-<span class="normal">1650</span>
-<span class="normal">1651</span>
-<span class="normal">1652</span>
-<span class="normal">1653</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1653</span>
 <span class="normal">1654</span>
 <span class="normal">1655</span>
 <span class="normal">1656</span>
@@ -57927,7 +57905,89 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
 <span class="normal">1661</span>
 <span class="normal">1662</span>
 <span class="normal">1663</span>
-<span class="normal">1664</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
+<span class="normal">1664</span>
+<span class="normal">1665</span>
+<span class="normal">1666</span>
+<span class="normal">1667</span>
+<span class="normal">1668</span>
+<span class="normal">1669</span>
+<span class="normal">1670</span>
+<span class="normal">1671</span>
+<span class="normal">1672</span>
+<span class="normal">1673</span>
+<span class="normal">1674</span>
+<span class="normal">1675</span>
+<span class="normal">1676</span>
+<span class="normal">1677</span>
+<span class="normal">1678</span>
+<span class="normal">1679</span>
+<span class="normal">1680</span>
+<span class="normal">1681</span>
+<span class="normal">1682</span>
+<span class="normal">1683</span>
+<span class="normal">1684</span>
+<span class="normal">1685</span>
+<span class="normal">1686</span>
+<span class="normal">1687</span>
+<span class="normal">1688</span>
+<span class="normal">1689</span>
+<span class="normal">1690</span>
+<span class="normal">1691</span>
+<span class="normal">1692</span>
+<span class="normal">1693</span>
+<span class="normal">1694</span>
+<span class="normal">1695</span>
+<span class="normal">1696</span>
+<span class="normal">1697</span>
+<span class="normal">1698</span>
+<span class="normal">1699</span>
+<span class="normal">1700</span>
+<span class="normal">1701</span>
+<span class="normal">1702</span>
+<span class="normal">1703</span>
+<span class="normal">1704</span>
+<span class="normal">1705</span>
+<span class="normal">1706</span>
+<span class="normal">1707</span>
+<span class="normal">1708</span>
+<span class="normal">1709</span>
+<span class="normal">1710</span>
+<span class="normal">1711</span>
+<span class="normal">1712</span>
+<span class="normal">1713</span>
+<span class="normal">1714</span>
+<span class="normal">1715</span>
+<span class="normal">1716</span>
+<span class="normal">1717</span>
+<span class="normal">1718</span>
+<span class="normal">1719</span>
+<span class="normal">1720</span>
+<span class="normal">1721</span>
+<span class="normal">1722</span>
+<span class="normal">1723</span>
+<span class="normal">1724</span>
+<span class="normal">1725</span>
+<span class="normal">1726</span>
+<span class="normal">1727</span>
+<span class="normal">1728</span>
+<span class="normal">1729</span>
+<span class="normal">1730</span>
+<span class="normal">1731</span>
+<span class="normal">1732</span>
+<span class="normal">1733</span>
+<span class="normal">1734</span>
+<span class="normal">1735</span>
+<span class="normal">1736</span>
+<span class="normal">1737</span>
+<span class="normal">1738</span>
+<span class="normal">1739</span>
+<span class="normal">1740</span>
+<span class="normal">1741</span>
+<span class="normal">1742</span>
+<span class="normal">1743</span>
+<span class="normal">1744</span>
+<span class="normal">1745</span>
+<span class="normal">1746</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">train_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">timedelta</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -57936,7 +57996,7 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
     <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">7</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">start_time_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arrival_datetime&quot;</span><span class="p">,</span>
     <span class="n">end_time_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;departure_datetime&quot;</span><span class="p">,</span>
@@ -57968,8 +58028,11 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
 <span class="sd">        of the maximum value of the random variable representing number of beds.</span>
 <span class="sd">    y : None, optional</span>
 <span class="sd">        Ignored, present for compatibility with scikit-learn&#39;s fit method.</span>
-<span class="sd">    stratify_by_weekday : bool, default=False</span>
-<span class="sd">        Same as ``IncomingAdmissionPredictor.fit``.</span>
+<span class="sd">    stratify_by_weekday : bool or None, default=None</span>
+<span class="sd">        Same as ``IncomingAdmissionPredictor.fit``. The sentinel default</span>
+<span class="sd">        (``None``) fits weekday profiles silently; pass ``True`` explicitly</span>
+<span class="sd">        to activate the predict-time weekday contract (warns when</span>
+<span class="sd">        ``prediction_date`` is omitted), or ``False`` to opt out entirely.</span>
 <span class="sd">    start_time_col : str, default=&#39;arrival_datetime&#39;</span>
 <span class="sd">        Name of the column containing the start time (e.g., arrival time).</span>
 <span class="sd">        Expected to be the DataFrame index, but can also be a regular column.</span>
@@ -58089,25 +58152,25 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1666</span>
-<span class="normal">1667</span>
-<span class="normal">1668</span>
-<span class="normal">1669</span>
-<span class="normal">1670</span>
-<span class="normal">1671</span>
-<span class="normal">1672</span>
-<span class="normal">1673</span>
-<span class="normal">1674</span>
-<span class="normal">1675</span>
-<span class="normal">1676</span>
-<span class="normal">1677</span>
-<span class="normal">1678</span>
-<span class="normal">1679</span>
-<span class="normal">1680</span>
-<span class="normal">1681</span>
-<span class="normal">1682</span>
-<span class="normal">1683</span>
-<span class="normal">1684</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_survival_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1748</span>
+<span class="normal">1749</span>
+<span class="normal">1750</span>
+<span class="normal">1751</span>
+<span class="normal">1752</span>
+<span class="normal">1753</span>
+<span class="normal">1754</span>
+<span class="normal">1755</span>
+<span class="normal">1756</span>
+<span class="normal">1757</span>
+<span class="normal">1758</span>
+<span class="normal">1759</span>
+<span class="normal">1760</span>
+<span class="normal">1761</span>
+<span class="normal">1762</span>
+<span class="normal">1763</span>
+<span class="normal">1764</span>
+<span class="normal">1765</span>
+<span class="normal">1766</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_survival_curve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the survival curve calculated during fitting.</span>
 
 <span class="sd">    Returns</span>
@@ -58231,8 +58294,13 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Calendar anchor for weekday-stratified λ when fitted with
-<code>stratify_by_weekday=True</code>.</p>
+                <p>Calendar anchor for weekday-stratified λ. Under the library
+default the pooled fallback is silent when <code>prediction_date</code> is
+omitted; explicit <code>stratify_by_weekday=True</code> at fit time turns
+that fallback into a <code>UserWarning</code>. See
+<code>patientflow.aggregate.get_prob_dist_by_service</code> for the
+service-level helper that supplies <code>prediction_date</code>
+automatically per snapshot date.</p>
               </div>
             </td>
             <td>
@@ -58248,9 +58316,8 @@ Expected to be the DataFrame index, but can also be a regular column.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>True</code>, raise an error when <code>prediction_date</code> is provided but
-weekday-stratified arrival rates are unavailable for a selected key.
-If <code>False</code>, warn and fall back to pooled arrival rates.</p>
+                <p>If <code>True</code>, raise <code>ValueError</code> whenever a pooled-rate fallback
+would occur — independent of fit-time opt-in.</p>
               </div>
             </td>
             <td>
@@ -58334,94 +58401,98 @@ If <code>False</code>, warn and fall back to pooled arrival rates.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1766</span>
-<span class="normal">1767</span>
-<span class="normal">1768</span>
-<span class="normal">1769</span>
-<span class="normal">1770</span>
-<span class="normal">1771</span>
-<span class="normal">1772</span>
-<span class="normal">1773</span>
-<span class="normal">1774</span>
-<span class="normal">1775</span>
-<span class="normal">1776</span>
-<span class="normal">1777</span>
-<span class="normal">1778</span>
-<span class="normal">1779</span>
-<span class="normal">1780</span>
-<span class="normal">1781</span>
-<span class="normal">1782</span>
-<span class="normal">1783</span>
-<span class="normal">1784</span>
-<span class="normal">1785</span>
-<span class="normal">1786</span>
-<span class="normal">1787</span>
-<span class="normal">1788</span>
-<span class="normal">1789</span>
-<span class="normal">1790</span>
-<span class="normal">1791</span>
-<span class="normal">1792</span>
-<span class="normal">1793</span>
-<span class="normal">1794</span>
-<span class="normal">1795</span>
-<span class="normal">1796</span>
-<span class="normal">1797</span>
-<span class="normal">1798</span>
-<span class="normal">1799</span>
-<span class="normal">1800</span>
-<span class="normal">1801</span>
-<span class="normal">1802</span>
-<span class="normal">1803</span>
-<span class="normal">1804</span>
-<span class="normal">1805</span>
-<span class="normal">1806</span>
-<span class="normal">1807</span>
-<span class="normal">1808</span>
-<span class="normal">1809</span>
-<span class="normal">1810</span>
-<span class="normal">1811</span>
-<span class="normal">1812</span>
-<span class="normal">1813</span>
-<span class="normal">1814</span>
-<span class="normal">1815</span>
-<span class="normal">1816</span>
-<span class="normal">1817</span>
-<span class="normal">1818</span>
-<span class="normal">1819</span>
-<span class="normal">1820</span>
-<span class="normal">1821</span>
-<span class="normal">1822</span>
-<span class="normal">1823</span>
-<span class="normal">1824</span>
-<span class="normal">1825</span>
-<span class="normal">1826</span>
-<span class="normal">1827</span>
-<span class="normal">1828</span>
-<span class="normal">1829</span>
-<span class="normal">1830</span>
-<span class="normal">1831</span>
-<span class="normal">1832</span>
-<span class="normal">1833</span>
-<span class="normal">1834</span>
-<span class="normal">1835</span>
-<span class="normal">1836</span>
-<span class="normal">1837</span>
-<span class="normal">1838</span>
-<span class="normal">1839</span>
-<span class="normal">1840</span>
-<span class="normal">1841</span>
-<span class="normal">1842</span>
-<span class="normal">1843</span>
-<span class="normal">1844</span>
-<span class="normal">1845</span>
-<span class="normal">1846</span>
-<span class="normal">1847</span>
-<span class="normal">1848</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1848</span>
 <span class="normal">1849</span>
 <span class="normal">1850</span>
 <span class="normal">1851</span>
 <span class="normal">1852</span>
-<span class="normal">1853</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
+<span class="normal">1853</span>
+<span class="normal">1854</span>
+<span class="normal">1855</span>
+<span class="normal">1856</span>
+<span class="normal">1857</span>
+<span class="normal">1858</span>
+<span class="normal">1859</span>
+<span class="normal">1860</span>
+<span class="normal">1861</span>
+<span class="normal">1862</span>
+<span class="normal">1863</span>
+<span class="normal">1864</span>
+<span class="normal">1865</span>
+<span class="normal">1866</span>
+<span class="normal">1867</span>
+<span class="normal">1868</span>
+<span class="normal">1869</span>
+<span class="normal">1870</span>
+<span class="normal">1871</span>
+<span class="normal">1872</span>
+<span class="normal">1873</span>
+<span class="normal">1874</span>
+<span class="normal">1875</span>
+<span class="normal">1876</span>
+<span class="normal">1877</span>
+<span class="normal">1878</span>
+<span class="normal">1879</span>
+<span class="normal">1880</span>
+<span class="normal">1881</span>
+<span class="normal">1882</span>
+<span class="normal">1883</span>
+<span class="normal">1884</span>
+<span class="normal">1885</span>
+<span class="normal">1886</span>
+<span class="normal">1887</span>
+<span class="normal">1888</span>
+<span class="normal">1889</span>
+<span class="normal">1890</span>
+<span class="normal">1891</span>
+<span class="normal">1892</span>
+<span class="normal">1893</span>
+<span class="normal">1894</span>
+<span class="normal">1895</span>
+<span class="normal">1896</span>
+<span class="normal">1897</span>
+<span class="normal">1898</span>
+<span class="normal">1899</span>
+<span class="normal">1900</span>
+<span class="normal">1901</span>
+<span class="normal">1902</span>
+<span class="normal">1903</span>
+<span class="normal">1904</span>
+<span class="normal">1905</span>
+<span class="normal">1906</span>
+<span class="normal">1907</span>
+<span class="normal">1908</span>
+<span class="normal">1909</span>
+<span class="normal">1910</span>
+<span class="normal">1911</span>
+<span class="normal">1912</span>
+<span class="normal">1913</span>
+<span class="normal">1914</span>
+<span class="normal">1915</span>
+<span class="normal">1916</span>
+<span class="normal">1917</span>
+<span class="normal">1918</span>
+<span class="normal">1919</span>
+<span class="normal">1920</span>
+<span class="normal">1921</span>
+<span class="normal">1922</span>
+<span class="normal">1923</span>
+<span class="normal">1924</span>
+<span class="normal">1925</span>
+<span class="normal">1926</span>
+<span class="normal">1927</span>
+<span class="normal">1928</span>
+<span class="normal">1929</span>
+<span class="normal">1930</span>
+<span class="normal">1931</span>
+<span class="normal">1932</span>
+<span class="normal">1933</span>
+<span class="normal">1934</span>
+<span class="normal">1935</span>
+<span class="normal">1936</span>
+<span class="normal">1937</span>
+<span class="normal">1938</span>
+<span class="normal">1939</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="n">args</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -58446,12 +58517,16 @@ If <code>False</code>, warn and fall back to pooled arrival rates.</p>
 <span class="sd">    prediction_context : dict, optional</span>
 <span class="sd">        Deprecated nested dict API.</span>
 <span class="sd">    prediction_date : datetime.date, optional</span>
-<span class="sd">        Calendar anchor for weekday-stratified λ when fitted with</span>
-<span class="sd">        ``stratify_by_weekday=True``.</span>
+<span class="sd">        Calendar anchor for weekday-stratified λ. Under the library</span>
+<span class="sd">        default the pooled fallback is silent when ``prediction_date`` is</span>
+<span class="sd">        omitted; explicit ``stratify_by_weekday=True`` at fit time turns</span>
+<span class="sd">        that fallback into a ``UserWarning``. See</span>
+<span class="sd">        ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">        service-level helper that supplies ``prediction_date``</span>
+<span class="sd">        automatically per snapshot date.</span>
 <span class="sd">    strict_prediction_date : bool, default=False</span>
-<span class="sd">        If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">        weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">        If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">        If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">        would occur — independent of fit-time opt-in.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        Optional ``max_value``.</span>
 
@@ -58661,6 +58736,18 @@ interfaces for compatibility with scikit-learn pipelines.</p>
 module docstring section <em>Prediction API</em>.</p>
 </details>
 
+<details class="diagnostic-attributes" open>
+  <summary>Diagnostic attributes</summary>
+  <p>empty_filter_count : int
+    Populated during <code>fit()</code>. Equals the number of configured filters
+    whose subset of <code>train_df</code> was empty. When no filters are configured,
+    equals <code>1</code> if <code>train_df</code> itself is empty and <code>0</code> otherwise. Reset
+    to <code>0</code> at the start of every <code>fit()</code> call. Useful for surfacing
+    configuration mismatches (e.g. a typoed service name or a service
+    that did not operate during the training window) that would otherwise
+    be hidden by the silent zero-rate fallback in <code>_calculate_parameters</code>.</p>
+</details>
+
 
 
 
@@ -58669,17 +58756,7 @@ module docstring section <em>Prediction API</em>.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 247</span>
-<span class="normal"> 248</span>
-<span class="normal"> 249</span>
-<span class="normal"> 250</span>
-<span class="normal"> 251</span>
-<span class="normal"> 252</span>
-<span class="normal"> 253</span>
-<span class="normal"> 254</span>
-<span class="normal"> 255</span>
-<span class="normal"> 256</span>
-<span class="normal"> 257</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 257</span>
 <span class="normal"> 258</span>
 <span class="normal"> 259</span>
 <span class="normal"> 260</span>
@@ -59605,7 +59682,76 @@ module docstring section <em>Prediction API</em>.</p>
 <span class="normal">1180</span>
 <span class="normal">1181</span>
 <span class="normal">1182</span>
-<span class="normal">1183</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IncomingAdmissionPredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span>
+<span class="normal">1227</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span>
+<span class="normal">1231</span>
+<span class="normal">1232</span>
+<span class="normal">1233</span>
+<span class="normal">1234</span>
+<span class="normal">1235</span>
+<span class="normal">1236</span>
+<span class="normal">1237</span>
+<span class="normal">1238</span>
+<span class="normal">1239</span>
+<span class="normal">1240</span>
+<span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">IncomingAdmissionPredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for admission predictors that handles filtering and arrival rate calculation.</span>
 
 <span class="sd">    This abstract base class provides the common functionality for predicting hospital</span>
@@ -59639,6 +59785,17 @@ module docstring section <em>Prediction API</em>.</p>
 <span class="sd">    For ``predict`` / ``predict_mean`` arguments (``prediction_time``,</span>
 <span class="sd">    ``filter_keys`` / ``filter_key``, legacy ``prediction_context``), see the</span>
 <span class="sd">    module docstring section *Prediction API*.</span>
+
+<span class="sd">    Diagnostic attributes</span>
+<span class="sd">    ---------------------</span>
+<span class="sd">    empty_filter_count : int</span>
+<span class="sd">        Populated during ``fit()``. Equals the number of configured filters</span>
+<span class="sd">        whose subset of ``train_df`` was empty. When no filters are configured,</span>
+<span class="sd">        equals ``1`` if ``train_df`` itself is empty and ``0`` otherwise. Reset</span>
+<span class="sd">        to ``0`` at the start of every ``fit()`` call. Useful for surfacing</span>
+<span class="sd">        configuration mismatches (e.g. a typoed service name or a service</span>
+<span class="sd">        that did not operate during the training window) that would otherwise</span>
+<span class="sd">        be hidden by the silent zero-rate fallback in ``_calculate_parameters``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_generating_functions</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -59654,6 +59811,7 @@ module docstring section <em>Prediction API</em>.</p>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Add metrics dictionary to store metadata</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">empty_filter_count</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="c1"># Configure logging for Jupyter notebook compatibility</span>
@@ -60044,17 +60202,6 @@ module docstring section <em>Prediction API</em>.</p>
         <span class="n">prediction_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">strict_prediction_date</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.</span>
-
-<span class="sd">        Slices ``Ntimes`` intervals starting at ``snapped_prediction_time`` (on an</span>
-<span class="sd">        interval boundary). When ``prediction_date`` is set and weights contain</span>
-<span class="sd">        ``arrival_rates_by_weekday`` (from ``fit(..., stratify_by_weekday=True)``),</span>
-<span class="sd">        each slice uses the rate for that slice&#39;s calendar weekday and time-of-day.</span>
-<span class="sd">        If ``prediction_date`` is set but weekday profiles are missing, behaviour</span>
-<span class="sd">        depends on ``strict_prediction_date``:</span>
-<span class="sd">        - ``False`` (default): fall back to pooled ``arrival_rates_dict`` and warn.</span>
-<span class="sd">        - ``True``: raise ``ValueError``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">Ntimes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">prediction_window</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">yta_time_interval</span><span class="p">)</span>
         <span class="n">hr</span><span class="p">,</span> <span class="n">mn</span> <span class="o">=</span> <span class="n">snapped_prediction_time</span>
         <span class="k">for</span> <span class="n">filter_key</span> <span class="ow">in</span> <span class="n">filter_keys</span><span class="p">:</span>
@@ -60081,6 +60228,21 @@ module docstring section <em>Prediction API</em>.</p>
                     <span class="ne">UserWarning</span><span class="p">,</span>
                     <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
                 <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">prediction_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">by_weekday</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;predictor was fit with stratify_by_weekday=True but no &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;prediction_date was supplied for filter &#39;</span><span class="si">{</span><span class="n">filter_key</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+                    <span class="s2">&quot;Pass prediction_date= to predict() / predict_mean() to &quot;</span>
+                    <span class="s2">&quot;use the matching weekday profile; otherwise pooled &quot;</span>
+                    <span class="s2">&quot;arrival_rates_dict is used.&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">strict_prediction_date</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="c1"># Only warn for callers who explicitly opted in at fit time.</span>
+                <span class="c1"># The library default also stores weekday profiles, but legacy</span>
+                <span class="c1"># callers who didn&#39;t request stratification stay silent.</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_user_opted_in_to_weekday&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">use_weekday</span><span class="p">:</span>
@@ -60191,38 +60353,37 @@ module docstring section <em>Prediction API</em>.</p>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not infer a positive num_days from the index.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">inferred</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_empty_arrival_rates_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">:</span>
+        <span class="n">rates</span><span class="p">:</span> <span class="n">OrderedDict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="n">_start</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">1970</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">_stop</span> <span class="o">=</span> <span class="n">_start</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">while</span> <span class="n">_start</span> <span class="o">!=</span> <span class="n">_stop</span><span class="p">:</span>
+            <span class="n">rates</span><span class="p">[</span><span class="n">_start</span><span class="o">.</span><span class="n">time</span><span class="p">()]</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">_start</span> <span class="o">=</span> <span class="n">_start</span> <span class="o">+</span> <span class="n">yta_time_interval</span>
+        <span class="k">return</span> <span class="n">rates</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_parameters</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">df</span><span class="p">,</span>
         <span class="n">yta_time_interval</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
         <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate the full 24-hour arrival-rate dictionary for the given data.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">zero_rates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_arrival_rates_dict</span><span class="p">(</span><span class="n">yta_time_interval</span><span class="p">)</span>
+            <span class="n">out</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;arrival_rates_dict&quot;</span><span class="p">:</span> <span class="n">zero_rates</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">stratify_by_weekday</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="s2">&quot;arrival_rates_by_weekday&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">d</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_arrival_rates_dict</span><span class="p">(</span><span class="n">yta_time_interval</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>
+                <span class="p">}</span>
+            <span class="k">return</span> <span class="n">out</span>
 
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        df : pandas.DataFrame</span>
-<span class="sd">            The data frame to process.</span>
-<span class="sd">        yta_time_interval : timedelta</span>
-<span class="sd">            The granularity of arrival-rate buckets.</span>
-<span class="sd">        num_days : int or None</span>
-<span class="sd">            Divisor for pooled rates; if ``None``, inferred from ``df``&#39;s index span.</span>
-<span class="sd">        stratify_by_weekday : bool, default=False</span>
-<span class="sd">            If True, also compute ``arrival_rates_by_weekday`` (keys ``0..6``,</span>
-<span class="sd">            Monday=0) for use when ``prediction_date`` is passed at predict time.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        dict</span>
-<span class="sd">            Always contains ``arrival_rates_dict``. When ``stratify_by_weekday``,</span>
-<span class="sd">            also ``arrival_rates_by_weekday``: ``dict[int, OrderedDict[time, float]]``.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">effective_days</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_num_days</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">num_days</span><span class="p">)</span>
         <span class="n">arrival_rates_dict</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates</span><span class="p">(</span>
             <span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">,</span> <span class="n">effective_days</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verbose</span>
         <span class="p">)</span>
-        <span class="n">out</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;arrival_rates_dict&quot;</span><span class="p">:</span> <span class="n">arrival_rates_dict</span><span class="p">}</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;arrival_rates_dict&quot;</span><span class="p">:</span> <span class="n">arrival_rates_dict</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">stratify_by_weekday</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="s2">&quot;arrival_rates_by_weekday&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_varying_arrival_rates_by_weekday</span><span class="p">(</span>
                 <span class="n">df</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="p">,</span> <span class="n">num_days</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">verbose</span>
@@ -60238,7 +60399,7 @@ module docstring section <em>Prediction API</em>.</p>
         <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">7</span><span class="p">,</span>
         <span class="n">y</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;IncomingAdmissionPredictor&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the model to the training data.</span>
 
@@ -60277,11 +60438,27 @@ module docstring section <em>Prediction API</em>.</p>
 <span class="sd">            of the maximum value of the random variable representing number of beds.</span>
 <span class="sd">        y : None, optional</span>
 <span class="sd">            Ignored, present for compatibility with scikit-learn&#39;s fit method.</span>
-<span class="sd">        stratify_by_weekday : bool, default=False</span>
-<span class="sd">            If True, fit an additional per-weekday arrival profile (``Monday=0`` …</span>
-<span class="sd">            ``Sunday=6``). Pass ``prediction_date`` at predict time to slice the</span>
-<span class="sd">            window using that profile; omit ``prediction_date`` to keep using the</span>
-<span class="sd">            pooled 24-hour profile only.</span>
+<span class="sd">        stratify_by_weekday : bool or None, default=None</span>
+<span class="sd">            Controls whether per-weekday arrival profiles (``Monday=0`` …</span>
+<span class="sd">            ``Sunday=6``) are fitted alongside the pooled profile.</span>
+
+<span class="sd">            - ``None`` (default): weekday profiles are fitted (effective value</span>
+<span class="sd">              ``True``), but the predictor treats this as the *library-side*</span>
+<span class="sd">              default rather than an explicit opt-in. ``predict()`` calls</span>
+<span class="sd">              without ``prediction_date`` are silent — predictions match prior</span>
+<span class="sd">              numeric behaviour and legacy callers see no new warnings.</span>
+<span class="sd">            - ``True``: explicit opt-in to weekday stratification. The</span>
+<span class="sd">              **weekday contract** activates: callers should pass</span>
+<span class="sd">              ``prediction_date`` to ``predict()`` / ``predict_mean()`` so each</span>
+<span class="sd">              slice uses the matching weekday rate. Omitting ``prediction_date``</span>
+<span class="sd">              emits a ``UserWarning`` (and ``strict_prediction_date=True`` at</span>
+<span class="sd">              predict time turns the warning into a ``ValueError``).</span>
+<span class="sd">            - ``False``: opt out. Only the pooled 24-hour profile is stored</span>
+<span class="sd">              and ``arrival_rates_by_weekday`` is absent from ``weights``.</span>
+
+<span class="sd">            Most callers should leave this on the default. Pass ``True``</span>
+<span class="sd">            explicitly only when you intend to thread ``prediction_date`` at</span>
+<span class="sd">            predict time and want pooled-fallbacks to be surfaced loudly.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -60338,11 +60515,21 @@ module docstring section <em>Prediction API</em>.</p>
                 <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
             <span class="p">)</span>
 
+        <span class="c1"># Resolve the sentinel default for stratify_by_weekday and track whether</span>
+        <span class="c1"># the user explicitly opted in. The flag gates the predict-time</span>
+        <span class="c1"># &quot;missing prediction_date&quot; warning so that legacy callers who never</span>
+        <span class="c1"># asked for weekday stratification don&#39;t see noise (Option 1 of the</span>
+        <span class="c1"># weekday-contract design).</span>
+        <span class="n">user_opted_in_to_weekday</span> <span class="o">=</span> <span class="n">stratify_by_weekday</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">stratify_by_weekday</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stratify_by_weekday</span> <span class="o">=</span> <span class="kc">True</span>
+
         <span class="c1"># Store required metadata</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">yta_time_interval</span> <span class="o">=</span> <span class="n">yta_time_interval</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">yta_time_interval_hours</span> <span class="o">=</span> <span class="n">yta_time_interval</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="mi">3600</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stratify_by_weekday</span> <span class="o">=</span> <span class="n">stratify_by_weekday</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_user_opted_in_to_weekday</span> <span class="o">=</span> <span class="n">user_opted_in_to_weekday</span>
 
         <span class="c1"># Store deprecated fit-time values as predict-time fall-backs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_deprecated_fit_prediction_window</span> <span class="o">=</span> <span class="n">prediction_window</span>
@@ -60375,12 +60562,22 @@ module docstring section <em>Prediction API</em>.</p>
             <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
 
-        <span class="c1"># Initialise weights with the full 24-hour arrival-rate dictionary</span>
+        <span class="c1"># Initialise weights with the full 24-hour arrival-rate dictionary.</span>
+        <span class="c1"># ``empty_filter_count`` is reset here so repeated fits don&#39;t accumulate</span>
+        <span class="c1"># stale counts; it is incremented for every configured filter whose</span>
+        <span class="c1"># subset of ``train_df`` is empty. Empty subsets still produce</span>
+        <span class="c1"># zero-rate weights via ``_calculate_parameters`` so downstream</span>
+        <span class="c1"># ``predict()`` calls remain valid; callers can inspect the counter</span>
+        <span class="c1"># after fit to surface configuration mismatches.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">empty_filter_count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filters</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">filters</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">filtered_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_dataframe</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">filters</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">empty_filter_count</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_parameters</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">filter_dataframe</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">filters</span><span class="p">),</span>
+                    <span class="n">filtered_df</span><span class="p">,</span>
                     <span class="n">yta_time_interval</span><span class="p">,</span>
                     <span class="n">num_days</span><span class="p">,</span>
                     <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="n">stratify_by_weekday</span><span class="p">,</span>
@@ -60493,13 +60690,21 @@ module docstring section <em>Prediction API</em>.</p>
 <span class="sd">            Deprecated. Former nested dict mapping filter key to</span>
 <span class="sd">            ``{&quot;prediction_time&quot;: ...}``. Must contain exactly one filter key.</span>
 <span class="sd">        prediction_date : datetime.date, optional</span>
-<span class="sd">            Calendar date at the snapped ``prediction_time``. When the model was fit</span>
-<span class="sd">            with ``stratify_by_weekday=True``, selects per-slice weekday arrival rates;</span>
-<span class="sd">            otherwise ignored for λ (pooled profile is used).</span>
+<span class="sd">            Calendar date at the snapped ``prediction_time``. When supplied,</span>
+<span class="sd">            selects per-slice weekday arrival rates (crossing correctly into</span>
+<span class="sd">            the next weekday for windows that straddle midnight). When the</span>
+<span class="sd">            predictor was fit with ``stratify_by_weekday=True`` *explicitly*</span>
+<span class="sd">            and ``prediction_date`` is omitted, a ``UserWarning`` is emitted</span>
+<span class="sd">            and the pooled profile is used; under the library default</span>
+<span class="sd">            (``stratify_by_weekday=None``) the fallback is silent so legacy</span>
+<span class="sd">            callers remain quiet. See</span>
+<span class="sd">            ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">            service-level helper that threads ``prediction_date`` automatically</span>
+<span class="sd">            per snapshot date.</span>
 <span class="sd">        strict_prediction_date : bool, default=False</span>
-<span class="sd">            If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">            weekday-stratified arrival rates are unavailable for the selected key.</span>
-<span class="sd">            If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">            If ``True``, raise ``ValueError`` whenever any pooled-rate fallback</span>
+<span class="sd">            would occur — regardless of whether ``stratify_by_weekday`` was</span>
+<span class="sd">            opted into at fit time.</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            Passed to ``_get_admission_probabilities`` (e.g. ``x1``, ``y1``, …).</span>
 
@@ -60645,29 +60850,29 @@ or function to filter by.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">785</span>
-<span class="normal">786</span>
-<span class="normal">787</span>
-<span class="normal">788</span>
-<span class="normal">789</span>
-<span class="normal">790</span>
-<span class="normal">791</span>
-<span class="normal">792</span>
-<span class="normal">793</span>
-<span class="normal">794</span>
-<span class="normal">795</span>
-<span class="normal">796</span>
-<span class="normal">797</span>
-<span class="normal">798</span>
-<span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span>
-<span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
-<span class="normal">807</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">filter_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">filters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">filter_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">filters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Apply a set of filters to a dataframe.</span>
 
 <span class="sd">    Parameters</span>
@@ -60700,7 +60905,7 @@ or function to filter by.</p>
 
 
 <h5 id="patientflow.predictors.incoming_admission_predictors.IncomingAdmissionPredictor.fit" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">fit</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">prediction_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prediction_times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">fit</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">prediction_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prediction_times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">num_days</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mi">10</span> <span class="o">**</span> <span class="o">-</span><span class="mi">7</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h5>
 
@@ -60856,18 +61061,34 @@ of the maximum value of the random variable representing number of beds.</p>
                 <code>stratify_by_weekday</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a> or None</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If True, fit an additional per-weekday arrival profile (<code>Monday=0</code> …
-<code>Sunday=6</code>). Pass <code>prediction_date</code> at predict time to slice the
-window using that profile; omit <code>prediction_date</code> to keep using the
-pooled 24-hour profile only.</p>
+                <p>Controls whether per-weekday arrival profiles (<code>Monday=0</code> …
+<code>Sunday=6</code>) are fitted alongside the pooled profile.</p>
+<ul>
+<li><code>None</code> (default): weekday profiles are fitted (effective value
+  <code>True</code>), but the predictor treats this as the <em>library-side</em>
+  default rather than an explicit opt-in. <code>predict()</code> calls
+  without <code>prediction_date</code> are silent — predictions match prior
+  numeric behaviour and legacy callers see no new warnings.</li>
+<li><code>True</code>: explicit opt-in to weekday stratification. The
+  <strong>weekday contract</strong> activates: callers should pass
+  <code>prediction_date</code> to <code>predict()</code> / <code>predict_mean()</code> so each
+  slice uses the matching weekday rate. Omitting <code>prediction_date</code>
+  emits a <code>UserWarning</code> (and <code>strict_prediction_date=True</code> at
+  predict time turns the warning into a <code>ValueError</code>).</li>
+<li><code>False</code>: opt out. Only the pooled 24-hour profile is stored
+  and <code>arrival_rates_by_weekday</code> is absent from <code>weights</code>.</li>
+</ul>
+<p>Most callers should leave this on the default. Pass <code>True</code>
+explicitly only when you intend to thread <code>prediction_date</code> at
+predict time and want pooled-fallbacks to be surfaced loudly.</p>
               </div>
             </td>
             <td>
-                  <code>False</code>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -60937,32 +61158,7 @@ significantly larger than <code>yta_time_interval</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 871</span>
-<span class="normal"> 872</span>
-<span class="normal"> 873</span>
-<span class="normal"> 874</span>
-<span class="normal"> 875</span>
-<span class="normal"> 876</span>
-<span class="normal"> 877</span>
-<span class="normal"> 878</span>
-<span class="normal"> 879</span>
-<span class="normal"> 880</span>
-<span class="normal"> 881</span>
-<span class="normal"> 882</span>
-<span class="normal"> 883</span>
-<span class="normal"> 884</span>
-<span class="normal"> 885</span>
-<span class="normal"> 886</span>
-<span class="normal"> 887</span>
-<span class="normal"> 888</span>
-<span class="normal"> 889</span>
-<span class="normal"> 890</span>
-<span class="normal"> 891</span>
-<span class="normal"> 892</span>
-<span class="normal"> 893</span>
-<span class="normal"> 894</span>
-<span class="normal"> 895</span>
-<span class="normal"> 896</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 896</span>
 <span class="normal"> 897</span>
 <span class="normal"> 898</span>
 <span class="normal"> 899</span>
@@ -61129,7 +61325,68 @@ significantly larger than <code>yta_time_interval</code>.</p>
 <span class="normal">1060</span>
 <span class="normal">1061</span>
 <span class="normal">1062</span>
-<span class="normal">1063</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
+<span class="normal">1063</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span>
+<span class="normal">1121</span>
+<span class="normal">1122</span>
+<span class="normal">1123</span>
+<span class="normal">1124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">train_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">timedelta</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -61138,7 +61395,7 @@ significantly larger than <code>yta_time_interval</code>.</p>
     <span class="n">num_days</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="o">**-</span><span class="mi">7</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">stratify_by_weekday</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;IncomingAdmissionPredictor&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit the model to the training data.</span>
 
@@ -61177,11 +61434,27 @@ significantly larger than <code>yta_time_interval</code>.</p>
 <span class="sd">        of the maximum value of the random variable representing number of beds.</span>
 <span class="sd">    y : None, optional</span>
 <span class="sd">        Ignored, present for compatibility with scikit-learn&#39;s fit method.</span>
-<span class="sd">    stratify_by_weekday : bool, default=False</span>
-<span class="sd">        If True, fit an additional per-weekday arrival profile (``Monday=0`` …</span>
-<span class="sd">        ``Sunday=6``). Pass ``prediction_date`` at predict time to slice the</span>
-<span class="sd">        window using that profile; omit ``prediction_date`` to keep using the</span>
-<span class="sd">        pooled 24-hour profile only.</span>
+<span class="sd">    stratify_by_weekday : bool or None, default=None</span>
+<span class="sd">        Controls whether per-weekday arrival profiles (``Monday=0`` …</span>
+<span class="sd">        ``Sunday=6``) are fitted alongside the pooled profile.</span>
+
+<span class="sd">        - ``None`` (default): weekday profiles are fitted (effective value</span>
+<span class="sd">          ``True``), but the predictor treats this as the *library-side*</span>
+<span class="sd">          default rather than an explicit opt-in. ``predict()`` calls</span>
+<span class="sd">          without ``prediction_date`` are silent — predictions match prior</span>
+<span class="sd">          numeric behaviour and legacy callers see no new warnings.</span>
+<span class="sd">        - ``True``: explicit opt-in to weekday stratification. The</span>
+<span class="sd">          **weekday contract** activates: callers should pass</span>
+<span class="sd">          ``prediction_date`` to ``predict()`` / ``predict_mean()`` so each</span>
+<span class="sd">          slice uses the matching weekday rate. Omitting ``prediction_date``</span>
+<span class="sd">          emits a ``UserWarning`` (and ``strict_prediction_date=True`` at</span>
+<span class="sd">          predict time turns the warning into a ``ValueError``).</span>
+<span class="sd">        - ``False``: opt out. Only the pooled 24-hour profile is stored</span>
+<span class="sd">          and ``arrival_rates_by_weekday`` is absent from ``weights``.</span>
+
+<span class="sd">        Most callers should leave this on the default. Pass ``True``</span>
+<span class="sd">        explicitly only when you intend to thread ``prediction_date`` at</span>
+<span class="sd">        predict time and want pooled-fallbacks to be surfaced loudly.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -61238,11 +61511,21 @@ significantly larger than <code>yta_time_interval</code>.</p>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
 
+    <span class="c1"># Resolve the sentinel default for stratify_by_weekday and track whether</span>
+    <span class="c1"># the user explicitly opted in. The flag gates the predict-time</span>
+    <span class="c1"># &quot;missing prediction_date&quot; warning so that legacy callers who never</span>
+    <span class="c1"># asked for weekday stratification don&#39;t see noise (Option 1 of the</span>
+    <span class="c1"># weekday-contract design).</span>
+    <span class="n">user_opted_in_to_weekday</span> <span class="o">=</span> <span class="n">stratify_by_weekday</span> <span class="ow">is</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">stratify_by_weekday</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">stratify_by_weekday</span> <span class="o">=</span> <span class="kc">True</span>
+
     <span class="c1"># Store required metadata</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">yta_time_interval</span> <span class="o">=</span> <span class="n">yta_time_interval</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">yta_time_interval_hours</span> <span class="o">=</span> <span class="n">yta_time_interval</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="mi">3600</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span> <span class="o">=</span> <span class="n">epsilon</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">stratify_by_weekday</span> <span class="o">=</span> <span class="n">stratify_by_weekday</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_user_opted_in_to_weekday</span> <span class="o">=</span> <span class="n">user_opted_in_to_weekday</span>
 
     <span class="c1"># Store deprecated fit-time values as predict-time fall-backs</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_deprecated_fit_prediction_window</span> <span class="o">=</span> <span class="n">prediction_window</span>
@@ -61275,12 +61558,22 @@ significantly larger than <code>yta_time_interval</code>.</p>
         <span class="k">else</span> <span class="kc">None</span>
     <span class="p">)</span>
 
-    <span class="c1"># Initialise weights with the full 24-hour arrival-rate dictionary</span>
+    <span class="c1"># Initialise weights with the full 24-hour arrival-rate dictionary.</span>
+    <span class="c1"># ``empty_filter_count`` is reset here so repeated fits don&#39;t accumulate</span>
+    <span class="c1"># stale counts; it is incremented for every configured filter whose</span>
+    <span class="c1"># subset of ``train_df`` is empty. Empty subsets still produce</span>
+    <span class="c1"># zero-rate weights via ``_calculate_parameters`` so downstream</span>
+    <span class="c1"># ``predict()`` calls remain valid; callers can inspect the counter</span>
+    <span class="c1"># after fit to surface configuration mismatches.</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">empty_filter_count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filters</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">filters</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">filtered_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter_dataframe</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">filters</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filtered_df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">empty_filter_count</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_parameters</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">filter_dataframe</span><span class="p">(</span><span class="n">train_df</span><span class="p">,</span> <span class="n">filters</span><span class="p">),</span>
+                <span class="n">filtered_df</span><span class="p">,</span>
                 <span class="n">yta_time_interval</span><span class="p">,</span>
                 <span class="n">num_days</span><span class="p">,</span>
                 <span class="n">stratify_by_weekday</span><span class="o">=</span><span class="n">stratify_by_weekday</span><span class="p">,</span>
@@ -61367,15 +61660,15 @@ significantly larger than <code>yta_time_interval</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1065</span>
-<span class="normal">1066</span>
-<span class="normal">1067</span>
-<span class="normal">1068</span>
-<span class="normal">1069</span>
-<span class="normal">1070</span>
-<span class="normal">1071</span>
-<span class="normal">1072</span>
-<span class="normal">1073</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span>
+<span class="normal">1130</span>
+<span class="normal">1131</span>
+<span class="normal">1132</span>
+<span class="normal">1133</span>
+<span class="normal">1134</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the weights computed by the fit method.</span>
 
 <span class="sd">    Returns</span>
@@ -61414,16 +61707,16 @@ as first positional) remains supported with <code>DeprecationWarning</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1075</span>
-<span class="normal">1076</span>
-<span class="normal">1077</span>
-<span class="normal">1078</span>
-<span class="normal">1079</span>
-<span class="normal">1080</span>
-<span class="normal">1081</span>
-<span class="normal">1082</span>
-<span class="normal">1083</span>
-<span class="normal">1084</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1136</span>
+<span class="normal">1137</span>
+<span class="normal">1138</span>
+<span class="normal">1139</span>
+<span class="normal">1140</span>
+<span class="normal">1141</span>
+<span class="normal">1142</span>
+<span class="normal">1143</span>
+<span class="normal">1144</span>
+<span class="normal">1145</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@abstractmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Predict the bed-demand count distribution per ``weights`` key; subclasses implement.</span>
 
@@ -61542,9 +61835,17 @@ is used (deprecated; emits <code>DeprecationWarning</code>).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Calendar date at the snapped <code>prediction_time</code>. When the model was fit
-with <code>stratify_by_weekday=True</code>, selects per-slice weekday arrival rates;
-otherwise ignored for λ (pooled profile is used).</p>
+                <p>Calendar date at the snapped <code>prediction_time</code>. When supplied,
+selects per-slice weekday arrival rates (crossing correctly into
+the next weekday for windows that straddle midnight). When the
+predictor was fit with <code>stratify_by_weekday=True</code> <em>explicitly</em>
+and <code>prediction_date</code> is omitted, a <code>UserWarning</code> is emitted
+and the pooled profile is used; under the library default
+(<code>stratify_by_weekday=None</code>) the fallback is silent so legacy
+callers remain quiet. See
+<code>patientflow.aggregate.get_prob_dist_by_service</code> for the
+service-level helper that threads <code>prediction_date</code> automatically
+per snapshot date.</p>
               </div>
             </td>
             <td>
@@ -61560,9 +61861,9 @@ otherwise ignored for λ (pooled profile is used).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>True</code>, raise an error when <code>prediction_date</code> is provided but
-weekday-stratified arrival rates are unavailable for the selected key.
-If <code>False</code>, warn and fall back to pooled arrival rates.</p>
+                <p>If <code>True</code>, raise <code>ValueError</code> whenever any pooled-rate fallback
+would occur — regardless of whether <code>stratify_by_weekday</code> was
+opted into at fit time.</p>
               </div>
             </td>
             <td>
@@ -61647,68 +61948,7 @@ If <code>False</code>, warn and fall back to pooled arrival rates.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1106</span>
-<span class="normal">1107</span>
-<span class="normal">1108</span>
-<span class="normal">1109</span>
-<span class="normal">1110</span>
-<span class="normal">1111</span>
-<span class="normal">1112</span>
-<span class="normal">1113</span>
-<span class="normal">1114</span>
-<span class="normal">1115</span>
-<span class="normal">1116</span>
-<span class="normal">1117</span>
-<span class="normal">1118</span>
-<span class="normal">1119</span>
-<span class="normal">1120</span>
-<span class="normal">1121</span>
-<span class="normal">1122</span>
-<span class="normal">1123</span>
-<span class="normal">1124</span>
-<span class="normal">1125</span>
-<span class="normal">1126</span>
-<span class="normal">1127</span>
-<span class="normal">1128</span>
-<span class="normal">1129</span>
-<span class="normal">1130</span>
-<span class="normal">1131</span>
-<span class="normal">1132</span>
-<span class="normal">1133</span>
-<span class="normal">1134</span>
-<span class="normal">1135</span>
-<span class="normal">1136</span>
-<span class="normal">1137</span>
-<span class="normal">1138</span>
-<span class="normal">1139</span>
-<span class="normal">1140</span>
-<span class="normal">1141</span>
-<span class="normal">1142</span>
-<span class="normal">1143</span>
-<span class="normal">1144</span>
-<span class="normal">1145</span>
-<span class="normal">1146</span>
-<span class="normal">1147</span>
-<span class="normal">1148</span>
-<span class="normal">1149</span>
-<span class="normal">1150</span>
-<span class="normal">1151</span>
-<span class="normal">1152</span>
-<span class="normal">1153</span>
-<span class="normal">1154</span>
-<span class="normal">1155</span>
-<span class="normal">1156</span>
-<span class="normal">1157</span>
-<span class="normal">1158</span>
-<span class="normal">1159</span>
-<span class="normal">1160</span>
-<span class="normal">1161</span>
-<span class="normal">1162</span>
-<span class="normal">1163</span>
-<span class="normal">1164</span>
-<span class="normal">1165</span>
-<span class="normal">1166</span>
-<span class="normal">1167</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1167</span>
 <span class="normal">1168</span>
 <span class="normal">1169</span>
 <span class="normal">1170</span>
@@ -61724,7 +61964,76 @@ If <code>False</code>, warn and fall back to pooled arrival rates.</p>
 <span class="normal">1180</span>
 <span class="normal">1181</span>
 <span class="normal">1182</span>
-<span class="normal">1183</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict_mean</span><span class="p">(</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span>
+<span class="normal">1227</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span>
+<span class="normal">1231</span>
+<span class="normal">1232</span>
+<span class="normal">1233</span>
+<span class="normal">1234</span>
+<span class="normal">1235</span>
+<span class="normal">1236</span>
+<span class="normal">1237</span>
+<span class="normal">1238</span>
+<span class="normal">1239</span>
+<span class="normal">1240</span>
+<span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict_mean</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="n">args</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -61753,13 +62062,21 @@ If <code>False</code>, warn and fall back to pooled arrival rates.</p>
 <span class="sd">        Deprecated. Former nested dict mapping filter key to</span>
 <span class="sd">        ``{&quot;prediction_time&quot;: ...}``. Must contain exactly one filter key.</span>
 <span class="sd">    prediction_date : datetime.date, optional</span>
-<span class="sd">        Calendar date at the snapped ``prediction_time``. When the model was fit</span>
-<span class="sd">        with ``stratify_by_weekday=True``, selects per-slice weekday arrival rates;</span>
-<span class="sd">        otherwise ignored for λ (pooled profile is used).</span>
+<span class="sd">        Calendar date at the snapped ``prediction_time``. When supplied,</span>
+<span class="sd">        selects per-slice weekday arrival rates (crossing correctly into</span>
+<span class="sd">        the next weekday for windows that straddle midnight). When the</span>
+<span class="sd">        predictor was fit with ``stratify_by_weekday=True`` *explicitly*</span>
+<span class="sd">        and ``prediction_date`` is omitted, a ``UserWarning`` is emitted</span>
+<span class="sd">        and the pooled profile is used; under the library default</span>
+<span class="sd">        (``stratify_by_weekday=None``) the fallback is silent so legacy</span>
+<span class="sd">        callers remain quiet. See</span>
+<span class="sd">        ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">        service-level helper that threads ``prediction_date`` automatically</span>
+<span class="sd">        per snapshot date.</span>
 <span class="sd">    strict_prediction_date : bool, default=False</span>
-<span class="sd">        If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">        weekday-stratified arrival rates are unavailable for the selected key.</span>
-<span class="sd">        If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">        If ``True``, raise ``ValueError`` whenever any pooled-rate fallback</span>
+<span class="sd">        would occur — regardless of whether ``stratify_by_weekday`` was</span>
+<span class="sd">        opted into at fit time.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        Passed to ``_get_admission_probabilities`` (e.g. ``x1``, ``y1``, …).</span>
 
@@ -61973,82 +62290,7 @@ Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t 
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1342</span>
-<span class="normal">1343</span>
-<span class="normal">1344</span>
-<span class="normal">1345</span>
-<span class="normal">1346</span>
-<span class="normal">1347</span>
-<span class="normal">1348</span>
-<span class="normal">1349</span>
-<span class="normal">1350</span>
-<span class="normal">1351</span>
-<span class="normal">1352</span>
-<span class="normal">1353</span>
-<span class="normal">1354</span>
-<span class="normal">1355</span>
-<span class="normal">1356</span>
-<span class="normal">1357</span>
-<span class="normal">1358</span>
-<span class="normal">1359</span>
-<span class="normal">1360</span>
-<span class="normal">1361</span>
-<span class="normal">1362</span>
-<span class="normal">1363</span>
-<span class="normal">1364</span>
-<span class="normal">1365</span>
-<span class="normal">1366</span>
-<span class="normal">1367</span>
-<span class="normal">1368</span>
-<span class="normal">1369</span>
-<span class="normal">1370</span>
-<span class="normal">1371</span>
-<span class="normal">1372</span>
-<span class="normal">1373</span>
-<span class="normal">1374</span>
-<span class="normal">1375</span>
-<span class="normal">1376</span>
-<span class="normal">1377</span>
-<span class="normal">1378</span>
-<span class="normal">1379</span>
-<span class="normal">1380</span>
-<span class="normal">1381</span>
-<span class="normal">1382</span>
-<span class="normal">1383</span>
-<span class="normal">1384</span>
-<span class="normal">1385</span>
-<span class="normal">1386</span>
-<span class="normal">1387</span>
-<span class="normal">1388</span>
-<span class="normal">1389</span>
-<span class="normal">1390</span>
-<span class="normal">1391</span>
-<span class="normal">1392</span>
-<span class="normal">1393</span>
-<span class="normal">1394</span>
-<span class="normal">1395</span>
-<span class="normal">1396</span>
-<span class="normal">1397</span>
-<span class="normal">1398</span>
-<span class="normal">1399</span>
-<span class="normal">1400</span>
-<span class="normal">1401</span>
-<span class="normal">1402</span>
-<span class="normal">1403</span>
-<span class="normal">1404</span>
-<span class="normal">1405</span>
-<span class="normal">1406</span>
-<span class="normal">1407</span>
-<span class="normal">1408</span>
-<span class="normal">1409</span>
-<span class="normal">1410</span>
-<span class="normal">1411</span>
-<span class="normal">1412</span>
-<span class="normal">1413</span>
-<span class="normal">1414</span>
-<span class="normal">1415</span>
-<span class="normal">1416</span>
-<span class="normal">1417</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1417</span>
 <span class="normal">1418</span>
 <span class="normal">1419</span>
 <span class="normal">1420</span>
@@ -62174,7 +62416,86 @@ Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t 
 <span class="normal">1540</span>
 <span class="normal">1541</span>
 <span class="normal">1542</span>
-<span class="normal">1543</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ParametricIncomingAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
+<span class="normal">1543</span>
+<span class="normal">1544</span>
+<span class="normal">1545</span>
+<span class="normal">1546</span>
+<span class="normal">1547</span>
+<span class="normal">1548</span>
+<span class="normal">1549</span>
+<span class="normal">1550</span>
+<span class="normal">1551</span>
+<span class="normal">1552</span>
+<span class="normal">1553</span>
+<span class="normal">1554</span>
+<span class="normal">1555</span>
+<span class="normal">1556</span>
+<span class="normal">1557</span>
+<span class="normal">1558</span>
+<span class="normal">1559</span>
+<span class="normal">1560</span>
+<span class="normal">1561</span>
+<span class="normal">1562</span>
+<span class="normal">1563</span>
+<span class="normal">1564</span>
+<span class="normal">1565</span>
+<span class="normal">1566</span>
+<span class="normal">1567</span>
+<span class="normal">1568</span>
+<span class="normal">1569</span>
+<span class="normal">1570</span>
+<span class="normal">1571</span>
+<span class="normal">1572</span>
+<span class="normal">1573</span>
+<span class="normal">1574</span>
+<span class="normal">1575</span>
+<span class="normal">1576</span>
+<span class="normal">1577</span>
+<span class="normal">1578</span>
+<span class="normal">1579</span>
+<span class="normal">1580</span>
+<span class="normal">1581</span>
+<span class="normal">1582</span>
+<span class="normal">1583</span>
+<span class="normal">1584</span>
+<span class="normal">1585</span>
+<span class="normal">1586</span>
+<span class="normal">1587</span>
+<span class="normal">1588</span>
+<span class="normal">1589</span>
+<span class="normal">1590</span>
+<span class="normal">1591</span>
+<span class="normal">1592</span>
+<span class="normal">1593</span>
+<span class="normal">1594</span>
+<span class="normal">1595</span>
+<span class="normal">1596</span>
+<span class="normal">1597</span>
+<span class="normal">1598</span>
+<span class="normal">1599</span>
+<span class="normal">1600</span>
+<span class="normal">1601</span>
+<span class="normal">1602</span>
+<span class="normal">1603</span>
+<span class="normal">1604</span>
+<span class="normal">1605</span>
+<span class="normal">1606</span>
+<span class="normal">1607</span>
+<span class="normal">1608</span>
+<span class="normal">1609</span>
+<span class="normal">1610</span>
+<span class="normal">1611</span>
+<span class="normal">1612</span>
+<span class="normal">1613</span>
+<span class="normal">1614</span>
+<span class="normal">1615</span>
+<span class="normal">1616</span>
+<span class="normal">1617</span>
+<span class="normal">1618</span>
+<span class="normal">1619</span>
+<span class="normal">1620</span>
+<span class="normal">1621</span>
+<span class="normal">1622</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ParametricIncomingAdmissionPredictor</span><span class="p">(</span><span class="n">IncomingAdmissionPredictor</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A predictor for estimating hospital admissions using parametric curves.</span>
 
 <span class="sd">    This predictor uses Poisson-distributed arrivals per time slice and slice-wise</span>
@@ -62242,12 +62563,16 @@ Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t 
 <span class="sd">        prediction_context : dict, optional</span>
 <span class="sd">            Deprecated nested dict API.</span>
 <span class="sd">        prediction_date : datetime.date, optional</span>
-<span class="sd">            Calendar anchor for weekday-stratified λ when fitted with</span>
-<span class="sd">            ``stratify_by_weekday=True``.</span>
+<span class="sd">            Calendar anchor for weekday-stratified λ. Under the library</span>
+<span class="sd">            default the pooled fallback is silent when ``prediction_date`` is</span>
+<span class="sd">            omitted; explicit ``stratify_by_weekday=True`` at fit time turns</span>
+<span class="sd">            that fallback into a ``UserWarning``. See</span>
+<span class="sd">            ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">            service-level helper that supplies ``prediction_date``</span>
+<span class="sd">            automatically per snapshot date.</span>
 <span class="sd">        strict_prediction_date : bool, default=False</span>
-<span class="sd">            If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">            weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">            If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">            would occur — independent of fit-time opt-in.</span>
 <span class="sd">        **kwargs</span>
 <span class="sd">            ``x1``, ``y1``, ``x2``, ``y2`` (required); optional ``max_value``.</span>
 
@@ -62491,8 +62816,13 @@ Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t 
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Calendar anchor for weekday-stratified λ when fitted with
-<code>stratify_by_weekday=True</code>.</p>
+                <p>Calendar anchor for weekday-stratified λ. Under the library
+default the pooled fallback is silent when <code>prediction_date</code> is
+omitted; explicit <code>stratify_by_weekday=True</code> at fit time turns
+that fallback into a <code>UserWarning</code>. See
+<code>patientflow.aggregate.get_prob_dist_by_service</code> for the
+service-level helper that supplies <code>prediction_date</code>
+automatically per snapshot date.</p>
               </div>
             </td>
             <td>
@@ -62508,9 +62838,8 @@ Result: admitted in slice t ~ Poisson(λ_t θ_t); total admitted ~ Poisson(Σ_t 
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If <code>True</code>, raise an error when <code>prediction_date</code> is provided but
-weekday-stratified arrival rates are unavailable for a selected key.
-If <code>False</code>, warn and fall back to pooled arrival rates.</p>
+                <p>If <code>True</code>, raise <code>ValueError</code> whenever a pooled-rate fallback
+would occur — independent of fit-time opt-in.</p>
               </div>
             </td>
             <td>
@@ -62590,82 +62919,7 @@ total ~ Poisson(Σ_t λ_t θ_t).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/incoming_admission_predictors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1385</span>
-<span class="normal">1386</span>
-<span class="normal">1387</span>
-<span class="normal">1388</span>
-<span class="normal">1389</span>
-<span class="normal">1390</span>
-<span class="normal">1391</span>
-<span class="normal">1392</span>
-<span class="normal">1393</span>
-<span class="normal">1394</span>
-<span class="normal">1395</span>
-<span class="normal">1396</span>
-<span class="normal">1397</span>
-<span class="normal">1398</span>
-<span class="normal">1399</span>
-<span class="normal">1400</span>
-<span class="normal">1401</span>
-<span class="normal">1402</span>
-<span class="normal">1403</span>
-<span class="normal">1404</span>
-<span class="normal">1405</span>
-<span class="normal">1406</span>
-<span class="normal">1407</span>
-<span class="normal">1408</span>
-<span class="normal">1409</span>
-<span class="normal">1410</span>
-<span class="normal">1411</span>
-<span class="normal">1412</span>
-<span class="normal">1413</span>
-<span class="normal">1414</span>
-<span class="normal">1415</span>
-<span class="normal">1416</span>
-<span class="normal">1417</span>
-<span class="normal">1418</span>
-<span class="normal">1419</span>
-<span class="normal">1420</span>
-<span class="normal">1421</span>
-<span class="normal">1422</span>
-<span class="normal">1423</span>
-<span class="normal">1424</span>
-<span class="normal">1425</span>
-<span class="normal">1426</span>
-<span class="normal">1427</span>
-<span class="normal">1428</span>
-<span class="normal">1429</span>
-<span class="normal">1430</span>
-<span class="normal">1431</span>
-<span class="normal">1432</span>
-<span class="normal">1433</span>
-<span class="normal">1434</span>
-<span class="normal">1435</span>
-<span class="normal">1436</span>
-<span class="normal">1437</span>
-<span class="normal">1438</span>
-<span class="normal">1439</span>
-<span class="normal">1440</span>
-<span class="normal">1441</span>
-<span class="normal">1442</span>
-<span class="normal">1443</span>
-<span class="normal">1444</span>
-<span class="normal">1445</span>
-<span class="normal">1446</span>
-<span class="normal">1447</span>
-<span class="normal">1448</span>
-<span class="normal">1449</span>
-<span class="normal">1450</span>
-<span class="normal">1451</span>
-<span class="normal">1452</span>
-<span class="normal">1453</span>
-<span class="normal">1454</span>
-<span class="normal">1455</span>
-<span class="normal">1456</span>
-<span class="normal">1457</span>
-<span class="normal">1458</span>
-<span class="normal">1459</span>
-<span class="normal">1460</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1460</span>
 <span class="normal">1461</span>
 <span class="normal">1462</span>
 <span class="normal">1463</span>
@@ -62698,7 +62952,86 @@ total ~ Poisson(Σ_t λ_t θ_t).</p>
 <span class="normal">1490</span>
 <span class="normal">1491</span>
 <span class="normal">1492</span>
-<span class="normal">1493</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
+<span class="normal">1493</span>
+<span class="normal">1494</span>
+<span class="normal">1495</span>
+<span class="normal">1496</span>
+<span class="normal">1497</span>
+<span class="normal">1498</span>
+<span class="normal">1499</span>
+<span class="normal">1500</span>
+<span class="normal">1501</span>
+<span class="normal">1502</span>
+<span class="normal">1503</span>
+<span class="normal">1504</span>
+<span class="normal">1505</span>
+<span class="normal">1506</span>
+<span class="normal">1507</span>
+<span class="normal">1508</span>
+<span class="normal">1509</span>
+<span class="normal">1510</span>
+<span class="normal">1511</span>
+<span class="normal">1512</span>
+<span class="normal">1513</span>
+<span class="normal">1514</span>
+<span class="normal">1515</span>
+<span class="normal">1516</span>
+<span class="normal">1517</span>
+<span class="normal">1518</span>
+<span class="normal">1519</span>
+<span class="normal">1520</span>
+<span class="normal">1521</span>
+<span class="normal">1522</span>
+<span class="normal">1523</span>
+<span class="normal">1524</span>
+<span class="normal">1525</span>
+<span class="normal">1526</span>
+<span class="normal">1527</span>
+<span class="normal">1528</span>
+<span class="normal">1529</span>
+<span class="normal">1530</span>
+<span class="normal">1531</span>
+<span class="normal">1532</span>
+<span class="normal">1533</span>
+<span class="normal">1534</span>
+<span class="normal">1535</span>
+<span class="normal">1536</span>
+<span class="normal">1537</span>
+<span class="normal">1538</span>
+<span class="normal">1539</span>
+<span class="normal">1540</span>
+<span class="normal">1541</span>
+<span class="normal">1542</span>
+<span class="normal">1543</span>
+<span class="normal">1544</span>
+<span class="normal">1545</span>
+<span class="normal">1546</span>
+<span class="normal">1547</span>
+<span class="normal">1548</span>
+<span class="normal">1549</span>
+<span class="normal">1550</span>
+<span class="normal">1551</span>
+<span class="normal">1552</span>
+<span class="normal">1553</span>
+<span class="normal">1554</span>
+<span class="normal">1555</span>
+<span class="normal">1556</span>
+<span class="normal">1557</span>
+<span class="normal">1558</span>
+<span class="normal">1559</span>
+<span class="normal">1560</span>
+<span class="normal">1561</span>
+<span class="normal">1562</span>
+<span class="normal">1563</span>
+<span class="normal">1564</span>
+<span class="normal">1565</span>
+<span class="normal">1566</span>
+<span class="normal">1567</span>
+<span class="normal">1568</span>
+<span class="normal">1569</span>
+<span class="normal">1570</span>
+<span class="normal">1571</span>
+<span class="normal">1572</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="n">args</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -62723,12 +63056,16 @@ total ~ Poisson(Σ_t λ_t θ_t).</p>
 <span class="sd">    prediction_context : dict, optional</span>
 <span class="sd">        Deprecated nested dict API.</span>
 <span class="sd">    prediction_date : datetime.date, optional</span>
-<span class="sd">        Calendar anchor for weekday-stratified λ when fitted with</span>
-<span class="sd">        ``stratify_by_weekday=True``.</span>
+<span class="sd">        Calendar anchor for weekday-stratified λ. Under the library</span>
+<span class="sd">        default the pooled fallback is silent when ``prediction_date`` is</span>
+<span class="sd">        omitted; explicit ``stratify_by_weekday=True`` at fit time turns</span>
+<span class="sd">        that fallback into a ``UserWarning``. See</span>
+<span class="sd">        ``patientflow.aggregate.get_prob_dist_by_service`` for the</span>
+<span class="sd">        service-level helper that supplies ``prediction_date``</span>
+<span class="sd">        automatically per snapshot date.</span>
 <span class="sd">    strict_prediction_date : bool, default=False</span>
-<span class="sd">        If ``True``, raise an error when ``prediction_date`` is provided but</span>
-<span class="sd">        weekday-stratified arrival rates are unavailable for a selected key.</span>
-<span class="sd">        If ``False``, warn and fall back to pooled arrival rates.</span>
+<span class="sd">        If ``True``, raise ``ValueError`` whenever a pooled-rate fallback</span>
+<span class="sd">        would occur — independent of fit-time opt-in.</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        ``x1``, ``y1``, ``x2``, ``y2`` (required); optional ``max_value``.</span>
 
@@ -91978,9 +92315,7 @@ observed versus expected values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/viz/observed_against_expected.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">302</span>
 <span class="normal">303</span>
 <span class="normal">304</span>
 <span class="normal">305</span>
@@ -92151,7 +92486,9 @@ observed versus expected values.</p>
 <span class="normal">470</span>
 <span class="normal">471</span>
 <span class="normal">472</span>
-<span class="normal">473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_arrival_delta_single_instance</span><span class="p">(</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_arrival_delta_single_instance</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">,</span>
@@ -92335,7 +92672,7 @@ observed versus expected values.</p>
 
 
 <h4 id="patientflow.viz.observed_against_expected.plot_arrival_deltas" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">plot_arrival_deltas</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">snapshot_dates</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">15</span><span class="p">),</span> <span class="n">media_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_figure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fig_size</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span></code>
+            <code class="highlight language-python"><span class="n">plot_arrival_deltas</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">snapshot_dates</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">yta_time_interval</span><span class="o">=</span><span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">15</span><span class="p">),</span> <span class="n">media_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_figure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fig_size</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="o">*</span><span class="p">,</span> <span class="n">predictor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filter_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict_prediction_date</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">suptitle</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -92365,7 +92702,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>DataFrame containing arrival data</p>
+                <p>DataFrame containing arrival data.</p>
               </div>
             </td>
             <td>
@@ -92381,7 +92718,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>(hour, minute) of prediction time</p>
+                <p><code>(hour, minute)</code> of prediction time.</p>
               </div>
             </td>
             <td>
@@ -92397,7 +92734,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>List of datetime.date objects to analyze</p>
+                <p>List of <code>datetime.date</code> objects to analyse.</p>
               </div>
             </td>
             <td>
@@ -92413,7 +92750,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Prediction window in minutes</p>
+                <p>Prediction window length.</p>
               </div>
             </td>
             <td>
@@ -92425,15 +92762,17 @@ observed versus expected values.</p>
                 <code>yta_time_interval</code>
             </td>
             <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                  <code><a class="autorefs autorefs-external" title="datetime.timedelta" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta">timedelta</a></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Time interval in minutes for calculating arrival rates</p>
+                <p>Time-interval grid for arrival rates. When <code>predictor</code> is supplied,
+this must equal <code>predictor.yta_time_interval</code>; otherwise a
+<code>ValueError</code> is raised.</p>
               </div>
             </td>
             <td>
-                  <code>15</code>
+                  <code>timedelta(minutes=15)</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -92445,7 +92784,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Path to save the plot</p>
+                <p>Path to save the plot.</p>
               </div>
             </td>
             <td>
@@ -92461,7 +92800,8 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Custom filename to use when saving the plot. If not provided, defaults to "multiple_deltas.png"</p>
+                <p>Custom filename to use when saving the plot. If not provided, defaults
+to <code>"multiple_deltas.png"</code>.</p>
               </div>
             </td>
             <td>
@@ -92477,7 +92817,7 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If True, returns the figure instead of displaying it</p>
+                <p>If True, returns the figure instead of displaying it.</p>
               </div>
             </td>
             <td>
@@ -92493,11 +92833,86 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Figure size as (width, height) in inches</p>
+                <p>Figure size as <code>(width, height)</code> in inches.</p>
               </div>
             </td>
             <td>
                   <code>(15, 6)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>predictor</code>
+            </td>
+            <td>
+                  <code><span title="IncomingAdmissionPredictor">IncomingAdmissionPredictor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Fitted predictor whose stored arrival rates will be used as the
+expected baseline. When the predictor's <code>weights</code> contain an
+<code>arrival_rates_by_weekday</code> profile (the library-default fit), each
+snapshot date uses the rates for its own weekday so the diagnostic
+agrees with the deployed model. When <code>predictor</code> is <code>None</code>
+(default), the function falls back to pooled rates derived from
+<code>df</code> (legacy behaviour).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>filter_key</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Which <code>weights</code> key of <code>predictor</code> to read rates from. Required
+only when the predictor has more than one fitted key (e.g. multiple
+services). Ignored when <code>predictor</code> is <code>None</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strict_prediction_date</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Passed through to the predictor: when <code>True</code> and the predictor
+lacks per-weekday rates for the supplied filter key, a
+<code>ValueError</code> is raised instead of falling back to pooled rates.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>suptitle</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Figure-level title. Typically the entity (service / specialty)
+being analysed. Rendered above the per-axis titles.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -92519,7 +92934,32 @@ observed versus expected values.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>The figure object if return_figure is True, otherwise None</p>
+                <p>The figure object if return_figure is True, otherwise None.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If <code>predictor</code> is supplied and <code>yta_time_interval</code> does not match
+<code>predictor.yta_time_interval</code>, or if the predictor is unfitted /
+the requested <code>filter_key</code> is unknown.</p>
               </div>
             </td>
           </tr>
@@ -92529,75 +92969,7 @@ observed versus expected values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/viz/observed_against_expected.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span>
-<span class="normal">493</span>
-<span class="normal">494</span>
-<span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span>
-<span class="normal">498</span>
-<span class="normal">499</span>
-<span class="normal">500</span>
-<span class="normal">501</span>
-<span class="normal">502</span>
-<span class="normal">503</span>
-<span class="normal">504</span>
-<span class="normal">505</span>
-<span class="normal">506</span>
-<span class="normal">507</span>
-<span class="normal">508</span>
-<span class="normal">509</span>
-<span class="normal">510</span>
-<span class="normal">511</span>
-<span class="normal">512</span>
-<span class="normal">513</span>
-<span class="normal">514</span>
-<span class="normal">515</span>
-<span class="normal">516</span>
-<span class="normal">517</span>
-<span class="normal">518</span>
-<span class="normal">519</span>
-<span class="normal">520</span>
-<span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span>
-<span class="normal">525</span>
-<span class="normal">526</span>
-<span class="normal">527</span>
-<span class="normal">528</span>
-<span class="normal">529</span>
-<span class="normal">530</span>
-<span class="normal">531</span>
-<span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span>
-<span class="normal">541</span>
-<span class="normal">542</span>
-<span class="normal">543</span>
-<span class="normal">544</span>
-<span class="normal">545</span>
-<span class="normal">546</span>
-<span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span>
-<span class="normal">550</span>
-<span class="normal">551</span>
-<span class="normal">552</span>
-<span class="normal">553</span>
-<span class="normal">554</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">554</span>
 <span class="normal">555</span>
 <span class="normal">556</span>
 <span class="normal">557</span>
@@ -92751,7 +93123,148 @@ observed versus expected values.</p>
 <span class="normal">705</span>
 <span class="normal">706</span>
 <span class="normal">707</span>
-<span class="normal">708</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_arrival_deltas</span><span class="p">(</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span>
+<span class="normal">712</span>
+<span class="normal">713</span>
+<span class="normal">714</span>
+<span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span>
+<span class="normal">718</span>
+<span class="normal">719</span>
+<span class="normal">720</span>
+<span class="normal">721</span>
+<span class="normal">722</span>
+<span class="normal">723</span>
+<span class="normal">724</span>
+<span class="normal">725</span>
+<span class="normal">726</span>
+<span class="normal">727</span>
+<span class="normal">728</span>
+<span class="normal">729</span>
+<span class="normal">730</span>
+<span class="normal">731</span>
+<span class="normal">732</span>
+<span class="normal">733</span>
+<span class="normal">734</span>
+<span class="normal">735</span>
+<span class="normal">736</span>
+<span class="normal">737</span>
+<span class="normal">738</span>
+<span class="normal">739</span>
+<span class="normal">740</span>
+<span class="normal">741</span>
+<span class="normal">742</span>
+<span class="normal">743</span>
+<span class="normal">744</span>
+<span class="normal">745</span>
+<span class="normal">746</span>
+<span class="normal">747</span>
+<span class="normal">748</span>
+<span class="normal">749</span>
+<span class="normal">750</span>
+<span class="normal">751</span>
+<span class="normal">752</span>
+<span class="normal">753</span>
+<span class="normal">754</span>
+<span class="normal">755</span>
+<span class="normal">756</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span>
+<span class="normal">778</span>
+<span class="normal">779</span>
+<span class="normal">780</span>
+<span class="normal">781</span>
+<span class="normal">782</span>
+<span class="normal">783</span>
+<span class="normal">784</span>
+<span class="normal">785</span>
+<span class="normal">786</span>
+<span class="normal">787</span>
+<span class="normal">788</span>
+<span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span>
+<span class="normal">795</span>
+<span class="normal">796</span>
+<span class="normal">797</span>
+<span class="normal">798</span>
+<span class="normal">799</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_arrival_deltas</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">,</span>
     <span class="n">snapshot_dates</span><span class="p">,</span>
@@ -92761,36 +93274,93 @@ observed versus expected values.</p>
     <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">return_figure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">fig_size</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">predictor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">filter_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strict_prediction_date</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">suptitle</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot delta charts for multiple snapshot dates on the same figure.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    df : pd.DataFrame</span>
-<span class="sd">        DataFrame containing arrival data</span>
+<span class="sd">        DataFrame containing arrival data.</span>
 <span class="sd">    prediction_time : tuple</span>
-<span class="sd">        (hour, minute) of prediction time</span>
+<span class="sd">        ``(hour, minute)`` of prediction time.</span>
 <span class="sd">    snapshot_dates : list</span>
-<span class="sd">        List of datetime.date objects to analyze</span>
+<span class="sd">        List of ``datetime.date`` objects to analyse.</span>
 <span class="sd">    prediction_window : timedelta</span>
-<span class="sd">        Prediction window in minutes</span>
-<span class="sd">    yta_time_interval : int, default=15</span>
-<span class="sd">        Time interval in minutes for calculating arrival rates</span>
+<span class="sd">        Prediction window length.</span>
+<span class="sd">    yta_time_interval : timedelta, default=timedelta(minutes=15)</span>
+<span class="sd">        Time-interval grid for arrival rates. When ``predictor`` is supplied,</span>
+<span class="sd">        this must equal ``predictor.yta_time_interval``; otherwise a</span>
+<span class="sd">        ``ValueError`` is raised.</span>
 <span class="sd">    media_file_path : Path, optional</span>
-<span class="sd">        Path to save the plot</span>
+<span class="sd">        Path to save the plot.</span>
 <span class="sd">    file_name : str, optional</span>
-<span class="sd">        Custom filename to use when saving the plot. If not provided, defaults to &quot;multiple_deltas.png&quot;</span>
+<span class="sd">        Custom filename to use when saving the plot. If not provided, defaults</span>
+<span class="sd">        to ``&quot;multiple_deltas.png&quot;``.</span>
 <span class="sd">    return_figure : bool, default=False</span>
-<span class="sd">        If True, returns the figure instead of displaying it</span>
+<span class="sd">        If True, returns the figure instead of displaying it.</span>
 <span class="sd">    fig_size : tuple, default=(15, 6)</span>
-<span class="sd">        Figure size as (width, height) in inches</span>
+<span class="sd">        Figure size as ``(width, height)`` in inches.</span>
+<span class="sd">    predictor : IncomingAdmissionPredictor, optional</span>
+<span class="sd">        Fitted predictor whose stored arrival rates will be used as the</span>
+<span class="sd">        expected baseline. When the predictor&#39;s ``weights`` contain an</span>
+<span class="sd">        ``arrival_rates_by_weekday`` profile (the library-default fit), each</span>
+<span class="sd">        snapshot date uses the rates for its own weekday so the diagnostic</span>
+<span class="sd">        agrees with the deployed model. When ``predictor`` is ``None``</span>
+<span class="sd">        (default), the function falls back to pooled rates derived from</span>
+<span class="sd">        ``df`` (legacy behaviour).</span>
+<span class="sd">    filter_key : str, optional</span>
+<span class="sd">        Which ``weights`` key of ``predictor`` to read rates from. Required</span>
+<span class="sd">        only when the predictor has more than one fitted key (e.g. multiple</span>
+<span class="sd">        services). Ignored when ``predictor`` is ``None``.</span>
+<span class="sd">    strict_prediction_date : bool, default=False</span>
+<span class="sd">        Passed through to the predictor: when ``True`` and the predictor</span>
+<span class="sd">        lacks per-weekday rates for the supplied filter key, a</span>
+<span class="sd">        ``ValueError`` is raised instead of falling back to pooled rates.</span>
+<span class="sd">    suptitle : str, optional</span>
+<span class="sd">        Figure-level title. Typically the entity (service / specialty)</span>
+<span class="sd">        being analysed. Rendered above the per-axis titles.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    matplotlib.figure.Figure or None</span>
-<span class="sd">        The figure object if return_figure is True, otherwise None</span>
+<span class="sd">        The figure object if return_figure is True, otherwise None.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If ``predictor`` is supplied and ``yta_time_interval`` does not match</span>
+<span class="sd">        ``predictor.yta_time_interval``, or if the predictor is unfitted /</span>
+<span class="sd">        the requested ``filter_key`` is unknown.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Create figure with subplots</span>
+    <span class="k">if</span> <span class="n">predictor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">predictor_interval</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">predictor</span><span class="p">,</span> <span class="s2">&quot;yta_time_interval&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">predictor_interval</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;predictor.yta_time_interval is not set; has the predictor &quot;</span> <span class="s2">&quot;been fit?&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">predictor_interval</span> <span class="o">!=</span> <span class="n">yta_time_interval</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;yta_time_interval mismatch: plot_arrival_deltas was called with &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">yta_time_interval</span><span class="si">!r}</span><span class="s2"> but predictor.yta_time_interval is &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">predictor_interval</span><span class="si">!r}</span><span class="s2">. Pass yta_time_interval=predictor.&quot;</span>
+                <span class="s2">&quot;yta_time_interval to silence this error.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">resolved_filter_key</span> <span class="o">=</span> <span class="n">_resolve_predictor_filter_key</span><span class="p">(</span><span class="n">predictor</span><span class="p">,</span> <span class="n">filter_key</span><span class="p">)</span>
+        <span class="n">baseline_source</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;weekday-specific rates (from fitted predictor)&quot;</span>
+            <span class="k">if</span> <span class="n">predictor</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">resolved_filter_key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;arrival_rates_by_weekday&quot;</span><span class="p">)</span>
+            <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">&quot;pooled rates (from fitted predictor)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resolved_filter_key</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">baseline_source</span> <span class="o">=</span> <span class="s2">&quot;pooled rates (from dataframe)&quot;</span>
+
     <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">fig_size</span><span class="p">)</span>
     <span class="n">gs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">GridSpec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">width_ratios</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
     <span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -92824,9 +93394,19 @@ observed versus expected values.</p>
         <span class="n">arrivals</span><span class="p">[</span><span class="s2">&quot;cumulative_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">arrivals</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="c1"># Calculate arrival rates and prepare time points</span>
-        <span class="n">mean_arrival_rates</span> <span class="o">=</span> <span class="n">_calculate_arrival_rates</span><span class="p">(</span>
-            <span class="n">df_copy</span><span class="p">,</span> <span class="n">prediction_time_obj</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">yta_time_interval</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">predictor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mean_arrival_rates</span> <span class="o">=</span> <span class="n">_predictor_rates_for_window</span><span class="p">(</span>
+                <span class="n">predictor</span><span class="p">,</span>
+                <span class="n">resolved_filter_key</span><span class="p">,</span>
+                <span class="n">prediction_time</span><span class="p">,</span>
+                <span class="n">prediction_window</span><span class="p">,</span>
+                <span class="n">snapshot_date</span><span class="p">,</span>
+                <span class="n">strict_prediction_date</span><span class="o">=</span><span class="n">strict_prediction_date</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mean_arrival_rates</span> <span class="o">=</span> <span class="n">_calculate_arrival_rates</span><span class="p">(</span>
+                <span class="n">df_copy</span><span class="p">,</span> <span class="n">prediction_time_obj</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">yta_time_interval</span>
+            <span class="p">)</span>
 
         <span class="c1"># Prepare arrival times</span>
         <span class="n">arrival_times_piecewise</span> <span class="o">=</span> <span class="n">_prepare_arrival_times</span><span class="p">(</span>
@@ -92934,8 +93514,14 @@ observed versus expected values.</p>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Time&quot;</span><span class="p">)</span>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Difference (Actual - Expected)&quot;</span><span class="p">)</span>
     <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;Difference Between Actual and Expected Arrivals in the </span><span class="si">{</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">prediction_window</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span><span class="o">/</span><span class="mi">3600</span><span class="p">))</span><span class="si">}</span><span class="s2"> hours after </span><span class="si">{</span><span class="n">format_prediction_time</span><span class="p">(</span><span class="n">prediction_time</span><span class="p">)</span><span class="si">}</span><span class="s2"> on all dates&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Difference Between Actual and Expected Arrivals in the &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">prediction_window</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span><span class="o">/</span><span class="mi">3600</span><span class="p">))</span><span class="si">}</span><span class="s2"> hours after &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">format_prediction_time</span><span class="p">(</span><span class="n">prediction_time</span><span class="p">)</span><span class="si">}</span><span class="s2"> on all dates</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Expected baseline: </span><span class="si">{</span><span class="n">baseline_source</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">suptitle</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="n">suptitle</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
 
     <span class="c1"># Format time axis</span>
     <span class="n">_format_time_axis</span><span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">common_times</span><span class="p">)</span>
@@ -93191,9 +93777,7 @@ indicates where observed equals expected.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/viz/observed_against_expected.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 26</span>
-<span class="normal"> 27</span>
-<span class="normal"> 28</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 28</span>
 <span class="normal"> 29</span>
 <span class="normal"> 30</span>
 <span class="normal"> 31</span>
@@ -93338,7 +93922,9 @@ indicates where observed equals expected.</p>
 <span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
-<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_deltas</span><span class="p">(</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_deltas</span><span class="p">(</span>
     <span class="n">results1</span><span class="p">,</span>
     <span class="n">results2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">title1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
