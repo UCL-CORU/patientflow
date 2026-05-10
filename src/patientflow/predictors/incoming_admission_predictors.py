@@ -58,12 +58,21 @@ i.e. which key(s) appear in ``weights``, matching the names given in ``filters``
 when the model was fitted with filters. If ``weights`` has only one key,
 ``filter_keys`` / ``filter_key`` may be omitted.
 
-Optional ``prediction_date`` (a :class:`~datetime.date`) anchors the calendar day
-when the model was fit with ``stratify_by_weekday=True``. Each prediction slice
-then uses the arrival rate for that slice's **actual** weekday and time-of-day
-(``datetime.weekday()``: Monday = 0, …, Sunday = 6). If ``prediction_date`` is
-omitted, behaviour matches the legacy pooled 24-hour profile
-(``arrival_rates_dict``) only.
+Optional ``prediction_date`` (a :class:`~datetime.date`) anchors the calendar
+day. The library fits weekday profiles by default, but the predict-time
+warning behaviour depends on whether ``stratify_by_weekday`` was explicitly
+opted into at fit time:
+
+- Default fit (``stratify_by_weekday=None``): weekday profiles are stored,
+  but omitting ``prediction_date`` is silent — predictions match the legacy
+  pooled 24-hour profile (``arrival_rates_dict``) and no warning fires.
+- Explicit opt-in (``stratify_by_weekday=True``): each slice uses the rate
+  for its actual weekday and time-of-day when ``prediction_date`` is passed
+  (``datetime.weekday()``: Monday = 0, …, Sunday = 6). Omitting
+  ``prediction_date`` emits a ``UserWarning`` and falls back to pooled rates
+  so existing predictions remain numerically unchanged.
+- ``strict_prediction_date=True`` at predict time turns any pooled fallback
+  into a ``ValueError`` regardless of how ``stratify_by_weekday`` was set.
 
 The deprecated nested ``prediction_context`` dict (keyword or first positional
 argument) is still accepted and emits ``DeprecationWarning``. It may include
@@ -97,6 +106,7 @@ with probability θ_t reduces the effective rate from λ_t to λ_t θ_t.
 """
 
 import warnings
+from collections import OrderedDict
 from datetime import date, datetime, timedelta, time as dt_time
 from abc import ABC, abstractmethod
 
@@ -278,6 +288,17 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     For ``predict`` / ``predict_mean`` arguments (``prediction_time``,
     ``filter_keys`` / ``filter_key``, legacy ``prediction_context``), see the
     module docstring section *Prediction API*.
+
+    Diagnostic attributes
+    ---------------------
+    empty_filter_count : int
+        Populated during ``fit()``. Equals the number of configured filters
+        whose subset of ``train_df`` was empty. When no filters are configured,
+        equals ``1`` if ``train_df`` itself is empty and ``0`` otherwise. Reset
+        to ``0`` at the start of every ``fit()`` call. Useful for surfacing
+        configuration mismatches (e.g. a typoed service name or a service
+        that did not operate during the training window) that would otherwise
+        be hidden by the silent zero-rate fallback in ``_calculate_parameters``.
     """
 
     def __init__(self, filters=None, verbose=False, use_generating_functions=True):
@@ -293,6 +314,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 stacklevel=2,
             )
         self.metrics = {}  # Add metrics dictionary to store metadata
+        self.empty_filter_count = 0
 
         if verbose:
             # Configure logging for Jupyter notebook compatibility
@@ -683,17 +705,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_date: Optional[date] = None,
         strict_prediction_date: bool = False,
     ):
-        """Yield ``(filter_key, resolved_prediction_time, arrival_rates_np)``.
-
-        Slices ``Ntimes`` intervals starting at ``snapped_prediction_time`` (on an
-        interval boundary). When ``prediction_date`` is set and weights contain
-        ``arrival_rates_by_weekday`` (from ``fit(..., stratify_by_weekday=True)``),
-        each slice uses the rate for that slice's calendar weekday and time-of-day.
-        If ``prediction_date`` is set but weekday profiles are missing, behaviour
-        depends on ``strict_prediction_date``:
-        - ``False`` (default): fall back to pooled ``arrival_rates_dict`` and warn.
-        - ``True``: raise ``ValueError``.
-        """
         Ntimes = int(prediction_window / self.yta_time_interval)
         hr, mn = snapped_prediction_time
         for filter_key in filter_keys:
@@ -720,6 +731,21 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                     UserWarning,
                     stacklevel=4,
                 )
+            elif prediction_date is None and by_weekday is not None:
+                message = (
+                    "predictor was fit with stratify_by_weekday=True but no "
+                    f"prediction_date was supplied for filter '{filter_key}'. "
+                    "Pass prediction_date= to predict() / predict_mean() to "
+                    "use the matching weekday profile; otherwise pooled "
+                    "arrival_rates_dict is used."
+                )
+                if strict_prediction_date:
+                    raise ValueError(message)
+                # Only warn for callers who explicitly opted in at fit time.
+                # The library default also stores weekday profiles, but legacy
+                # callers who didn't request stratification stay silent.
+                if getattr(self, "_user_opted_in_to_weekday", False):
+                    warnings.warn(message, UserWarning, stacklevel=4)
 
             try:
                 if use_weekday:
@@ -830,38 +856,37 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             raise ValueError("Could not infer a positive num_days from the index.")
         return inferred
 
+    def _empty_arrival_rates_dict(self, yta_time_interval: timedelta) -> OrderedDict:
+        rates: OrderedDict = OrderedDict()
+        _start = datetime(1970, 1, 1, 0, 0, 0, 0)
+        _stop = _start + timedelta(days=1)
+        while _start != _stop:
+            rates[_start.time()] = 0.0
+            _start = _start + yta_time_interval
+        return rates
+
     def _calculate_parameters(
         self,
         df,
         yta_time_interval: timedelta,
         num_days: Optional[int],
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: bool = True,
     ):
-        """Calculate the full 24-hour arrival-rate dictionary for the given data.
+        if len(df.index) == 0:
+            zero_rates = self._empty_arrival_rates_dict(yta_time_interval)
+            out: Dict = {"arrival_rates_dict": zero_rates}
+            if stratify_by_weekday:
+                out["arrival_rates_by_weekday"] = {
+                    d: self._empty_arrival_rates_dict(yta_time_interval)
+                    for d in range(7)
+                }
+            return out
 
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            The data frame to process.
-        yta_time_interval : timedelta
-            The granularity of arrival-rate buckets.
-        num_days : int or None
-            Divisor for pooled rates; if ``None``, inferred from ``df``'s index span.
-        stratify_by_weekday : bool, default=False
-            If True, also compute ``arrival_rates_by_weekday`` (keys ``0..6``,
-            Monday=0) for use when ``prediction_date`` is passed at predict time.
-
-        Returns
-        -------
-        dict
-            Always contains ``arrival_rates_dict``. When ``stratify_by_weekday``,
-            also ``arrival_rates_by_weekday``: ``dict[int, OrderedDict[time, float]]``.
-        """
         effective_days = self._resolve_num_days(df, num_days)
         arrival_rates_dict = time_varying_arrival_rates(
             df, yta_time_interval, effective_days, verbose=self.verbose
         )
-        out: Dict = {"arrival_rates_dict": arrival_rates_dict}
+        out = {"arrival_rates_dict": arrival_rates_dict}
         if stratify_by_weekday:
             out["arrival_rates_by_weekday"] = time_varying_arrival_rates_by_weekday(
                 df, yta_time_interval, num_days, verbose=self.verbose
@@ -877,7 +902,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: Optional[bool] = None,
     ) -> "IncomingAdmissionPredictor":
         """Fit the model to the training data.
 
@@ -916,11 +941,27 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
-        stratify_by_weekday : bool, default=False
-            If True, fit an additional per-weekday arrival profile (``Monday=0`` …
-            ``Sunday=6``). Pass ``prediction_date`` at predict time to slice the
-            window using that profile; omit ``prediction_date`` to keep using the
-            pooled 24-hour profile only.
+        stratify_by_weekday : bool or None, default=None
+            Controls whether per-weekday arrival profiles (``Monday=0`` …
+            ``Sunday=6``) are fitted alongside the pooled profile.
+
+            - ``None`` (default): weekday profiles are fitted (effective value
+              ``True``), but the predictor treats this as the *library-side*
+              default rather than an explicit opt-in. ``predict()`` calls
+              without ``prediction_date`` are silent — predictions match prior
+              numeric behaviour and legacy callers see no new warnings.
+            - ``True``: explicit opt-in to weekday stratification. The
+              **weekday contract** activates: callers should pass
+              ``prediction_date`` to ``predict()`` / ``predict_mean()`` so each
+              slice uses the matching weekday rate. Omitting ``prediction_date``
+              emits a ``UserWarning`` (and ``strict_prediction_date=True`` at
+              predict time turns the warning into a ``ValueError``).
+            - ``False``: opt out. Only the pooled 24-hour profile is stored
+              and ``arrival_rates_by_weekday`` is absent from ``weights``.
+
+            Most callers should leave this on the default. Pass ``True``
+            explicitly only when you intend to thread ``prediction_date`` at
+            predict time and want pooled-fallbacks to be surfaced loudly.
 
         Returns
         -------
@@ -977,11 +1018,21 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
                 stacklevel=2,
             )
 
+        # Resolve the sentinel default for stratify_by_weekday and track whether
+        # the user explicitly opted in. The flag gates the predict-time
+        # "missing prediction_date" warning so that legacy callers who never
+        # asked for weekday stratification don't see noise (Option 1 of the
+        # weekday-contract design).
+        user_opted_in_to_weekday = stratify_by_weekday is True
+        if stratify_by_weekday is None:
+            stratify_by_weekday = True
+
         # Store required metadata
         self.yta_time_interval = yta_time_interval
         self.yta_time_interval_hours = yta_time_interval.total_seconds() / 3600
         self.epsilon = epsilon
         self.stratify_by_weekday = stratify_by_weekday
+        self._user_opted_in_to_weekday = user_opted_in_to_weekday
 
         # Store deprecated fit-time values as predict-time fall-backs
         self._deprecated_fit_prediction_window = prediction_window
@@ -1014,12 +1065,22 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             else None
         )
 
-        # Initialise weights with the full 24-hour arrival-rate dictionary
+        # Initialise weights with the full 24-hour arrival-rate dictionary.
+        # ``empty_filter_count`` is reset here so repeated fits don't accumulate
+        # stale counts; it is incremented for every configured filter whose
+        # subset of ``train_df`` is empty. Empty subsets still produce
+        # zero-rate weights via ``_calculate_parameters`` so downstream
+        # ``predict()`` calls remain valid; callers can inspect the counter
+        # after fit to surface configuration mismatches.
         self.weights = {}
+        self.empty_filter_count = 0
         if self.filters:
             for spec, filters in self.filters.items():
+                filtered_df = self.filter_dataframe(train_df, filters)
+                if len(filtered_df.index) == 0:
+                    self.empty_filter_count += 1
                 self.weights[spec] = self._calculate_parameters(
-                    self.filter_dataframe(train_df, filters),
+                    filtered_df,
                     yta_time_interval,
                     num_days,
                     stratify_by_weekday=stratify_by_weekday,
@@ -1132,13 +1193,21 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             Deprecated. Former nested dict mapping filter key to
             ``{"prediction_time": ...}``. Must contain exactly one filter key.
         prediction_date : datetime.date, optional
-            Calendar date at the snapped ``prediction_time``. When the model was fit
-            with ``stratify_by_weekday=True``, selects per-slice weekday arrival rates;
-            otherwise ignored for λ (pooled profile is used).
+            Calendar date at the snapped ``prediction_time``. When supplied,
+            selects per-slice weekday arrival rates (crossing correctly into
+            the next weekday for windows that straddle midnight). When the
+            predictor was fit with ``stratify_by_weekday=True`` *explicitly*
+            and ``prediction_date`` is omitted, a ``UserWarning`` is emitted
+            and the pooled profile is used; under the library default
+            (``stratify_by_weekday=None``) the fallback is silent so legacy
+            callers remain quiet. See
+            ``patientflow.aggregate.get_prob_dist_by_service`` for the
+            service-level helper that threads ``prediction_date`` automatically
+            per snapshot date.
         strict_prediction_date : bool, default=False
-            If ``True``, raise an error when ``prediction_date`` is provided but
-            weekday-stratified arrival rates are unavailable for the selected key.
-            If ``False``, warn and fall back to pooled arrival rates.
+            If ``True``, raise ``ValueError`` whenever any pooled-rate fallback
+            would occur — regardless of whether ``stratify_by_weekday`` was
+            opted into at fit time.
         **kwargs
             Passed to ``_get_admission_probabilities`` (e.g. ``x1``, ``y1``, …).
 
@@ -1243,12 +1312,18 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict, optional
             Deprecated nested dict API.
         prediction_date : datetime.date, optional
-            Calendar anchor for weekday-stratified arrival rates when fitted with
-            ``stratify_by_weekday=True``. Otherwise λ uses the pooled profile only.
+            Calendar anchor for weekday-stratified arrival rates. Pass it to
+            use the matching weekday profile for each prediction slice; the
+            window crosses correctly into the next weekday after midnight.
+            When the predictor was fit with explicit
+            ``stratify_by_weekday=True`` and ``prediction_date`` is omitted, a
+            ``UserWarning`` is emitted; under the library default the fallback
+            is silent. See ``patientflow.aggregate.get_prob_dist_by_service``
+            for the service-level helper that supplies ``prediction_date``
+            automatically per snapshot date.
         strict_prediction_date : bool, default=False
-            If ``True``, raise an error when ``prediction_date`` is provided but
-            weekday-stratified arrival rates are unavailable for a selected key.
-            If ``False``, warn and fall back to pooled arrival rates.
+            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback
+            would occur — independent of fit-time opt-in.
         **kwargs
             ``max_value`` : int, optional — maximum PMF support.
 
@@ -1407,12 +1482,16 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict, optional
             Deprecated nested dict API.
         prediction_date : datetime.date, optional
-            Calendar anchor for weekday-stratified λ when fitted with
-            ``stratify_by_weekday=True``.
+            Calendar anchor for weekday-stratified λ. Under the library
+            default the pooled fallback is silent when ``prediction_date`` is
+            omitted; explicit ``stratify_by_weekday=True`` at fit time turns
+            that fallback into a ``UserWarning``. See
+            ``patientflow.aggregate.get_prob_dist_by_service`` for the
+            service-level helper that supplies ``prediction_date``
+            automatically per snapshot date.
         strict_prediction_date : bool, default=False
-            If ``True``, raise an error when ``prediction_date`` is provided but
-            weekday-stratified arrival rates are unavailable for a selected key.
-            If ``False``, warn and fall back to pooled arrival rates.
+            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback
+            would occur — independent of fit-time opt-in.
         **kwargs
             ``x1``, ``y1``, ``x2``, ``y2`` (required); optional ``max_value``.
 
@@ -1580,7 +1659,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
-        stratify_by_weekday: bool = False,
+        stratify_by_weekday: Optional[bool] = None,
         *,
         start_time_col: str = "arrival_datetime",
         end_time_col: str = "departure_datetime",
@@ -1612,8 +1691,11 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             of the maximum value of the random variable representing number of beds.
         y : None, optional
             Ignored, present for compatibility with scikit-learn's fit method.
-        stratify_by_weekday : bool, default=False
-            Same as ``IncomingAdmissionPredictor.fit``.
+        stratify_by_weekday : bool or None, default=None
+            Same as ``IncomingAdmissionPredictor.fit``. The sentinel default
+            (``None``) fits weekday profiles silently; pass ``True`` explicitly
+            to activate the predict-time weekday contract (warns when
+            ``prediction_date`` is omitted), or ``False`` to opt out entirely.
         start_time_col : str, default='arrival_datetime'
             Name of the column containing the start time (e.g., arrival time).
             Expected to be the DataFrame index, but can also be a regular column.
@@ -1788,12 +1870,16 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         prediction_context : dict, optional
             Deprecated nested dict API.
         prediction_date : datetime.date, optional
-            Calendar anchor for weekday-stratified λ when fitted with
-            ``stratify_by_weekday=True``.
+            Calendar anchor for weekday-stratified λ. Under the library
+            default the pooled fallback is silent when ``prediction_date`` is
+            omitted; explicit ``stratify_by_weekday=True`` at fit time turns
+            that fallback into a ``UserWarning``. See
+            ``patientflow.aggregate.get_prob_dist_by_service`` for the
+            service-level helper that supplies ``prediction_date``
+            automatically per snapshot date.
         strict_prediction_date : bool, default=False
-            If ``True``, raise an error when ``prediction_date`` is provided but
-            weekday-stratified arrival rates are unavailable for a selected key.
-            If ``False``, warn and fall back to pooled arrival rates.
+            If ``True``, raise ``ValueError`` whenever a pooled-rate fallback
+            would occur — independent of fit-time opt-in.
         **kwargs
             Optional ``max_value``.
 
