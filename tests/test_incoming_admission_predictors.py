@@ -943,6 +943,308 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             )
         self.assertIn("arrival_rates_by_weekday", str(cm.exception))
 
+    def test_weekday_rates_produced_by_default(self):
+        """fit() now emits per-weekday rates without an explicit opt-in."""
+        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        for key in self.filters:
+            self.assertIn(
+                "arrival_rates_by_weekday",
+                predictor.weights[key],
+                f"weekday profile missing for {key} when stratify_by_weekday default is used",
+            )
+            by_weekday = predictor.weights[key]["arrival_rates_by_weekday"]
+            self.assertEqual(set(by_weekday.keys()), set(range(7)))
+            # Each weekday profile spans the same 24-hour grid as the pooled profile
+            for d, profile in by_weekday.items():
+                self.assertEqual(len(profile), 48, f"weekday {d} has wrong size")
+
+    def test_empirical_weekday_rates_produced_by_default(self):
+        """EmpiricalIncomingAdmissionPredictor.fit() also defaults to weekday-aware."""
+        predictor = EmpiricalIncomingAdmissionPredictor(filters=self.filters)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        for key in self.filters:
+            self.assertIn("arrival_rates_by_weekday", predictor.weights[key])
+
+    def test_per_weekday_rates_differ_for_monday_only_data(self):
+        """Mondays-only synthetic data: Monday rates differ from other weekdays."""
+        times = []
+        for w in range(8):
+            for offset in range(0, 1000, 60):
+                t = datetime(2024, 1, 1, 10, 0) + timedelta(weeks=w, minutes=offset)
+                times.append(pd.Timestamp(t))
+        df = pd.DataFrame({"k": [1] * len(times)}, index=pd.DatetimeIndex(times))
+
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df,
+            yta_time_interval=timedelta(hours=1),
+            num_days=60,
+        )
+        by_weekday = predictor.weights["unfiltered"]["arrival_rates_by_weekday"]
+        monday_total = sum(by_weekday[0].values())
+        for d in range(1, 7):
+            other_total = sum(by_weekday[d].values())
+            self.assertGreater(monday_total, other_total)
+
+    def test_default_fit_is_silent_when_prediction_date_omitted(self):
+        """Library-side default (sentinel) does NOT warn when prediction_date is omitted.
+
+        Option 1 semantics: weekday profiles are fitted by default but the
+        predict-time warning only fires when the caller explicitly opted in
+        via ``stratify_by_weekday=True``. Legacy callers see no new warnings
+        and predictions remain numerically unchanged.
+        """
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        # Default fit is treated as not-opted-in.
+        self.assertFalse(predictor._user_opted_in_to_weekday)
+        # Weekday profiles are still stored under the default.
+        self.assertIn("arrival_rates_by_weekday", predictor.weights["unfiltered"])
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            mean_no_date = predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+            )
+        weekday_warnings = [
+            w
+            for w in caught
+            if issubclass(w.category, UserWarning)
+            and "stratify_by_weekday=True" in str(w.message)
+        ]
+        self.assertEqual(
+            weekday_warnings,
+            [],
+            f"default fit should be silent, got: {[str(w.message) for w in caught]}",
+        )
+
+        # Predictions remain numerically unchanged vs. an explicit pooled-only fit.
+        opt_out = DirectAdmissionPredictor(filters=None)
+        opt_out.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=False,
+        )
+        mean_pooled = opt_out.predict_mean(
+            prediction_time=(8, 0),
+            prediction_window=self.prediction_window,
+        )
+        self.assertAlmostEqual(mean_no_date, mean_pooled, places=10)
+
+    def test_explicit_opt_in_warns_when_prediction_date_omitted(self):
+        """Explicit stratify_by_weekday=True activates the predict-time contract."""
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        self.assertTrue(predictor._user_opted_in_to_weekday)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            mean = predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+            )
+        self.assertIsInstance(mean, float)
+        weekday_warnings = [
+            w
+            for w in caught
+            if issubclass(w.category, UserWarning)
+            and "stratify_by_weekday=True" in str(w.message)
+            and "prediction_date" in str(w.message)
+        ]
+        self.assertTrue(
+            weekday_warnings,
+            f"explicit opt-in should warn, got {[str(w.message) for w in caught]}",
+        )
+
+    def test_strict_prediction_date_raises_on_omitted_date_under_default(self):
+        """strict_prediction_date=True forces the error path even under the default fit."""
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        # Default fit is silent on warnings, but strict at predict time still raises.
+        self.assertFalse(predictor._user_opted_in_to_weekday)
+        with self.assertRaises(ValueError) as cm:
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                strict_prediction_date=True,
+            )
+        self.assertIn("prediction_date", str(cm.exception))
+
+    def test_strict_prediction_date_raises_on_omitted_date_under_opt_in(self):
+        """strict_prediction_date=True + explicit opt-in + omitted date → ValueError."""
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        with self.assertRaises(ValueError) as cm:
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                strict_prediction_date=True,
+            )
+        self.assertIn("prediction_date", str(cm.exception))
+
+    def test_strict_prediction_date_raises_on_missing_profiles(self):
+        """strict_prediction_date=True surfaces silent fallback as ValueError."""
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=False,
+        )
+        with self.assertRaises(ValueError) as cm:
+            predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+                prediction_date=date(2024, 1, 8),
+                strict_prediction_date=True,
+            )
+        self.assertIn("arrival_rates_by_weekday", str(cm.exception))
+
+    def test_opt_out_preserves_pooled_only_behaviour(self):
+        """stratify_by_weekday=False reverts to pooled-only and matches legacy outputs."""
+        np.random.seed(123)
+        n = 600
+        start = datetime(2024, 1, 1)
+        rows = []
+        for _ in range(n):
+            t = start + timedelta(
+                days=np.random.randint(0, 31),
+                hours=np.random.randint(0, 24),
+                minutes=np.random.randint(0, 60),
+            )
+            rows.append(pd.Timestamp(t))
+        df = pd.DataFrame({"k": [1] * n}, index=pd.DatetimeIndex(sorted(rows)))
+
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df,
+            yta_time_interval=timedelta(hours=1),
+            num_days=31,
+            stratify_by_weekday=False,
+        )
+        # No weekday profile is stored when opted out.
+        self.assertNotIn("arrival_rates_by_weekday", predictor.weights["unfiltered"])
+        mean = predictor.predict_mean(
+            prediction_time=(8, 0),
+            prediction_window=timedelta(hours=4),
+        )
+        # Regression value: total arrival rate over 4 hours starting at 08:00
+        pooled = predictor.weights["unfiltered"]["arrival_rates_dict"]
+        from datetime import time as _t
+
+        manual = sum(pooled[_t(hour=h)] for h in range(8, 12))
+        self.assertAlmostEqual(mean, manual, places=10)
+
+    def test_calculate_parameters_handles_empty_input(self):
+        """An empty filtered subset yields zero rates everywhere."""
+        predictor = ParametricIncomingAdmissionPredictor(filters=None)
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        empty_df = self.test_df.iloc[0:0]
+        out = predictor._calculate_parameters(
+            empty_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+            stratify_by_weekday=True,
+        )
+        self.assertIn("arrival_rates_dict", out)
+        self.assertIn("arrival_rates_by_weekday", out)
+        self.assertTrue(all(v == 0.0 for v in out["arrival_rates_dict"].values()))
+        for d in range(7):
+            self.assertTrue(
+                all(v == 0.0 for v in out["arrival_rates_by_weekday"][d].values())
+            )
+
+    def test_empty_filter_count_tracks_empty_subsets(self):
+        """fit() counts filters whose subset of train_df is empty."""
+        # All four configured filters have data in the synthetic dataset.
+        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
+        # Fresh instances start at zero before fit.
+        self.assertEqual(predictor.empty_filter_count, 0)
+
+        predictor.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        self.assertEqual(predictor.empty_filter_count, 0)
+
+        # Add two filters guaranteed to miss every row, plus one that matches.
+        filters_with_misses = {
+            "medical": {"specialty": "medical"},
+            "no_such_specialty": {"specialty": "imaginary"},
+            "another_miss": {"specialty": "also_imaginary"},
+        }
+        predictor2 = ParametricIncomingAdmissionPredictor(filters=filters_with_misses)
+        predictor2.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        self.assertEqual(predictor2.empty_filter_count, 2)
+        # All filter keys still get weights — empty subsets produce zero rates.
+        for key in filters_with_misses:
+            self.assertIn(key, predictor2.weights)
+            self.assertIn("arrival_rates_dict", predictor2.weights[key])
+        # Empty subsets produce all-zero rates.
+        for key in ("no_such_specialty", "another_miss"):
+            self.assertTrue(
+                all(
+                    v == 0.0
+                    for v in predictor2.weights[key]["arrival_rates_dict"].values()
+                )
+            )
+
+        # Re-fitting against fully-matching data resets the counter.
+        predictor2.fit(
+            self.test_df.assign(specialty="medical"),
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        # 'medical' matches every row; the two imaginary specialties miss every row.
+        self.assertEqual(predictor2.empty_filter_count, 2)
+
+        # No-filters configuration leaves the counter at zero.
+        predictor3 = ParametricIncomingAdmissionPredictor(filters=None)
+        predictor3.fit(
+            self.test_df,
+            yta_time_interval=self.yta_time_interval,
+            num_days=self.num_days,
+        )
+        self.assertEqual(predictor3.empty_filter_count, 0)
+
     def test_legacy_prediction_context_with_prediction_date(self):
         predictor = DirectAdmissionPredictor(filters=self.filters)
         predictor.fit(

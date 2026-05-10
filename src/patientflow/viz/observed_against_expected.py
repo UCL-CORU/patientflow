@@ -14,7 +14,9 @@ plot_arrival_deltas : function
     Plot delta charts for multiple snapshot dates on the same figure
 """
 
-from datetime import timedelta, datetime, time
+from collections import OrderedDict
+from datetime import date as _date, timedelta, datetime, time
+from typing import Optional
 from patientflow.calculate.arrival_rates import time_varying_arrival_rates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -483,6 +485,72 @@ def _prepare_common_values(prediction_time):
     return prediction_time_obj, default_datetime
 
 
+def _resolve_predictor_filter_key(predictor, filter_key):
+    weights = getattr(predictor, "weights", None)
+    if not isinstance(weights, dict) or len(weights) == 0:
+        raise ValueError("predictor.weights is empty; has the predictor been fit?")
+    if filter_key is None:
+        if len(weights) == 1:
+            return next(iter(weights.keys()))
+        raise ValueError(
+            "filter_key is required when predictor.weights has more than one "
+            f"key (e.g. multiple fitted services). Available keys: {sorted(weights.keys())}."
+        )
+    if filter_key not in weights:
+        raise ValueError(
+            f"filter_key '{filter_key}' is not recognized in predictor.weights. "
+            f"Available keys: {sorted(weights.keys())}."
+        )
+    return filter_key
+
+
+def _predictor_rates_for_window(
+    predictor,
+    filter_key: str,
+    prediction_time: tuple,
+    prediction_window: timedelta,
+    snapshot_date: _date,
+    strict_prediction_date: bool = False,
+) -> "OrderedDict[time, float]":
+    import warnings
+
+    weights = predictor.weights[filter_key]
+    arrival_rates_dict = weights.get("arrival_rates_dict")
+    if arrival_rates_dict is None:
+        raise ValueError(
+            f"No arrival_rates_dict found under filter '{filter_key}' on the "
+            "supplied predictor. Has the predictor been fit?"
+        )
+    by_weekday = weights.get("arrival_rates_by_weekday")
+
+    if by_weekday is None:
+        message = (
+            "predictor was fit without weekday stratification "
+            f"(filter '{filter_key}'). Pooled arrival rates will be used as "
+            "the expected baseline for every snapshot date."
+        )
+        if strict_prediction_date:
+            raise ValueError(message)
+        warnings.warn(message, UserWarning, stacklevel=3)
+
+    yta_time_interval = predictor.yta_time_interval
+    Ntimes = int(prediction_window / yta_time_interval)
+    anchor = datetime.combine(
+        snapshot_date, time(hour=prediction_time[0], minute=prediction_time[1])
+    )
+
+    rates: "OrderedDict[time, float]" = OrderedDict()
+    for i in range(Ntimes):
+        dt_i = anchor + i * yta_time_interval
+        t_i = dt_i.time()
+        if by_weekday is not None:
+            d_i = dt_i.weekday()
+            rates[t_i] = by_weekday[d_i][t_i]
+        else:
+            rates[t_i] = arrival_rates_dict[t_i]
+    return rates
+
+
 def plot_arrival_deltas(
     df,
     prediction_time,
@@ -493,36 +561,93 @@ def plot_arrival_deltas(
     file_name=None,
     return_figure=False,
     fig_size=(15, 6),
+    *,
+    predictor=None,
+    filter_key: Optional[str] = None,
+    strict_prediction_date: bool = False,
+    suptitle: Optional[str] = None,
 ):
     """Plot delta charts for multiple snapshot dates on the same figure.
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame containing arrival data
+        DataFrame containing arrival data.
     prediction_time : tuple
-        (hour, minute) of prediction time
+        ``(hour, minute)`` of prediction time.
     snapshot_dates : list
-        List of datetime.date objects to analyze
+        List of ``datetime.date`` objects to analyse.
     prediction_window : timedelta
-        Prediction window in minutes
-    yta_time_interval : int, default=15
-        Time interval in minutes for calculating arrival rates
+        Prediction window length.
+    yta_time_interval : timedelta, default=timedelta(minutes=15)
+        Time-interval grid for arrival rates. When ``predictor`` is supplied,
+        this must equal ``predictor.yta_time_interval``; otherwise a
+        ``ValueError`` is raised.
     media_file_path : Path, optional
-        Path to save the plot
+        Path to save the plot.
     file_name : str, optional
-        Custom filename to use when saving the plot. If not provided, defaults to "multiple_deltas.png"
+        Custom filename to use when saving the plot. If not provided, defaults
+        to ``"multiple_deltas.png"``.
     return_figure : bool, default=False
-        If True, returns the figure instead of displaying it
+        If True, returns the figure instead of displaying it.
     fig_size : tuple, default=(15, 6)
-        Figure size as (width, height) in inches
+        Figure size as ``(width, height)`` in inches.
+    predictor : IncomingAdmissionPredictor, optional
+        Fitted predictor whose stored arrival rates will be used as the
+        expected baseline. When the predictor's ``weights`` contain an
+        ``arrival_rates_by_weekday`` profile (the library-default fit), each
+        snapshot date uses the rates for its own weekday so the diagnostic
+        agrees with the deployed model. When ``predictor`` is ``None``
+        (default), the function falls back to pooled rates derived from
+        ``df`` (legacy behaviour).
+    filter_key : str, optional
+        Which ``weights`` key of ``predictor`` to read rates from. Required
+        only when the predictor has more than one fitted key (e.g. multiple
+        services). Ignored when ``predictor`` is ``None``.
+    strict_prediction_date : bool, default=False
+        Passed through to the predictor: when ``True`` and the predictor
+        lacks per-weekday rates for the supplied filter key, a
+        ``ValueError`` is raised instead of falling back to pooled rates.
+    suptitle : str, optional
+        Figure-level title. Typically the entity (service / specialty)
+        being analysed. Rendered above the per-axis titles.
 
     Returns
     -------
     matplotlib.figure.Figure or None
-        The figure object if return_figure is True, otherwise None
+        The figure object if return_figure is True, otherwise None.
+
+    Raises
+    ------
+    ValueError
+        If ``predictor`` is supplied and ``yta_time_interval`` does not match
+        ``predictor.yta_time_interval``, or if the predictor is unfitted /
+        the requested ``filter_key`` is unknown.
     """
-    # Create figure with subplots
+    if predictor is not None:
+        predictor_interval = getattr(predictor, "yta_time_interval", None)
+        if predictor_interval is None:
+            raise ValueError(
+                "predictor.yta_time_interval is not set; has the predictor " "been fit?"
+            )
+        if predictor_interval != yta_time_interval:
+            raise ValueError(
+                "yta_time_interval mismatch: plot_arrival_deltas was called with "
+                f"{yta_time_interval!r} but predictor.yta_time_interval is "
+                f"{predictor_interval!r}. Pass yta_time_interval=predictor."
+                "yta_time_interval to silence this error."
+            )
+        resolved_filter_key = _resolve_predictor_filter_key(predictor, filter_key)
+        baseline_source = (
+            "weekday-specific rates (from fitted predictor)"
+            if predictor.weights[resolved_filter_key].get("arrival_rates_by_weekday")
+            is not None
+            else "pooled rates (from fitted predictor)"
+        )
+    else:
+        resolved_filter_key = None
+        baseline_source = "pooled rates (from dataframe)"
+
     fig = plt.figure(figsize=fig_size)
     gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
     ax1 = plt.subplot(gs[0])
@@ -556,9 +681,19 @@ def plot_arrival_deltas(
         arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
         # Calculate arrival rates and prepare time points
-        mean_arrival_rates = _calculate_arrival_rates(
-            df_copy, prediction_time_obj, prediction_window, yta_time_interval
-        )
+        if predictor is not None:
+            mean_arrival_rates = _predictor_rates_for_window(
+                predictor,
+                resolved_filter_key,
+                prediction_time,
+                prediction_window,
+                snapshot_date,
+                strict_prediction_date=strict_prediction_date,
+            )
+        else:
+            mean_arrival_rates = _calculate_arrival_rates(
+                df_copy, prediction_time_obj, prediction_window, yta_time_interval
+            )
 
         # Prepare arrival times
         arrival_times_piecewise = _prepare_arrival_times(
@@ -666,8 +801,14 @@ def plot_arrival_deltas(
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Difference (Actual - Expected)")
     ax1.set_title(
-        f"Difference Between Actual and Expected Arrivals in the {(int(prediction_window.total_seconds()/3600))} hours after {format_prediction_time(prediction_time)} on all dates"
+        f"Difference Between Actual and Expected Arrivals in the "
+        f"{(int(prediction_window.total_seconds()/3600))} hours after "
+        f"{format_prediction_time(prediction_time)} on all dates\n"
+        f"Expected baseline: {baseline_source}"
     )
+
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=14)
 
     # Format time axis
     _format_time_axis(ax1, common_times)

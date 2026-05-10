@@ -6,6 +6,9 @@ Tier 3: Render smoke tests — verify plotting functions produce figures without
 """
 
 import unittest
+import warnings
+from datetime import date, datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -25,13 +28,20 @@ from patientflow.viz.randomised_pit import _prob_to_cdf
 from patientflow.viz.aspirational_curve import plot_curve
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
 from patientflow.viz.data_distribution import plot_data_distribution
-from patientflow.viz.observed_against_expected import plot_deltas
+from patientflow.viz.observed_against_expected import (
+    plot_deltas,
+    plot_arrival_deltas,
+    _predictor_rates_for_window,
+)
 from patientflow.viz.arrival_rates import (
     plot_arrival_rates,
     plot_cumulative_arrival_rates,
 )
 from patientflow.viz.trial_results import plot_trial_results
 from patientflow.model_artifacts import HyperParameterTrial
+from patientflow.predictors.incoming_admission_predictors import (
+    DirectAdmissionPredictor,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +378,163 @@ class TestPlotRendering(unittest.TestCase):
         fig = plot_trial_results(trials, return_figure=True)
         self.assertIsInstance(fig, Figure)
         self.assertEqual(len(fig.axes), 2)
+
+
+class TestPlotArrivalDeltas(unittest.TestCase):
+    """Tests for plot_arrival_deltas with and without a fitted predictor."""
+
+    @classmethod
+    def setUpClass(cls):
+        np.random.seed(7)
+        rows = []
+        for w in range(8):
+            base = datetime(2024, 1, 1) + timedelta(weeks=w)
+            for d in range(7):
+                day = base + timedelta(days=d)
+                # Mondays receive many arrivals; other days receive few.
+                n = 40 if d == 0 else 4
+                for _ in range(n):
+                    rows.append(
+                        pd.Timestamp(
+                            day
+                            + timedelta(
+                                hours=int(np.random.randint(0, 24)),
+                                minutes=int(np.random.randint(0, 60)),
+                            )
+                        )
+                    )
+        cls.df = pd.DataFrame({"arrival_datetime": sorted(rows)})
+        cls.prediction_window = timedelta(hours=4)
+        cls.yta_time_interval = timedelta(hours=1)
+
+        # Snapshot dates: a Monday and a Tuesday (matching the synthetic gradient).
+        cls.snapshot_dates = [date(2024, 1, 1), date(2024, 1, 2)]
+
+    def tearDown(self):
+        plt.close("all")
+
+    def _make_predictor(self, *, stratify_by_weekday=True):
+        df_for_fit = self.df.set_index("arrival_datetime")
+        predictor = DirectAdmissionPredictor(filters=None)
+        predictor.fit(
+            df_for_fit,
+            yta_time_interval=self.yta_time_interval,
+            num_days=56,
+            stratify_by_weekday=stratify_by_weekday,
+        )
+        return predictor
+
+    def test_predictor_rates_for_window_uses_weekday_profile(self):
+        """Helper returns rates from arrival_rates_by_weekday when available."""
+        predictor = self._make_predictor()
+        rates_mon = _predictor_rates_for_window(
+            predictor,
+            "unfiltered",
+            (8, 0),
+            self.prediction_window,
+            date(2024, 1, 1),  # Monday
+        )
+        rates_tue = _predictor_rates_for_window(
+            predictor,
+            "unfiltered",
+            (8, 0),
+            self.prediction_window,
+            date(2024, 1, 2),  # Tuesday
+        )
+        self.assertGreater(sum(rates_mon.values()), sum(rates_tue.values()))
+
+    def test_plot_with_predictor_uses_weekday_baseline(self):
+        """Annotation indicates weekday-specific predictor baseline was used."""
+        predictor = self._make_predictor()
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_time=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            predictor=predictor,
+            return_figure=True,
+        )
+        self.assertIsInstance(fig, Figure)
+        title_text = fig.axes[0].get_title()
+        self.assertIn("weekday-specific rates (from fitted predictor)", title_text)
+
+    def test_plot_without_predictor_uses_pooled_baseline(self):
+        """Default path falls back to pooled rates derived from the dataframe."""
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_time=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            return_figure=True,
+        )
+        self.assertIsInstance(fig, Figure)
+        title_text = fig.axes[0].get_title()
+        self.assertIn("pooled rates (from dataframe)", title_text)
+
+    def test_plot_raises_on_yta_interval_mismatch(self):
+        """yta_time_interval must match predictor.yta_time_interval."""
+        predictor = self._make_predictor()
+        with self.assertRaises(ValueError) as cm:
+            plot_arrival_deltas(
+                self.df,
+                prediction_time=(8, 0),
+                snapshot_dates=self.snapshot_dates,
+                prediction_window=self.prediction_window,
+                yta_time_interval=timedelta(minutes=30),
+                predictor=predictor,
+                return_figure=True,
+            )
+        self.assertIn("yta_time_interval mismatch", str(cm.exception))
+
+    def test_plot_with_pooled_predictor_uses_pooled_predictor_baseline(self):
+        """Predictor without weekday profiles → 'pooled rates (from fitted predictor)'."""
+        predictor = self._make_predictor(stratify_by_weekday=False)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            fig = plot_arrival_deltas(
+                self.df,
+                prediction_time=(8, 0),
+                snapshot_dates=self.snapshot_dates,
+                prediction_window=self.prediction_window,
+                yta_time_interval=self.yta_time_interval,
+                predictor=predictor,
+                return_figure=True,
+            )
+        self.assertIsInstance(fig, Figure)
+        title_text = fig.axes[0].get_title()
+        self.assertIn("pooled rates (from fitted predictor)", title_text)
+
+    def test_plot_strict_raises_when_predictor_lacks_weekday(self):
+        """strict_prediction_date=True surfaces missing weekday profiles."""
+        predictor = self._make_predictor(stratify_by_weekday=False)
+        with self.assertRaises(ValueError):
+            plot_arrival_deltas(
+                self.df,
+                prediction_time=(8, 0),
+                snapshot_dates=self.snapshot_dates,
+                prediction_window=self.prediction_window,
+                yta_time_interval=self.yta_time_interval,
+                predictor=predictor,
+                strict_prediction_date=True,
+                return_figure=True,
+            )
+
+    def test_plot_with_suptitle_renders_supertitle(self):
+        """suptitle renders as the figure-level title."""
+        predictor = self._make_predictor()
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_time=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            predictor=predictor,
+            suptitle="Medical service",
+            return_figure=True,
+        )
+        self.assertEqual(fig._suptitle.get_text(), "Medical service")
 
 
 if __name__ == "__main__":
