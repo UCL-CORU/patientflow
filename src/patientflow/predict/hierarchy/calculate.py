@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 import numpy as np
 
 from patientflow.predict.service import ServicePredictionInputs
@@ -12,7 +12,7 @@ def calculate_hierarchical_stats(
     bottom_level_data: Dict[str, ServicePredictionInputs],
     hierarchy: "Hierarchy",
     flow_type: str,
-    flow_selection: Optional[FlowSelection] = None,
+    flow_selection: FlowSelection,
     k_sigma: float = 8.0,
 ) -> Tuple[float, float, int]:
     """Calculate sum of means, combined SD, and maximum support for an entity.
@@ -33,18 +33,26 @@ def calculate_hierarchical_stats(
         Hierarchy structure for traversing the tree
     flow_type : str
         Type of flow to analyze: 'arrivals' or 'departures' only
-    flow_selection : FlowSelection, optional
-        Selection for which flows to include. If None, includes all flows.
+    flow_selection : FlowSelection
+        Selection for which flows to include.
     k_sigma : float, default=8.0
         Number of standard deviations used to cap supports
 
     Returns
     -------
     Tuple[float, float, int]
-        Tuple of (sum_of_means, combined_sd, max_support)
-        - sum_of_means: Sum of all means from distributions in subtree
-        - combined_sd: Combined standard deviation (sqrt of sum of variances)
-        - max_support: Maximum support value (min of statistical and physical caps)
+        Tuple of `(sum_of_means, combined_sd, max_support)`:
+
+        - `sum_of_means`: sum of means from distributions in the subtree
+        - `combined_sd`: combined standard deviation (square root of the sum
+          of variances)
+        - `max_support`: cap derived from statistical and physical limits
+
+    Raises
+    ------
+    ValueError
+        If *flow_type* is not `'arrivals'` or `'departures'`, or if a
+        departure flow uses an unexpected Poisson distribution.
 
     Notes
     -----
@@ -57,9 +65,6 @@ def calculate_hierarchical_stats(
         raise ValueError(
             f"flow_type must be 'arrivals' or 'departures', got '{flow_type}'"
         )
-
-    if flow_selection is None:
-        flow_selection = FlowSelection.default()
 
     # Get bottom level type
     bottom_type = hierarchy.get_bottom_level_type()

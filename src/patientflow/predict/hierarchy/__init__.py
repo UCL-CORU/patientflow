@@ -16,7 +16,7 @@ HierarchicalPredictor
     Orchestrates the 3-phase prediction algorithm across all hierarchy
     levels. This is the main entry point for hierarchical predictions.
 PredictionResults
-    Dictionary-like container returned by ``HierarchicalPredictor``, with
+    Dictionary-like container returned by `HierarchicalPredictor`, with
     flexible key access by entity name or prefixed ID.
 FlowSelection
     Configures which patient flows (ED current, yet-to-arrive, transfers,
@@ -27,16 +27,16 @@ DemandPrediction
     percentiles for a single flow type.
 PredictionBundle
     Complete prediction results for an entity, containing arrivals,
-    departures, and net flow ``DemandPrediction`` objects.
+    departures, and net flow `DemandPrediction` objects.
 
 Notes
 -----
 The prediction process follows a 3-phase algorithm managed by
-``HierarchicalPredictor``:
+`HierarchicalPredictor`:
 
 1. **Phase 1 -- Bottom-up stats and top-down capping**: recursively
    calculates statistical properties (sum of means, combined variance)
-   for each node and derives ``max_support`` caps to bound distribution
+   for each node and derives `max_support` caps to bound distribution
    sizes.
 2. **Phase 2 -- Bottom-level prediction**: generates full PMF predictions
    for leaf-level entities (services), bounded by the Phase 1 caps.
@@ -65,7 +65,7 @@ Run predictions and access results:
 
 >>> results = predictor.predict_all_levels(
 ...     prediction_inputs,
-...     flow_selection=FlowSelection.default(),
+...     FlowSelection.default(),
 ... )
 >>> bundle = results["medical"]
 >>> print(f"Expected arrivals: {bundle.arrivals.expectation:.1f}")

@@ -52,7 +52,21 @@ from patientflow.calculate.admission_in_prediction_window import (
     calculate_probability,
     calculate_admission_probability_from_survival_curve,
 )
-from patientflow.model_artifacts import TrainedClassifier
+from patientflow.model_artifacts import TrainedClassifier, ServiceModels
+from patientflow.predict.flow_selection_checks import (
+    assert_model_types_for_flow,
+    validate_admission_curve_params,
+    validate_ed_classifier,
+    validate_ed_snapshots_present,
+    validate_elective_yta,
+    validate_inpatient_classifier,
+    validate_inpatient_snapshots_present,
+    validate_non_ed_yta,
+    validate_spec_model_for_ed,
+    validate_transfer_model,
+    validate_yta_ed,
+)
+from patientflow.predict.types import FlowSelection
 
 
 def warn_specialty_mismatch(
@@ -72,7 +86,7 @@ def warn_specialty_mismatch(
         Specialties the model was trained on.
     source_label : str
         Human-readable name for the trained artefact, used in messages
-        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
+        (e.g. `"yet-to-arrive model"` or `"special_category_dict"`).
     stacklevel : int, optional
         Passed to `warnings.warn()` so the warning points to the
         caller rather than this helper.  Default is 3 (caller's caller).
@@ -294,106 +308,177 @@ class ServicePredictionInputs:
         return "\n".join(lines)
 
 
-def _validate_models_and_data(
-    models: Tuple[
-        Optional[TrainedClassifier],
-        Optional[TrainedClassifier],
-        Optional[
-            Union[
-                SequenceToOutcomePredictor,
-                ValueToOutcomePredictor,
-                MultiSubgroupPredictor,
-            ]
+def _normalize_to_service_models(
+    models: Union[
+        ServiceModels,
+        Tuple[
+            Optional[TrainedClassifier],
+            Optional[TrainedClassifier],
+            Optional[
+                Union[
+                    SequenceToOutcomePredictor,
+                    ValueToOutcomePredictor,
+                    MultiSubgroupPredictor,
+                ]
+            ],
+            Optional[
+                Union[
+                    ParametricIncomingAdmissionPredictor,
+                    EmpiricalIncomingAdmissionPredictor,
+                ]
+            ],
+            Optional[DirectAdmissionPredictor],
+            Optional[DirectAdmissionPredictor],
+            Optional[TransferProbabilityEstimator],
         ],
-        Optional[
-            Union[
-                ParametricIncomingAdmissionPredictor,
-                EmpiricalIncomingAdmissionPredictor,
-            ]
-        ],
-        Optional[DirectAdmissionPredictor],
-        Optional[DirectAdmissionPredictor],
-        Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
-    ed_snapshots: Optional[pd.DataFrame],
-    inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
-    specialties: List[str],
-) -> None:
-    """Validate all models and input data.
+) -> ServiceModels:
+    """Normalise `models` to a `ServiceModels` instance (`patientflow.model_artifacts`).
+
+    Parameters
+    ----------
+    models : ServiceModels or tuple of length 7
+        Either a `ServiceModels` bundle or the legacy seven-tuple of optional
+        model slots `(ed_classifier, inpatient_classifier, spec_model,
+        ed_yta_model, non_ed_yta_model, elective_yta_model, transfer_model)`.
+    prediction_time : tuple of (int, int)
+        Hour and minute; must match `ServiceModels.prediction_time` when *models*
+        is already a `ServiceModels` instance.
+    prediction_window : datetime.timedelta
+        Horizon; must match `ServiceModels.prediction_window` when *models* is
+        a `ServiceModels` instance.
+
+    Returns
+    -------
+    ServiceModels
+        Normalised model bundle.
 
     Raises
     ------
     TypeError
-        If any model is not of the expected type
+        If *models* is a tuple with length other than seven.
     ValueError
-        If required columns are missing, models are not fitted, or parameters
-        don't match between models and requested parameters
+        If *models* is `ServiceModels` but `prediction_time` or
+        `prediction_window` disagree with the dataclass fields.
     """
-    (
-        ed_classifier,
-        inpatient_classifier,
-        spec_model,
-        yet_to_arrive_model,
-        non_ed_yta_model,
-        elective_yta_model,
-        transfer_model,
-    ) = models
-
-    # Validate model types
-    if ed_classifier is not None and not isinstance(ed_classifier, TrainedClassifier):
-        raise TypeError("First model must be of type TrainedClassifier (ED classifier)")
-    if inpatient_classifier is not None and not isinstance(
-        inpatient_classifier, TrainedClassifier
-    ):
-        raise TypeError(
-            "Second model must be of type TrainedClassifier (inpatient classifier)"
-        )
-    if spec_model is not None and not isinstance(
-        spec_model,
-        (SequenceToOutcomePredictor, ValueToOutcomePredictor, MultiSubgroupPredictor),
-    ):
-        raise TypeError(
-            "Third model must be of type SequenceToOutcomePredictor or ValueToOutcomePredictor or MultiSubgroupPredictor"
-        )
-
-    if yet_to_arrive_model is not None:
-        yet_to_arrive_class_name = type(yet_to_arrive_model).__name__
-        expected_types = (
-            "ParametricIncomingAdmissionPredictor",
-            "EmpiricalIncomingAdmissionPredictor",
-        )
-        if yet_to_arrive_class_name not in expected_types:
-            actual_module = type(yet_to_arrive_model).__module__
-            raise TypeError(
-                "Fourth model must be of type ParametricIncomingAdmissionPredictor or "
-                "EmpiricalIncomingAdmissionPredictor, "
-                f"but got {actual_module}.{yet_to_arrive_class_name}. "
-                "If you're using Jupyter, try restarting the kernel."
+    if isinstance(models, ServiceModels):
+        sm = models
+        if sm.prediction_time != prediction_time:
+            raise ValueError(
+                f"ServiceModels.prediction_time {sm.prediction_time} does not match "
+                f"prediction_time argument {prediction_time}"
             )
+        if sm.prediction_window != prediction_window:
+            raise ValueError(
+                "ServiceModels.prediction_window does not match prediction_window argument"
+            )
+        return sm
+    if not isinstance(models, tuple) or len(models) != 7:
+        raise TypeError("models must be a ServiceModels instance or a 7-tuple")
+    return ServiceModels(
+        prediction_time=prediction_time,
+        prediction_window=prediction_window,
+        ed_classifier=models[0],
+        inpatient_classifier=models[1],
+        spec_model=models[2],
+        ed_yta_model=models[3],
+        non_ed_yta_model=models[4],
+        elective_yta_model=models[5],
+        transfer_model=models[6],
+    )
 
-    # Validate that non-ED and elective models are DirectAdmissionPredictor
-    if non_ed_yta_model is not None and not isinstance(
-        non_ed_yta_model, DirectAdmissionPredictor
-    ):
-        raise TypeError(
-            "Fifth model must be of type DirectAdmissionPredictor (non-ED emergency)"
-        )
-    if elective_yta_model is not None and not isinstance(
-        elective_yta_model, DirectAdmissionPredictor
-    ):
-        raise TypeError(
-            "Sixth model must be of type DirectAdmissionPredictor (elective)"
-        )
-    if transfer_model is not None and not isinstance(
-        transfer_model, TransferProbabilityEstimator
-    ):
-        raise TypeError(
-            "Seventh model must be of type TransferProbabilityEstimator (transfer)"
-        )
 
-    # Validate elapsed_los column presence and dtype for ED snapshots
+def _validate_models_and_data(
+    service_models: ServiceModels,
+    flow_selection: FlowSelection,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
+    specialties: List[str],
+    *,
+    use_admission_in_window_prob: bool,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
+) -> None:
+    """Validate model slots, snapshots, and curve parameters for *flow_selection*.
+
+    Parameters
+    ----------
+    service_models : ServiceModels
+        Named model bundle including `prediction_time` and `prediction_window`.
+    flow_selection : FlowSelection
+        Which flows are active; drives which slots and inputs are required.
+    ed_snapshots : pandas.DataFrame or None
+        ED patient snapshot at the prediction moment.
+    inpatient_snapshots : pandas.DataFrame or None
+        Inpatient snapshot at the prediction moment.
+    specialties : list of str
+        Service identifiers to prepare.
+    use_admission_in_window_prob : bool
+        Whether current-ED rows use in-window admission weighting.
+    x1, y1, x2, y2 : float or None
+        Parametric curve parameters when required.
+
+    Raises
+    ------
+    ValueError
+        From flow-selection checks, missing columns, unfitted models, or
+        mismatched `prediction_time` on classifiers.
+    TypeError
+        From `assert_model_types_for_flow` in `patientflow.predict.flow_selection_checks`
+        when a non-`None` model has the wrong type.
+
+    See Also
+    --------
+    patientflow.predict.flow_selection_checks
+    """
+    flow_selection.validate()
+    prediction_time = service_models.prediction_time
+    ed_classifier = service_models.ed_classifier
+    inpatient_classifier = service_models.inpatient_classifier
+    spec_model = service_models.spec_model
+    yet_to_arrive_model = service_models.ed_yta_model
+    non_ed_yta_model = service_models.non_ed_yta_model
+    elective_yta_model = service_models.elective_yta_model
+    transfer_model = service_models.transfer_model
+
+    validate_ed_classifier(flow_selection, ed_classifier)
+    validate_spec_model_for_ed(flow_selection, spec_model)
+    validate_inpatient_classifier(flow_selection, inpatient_classifier)
+    validate_yta_ed(flow_selection, yet_to_arrive_model)
+    validate_non_ed_yta(flow_selection, non_ed_yta_model)
+    validate_elective_yta(flow_selection, elective_yta_model)
+    validate_transfer_model(flow_selection, transfer_model)
+    validate_ed_snapshots_present(flow_selection, ed_snapshots)
+    validate_inpatient_snapshots_present(
+        flow_selection, transfer_model, inpatient_snapshots
+    )
+    has_ed_snapshots = ed_snapshots is not None
+    validate_admission_curve_params(
+        flow_selection,
+        yet_to_arrive_model,
+        use_admission_in_window_prob=use_admission_in_window_prob,
+        has_ed_snapshots=has_ed_snapshots,
+        x1=x1,
+        y1=y1,
+        x2=x2,
+        y2=y2,
+    )
+
+    assert_model_types_for_flow(
+        flow_selection,
+        ed_classifier=ed_classifier,
+        inpatient_classifier=inpatient_classifier,
+        spec_model=spec_model,
+        yet_to_arrive_model=yet_to_arrive_model,
+        non_ed_yta_model=non_ed_yta_model,
+        elective_yta_model=elective_yta_model,
+        transfer_model=transfer_model,
+    )
+
     if ed_snapshots is not None:
         if "elapsed_los" not in ed_snapshots.columns:
             raise ValueError("Column 'elapsed_los' not found in ed_snapshots")
@@ -404,7 +489,6 @@ def _validate_models_and_data(
                 f"{actual_type}"
             )
 
-    # Validate elapsed_los column presence and dtype for inpatient snapshots
     if inpatient_snapshots is not None:
         if "elapsed_los" not in inpatient_snapshots.columns:
             raise ValueError("Column 'elapsed_los' not found in inpatient_snapshots")
@@ -415,7 +499,6 @@ def _validate_models_and_data(
                 f"{actual_type}"
             )
 
-    # Check that all models have been fit
     if ed_classifier is not None and (
         not hasattr(ed_classifier, "pipeline") or ed_classifier.pipeline is None
     ):
@@ -438,12 +521,11 @@ def _validate_models_and_data(
     if yet_to_arrive_model is not None and (
         not hasattr(yet_to_arrive_model, "weights") or not yet_to_arrive_model.weights
     ):
-        raise ValueError("Yet-to-arrive model has not been fit")
+        raise ValueError("Yet-to-arrive (ED YTA) model has not been fit")
 
-    # Validate prediction_time and prediction_window compatibility
     if (
         ed_classifier is not None
-        and not ed_classifier.training_results.prediction_time == prediction_time
+        and ed_classifier.training_results.prediction_time != prediction_time
     ):
         raise ValueError(
             "Requested prediction time {pt} does not match the prediction time of the "
@@ -453,7 +535,7 @@ def _validate_models_and_data(
         )
     if (
         inpatient_classifier is not None
-        and not inpatient_classifier.training_results.prediction_time == prediction_time
+        and inpatient_classifier.training_results.prediction_time != prediction_time
     ):
         raise ValueError(
             "Requested prediction time {pt} does not match the prediction time of the "
@@ -462,27 +544,17 @@ def _validate_models_and_data(
                 ct=inpatient_classifier.training_results.prediction_time,
             )
         )
-    # Ensure DirectAdmissionPredictors are fit
     for name, model in (("non-ED", non_ed_yta_model), ("elective", elective_yta_model)):
         if model is None:
             continue
         if not hasattr(model, "weights") or not model.weights:
             raise ValueError(f"{name} DirectAdmissionPredictor has not been fit")
 
-    # Ensure TransferProbabilityEstimator has been fitted
     if transfer_model is not None and (
         not hasattr(transfer_model, "is_fitted_") or not transfer_model.is_fitted_
     ):
         raise ValueError("Transfer model has not been fit")
 
-    # Validate that a specialty model is provided when needed
-    if spec_model is None and specialties and ed_snapshots is not None:
-        raise ValueError(
-            "Specialty model (spec_model) is required when specialties are requested "
-            "and ED snapshots are provided, but spec_model is None"
-        )
-
-    # Validate specialties alignment (warn only — filtering happens at call sites)
     if yet_to_arrive_model is not None and hasattr(yet_to_arrive_model, "filters"):
         warn_specialty_mismatch(
             set(specialties),
@@ -501,7 +573,8 @@ def _validate_models_and_data(
         special_category_dict.keys()
     ):
         has_mapping = (
-            hasattr(spec_model, "specialty_to_subgroups")
+            spec_model is not None
+            and hasattr(spec_model, "specialty_to_subgroups")
             and isinstance(getattr(spec_model, "specialty_to_subgroups"), dict)
             and len(getattr(spec_model, "specialty_to_subgroups")) > 0
         )
@@ -514,33 +587,14 @@ def _validate_models_and_data(
 
 
 def _prepare_base_probabilities(
-    models: Tuple[
-        Optional[TrainedClassifier],
-        Optional[TrainedClassifier],
-        Optional[
-            Union[
-                SequenceToOutcomePredictor,
-                ValueToOutcomePredictor,
-                MultiSubgroupPredictor,
-            ]
-        ],
-        Optional[
-            Union[
-                ParametricIncomingAdmissionPredictor,
-                EmpiricalIncomingAdmissionPredictor,
-            ]
-        ],
-        Optional[DirectAdmissionPredictor],
-        Optional[DirectAdmissionPredictor],
-        Optional[TransferProbabilityEstimator],
-    ],
+    service_models: ServiceModels,
     ed_snapshots: Optional[pd.DataFrame],
     inpatient_snapshots: Optional[pd.DataFrame],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
     use_admission_in_window_prob: bool,
 ) -> Dict[str, Any]:
     """Prepare base probability calculations for all patients.
@@ -550,15 +604,10 @@ def _prepare_base_probabilities(
     dict
         Dictionary containing prepared probabilities and other computed values
     """
-    (
-        ed_classifier,
-        inpatient_classifier,
-        spec_model,
-        yet_to_arrive_model,
-        non_ed_yta_model,
-        elective_yta_model,
-        transfer_model,
-    ) = models
+    ed_classifier = service_models.ed_classifier
+    inpatient_classifier = service_models.inpatient_classifier
+    spec_model = service_models.spec_model
+    yet_to_arrive_model = service_models.ed_yta_model
 
     # Use calibrated pipeline if available for ED classifier
     if ed_classifier is not None:
@@ -713,9 +762,18 @@ def _prepare_base_probabilities(
                 axis=1,
             )
         else:
+            if x1 is None or y1 is None or x2 is None or y2 is None:
+                raise ValueError(
+                    "x1, y1, x2, y2 are required for parametric admission-in-window probabilities"
+                )
             prob_admission_in_window = ed_snapshots.apply(
                 lambda row: calculate_probability(
-                    row["elapsed_los"], prediction_window, x1, y1, x2, y2
+                    row["elapsed_los"],
+                    prediction_window,
+                    float(x1),
+                    float(y1),
+                    float(x2),
+                    float(y2),
                 ),
                 axis=1,
             )
@@ -871,10 +929,10 @@ def _create_flow_inputs(
     elective_yta_model: Optional[DirectAdmissionPredictor],
     prediction_time: Tuple[int, int],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
     prediction_date: Optional[date] = None,
 ) -> Dict[str, Dict[str, FlowInputs]]:
     """Create FlowInputs objects for inflows and outflows.
@@ -903,8 +961,16 @@ def _create_flow_inputs(
 
     # Parametric YTA models need x1/y1/x2/y2; empirical and direct do not.
     if isinstance(yet_to_arrive_model, ParametricIncomingAdmissionPredictor):
+        if x1 is None or y1 is None or x2 is None or y2 is None:
+            raise ValueError(
+                "x1, y1, x2, y2 are required when ed_yta_model is parametric"
+            )
         ed_yta_mean = _safe_predict_mean(
-            yet_to_arrive_model, x1=x1, y1=y1, x2=x2, y2=y2
+            yet_to_arrive_model,
+            x1=float(x1),
+            y1=float(y1),
+            x2=float(x2),
+            y2=float(y2),
         )
     else:
         ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
@@ -965,35 +1031,16 @@ def _create_flow_inputs(
 
 
 def _build_legacy_flows(
-    models: Tuple[
-        Optional[TrainedClassifier],
-        Optional[TrainedClassifier],
-        Optional[
-            Union[
-                SequenceToOutcomePredictor,
-                ValueToOutcomePredictor,
-                MultiSubgroupPredictor,
-            ]
-        ],
-        Optional[
-            Union[
-                ParametricIncomingAdmissionPredictor,
-                EmpiricalIncomingAdmissionPredictor,
-            ]
-        ],
-        Optional[DirectAdmissionPredictor],
-        Optional[DirectAdmissionPredictor],
-        Optional[TransferProbabilityEstimator],
-    ],
+    service_models: ServiceModels,
     prediction_time: Tuple[int, int],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
     specialties: List[str],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    x1: Optional[float],
+    y1: Optional[float],
+    x2: Optional[float],
+    y2: Optional[float],
     base_probs: Dict[str, Any],
     prediction_date: Optional[date] = None,
 ) -> Dict[str, Dict[str, Any]]:
@@ -1004,15 +1051,9 @@ def _build_legacy_flows(
     dict
         Dictionary mapping specialty to temporary flow data
     """
-    (
-        ed_classifier,
-        inpatient_classifier,
-        spec_model,
-        yet_to_arrive_model,
-        non_ed_yta_model,
-        elective_yta_model,
-        transfer_model,
-    ) = models
+    yet_to_arrive_model = service_models.ed_yta_model
+    non_ed_yta_model = service_models.non_ed_yta_model
+    elective_yta_model = service_models.elective_yta_model
 
     # Extract prepared data
     ed_snapshots = base_probs["ed_snapshots"]
@@ -1135,35 +1176,39 @@ def _finalise_service_data(
 
 
 def build_service_data(
-    models: Tuple[
-        Optional[TrainedClassifier],
-        Optional[TrainedClassifier],
-        Optional[
-            Union[
-                SequenceToOutcomePredictor,
-                ValueToOutcomePredictor,
-                MultiSubgroupPredictor,
-            ]
+    models: Union[
+        ServiceModels,
+        Tuple[
+            Optional[TrainedClassifier],
+            Optional[TrainedClassifier],
+            Optional[
+                Union[
+                    SequenceToOutcomePredictor,
+                    ValueToOutcomePredictor,
+                    MultiSubgroupPredictor,
+                ]
+            ],
+            Optional[
+                Union[
+                    ParametricIncomingAdmissionPredictor,
+                    EmpiricalIncomingAdmissionPredictor,
+                ]
+            ],
+            Optional[DirectAdmissionPredictor],
+            Optional[DirectAdmissionPredictor],
+            Optional[TransferProbabilityEstimator],
         ],
-        Optional[
-            Union[
-                ParametricIncomingAdmissionPredictor,
-                EmpiricalIncomingAdmissionPredictor,
-            ]
-        ],
-        Optional[DirectAdmissionPredictor],
-        Optional[DirectAdmissionPredictor],
-        Optional[TransferProbabilityEstimator],
     ],
     prediction_time: Tuple[int, int],
-    ed_snapshots: pd.DataFrame,
-    inpatient_snapshots: pd.DataFrame,
+    ed_snapshots: Optional[pd.DataFrame],
+    inpatient_snapshots: Optional[pd.DataFrame],
     specialties: List[str],
     prediction_window,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    flow_selection: FlowSelection,
+    x1: Optional[float] = None,
+    y1: Optional[float] = None,
+    x2: Optional[float] = None,
+    y2: Optional[float] = None,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
     prediction_date: Optional[date] = None,
@@ -1177,33 +1222,39 @@ def build_service_data(
 
     Parameters
     ----------
-    models : tuple
-        Tuple of seven trained models (or None if not used):
+    models : ServiceModels or tuple of length 7
+        Either a `ServiceModels` instance (`patientflow.model_artifacts`) or
+        the legacy seven-tuple of optional trained objects (`None` allowed in
+        unused slots):
 
-        - ed_classifier: TrainedClassifier for ED admission probability prediction
-        - inpatient_classifier: TrainedClassifier for inpatient departure probability prediction
-        - spec_model: SequenceToOutcomePredictor | ValueToOutcomePredictor | MultiSubgroupPredictor
-          for specialty assignment probabilities
-        - ed_yta_model: ParametricIncomingAdmissionPredictor | EmpiricalIncomingAdmissionPredictor
-          for ED yet-to-arrive predictions
-        - non_ed_yta_model: DirectAdmissionPredictor for non-ED emergency predictions
-        - elective_yta_model: DirectAdmissionPredictor for elective predictions
-        - transfer_model: TransferProbabilityEstimator for internal transfer predictions
+        - `ed_classifier`: `TrainedClassifier` for ED admission probability
+        - `inpatient_classifier`: `TrainedClassifier` for inpatient departures
+        - `spec_model`: `SequenceToOutcomePredictor`,
+          `ValueToOutcomePredictor`, or `MultiSubgroupPredictor`
+        - `ed_yta_model`: `ParametricIncomingAdmissionPredictor` or
+          `EmpiricalIncomingAdmissionPredictor`
+        - `non_ed_yta_model`, `elective_yta_model`: `DirectAdmissionPredictor`
+        - `transfer_model`: `TransferProbabilityEstimator`
     prediction_time : tuple of (int, int)
         Hour and minute for inference time
     ed_snapshots : pandas.DataFrame or None
-        DataFrame of current ED patients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in the ED. If None, assumes no ED patients.
+        DataFrame of current ED patients. When provided, must include an
+        `elapsed_los` column as `timedelta`. May be `None` when
+        *flow_selection* does not include current ED patients.
     inpatient_snapshots : pandas.DataFrame or None
-        DataFrame of current inpatients. Must include 'elapsed_los' column as timedelta.
-        Each row represents a patient currently in a service ward. If None, assumes no inpatients.
+        DataFrame of current inpatients. When provided, must include
+        `elapsed_los` as `timedelta`. May be `None` when *flow_selection*
+        does not require inpatient-derived flows.
     specialties : list of str
         List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
-    x1, y1, x2, y2 : float
-        Parameters for the parametric admission-in-window curve. Used when
-        ed_yta_model is parametric and for computing in-ED window probabilities.
+    flow_selection : FlowSelection
+        Which flows are included; drives validation of models and snapshots.
+    x1, y1, x2, y2 : float, optional
+        Parameters for the parametric admission-in-window curve. Required when
+        the selected flows use a parametric ED YTA model or parametric
+        admission-in-window weighting for current ED patients.
     cdf_cut_points : list of float, optional
         Ignored in this function; present for API compatibility. If provided,
         has no effect on output.
@@ -1211,7 +1262,7 @@ def build_service_data(
         Whether to weight current ED admissions by their probability of being
         admitted within the prediction window.
     prediction_date : datetime.date, optional
-        Calendar date at the inference ``prediction_time``. When provided, YTA
+        Calendar date at the inference `prediction_time`. When provided, YTA
         Poisson means use per-weekday arrival profiles for models fitted with
         weekday stratification (the default for incoming admission predictors).
         When omitted (default), behaviour matches previous releases: pooled
@@ -1226,10 +1277,17 @@ def build_service_data(
     Raises
     ------
     TypeError
-        If any model is not of the expected type
+        If *models* is neither `ServiceModels` nor a seven-tuple, or if a
+        supplied model has an unexpected concrete type.
     ValueError
-        If required columns are missing, models are not fitted, or parameters
-        don't match between models and requested parameters
+        If *flow_selection* requires a model or snapshot that was not supplied,
+        if required columns are missing, if models are not fitted, or if
+        parameters disagree with training metadata.
+
+    See Also
+    --------
+    patientflow.predict.flow_selection_checks
+    patientflow.predict.demand.DemandPredictor.predict_service
 
     Notes
     -----
@@ -1243,19 +1301,24 @@ def build_service_data(
     6. Transfer arrivals from other subspecialties (converted to probability mass function)
 
     """
-    # 1. Validate inputs
+    service_models = _normalize_to_service_models(
+        models, prediction_time, prediction_window
+    )
     _validate_models_and_data(
-        models,
-        prediction_time,
+        service_models,
+        flow_selection,
         ed_snapshots,
         inpatient_snapshots,
-        prediction_window,
         specialties,
+        use_admission_in_window_prob=use_admission_in_window_prob,
+        x1=x1,
+        y1=y1,
+        x2=x2,
+        y2=y2,
     )
 
-    # 2. Prepare base probabilities
     base_probs = _prepare_base_probabilities(
-        models,
+        service_models,
         ed_snapshots,
         inpatient_snapshots,
         prediction_window,
@@ -1266,9 +1329,8 @@ def build_service_data(
         use_admission_in_window_prob,
     )
 
-    # 3. Build flows using legacy processing logic
     temp_service_data = _build_legacy_flows(
-        models,
+        service_models,
         prediction_time,
         ed_snapshots,
         inpatient_snapshots,
@@ -1282,9 +1344,11 @@ def build_service_data(
         prediction_date=prediction_date,
     )
 
-    # 4. Finalize with transfers
     return _finalise_service_data(
-        temp_service_data, models[6], specialties, prediction_window
+        temp_service_data,
+        service_models.transfer_model,
+        specialties,
+        prediction_window,
     )
 
 

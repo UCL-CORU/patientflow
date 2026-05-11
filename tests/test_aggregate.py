@@ -12,6 +12,8 @@ while maintaining comprehensive coverage of the core functionality.
 """
 
 import unittest
+import warnings
+
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timezone, timedelta
@@ -23,8 +25,11 @@ from patientflow.aggregate import (
     get_prob_dist_for_prediction_moment,
     get_prob_dist,
     get_prob_dist_using_survival_curve,
+    get_prob_dist_by_service,
+    _count_observed_admissions,
     model_input_to_pred_proba,
 )
+from patientflow.predict.types import FlowSelection
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
@@ -521,3 +526,40 @@ class TestAggregateRefactored(unittest.TestCase):
             call.kwargs["prediction_date"] for call in model.predict.call_args_list
         ]
         self.assertEqual(called_prediction_dates, snapshot_dates)
+
+
+class TestGetProbDistByService(unittest.TestCase):
+    def test_missing_ed_visits_raises_when_ed_current_included(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                None,
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                FlowSelection.default(),
+            )
+        self.assertIn("ed_visits", str(ctx.exception))
+
+    def test_count_observed_admissions_deprecation(self):
+        df = pd.DataFrame(
+            {
+                "snapshot_date": [date(2024, 1, 1)],
+                "prediction_time": [(10, 0)],
+                "is_admitted": [1],
+                "specialty": ["medical"],
+            }
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            _count_observed_admissions(
+                df,
+                date(2024, 1, 1),
+                (10, 0),
+                timedelta(hours=1),
+                specialty="medical",
+            )
+        self.assertTrue(
+            any(issubclass(x.category, DeprecationWarning) for x in w),
+        )

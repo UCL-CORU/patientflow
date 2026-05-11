@@ -31,7 +31,7 @@ class PredictionResults(dict):
 
     Examples
     --------
-    >>> results = predictor.predict_all_levels(bottom_level_data)
+    >>> results = predictor.predict_all_levels(bottom_level_data, FlowSelection.default())
     >>> # Prefixed ID (always works)
     >>> bundle = results["hospital:UCLH"]
     >>>
@@ -43,7 +43,7 @@ class PredictionResults(dict):
     -----
     All dict access methods support flexible key lookup using either prefixed
     IDs or original names. For ambiguous original names (appearing at multiple
-    levels), bracket access raises ``KeyError`` while ``get()`` returns the
+    levels), bracket access raises `KeyError` while `get()` returns the
     default value.
     """
 
@@ -158,8 +158,8 @@ class HierarchicalPredictor:
     def predict_all_levels(
         self,
         bottom_level_data: Dict[str, ServicePredictionInputs],
+        flow_selection: FlowSelection,
         top_level_id: Optional[str] = None,
-        flow_selection: Optional[FlowSelection] = None,
     ) -> "PredictionResults":
         """Run predictions for the entire hierarchy.
 
@@ -172,11 +172,11 @@ class HierarchicalPredictor:
             Dictionary mapping bottom-level entity IDs to their prediction inputs.
             Each value is a `ServicePredictionInputs` object containing:
 
-            - ``service_id``: Identifier for the service (must match the key)
-            - ``prediction_window``: Time window for predictions (typically a timedelta)
-            - ``inflows``: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta',
+            - `service_id`: Identifier for the service (must match the key)
+            - `prediction_window`: Time window for predictions (typically a timedelta)
+            - `inflows`: Dictionary of arrival flows (e.g., 'ed_current', 'ed_yta',
               'non_ed_yta', 'elective_yta', 'elective_transfers', 'emergency_transfers')
-            - ``outflows``: Dictionary of departure flows (e.g., 'elective_departures',
+            - `outflows`: Dictionary of departure flows (e.g., 'elective_departures',
               'emergency_departures')
 
             **Key Requirements:**
@@ -188,28 +188,35 @@ class HierarchicalPredictor:
               `patientflow.predict.service` module.
             - Only entities that exist in the hierarchy and are reachable from the
               specified `top_level_id` will have predictions generated.
+        flow_selection : FlowSelection
+            Selection specifying which flows to include.
         top_level_id : str, optional
             Root entity to start prediction from. If None, predicts for all
             top-level entities in the hierarchy. The entity ID must exist in the
             hierarchy and match exactly (case-sensitive).
-        flow_selection : FlowSelection, optional
-            Selection specifying which flows to include. If None, uses
-            FlowSelection.default() which includes all flows. Use this to restrict
-            predictions to specific patient flows (e.g., ED inflows only).
 
         Returns
         -------
         PredictionResults
             Dictionary-like container keyed by prefixed entity ID
-            (e.g. ``"specialty:medical"``, ``"division:Medical Division"``).
+            (e.g. `"specialty:medical"`, `"division:Medical Division"`).
             Supports access by original name when unambiguous. Values are
-            ``PredictionBundle`` objects with ``arrivals``, ``departures``,
-            and ``net_flow`` predictions. Entities without data in
-            ``bottom_level_data`` are excluded.
+            `PredictionBundle` objects with `arrivals`, `departures`,
+            and `net_flow` predictions. Entities without data in
+            `bottom_level_data` are excluded.
+
+        Raises
+        ------
+        ValueError
+            If `flow_selection.validate()` fails, if an entity is missing from
+            the hierarchy, or if child entity types cannot be resolved during
+            aggregation.
 
         Examples
         --------
-        >>> results = predictor.predict_all_levels(prediction_inputs)
+        >>> results = predictor.predict_all_levels(
+        ...     prediction_inputs, FlowSelection.default()
+        ... )
         >>> bundle = results["medical"]
         >>> print(f"Expected arrivals: {bundle.arrivals.expectation:.1f}")
 
@@ -217,7 +224,7 @@ class HierarchicalPredictor:
 
         >>> results = predictor.predict_all_levels(
         ...     prediction_inputs,
-        ...     flow_selection=FlowSelection.custom(
+        ...     FlowSelection.custom(
         ...         include_ed_current=True,
         ...         include_ed_yta=True,
         ...         include_non_ed_yta=False,
@@ -230,17 +237,13 @@ class HierarchicalPredictor:
 
         Notes
         -----
-        ``bottom_level_data`` is typically created using
-        ``build_service_data()`` from ``patientflow.predict.service``.
+        `bottom_level_data` is typically created using
+        `build_service_data()` from `patientflow.predict.service`.
 
-        Keys in ``bottom_level_data`` must exactly match (case-sensitive) the
+        Keys in `bottom_level_data` must exactly match (case-sensitive) the
         entity IDs at the bottom level of the hierarchy. Unmatched keys on
         either side are silently skipped.
         """
-        if flow_selection is None:
-            flow_selection = FlowSelection.default()
-
-        # Validate flow selection configuration
         flow_selection.validate()
 
         self.prediction_results.clear()
@@ -337,8 +340,9 @@ class HierarchicalPredictor:
                 entity_id,
                 entity_type.name,
                 child_bundles,
-                arrivals_max_support,
-                departures_max_support,
+                flow_selection,
+                arrivals_max_support=arrivals_max_support,
+                departures_max_support=departures_max_support,
             )
             self.prediction_results[prefixed_id] = bundle
 
