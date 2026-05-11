@@ -1,5 +1,5 @@
 import unittest
-from datetime import timedelta
+from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
@@ -551,6 +551,70 @@ class TestBuildServiceData(unittest.TestCase):
             y2=self.y2,
         )
         self.assertIn("paediatric", result)
+
+    def test_prediction_date_threads_to_yta_means(self):
+        """Weekday-skewed YTA fits yield different Poisson means when prediction_date differs."""
+        mon = pd.Timestamp("2024-06-03 07:30:00")
+        tue = pd.Timestamp("2024-06-04 07:30:00")
+        rows = []
+        for _ in range(200):
+            rows.append(
+                {"arrival_datetime": mon, "specialty": "medical", "is_child": False}
+            )
+        for _ in range(5):
+            rows.append(
+                {"arrival_datetime": tue, "specialty": "medical", "is_child": False}
+            )
+        skewed_arrivals = pd.DataFrame(rows)
+
+        direct_non_ed = _create_direct_predictor(
+            self.prediction_window, self.train_df, skewed_arrivals
+        )
+        direct_elective = _create_direct_predictor(
+            self.prediction_window, self.train_df, skewed_arrivals
+        )
+        param_yta = _create_parametric_yta_model(
+            self.prediction_window, self.train_df, skewed_arrivals
+        )
+        models = (
+            self.admissions_model,
+            self.inpatient_discharge_model,
+            self.spec_model,
+            param_yta,
+            direct_non_ed,
+            direct_elective,
+            self.transfer_model,
+        )
+        ed_snapshots = self._make_snapshots(20)
+        inpatient_snapshots = self._make_inpatient_snapshots(10)
+        base_kwargs = dict(
+            models=models,
+            prediction_time=self.prediction_time,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+        mon_date = date(2024, 6, 3)
+        tue_date = date(2024, 6, 4)
+        r_mon = build_service_data(**base_kwargs, prediction_date=mon_date)
+        r_tue = build_service_data(**base_kwargs, prediction_date=tue_date)
+        lam_mon = r_mon["medical"].inflows["elective_yta"].distribution
+        lam_tue = r_tue["medical"].inflows["elective_yta"].distribution
+        self.assertIsInstance(lam_mon, float)
+        self.assertIsInstance(lam_tue, float)
+        self.assertGreater(abs(lam_mon - lam_tue), 1e-6)
+
+        r_none_a = build_service_data(**base_kwargs)
+        r_none_b = build_service_data(**base_kwargs)
+        self.assertEqual(
+            r_none_a["medical"].inflows["elective_yta"].distribution,
+            r_none_b["medical"].inflows["elective_yta"].distribution,
+        )
 
 
 class TestComputeTransferArrivals(unittest.TestCase):

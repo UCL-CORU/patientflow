@@ -14,6 +14,7 @@ schemes) implemented elsewhere.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
@@ -836,6 +837,7 @@ def _create_flow_inputs(
     y1: float,
     x2: float,
     y2: float,
+    prediction_date: Optional[date] = None,
 ) -> Dict[str, Dict[str, FlowInputs]]:
     """Create FlowInputs objects for inflows and outflows.
 
@@ -856,6 +858,7 @@ def _create_flow_inputs(
                 prediction_time=prediction_time,
                 prediction_window=prediction_window,
                 filter_key=spec,
+                prediction_date=prediction_date,
                 **kwargs,
             )
         )
@@ -954,6 +957,7 @@ def _build_legacy_flows(
     x2: float,
     y2: float,
     base_probs: Dict[str, Any],
+    prediction_date: Optional[date] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Build flows for all specialties using processing logic.
 
@@ -1029,6 +1033,7 @@ def _build_legacy_flows(
             y1,
             x2,
             y2,
+            prediction_date=prediction_date,
         )
 
         # Store in temporary dictionary structure
@@ -1123,6 +1128,7 @@ def build_service_data(
     y2: float,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
+    prediction_date: Optional[date] = None,
 ) -> Dict[str, ServicePredictionInputs]:
     """Build per-service inputs for downstream roll-up.
 
@@ -1166,6 +1172,12 @@ def build_service_data(
     use_admission_in_window_prob : bool, default=True
         Whether to weight current ED admissions by their probability of being
         admitted within the prediction window.
+    prediction_date : datetime.date, optional
+        Calendar date at the inference ``prediction_time``. When provided, YTA
+        Poisson means use per-weekday arrival profiles for models fitted with
+        weekday stratification (the default for incoming admission predictors).
+        When omitted (default), behaviour matches previous releases: pooled
+        profiles are used and legacy callers stay warning-free.
 
     Returns
     -------
@@ -1229,6 +1241,7 @@ def build_service_data(
         x2,
         y2,
         base_probs,
+        prediction_date=prediction_date,
     )
 
     # 4. Finalize with transfers
