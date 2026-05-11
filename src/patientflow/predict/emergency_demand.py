@@ -62,35 +62,14 @@ def warn_specialty_mismatch(
     *,
     stacklevel: int = 3,
 ) -> None:
-    """Emit warnings when requested and trained specialty sets diverge.
+    """Backward-compatible re-export; implementation in ``predict.service``."""
+    from patientflow.predict.service import (
+        warn_specialty_mismatch as _warn_specialty_mismatch,
+    )
 
-    Parameters
-    ----------
-    requested : set
-        Specialties coming from the current request (e.g. Clarity).
-    trained : set
-        Specialties the model was trained on.
-    source_label : str
-        Human-readable name for the trained artefact, used in messages
-        (e.g. ``"yet-to-arrive model"`` or ``"special_category_dict"``).
-    stacklevel : int, optional
-        Passed to `warnings.warn()` so the warning points to the
-        caller rather than this helper.  Default is 3 (caller's caller).
-    """
-    new_in_request = requested - trained
-    missing_from_request = trained - requested
-    if new_in_request:
-        warnings.warn(
-            f"{len(new_in_request)} specialties found in the request but absent "
-            f"from the trained {source_label} (models may need retraining).",
-            stacklevel=stacklevel,
-        )
-    if missing_from_request:
-        warnings.warn(
-            f"{len(missing_from_request)} specialties present in the trained "
-            f"{source_label} but absent from the request.",
-            stacklevel=stacklevel,
-        )
+    return _warn_specialty_mismatch(
+        requested, trained, source_label, stacklevel=stacklevel
+    )
 
 
 def add_missing_columns(pipeline, df):

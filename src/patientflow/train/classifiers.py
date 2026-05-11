@@ -458,6 +458,7 @@ class FeatureMetadata(TypedDict):
 class DatasetMetadata(TypedDict):
     train_valid_test_set_no: Dict[str, Optional[int]]
     train_valid_test_class_balance: Dict[str, Optional[Dict[Any, float]]]
+    train_valid_test_positive_cases: Dict[str, Optional[int]]
 
 
 def get_feature_metadata(pipeline: Pipeline) -> FeatureMetadata:
@@ -530,7 +531,8 @@ def get_dataset_metadata(
     Returns
     -------
     DatasetMetadata
-        Dictionary containing dataset sizes and class balances
+        Dataset sizes, class balances, and positive-case counts per split
+        (``None`` for test when ``y_test`` was not supplied).
     """
     metadata: DatasetMetadata = {
         "train_valid_test_set_no": {
@@ -542,6 +544,13 @@ def get_dataset_metadata(
             "y_train_class_balance": calculate_class_balance(y_train),
             "y_valid_class_balance": calculate_class_balance(y_valid),
             "y_test_class_balance": calculate_class_balance(y_test)
+            if y_test is not None
+            else None,
+        },
+        "train_valid_test_positive_cases": {
+            "train_positive_cases": int((y_train == 1).sum()),
+            "valid_positive_cases": int((y_valid == 1).sum()),
+            "test_positive_cases": int((y_test == 1).sum())
             if y_test is not None
             else None,
         },
@@ -859,6 +868,7 @@ def train_classifier(
 
     trials_list: List[HyperParameterTrial] = []
     best_logloss = float("inf")
+    best_cv_results: Optional[Dict[str, float]] = None
 
     for params in ParameterGrid(grid):
         # Initialize model based on provided class
@@ -887,6 +897,7 @@ def train_classifier(
 
         if cv_results["valid_logloss"] < best_logloss:
             best_logloss = cv_results["valid_logloss"]
+            best_cv_results = dict(cv_results)
             best_model.pipeline = pipeline
 
             # Get feature metadata if available
@@ -982,6 +993,29 @@ def train_classifier(
             )
         else:
             best_training.test_results = None
+
+    if (
+        evaluate_on_test
+        and best_training.test_results is not None
+        and y_test is not None
+    ):
+        best_model.selected_eval_metrics = {
+            "split": "test",
+            "log_loss": float(best_training.test_results["test_logloss"]),
+            "auroc": float(best_training.test_results["test_auc"]),
+            "auprc": float(best_training.test_results["test_auprc"]),
+            "n_samples": int(len(y_test)),
+            "n_positive_cases": int((y_test == 1).sum()),
+        }
+    elif best_cv_results is not None:
+        best_model.selected_eval_metrics = {
+            "split": "valid",
+            "log_loss": float(best_cv_results["valid_logloss"]),
+            "auroc": float(best_cv_results["valid_auc"]),
+            "auprc": float(best_cv_results["valid_auprc"]),
+            "n_samples": int(len(y_valid)),
+            "n_positive_cases": int((y_valid == 1).sum()),
+        }
 
     return best_model
 

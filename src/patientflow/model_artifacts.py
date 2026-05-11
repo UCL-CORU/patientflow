@@ -19,10 +19,15 @@ TrainingResults
 
 TrainedClassifier
     Container for a trained model and associated training results.
+
+ServiceModels
+    Named slots for demand-prediction models plus ``to_tuple()`` for the legacy API.
 """
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Dict, Any, Union, Optional, Tuple
+
 from sklearn.pipeline import Pipeline
 
 
@@ -102,8 +107,55 @@ class TrainedClassifier:
         The scikit-learn pipeline representing the trained classifier.
     calibrated_pipeline : sklearn.pipeline.Pipeline or None, optional
         The calibrated version of the pipeline, if model calibration was performed.
+    selected_eval_metrics : dict of str to Any, optional
+        Headline metrics from the test split when test evaluation ran, otherwise
+        from aggregated time-series CV on the validation folds. Keys include
+        ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,
+        ``n_positive_cases``.
     """
 
     training_results: TrainingResults
     pipeline: Optional[Pipeline] = None
     calibrated_pipeline: Optional[Pipeline] = None
+    selected_eval_metrics: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ServiceModels:
+    """Named bundle for the seven demand-prediction model slots.
+
+    Use :meth:`to_tuple` when calling APIs that still expect the positional
+    7-tuple (ED classifier, inpatient classifier, specialty model, ED YTA,
+    non-ED YTA, elective YTA, transfer).
+    """
+
+    prediction_time: Tuple[int, int]
+    prediction_window: timedelta
+    ed_classifier: Optional[Any] = None
+    inpatient_classifier: Optional[Any] = None
+    spec_model: Optional[Any] = None
+    ed_yta_model: Optional[Any] = None
+    non_ed_yta_model: Optional[Any] = None
+    elective_yta_model: Optional[Any] = None
+    transfer_model: Optional[Any] = None
+
+    def to_tuple(
+        self,
+    ) -> Tuple[
+        Optional[Any],
+        Optional[Any],
+        Optional[Any],
+        Optional[Any],
+        Optional[Any],
+        Optional[Any],
+        Optional[Any],
+    ]:
+        return (
+            self.ed_classifier,
+            self.inpatient_classifier,
+            self.spec_model,
+            self.ed_yta_model,
+            self.non_ed_yta_model,
+            self.elective_yta_model,
+            self.transfer_model,
+        )
