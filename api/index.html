@@ -1192,6 +1192,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#patientflow.model_artifacts.ServiceModels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ServiceModels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#patientflow.model_artifacts.TrainedClassifier" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2417,6 +2428,17 @@
     <span class="md-ellipsis">
       
         compute_transfer_arrivals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.predict.service.warn_specialty_mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        warn_specialty_mismatch
       
     </span>
   </a>
@@ -6321,6 +6343,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#patientflow.model_artifacts.ServiceModels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ServiceModels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#patientflow.model_artifacts.TrainedClassifier" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7546,6 +7579,17 @@
     <span class="md-ellipsis">
       
         compute_transfer_arrivals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patientflow.predict.service.warn_specialty_mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        warn_specialty_mismatch
       
     </span>
   </a>
@@ -23812,28 +23856,7 @@ a warning message is printed, but execution continues.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
-<span class="normal">369</span>
-<span class="normal">370</span>
-<span class="normal">371</span>
-<span class="normal">372</span>
-<span class="normal">373</span>
-<span class="normal">374</span>
-<span class="normal">375</span>
-<span class="normal">376</span>
-<span class="normal">377</span>
-<span class="normal">378</span>
-<span class="normal">379</span>
-<span class="normal">380</span>
-<span class="normal">381</span>
-<span class="normal">382</span>
-<span class="normal">383</span>
-<span class="normal">384</span>
-<span class="normal">385</span>
-<span class="normal">386</span>
-<span class="normal">387</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">387</span>
 <span class="normal">388</span>
 <span class="normal">389</span>
 <span class="normal">390</span>
@@ -23886,7 +23909,28 @@ a warning message is printed, but execution continues.</p>
 <span class="normal">437</span>
 <span class="normal">438</span>
 <span class="normal">439</span>
-<span class="normal">440</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">data_from_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">data_from_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sort_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eval_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Loads data from a CSV file, with optional transformations. LEGACY!</span>
 
@@ -24037,28 +24081,7 @@ a warning message is printed, but execution continues.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">557</span>
-<span class="normal">558</span>
-<span class="normal">559</span>
-<span class="normal">560</span>
-<span class="normal">561</span>
-<span class="normal">562</span>
-<span class="normal">563</span>
-<span class="normal">564</span>
-<span class="normal">565</span>
-<span class="normal">566</span>
-<span class="normal">567</span>
-<span class="normal">568</span>
-<span class="normal">569</span>
-<span class="normal">570</span>
-<span class="normal">571</span>
-<span class="normal">572</span>
-<span class="normal">573</span>
-<span class="normal">574</span>
-<span class="normal">575</span>
-<span class="normal">576</span>
-<span class="normal">577</span>
-<span class="normal">578</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">578</span>
 <span class="normal">579</span>
 <span class="normal">580</span>
 <span class="normal">581</span>
@@ -24131,7 +24154,28 @@ a warning message is printed, but execution continues.</p>
 <span class="normal">648</span>
 <span class="normal">649</span>
 <span class="normal">650</span>
-<span class="normal">651</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_dict_cols</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+<span class="normal">651</span>
+<span class="normal">652</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_dict_cols</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Categorize DataFrame columns into predefined groups.</span>
 
@@ -24318,31 +24362,31 @@ a warning message is printed, but execution continues.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">530</span>
-<span class="normal">531</span>
-<span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span>
-<span class="normal">541</span>
-<span class="normal">542</span>
-<span class="normal">543</span>
-<span class="normal">544</span>
-<span class="normal">545</span>
-<span class="normal">546</span>
-<span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span>
-<span class="normal">550</span>
-<span class="normal">551</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">551</span>
 <span class="normal">552</span>
 <span class="normal">553</span>
-<span class="normal">554</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_model_key</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">):</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span>
+<span class="normal">569</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span>
+<span class="normal">574</span>
+<span class="normal">575</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_model_key</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a model name based on the time of day.</span>
 
@@ -24461,18 +24505,7 @@ Returns None if an error occurs during file reading or parsing.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">146</span>
 <span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
@@ -24541,7 +24574,18 @@ Returns None if an error occurs during file reading or parsing.</p>
 <span class="normal">212</span>
 <span class="normal">213</span>
 <span class="normal">214</span>
-<span class="normal">215</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_config_file</span><span class="p">(</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_config_file</span><span class="p">(</span>
     <span class="n">config_file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">return_start_end_dates</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -24827,28 +24871,7 @@ Returns None if an error occurs during file reading or parsing.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">443</span>
-<span class="normal">444</span>
-<span class="normal">445</span>
-<span class="normal">446</span>
-<span class="normal">447</span>
-<span class="normal">448</span>
-<span class="normal">449</span>
-<span class="normal">450</span>
-<span class="normal">451</span>
-<span class="normal">452</span>
-<span class="normal">453</span>
-<span class="normal">454</span>
-<span class="normal">455</span>
-<span class="normal">456</span>
-<span class="normal">457</span>
-<span class="normal">458</span>
-<span class="normal">459</span>
-<span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span>
-<span class="normal">463</span>
-<span class="normal">464</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">464</span>
 <span class="normal">465</span>
 <span class="normal">466</span>
 <span class="normal">467</span>
@@ -24911,7 +24934,28 @@ Returns None if an error occurs during file reading or parsing.</p>
 <span class="normal">524</span>
 <span class="normal">525</span>
 <span class="normal">526</span>
-<span class="normal">527</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_data</span><span class="p">(</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_data</span><span class="p">(</span>
     <span class="n">data_file_path</span><span class="p">,</span>
     <span class="n">file_name</span><span class="p">,</span>
     <span class="n">index_column</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -25014,8 +25058,29 @@ Returns None if an error occurs during file reading or parsing.</p>
     <div class="doc doc-contents ">
 
         <p>Parse command-line arguments for the training script.</p>
-<p>Returns:
-    argparse.Namespace: The parsed arguments containing 'data_folder_name' and 'uclh' keys.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" title="argparse.Namespace" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace">Namespace</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parsed arguments; includes <code>data_folder_name</code> and <code>uclh</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
@@ -25041,12 +25106,16 @@ Returns None if an error occurs during file reading or parsing.</p>
 <span class="normal">66</span>
 <span class="normal">67</span>
 <span class="normal">68</span>
-<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">:</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parse_args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse command-line arguments for the training script.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        argparse.Namespace: The parsed arguments containing &#39;data_folder_name&#39; and &#39;uclh&#39; keys.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    argparse.Namespace</span>
+<span class="sd">        Parsed arguments; includes ``data_folder_name`` and ``uclh``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Train emergency demand models&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
@@ -25141,28 +25210,7 @@ or None for empty/null values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span>
-<span class="normal">349</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
 <span class="normal">350</span>
 <span class="normal">351</span>
 <span class="normal">352</span>
@@ -25176,7 +25224,28 @@ or None for empty/null values.</p>
 <span class="normal">360</span>
 <span class="normal">361</span>
 <span class="normal">362</span>
-<span class="normal">363</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">safe_literal_eval</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">safe_literal_eval</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Safely evaluate a string literal into a Python object.</span>
 <span class="sd">    Handles list-like strings by converting them to lists.</span>
@@ -25320,28 +25389,7 @@ or None for empty/null values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">293</span>
 <span class="normal">294</span>
 <span class="normal">295</span>
 <span class="normal">296</span>
@@ -25373,7 +25421,28 @@ or None for empty/null values.</p>
 <span class="normal">322</span>
 <span class="normal">323</span>
 <span class="normal">324</span>
-<span class="normal">325</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_data_file_names</span><span class="p">(</span><span class="n">uclh</span><span class="p">,</span> <span class="n">data_file_path</span><span class="p">,</span> <span class="n">config_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_data_file_names</span><span class="p">(</span><span class="n">uclh</span><span class="p">,</span> <span class="n">data_file_path</span><span class="p">,</span> <span class="n">config_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Set file locations based on UCLH or default data source.</span>
 
@@ -25444,33 +25513,162 @@ or None for empty/null values.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Sets up the file paths</p>
-<p>Args:
-    project_root (Path): Root path of the project
-    data_folder_name (str): Name of the folder where data files are located
-    train_dttm (Optional[str], optional): A string representation of the datetime at which training commenced. Defaults to None
-    inference_time (bool, optional): A flag indicating whether it is inference time or not. Defaults to False
-    config_file (str, optional): Name of config file. Defaults to "config.yaml"
-    prefix (Optional[str], optional): String to prefix model folder names. Defaults to None
-    verbose (bool, optional): Whether to print path information. Defaults to True</p>
-<p>Returns:
-    tuple: Contains (data_file_path, media_file_path, model_file_path, config_path)</p>
+        <p>Sets up the file paths.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>project_root</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Root path of the project.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>data_folder_name</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name of the folder where data files are located.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>train_dttm</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>String representation of the datetime at which training commenced.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>inference_time</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, skip creating model/media directories (inference-only run).</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>config_file</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name of the config file under <code>project_root</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#34;config.yaml&#34;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>prefix</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Prefix for model folder names under <code>trained-models</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>verbose</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to print path information.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>tuple of Path</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>(data_file_path, media_file_path, model_file_path, config_path)</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">229</span>
 <span class="normal">230</span>
 <span class="normal">231</span>
 <span class="normal">232</span>
@@ -25510,7 +25708,28 @@ or None for empty/null values.</p>
 <span class="normal">266</span>
 <span class="normal">267</span>
 <span class="normal">268</span>
-<span class="normal">269</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_file_paths</span><span class="p">(</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_file_paths</span><span class="p">(</span>
     <span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">data_folder_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">train_dttm</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -25520,19 +25739,29 @@ or None for empty/null values.</p>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Sets up the file paths</span>
+<span class="sd">    Sets up the file paths.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        project_root (Path): Root path of the project</span>
-<span class="sd">        data_folder_name (str): Name of the folder where data files are located</span>
-<span class="sd">        train_dttm (Optional[str], optional): A string representation of the datetime at which training commenced. Defaults to None</span>
-<span class="sd">        inference_time (bool, optional): A flag indicating whether it is inference time or not. Defaults to False</span>
-<span class="sd">        config_file (str, optional): Name of config file. Defaults to &quot;config.yaml&quot;</span>
-<span class="sd">        prefix (Optional[str], optional): String to prefix model folder names. Defaults to None</span>
-<span class="sd">        verbose (bool, optional): Whether to print path information. Defaults to True</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    project_root : Path</span>
+<span class="sd">        Root path of the project.</span>
+<span class="sd">    data_folder_name : str</span>
+<span class="sd">        Name of the folder where data files are located.</span>
+<span class="sd">    train_dttm : str, optional</span>
+<span class="sd">        String representation of the datetime at which training commenced.</span>
+<span class="sd">    inference_time : bool, default=False</span>
+<span class="sd">        If True, skip creating model/media directories (inference-only run).</span>
+<span class="sd">    config_file : str, default=&quot;config.yaml&quot;</span>
+<span class="sd">        Name of the config file under ``project_root``.</span>
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        Prefix for model folder names under ``trained-models``.</span>
+<span class="sd">    verbose : bool, default=True</span>
+<span class="sd">        Whether to print path information.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        tuple: Contains (data_file_path, media_file_path, model_file_path, config_path)</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of Path</span>
+<span class="sd">        ``(data_file_path, media_file_path, model_file_path, config_path)``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="o">/</span> <span class="n">config_file</span>
@@ -25582,22 +25811,124 @@ or None for empty/null values.</p>
         <p>Sets project root path from environment variable or infers it from current path.</p>
 <p>First checks specified environment variable for project root path.
 If not found, searches current path hierarchy for highest-level 'patientflow' directory.</p>
-<p>Args:
-    env_var (Optional[str]): Name of environment variable containing project root path
-    verbose (bool): Whether to print status messages. Default True.</p>
-<p>Returns:
-    Path: Validated project root path</p>
-<p>Raises:
-    ValueError: If environment variable not set and 'patientflow' not found in path
-    NotADirectoryError: If path doesn't exist
-    TypeError: If env_var is not None and not a string</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>env_var</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Name of environment variable containing project root path.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>verbose</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to print status messages.</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Validated project root path.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#NotADirectoryError">NotADirectoryError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the path from the environment variable does not exist or is not a directory.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If the project root cannot be determined, or if converting <code>env_path</code> to <code>Path</code> fails (some cases are re-raised after logging).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If converting <code>env_path</code> to <code>Path</code> raises <code>TypeError</code> (re-raised after logging).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/load.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 74</span>
 <span class="normal"> 75</span>
 <span class="normal"> 76</span>
 <span class="normal"> 77</span>
@@ -25655,24 +25986,44 @@ If not found, searches current path hierarchy for highest-level 'patientflow' di
 <span class="normal">129</span>
 <span class="normal">130</span>
 <span class="normal">131</span>
-<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_project_root</span><span class="p">(</span><span class="n">env_var</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_project_root</span><span class="p">(</span><span class="n">env_var</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Sets project root path from environment variable or infers it from current path.</span>
 
 <span class="sd">    First checks specified environment variable for project root path.</span>
 <span class="sd">    If not found, searches current path hierarchy for highest-level &#39;patientflow&#39; directory.</span>
 
-<span class="sd">    Args:</span>
-<span class="sd">        env_var (Optional[str]): Name of environment variable containing project root path</span>
-<span class="sd">        verbose (bool): Whether to print status messages. Default True.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    env_var : str, optional</span>
+<span class="sd">        Name of environment variable containing project root path.</span>
+<span class="sd">    verbose : bool, default=True</span>
+<span class="sd">        Whether to print status messages.</span>
 
-<span class="sd">    Returns:</span>
-<span class="sd">        Path: Validated project root path</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pathlib.Path</span>
+<span class="sd">        Validated project root path.</span>
 
-<span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If environment variable not set and &#39;patientflow&#39; not found in path</span>
-<span class="sd">        NotADirectoryError: If path doesn&#39;t exist</span>
-<span class="sd">        TypeError: If env_var is not None and not a string</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    NotADirectoryError</span>
+<span class="sd">        If the path from the environment variable does not exist or is not a directory.</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the project root cannot be determined, or if converting ``env_path`` to ``Path`` fails (some cases are re-raised after logging).</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        If converting ``env_path`` to ``Path`` raises ``TypeError`` (re-raised after logging).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Only try to get env path if env_var is provided</span>
     <span class="n">env_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="n">env_var</span><span class="p">)</span> <span class="k">if</span> <span class="n">env_var</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
@@ -25810,6 +26161,19 @@ various types of model evaluation outputs and metadata.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="ServiceModels
+
+
+  
+      dataclass
+   (patientflow.model_artifacts.ServiceModels)" href="#patientflow.model_artifacts.ServiceModels">ServiceModels</a></code></td>
+            <td>
+              <div class="doc-md-description">
+                <p>Named slots for demand-prediction models plus <code>to_tuple()</code> for the legacy API.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -25909,12 +26273,7 @@ various types of model evaluation outputs and metadata.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
-<span class="normal">50</span>
-<span class="normal">51</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
 <span class="normal">52</span>
 <span class="normal">53</span>
 <span class="normal">54</span>
@@ -25926,7 +26285,12 @@ various types of model evaluation outputs and metadata.</p>
 <span class="normal">60</span>
 <span class="normal">61</span>
 <span class="normal">62</span>
-<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FoldResults</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Store evaluation metrics for a single fold.</span>
@@ -26034,12 +26398,7 @@ various types of model evaluation outputs and metadata.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
-<span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span>
 <span class="normal">37</span>
@@ -26048,7 +26407,12 @@ various types of model evaluation outputs and metadata.</p>
 <span class="normal">40</span>
 <span class="normal">41</span>
 <span class="normal">42</span>
-<span class="normal">43</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">HyperParameterTrial</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Container for a single hyperparameter tuning trial.</span>
@@ -26063,6 +26427,140 @@ various types of model evaluation outputs and metadata.</p>
 
     <span class="n">parameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="n">cv_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="patientflow.model_artifacts.ServiceModels" class="doc doc-heading">
+            <code>ServiceModels</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Named bundle for the seven demand-prediction model slots.</p>
+<p>Use :meth:<code>to_tuple</code> when calling APIs that still expect the positional
+7-tuple (ED classifier, inpatient classifier, specialty model, ED YTA,
+non-ED YTA, elective YTA, transfer).</p>
+
+
+
+
+
+
+
+
+              <details class="mkdocstrings-source">
+                <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ServiceModels</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Named bundle for the seven demand-prediction model slots.</span>
+
+<span class="sd">    Use :meth:`to_tuple` when calling APIs that still expect the positional</span>
+<span class="sd">    7-tuple (ED classifier, inpatient classifier, specialty model, ED YTA,</span>
+<span class="sd">    non-ED YTA, elective YTA, transfer).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span>
+    <span class="n">ed_classifier</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">inpatient_classifier</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">spec_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ed_yta_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">non_ed_yta_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">elective_yta_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">transfer_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_tuple</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+        <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="p">]:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ed_classifier</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inpatient_classifier</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spec_model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ed_yta_model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">non_ed_yta_model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">elective_yta_model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transfer_model</span><span class="p">,</span>
+        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -26157,6 +26655,20 @@ various types of model evaluation outputs and metadata.</p>
               </div>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="patientflow.model_artifacts.TrainedClassifier.selected_eval_metrics">selected_eval_metrics</span></code></td>
+            <td>
+                  <code>dict of str to Any, optional</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Headline metrics from the test split when test evaluation ran, otherwise
+from aggregated time-series CV on the validation folds. Keys include
+<code>split</code>, <code>log_loss</code>, <code>auroc</code>, <code>auprc</code>, <code>n_samples</code>,
+<code>n_positive_cases</code>.</p>
+              </div>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -26169,12 +26681,7 @@ various types of model evaluation outputs and metadata.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
@@ -26186,7 +26693,18 @@ various types of model evaluation outputs and metadata.</p>
 <span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
-<span class="normal">109</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainedClassifier</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Container for trained model artifacts and their associated information.</span>
@@ -26199,11 +26717,17 @@ various types of model evaluation outputs and metadata.</p>
 <span class="sd">        The scikit-learn pipeline representing the trained classifier.</span>
 <span class="sd">    calibrated_pipeline : sklearn.pipeline.Pipeline or None, optional</span>
 <span class="sd">        The calibrated version of the pipeline, if model calibration was performed.</span>
+<span class="sd">    selected_eval_metrics : dict of str to Any, optional</span>
+<span class="sd">        Headline metrics from the test split when test evaluation ran, otherwise</span>
+<span class="sd">        from aggregated time-series CV on the validation folds. Keys include</span>
+<span class="sd">        ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,</span>
+<span class="sd">        ``n_positive_cases``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">training_results</span><span class="p">:</span> <span class="n">TrainingResults</span>
     <span class="n">pipeline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Pipeline</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">calibrated_pipeline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Pipeline</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">selected_eval_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -26327,12 +26851,7 @@ various types of model evaluation outputs and metadata.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span>
 <span class="normal">74</span>
@@ -26350,7 +26869,12 @@ various types of model evaluation outputs and metadata.</p>
 <span class="normal">86</span>
 <span class="normal">87</span>
 <span class="normal">88</span>
-<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainingResults</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Store comprehensive evaluation metrics and metadata from model training.</span>
@@ -31484,7 +32008,28 @@ is not needed as the transformer handles column selection automatically.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 96</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
@@ -31534,28 +32079,7 @@ is not needed as the transformer handles column selection automatically.</p>
 <span class="normal">143</span>
 <span class="normal">144</span>
 <span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_missing_columns</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+<span class="normal">146</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_missing_columns</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add missing columns required by the prediction pipeline from the training data.</span>
 
 <span class="sd">    This is a legacy function for older model artifacts that don&#39;t include</span>
@@ -31939,7 +32463,28 @@ function named by the specialty if present, otherwise the 'default' filter.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">312</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
 <span class="normal">313</span>
 <span class="normal">314</span>
 <span class="normal">315</span>
@@ -32253,28 +32798,7 @@ function named by the specialty if present, otherwise the 'default' filter.</p>
 <span class="normal">623</span>
 <span class="normal">624</span>
 <span class="normal">625</span>
-<span class="normal">626</span>
-<span class="normal">627</span>
-<span class="normal">628</span>
-<span class="normal">629</span>
-<span class="normal">630</span>
-<span class="normal">631</span>
-<span class="normal">632</span>
-<span class="normal">633</span>
-<span class="normal">634</span>
-<span class="normal">635</span>
-<span class="normal">636</span>
-<span class="normal">637</span>
-<span class="normal">638</span>
-<span class="normal">639</span>
-<span class="normal">640</span>
-<span class="normal">641</span>
-<span class="normal">642</span>
-<span class="normal">643</span>
-<span class="normal">644</span>
-<span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_predictions</span><span class="p">(</span>
+<span class="normal">626</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_predictions</span><span class="p">(</span>
     <span class="n">models</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
         <span class="n">TrainedClassifier</span><span class="p">,</span>
         <span class="n">Union</span><span class="p">[</span>
@@ -32706,31 +33230,31 @@ the column transformer. Legacy pipelines expect numeric seconds for
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dataframe_for_classifier_predict_proba</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dataframe_for_classifier_predict_proba</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a copy of ``df`` for ``pipeline.predict_proba``.</span>
 
 <span class="sd">    Pipelines with a ``feature_columns`` step (``FeatureColumnTransformer``) are</span>
@@ -32857,7 +33381,28 @@ number of resources needed with the specified probability.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">197</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
 <span class="normal">198</span>
 <span class="normal">199</span>
 <span class="normal">200</span>
@@ -32865,28 +33410,7 @@ number of resources needed with the specified probability.</p>
 <span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_probability_threshold_index</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">205</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_probability_threshold_index</span><span class="p">(</span><span class="n">sequence</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Find index k such that P(X &gt;= k) &gt;= threshold.</span>
 
 <span class="sd">    Parameters</span>
@@ -33083,7 +33607,28 @@ distribution of specialties for each patient visit</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">229</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
 <span class="normal">230</span>
 <span class="normal">231</span>
 <span class="normal">232</span>
@@ -33142,28 +33687,7 @@ distribution of specialties for each patient visit</p>
 <span class="normal">285</span>
 <span class="normal">286</span>
 <span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_specialty_probs</span><span class="p">(</span>
+<span class="normal">288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_specialty_probs</span><span class="p">(</span>
     <span class="n">specialties</span><span class="p">,</span>
     <span class="n">specialty_model</span><span class="p">,</span>
     <span class="n">snapshots_df</span><span class="p">,</span>
@@ -33261,88 +33785,7 @@ distribution of specialties for each patient visit</p>
 
     <div class="doc doc-contents ">
 
-        <p>Emit warnings when requested and trained specialty sets diverge.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>requested</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#set">set</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Specialties coming from the current request (e.g. Clarity).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>trained</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#set">set</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Specialties the model was trained on.</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>source_label</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Human-readable name for the trained artefact, used in messages
-(e.g. <code>"yet-to-arrive model"</code> or <code>"special_category_dict"</code>).</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>stacklevel</code>
-            </td>
-            <td>
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Passed to <code>warnings.warn()</code> so the warning points to the
-caller rather than this helper.  Default is 3 (caller's caller).</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
+        <p>Backward-compatible re-export; implementation in <code>predict.service</code>.</p>
 
 
             <details class="mkdocstrings-source">
@@ -33361,63 +33804,21 @@ caller rather than this helper.  Default is 3 (caller's caller).</p>
 <span class="normal">69</span>
 <span class="normal">70</span>
 <span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span>
-<span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">warn_specialty_mismatch</span><span class="p">(</span>
+<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">warn_specialty_mismatch</span><span class="p">(</span>
     <span class="n">requested</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
     <span class="n">trained</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
     <span class="n">source_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">stacklevel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Emit warnings when requested and trained specialty sets diverge.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Backward-compatible re-export; implementation in ``predict.service``.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">patientflow.predict.service</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">warn_specialty_mismatch</span> <span class="k">as</span> <span class="n">_warn_specialty_mismatch</span><span class="p">,</span>
+    <span class="p">)</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    requested : set</span>
-<span class="sd">        Specialties coming from the current request (e.g. Clarity).</span>
-<span class="sd">    trained : set</span>
-<span class="sd">        Specialties the model was trained on.</span>
-<span class="sd">    source_label : str</span>
-<span class="sd">        Human-readable name for the trained artefact, used in messages</span>
-<span class="sd">        (e.g. ``&quot;yet-to-arrive model&quot;`` or ``&quot;special_category_dict&quot;``).</span>
-<span class="sd">    stacklevel : int, optional</span>
-<span class="sd">        Passed to `warnings.warn()` so the warning points to the</span>
-<span class="sd">        caller rather than this helper.  Default is 3 (caller&#39;s caller).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">new_in_request</span> <span class="o">=</span> <span class="n">requested</span> <span class="o">-</span> <span class="n">trained</span>
-    <span class="n">missing_from_request</span> <span class="o">=</span> <span class="n">trained</span> <span class="o">-</span> <span class="n">requested</span>
-    <span class="k">if</span> <span class="n">new_in_request</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_in_request</span><span class="p">)</span><span class="si">}</span><span class="s2"> specialties found in the request but absent &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;from the trained </span><span class="si">{</span><span class="n">source_label</span><span class="si">}</span><span class="s2"> (models may need retraining).&quot;</span><span class="p">,</span>
-            <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
-        <span class="p">)</span>
-    <span class="k">if</span> <span class="n">missing_from_request</span><span class="p">:</span>
-        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing_from_request</span><span class="p">)</span><span class="si">}</span><span class="s2"> specialties present in the trained &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source_label</span><span class="si">}</span><span class="s2"> but absent from the request.&quot;</span><span class="p">,</span>
-            <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
-        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">_warn_specialty_mismatch</span><span class="p">(</span>
+        <span class="n">requested</span><span class="p">,</span> <span class="n">trained</span><span class="p">,</span> <span class="n">source_label</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span>
+    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -47092,45 +47493,7 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 96</span>
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
@@ -47148,7 +47511,45 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 <span class="normal">111</span>
 <span class="normal">112</span>
 <span class="normal">113</span>
-<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FlowInputs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single source of patient flow.</span>
 
@@ -47260,17 +47661,17 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get human-readable display name.</span>
 
 <span class="sd">    Returns</span>
@@ -47422,45 +47823,7 @@ and easy extension to new flow types in the future.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
 <span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
@@ -47561,7 +47924,45 @@ and easy extension to new flow types in the future.</p>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ServicePredictionInputs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Input parameters for service demand prediction.</span>
 
@@ -48063,45 +48464,7 @@ don't match between models and requested parameters</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1099</span>
-<span class="normal">1100</span>
-<span class="normal">1101</span>
-<span class="normal">1102</span>
-<span class="normal">1103</span>
-<span class="normal">1104</span>
-<span class="normal">1105</span>
-<span class="normal">1106</span>
-<span class="normal">1107</span>
-<span class="normal">1108</span>
-<span class="normal">1109</span>
-<span class="normal">1110</span>
-<span class="normal">1111</span>
-<span class="normal">1112</span>
-<span class="normal">1113</span>
-<span class="normal">1114</span>
-<span class="normal">1115</span>
-<span class="normal">1116</span>
-<span class="normal">1117</span>
-<span class="normal">1118</span>
-<span class="normal">1119</span>
-<span class="normal">1120</span>
-<span class="normal">1121</span>
-<span class="normal">1122</span>
-<span class="normal">1123</span>
-<span class="normal">1124</span>
-<span class="normal">1125</span>
-<span class="normal">1126</span>
-<span class="normal">1127</span>
-<span class="normal">1128</span>
-<span class="normal">1129</span>
-<span class="normal">1130</span>
-<span class="normal">1131</span>
-<span class="normal">1132</span>
-<span class="normal">1133</span>
-<span class="normal">1134</span>
-<span class="normal">1135</span>
-<span class="normal">1136</span>
-<span class="normal">1137</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1137</span>
 <span class="normal">1138</span>
 <span class="normal">1139</span>
 <span class="normal">1140</span>
@@ -48214,7 +48577,45 @@ don't match between models and requested parameters</p>
 <span class="normal">1247</span>
 <span class="normal">1248</span>
 <span class="normal">1249</span>
-<span class="normal">1250</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span>
+<span class="normal">1253</span>
+<span class="normal">1254</span>
+<span class="normal">1255</span>
+<span class="normal">1256</span>
+<span class="normal">1257</span>
+<span class="normal">1258</span>
+<span class="normal">1259</span>
+<span class="normal">1260</span>
+<span class="normal">1261</span>
+<span class="normal">1262</span>
+<span class="normal">1263</span>
+<span class="normal">1264</span>
+<span class="normal">1265</span>
+<span class="normal">1266</span>
+<span class="normal">1267</span>
+<span class="normal">1268</span>
+<span class="normal">1269</span>
+<span class="normal">1270</span>
+<span class="normal">1271</span>
+<span class="normal">1272</span>
+<span class="normal">1273</span>
+<span class="normal">1274</span>
+<span class="normal">1275</span>
+<span class="normal">1276</span>
+<span class="normal">1277</span>
+<span class="normal">1278</span>
+<span class="normal">1279</span>
+<span class="normal">1280</span>
+<span class="normal">1281</span>
+<span class="normal">1282</span>
+<span class="normal">1283</span>
+<span class="normal">1284</span>
+<span class="normal">1285</span>
+<span class="normal">1286</span>
+<span class="normal">1287</span>
+<span class="normal">1288</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
     <span class="n">models</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
         <span class="n">Optional</span><span class="p">[</span><span class="n">TrainedClassifier</span><span class="p">],</span>
         <span class="n">Optional</span><span class="p">[</span><span class="n">TrainedClassifier</span><span class="p">],</span>
@@ -48570,45 +48971,7 @@ probabilities.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1253</span>
-<span class="normal">1254</span>
-<span class="normal">1255</span>
-<span class="normal">1256</span>
-<span class="normal">1257</span>
-<span class="normal">1258</span>
-<span class="normal">1259</span>
-<span class="normal">1260</span>
-<span class="normal">1261</span>
-<span class="normal">1262</span>
-<span class="normal">1263</span>
-<span class="normal">1264</span>
-<span class="normal">1265</span>
-<span class="normal">1266</span>
-<span class="normal">1267</span>
-<span class="normal">1268</span>
-<span class="normal">1269</span>
-<span class="normal">1270</span>
-<span class="normal">1271</span>
-<span class="normal">1272</span>
-<span class="normal">1273</span>
-<span class="normal">1274</span>
-<span class="normal">1275</span>
-<span class="normal">1276</span>
-<span class="normal">1277</span>
-<span class="normal">1278</span>
-<span class="normal">1279</span>
-<span class="normal">1280</span>
-<span class="normal">1281</span>
-<span class="normal">1282</span>
-<span class="normal">1283</span>
-<span class="normal">1284</span>
-<span class="normal">1285</span>
-<span class="normal">1286</span>
-<span class="normal">1287</span>
-<span class="normal">1288</span>
-<span class="normal">1289</span>
-<span class="normal">1290</span>
-<span class="normal">1291</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1291</span>
 <span class="normal">1292</span>
 <span class="normal">1293</span>
 <span class="normal">1294</span>
@@ -48739,7 +49102,45 @@ probabilities.</p>
 <span class="normal">1419</span>
 <span class="normal">1420</span>
 <span class="normal">1421</span>
-<span class="normal">1422</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
+<span class="normal">1422</span>
+<span class="normal">1423</span>
+<span class="normal">1424</span>
+<span class="normal">1425</span>
+<span class="normal">1426</span>
+<span class="normal">1427</span>
+<span class="normal">1428</span>
+<span class="normal">1429</span>
+<span class="normal">1430</span>
+<span class="normal">1431</span>
+<span class="normal">1432</span>
+<span class="normal">1433</span>
+<span class="normal">1434</span>
+<span class="normal">1435</span>
+<span class="normal">1436</span>
+<span class="normal">1437</span>
+<span class="normal">1438</span>
+<span class="normal">1439</span>
+<span class="normal">1440</span>
+<span class="normal">1441</span>
+<span class="normal">1442</span>
+<span class="normal">1443</span>
+<span class="normal">1444</span>
+<span class="normal">1445</span>
+<span class="normal">1446</span>
+<span class="normal">1447</span>
+<span class="normal">1448</span>
+<span class="normal">1449</span>
+<span class="normal">1450</span>
+<span class="normal">1451</span>
+<span class="normal">1452</span>
+<span class="normal">1453</span>
+<span class="normal">1454</span>
+<span class="normal">1455</span>
+<span class="normal">1456</span>
+<span class="normal">1457</span>
+<span class="normal">1458</span>
+<span class="normal">1459</span>
+<span class="normal">1460</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
     <span class="n">service_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ServicePredictionInputs</span><span class="p">]],</span>
     <span class="n">transfer_model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="n">services</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -48909,6 +49310,180 @@ probabilities.</p>
             <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">predicted_arrivals</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="patientflow.predict.service.warn_specialty_mismatch" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">warn_specialty_mismatch</span><span class="p">(</span><span class="n">requested</span><span class="p">,</span> <span class="n">trained</span><span class="p">,</span> <span class="n">source_label</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Emit warnings when requested and trained specialty sets diverge.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>requested</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#set">set</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Specialties coming from the current request (e.g. Clarity).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>trained</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#set">set</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Specialties the model was trained on.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>source_label</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable name for the trained artefact, used in messages
+(e.g. <code>"yet-to-arrive model"</code> or <code>"special_category_dict"</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>stacklevel</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Passed to <code>warnings.warn()</code> so the warning points to the
+caller rather than this helper.  Default is 3 (caller's caller).</p>
+              </div>
+            </td>
+            <td>
+                  <code>3</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">warn_specialty_mismatch</span><span class="p">(</span>
+    <span class="n">requested</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
+    <span class="n">trained</span><span class="p">:</span> <span class="nb">set</span><span class="p">,</span>
+    <span class="n">source_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">stacklevel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Emit warnings when requested and trained specialty sets diverge.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    requested : set</span>
+<span class="sd">        Specialties coming from the current request (e.g. Clarity).</span>
+<span class="sd">    trained : set</span>
+<span class="sd">        Specialties the model was trained on.</span>
+<span class="sd">    source_label : str</span>
+<span class="sd">        Human-readable name for the trained artefact, used in messages</span>
+<span class="sd">        (e.g. ``&quot;yet-to-arrive model&quot;`` or ``&quot;special_category_dict&quot;``).</span>
+<span class="sd">    stacklevel : int, optional</span>
+<span class="sd">        Passed to `warnings.warn()` so the warning points to the</span>
+<span class="sd">        caller rather than this helper.  Default is 3 (caller&#39;s caller).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_in_request</span> <span class="o">=</span> <span class="n">requested</span> <span class="o">-</span> <span class="n">trained</span>
+    <span class="n">missing_from_request</span> <span class="o">=</span> <span class="n">trained</span> <span class="o">-</span> <span class="n">requested</span>
+    <span class="k">if</span> <span class="n">new_in_request</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">new_in_request</span><span class="p">)</span><span class="si">}</span><span class="s2"> specialties found in the request but absent &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;from the trained </span><span class="si">{</span><span class="n">source_label</span><span class="si">}</span><span class="s2"> (models may need retraining).&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">missing_from_request</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing_from_request</span><span class="p">)</span><span class="si">}</span><span class="s2"> specialties present in the trained &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source_label</span><span class="si">}</span><span class="s2"> but absent from the request.&quot;</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
+        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -63635,7 +64210,7 @@ Use create_subgroup_system() from subgroup_predictor.py instead.</p>
         <p>This module implements a <code>SequenceToOutcomePredictor</code> class that models and predicts the probability distribution
 of sequences in categorical data. The class builds a model based on training data, where input sequences
 are mapped to specific outcome categories. It provides methods to fit the model, compute sequence-based
-probabilities, and make predictions on an unseen datatset of input sequences.</p>
+probabilities, and make predictions on an unseen dataset of input sequences.</p>
 
 
 <p><span class="doc-section-title">Classes:</span></p>
@@ -63651,15 +64226,19 @@ probabilities, and make predictions on an unseen datatset of input sequences.</p
             <td><code><span title="patientflow.predictors.sequence_to_outcome_predictor.SequenceToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin">SequenceToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin</span></code></td>
             <td>
               <div class="doc-md-description">
-                <p>A model that predicts the probability of ending in different outcome categories based on input sequences.
-Note: All sequence inputs are expected to be tuples. Lists will be automatically converted to tuples,
-and None values will be converted to empty tuples.</p>
+                <p>A model that predicts the probability of ending in different outcome categories based on input sequences.</p>
               </div>
             </td>
           </tr>
       </tbody>
     </table>
 
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>All sequence inputs are expected to be tuples. Lists are converted to tuples automatically, and <code>None</code>
+values are converted to empty tuples.</p>
+</details>
 
 
 
@@ -63861,10 +64440,7 @@ This class implements both the <code>fit</code> and <code>predict</code> methods
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/sequence_to_outcome_predictor.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 24</span>
-<span class="normal"> 25</span>
-<span class="normal"> 26</span>
-<span class="normal"> 27</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 27</span>
 <span class="normal"> 28</span>
 <span class="normal"> 29</span>
 <span class="normal"> 30</span>
@@ -64234,7 +64810,10 @@ This class implements both the <code>fit</code> and <code>predict</code> methods
 <span class="normal">394</span>
 <span class="normal">395</span>
 <span class="normal">396</span>
-<span class="normal">397</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SequenceToOutcomePredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">):</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SequenceToOutcomePredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A class to model sequence-based predictions for categorical data using input and grouping sequences.</span>
 <span class="sd">    This class implements both the `fit` and `predict` methods from the parent sklearn classes.</span>
@@ -64696,10 +65275,7 @@ ending in specific outcome variable categories.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/sequence_to_outcome_predictor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">180</span>
 <span class="normal">181</span>
 <span class="normal">182</span>
 <span class="normal">183</span>
@@ -64801,7 +65377,10 @@ ending in specific outcome variable categories.</p>
 <span class="normal">279</span>
 <span class="normal">280</span>
 <span class="normal">281</span>
-<span class="normal">282</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SequenceToOutcomePredictor&quot;</span><span class="p">:</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SequenceToOutcomePredictor&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fits the predictor based on training data by computing the proportion of each input variable sequence</span>
 <span class="sd">    ending in specific outcome variable categories.</span>
@@ -64984,10 +65563,7 @@ have been encountered. An empty tuple represents an entity with no observed cate
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/sequence_to_outcome_predictor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">364</span>
-<span class="normal">365</span>
-<span class="normal">366</span>
-<span class="normal">367</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">367</span>
 <span class="normal">368</span>
 <span class="normal">369</span>
 <span class="normal">370</span>
@@ -65017,7 +65593,10 @@ have been encountered. An empty tuple represents an entity with no observed cate
 <span class="normal">394</span>
 <span class="normal">395</span>
 <span class="normal">396</span>
-<span class="normal">397</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_sequence</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_sequence</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Predicts the probabilities of ending in various outcome categories for a given input sequence.</span>
 
@@ -71331,14 +71910,18 @@ methods to fit the model, compute probabilities, and make predictions on unseen 
             <td><code><span title="patientflow.predictors.value_to_outcome_predictor.ValueToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin">ValueToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin</span></code></td>
             <td>
               <div class="doc-md-description">
-                <p>A model that predicts the probability of ending in different outcome categories based on a single input value.
-Note: All inputs are expected to be strings. None values will be converted to empty strings during preprocessing.</p>
+                <p>A model that predicts the probability of ending in different outcome categories based on a single input value.</p>
               </div>
             </td>
           </tr>
       </tbody>
     </table>
 
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>All inputs are expected to be strings. <code>None</code> values are converted to empty strings during preprocessing.</p>
+</details>
 
 
 
@@ -71540,10 +72123,7 @@ This class implements both the <code>fit</code> and <code>predict</code> methods
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predictors/value_to_outcome_predictor.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 22</span>
-<span class="normal"> 23</span>
-<span class="normal"> 24</span>
-<span class="normal"> 25</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 25</span>
 <span class="normal"> 26</span>
 <span class="normal"> 27</span>
 <span class="normal"> 28</span>
@@ -71814,7 +72394,10 @@ This class implements both the <code>fit</code> and <code>predict</code> methods
 <span class="normal">293</span>
 <span class="normal">294</span>
 <span class="normal">295</span>
-<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ValueToOutcomePredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">):</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ValueToOutcomePredictor</span><span class="p">(</span><span class="n">BaseEstimator</span><span class="p">,</span> <span class="n">TransformerMixin</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A class to model predictions for categorical data using a single input value and grouping variable.</span>
 <span class="sd">    This class implements both the `fit` and `predict` methods from the parent sklearn classes.</span>
@@ -72180,10 +72763,7 @@ The weights dictionary will contain an empty string key ('') for any null values
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/value_to_outcome_predictor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
 <span class="normal">143</span>
 <span class="normal">144</span>
 <span class="normal">145</span>
@@ -72278,7 +72858,10 @@ The weights dictionary will contain an empty string key ('') for any null values
 <span class="normal">234</span>
 <span class="normal">235</span>
 <span class="normal">236</span>
-<span class="normal">237</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ValueToOutcomePredictor&quot;</span><span class="p">:</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ValueToOutcomePredictor&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fits the predictor based on training data by computing the proportion of each input value</span>
 <span class="sd">    ending in specific outcome variable categories.</span>
@@ -72453,10 +73036,7 @@ The weights dictionary will contain an empty string key ('') for any null values
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predictors/value_to_outcome_predictor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">274</span>
 <span class="normal">275</span>
 <span class="normal">276</span>
 <span class="normal">277</span>
@@ -72478,7 +73058,10 @@ The weights dictionary will contain an empty string key ('') for any null values
 <span class="normal">293</span>
 <span class="normal">294</span>
 <span class="normal">295</span>
-<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Predicts the probabilities of ending in various outcome categories for a given input value.</span>
 
@@ -77748,16 +78331,7 @@ columns get consistent kind and defaults.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">553</span>
-<span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
-<span class="normal">558</span>
-<span class="normal">559</span>
-<span class="normal">560</span>
-<span class="normal">561</span>
-<span class="normal">562</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">562</span>
 <span class="normal">563</span>
 <span class="normal">564</span>
 <span class="normal">565</span>
@@ -77785,7 +78359,16 @@ columns get consistent kind and defaults.</p>
 <span class="normal">587</span>
 <span class="normal">588</span>
 <span class="normal">589</span>
-<span class="normal">590</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_balance_info</span><span class="p">(</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span>
+<span class="normal">593</span>
+<span class="normal">594</span>
+<span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
+<span class="normal">598</span>
+<span class="normal">599</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_balance_info</span><span class="p">(</span>
     <span class="n">is_balanced</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">original_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">balanced_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -78088,16 +78671,7 @@ columns get consistent kind and defaults.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">593</span>
-<span class="normal">594</span>
-<span class="normal">595</span>
-<span class="normal">596</span>
-<span class="normal">597</span>
-<span class="normal">598</span>
-<span class="normal">599</span>
-<span class="normal">600</span>
-<span class="normal">601</span>
-<span class="normal">602</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">602</span>
 <span class="normal">603</span>
 <span class="normal">604</span>
 <span class="normal">605</span>
@@ -78112,7 +78686,16 @@ columns get consistent kind and defaults.</p>
 <span class="normal">614</span>
 <span class="normal">615</span>
 <span class="normal">616</span>
-<span class="normal">617</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_model</span><span class="p">(</span>
+<span class="normal">617</span>
+<span class="normal">618</span>
+<span class="normal">619</span>
+<span class="normal">620</span>
+<span class="normal">621</span>
+<span class="normal">622</span>
+<span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_model</span><span class="p">(</span>
     <span class="n">pipeline</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">X_test</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">y_test</span><span class="p">:</span> <span class="n">Series</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluate model on test set.</span>
@@ -78423,7 +79006,8 @@ columns get consistent kind and defaults.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Dictionary containing dataset sizes and class balances</p>
+                <p>Dataset sizes, class balances, and positive-case counts per split
+(<code>None</code> for test when <code>y_test</code> was not supplied).</p>
               </div>
             </td>
           </tr>
@@ -78433,8 +79017,7 @@ columns get consistent kind and defaults.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">505</span>
-<span class="normal">506</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">506</span>
 <span class="normal">507</span>
 <span class="normal">508</span>
 <span class="normal">509</span>
@@ -78478,7 +79061,16 @@ columns get consistent kind and defaults.</p>
 <span class="normal">547</span>
 <span class="normal">548</span>
 <span class="normal">549</span>
-<span class="normal">550</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_dataset_metadata</span><span class="p">(</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_dataset_metadata</span><span class="p">(</span>
     <span class="n">X_train</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">X_valid</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">y_train</span><span class="p">:</span> <span class="n">Series</span><span class="p">,</span>
@@ -78506,7 +79098,8 @@ columns get consistent kind and defaults.</p>
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    DatasetMetadata</span>
-<span class="sd">        Dictionary containing dataset sizes and class balances</span>
+<span class="sd">        Dataset sizes, class balances, and positive-case counts per split</span>
+<span class="sd">        (``None`` for test when ``y_test`` was not supplied).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="n">DatasetMetadata</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;train_valid_test_set_no&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -78518,6 +79111,13 @@ columns get consistent kind and defaults.</p>
             <span class="s2">&quot;y_train_class_balance&quot;</span><span class="p">:</span> <span class="n">calculate_class_balance</span><span class="p">(</span><span class="n">y_train</span><span class="p">),</span>
             <span class="s2">&quot;y_valid_class_balance&quot;</span><span class="p">:</span> <span class="n">calculate_class_balance</span><span class="p">(</span><span class="n">y_valid</span><span class="p">),</span>
             <span class="s2">&quot;y_test_class_balance&quot;</span><span class="p">:</span> <span class="n">calculate_class_balance</span><span class="p">(</span><span class="n">y_test</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">y_test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;train_valid_test_positive_cases&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;train_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_train</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+            <span class="s2">&quot;valid_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_valid</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+            <span class="s2">&quot;test_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_test</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
             <span class="k">if</span> <span class="n">y_test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
         <span class="p">},</span>
@@ -78623,8 +79223,7 @@ columns get consistent kind and defaults.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">463</span>
-<span class="normal">464</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">464</span>
 <span class="normal">465</span>
 <span class="normal">466</span>
 <span class="normal">467</span>
@@ -78662,7 +79261,8 @@ columns get consistent kind and defaults.</p>
 <span class="normal">499</span>
 <span class="normal">500</span>
 <span class="normal">501</span>
-<span class="normal">502</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_feature_metadata</span><span class="p">(</span><span class="n">pipeline</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureMetadata</span><span class="p">:</span>
+<span class="normal">502</span>
+<span class="normal">503</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_feature_metadata</span><span class="p">(</span><span class="n">pipeline</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureMetadata</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Extract feature names and importances from pipeline.</span>
 
@@ -79485,373 +80085,398 @@ satisfied with validation performance to avoid test set contamination.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">620</span>
-<span class="normal">621</span>
-<span class="normal">622</span>
-<span class="normal">623</span>
-<span class="normal">624</span>
-<span class="normal">625</span>
-<span class="normal">626</span>
-<span class="normal">627</span>
-<span class="normal">628</span>
-<span class="normal">629</span>
-<span class="normal">630</span>
-<span class="normal">631</span>
-<span class="normal">632</span>
-<span class="normal">633</span>
-<span class="normal">634</span>
-<span class="normal">635</span>
-<span class="normal">636</span>
-<span class="normal">637</span>
-<span class="normal">638</span>
-<span class="normal">639</span>
-<span class="normal">640</span>
-<span class="normal">641</span>
-<span class="normal">642</span>
-<span class="normal">643</span>
-<span class="normal">644</span>
-<span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span>
-<span class="normal">648</span>
-<span class="normal">649</span>
-<span class="normal">650</span>
-<span class="normal">651</span>
-<span class="normal">652</span>
-<span class="normal">653</span>
-<span class="normal">654</span>
-<span class="normal">655</span>
-<span class="normal">656</span>
-<span class="normal">657</span>
-<span class="normal">658</span>
-<span class="normal">659</span>
-<span class="normal">660</span>
-<span class="normal">661</span>
-<span class="normal">662</span>
-<span class="normal">663</span>
-<span class="normal">664</span>
-<span class="normal">665</span>
-<span class="normal">666</span>
-<span class="normal">667</span>
-<span class="normal">668</span>
-<span class="normal">669</span>
-<span class="normal">670</span>
-<span class="normal">671</span>
-<span class="normal">672</span>
-<span class="normal">673</span>
-<span class="normal">674</span>
-<span class="normal">675</span>
-<span class="normal">676</span>
-<span class="normal">677</span>
-<span class="normal">678</span>
-<span class="normal">679</span>
-<span class="normal">680</span>
-<span class="normal">681</span>
-<span class="normal">682</span>
-<span class="normal">683</span>
-<span class="normal">684</span>
-<span class="normal">685</span>
-<span class="normal">686</span>
-<span class="normal">687</span>
-<span class="normal">688</span>
-<span class="normal">689</span>
-<span class="normal">690</span>
-<span class="normal">691</span>
-<span class="normal">692</span>
-<span class="normal">693</span>
-<span class="normal">694</span>
-<span class="normal">695</span>
-<span class="normal">696</span>
-<span class="normal">697</span>
-<span class="normal">698</span>
-<span class="normal">699</span>
-<span class="normal">700</span>
-<span class="normal">701</span>
-<span class="normal">702</span>
-<span class="normal">703</span>
-<span class="normal">704</span>
-<span class="normal">705</span>
-<span class="normal">706</span>
-<span class="normal">707</span>
-<span class="normal">708</span>
-<span class="normal">709</span>
-<span class="normal">710</span>
-<span class="normal">711</span>
-<span class="normal">712</span>
-<span class="normal">713</span>
-<span class="normal">714</span>
-<span class="normal">715</span>
-<span class="normal">716</span>
-<span class="normal">717</span>
-<span class="normal">718</span>
-<span class="normal">719</span>
-<span class="normal">720</span>
-<span class="normal">721</span>
-<span class="normal">722</span>
-<span class="normal">723</span>
-<span class="normal">724</span>
-<span class="normal">725</span>
-<span class="normal">726</span>
-<span class="normal">727</span>
-<span class="normal">728</span>
-<span class="normal">729</span>
-<span class="normal">730</span>
-<span class="normal">731</span>
-<span class="normal">732</span>
-<span class="normal">733</span>
-<span class="normal">734</span>
-<span class="normal">735</span>
-<span class="normal">736</span>
-<span class="normal">737</span>
-<span class="normal">738</span>
-<span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span>
-<span class="normal">742</span>
-<span class="normal">743</span>
-<span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
-<span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span>
-<span class="normal">753</span>
-<span class="normal">754</span>
-<span class="normal">755</span>
-<span class="normal">756</span>
-<span class="normal">757</span>
-<span class="normal">758</span>
-<span class="normal">759</span>
-<span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span>
-<span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span>
-<span class="normal">776</span>
-<span class="normal">777</span>
-<span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span>
-<span class="normal">781</span>
-<span class="normal">782</span>
-<span class="normal">783</span>
-<span class="normal">784</span>
-<span class="normal">785</span>
-<span class="normal">786</span>
-<span class="normal">787</span>
-<span class="normal">788</span>
-<span class="normal">789</span>
-<span class="normal">790</span>
-<span class="normal">791</span>
-<span class="normal">792</span>
-<span class="normal">793</span>
-<span class="normal">794</span>
-<span class="normal">795</span>
-<span class="normal">796</span>
-<span class="normal">797</span>
-<span class="normal">798</span>
-<span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span>
-<span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
-<span class="normal">807</span>
-<span class="normal">808</span>
-<span class="normal">809</span>
-<span class="normal">810</span>
-<span class="normal">811</span>
-<span class="normal">812</span>
-<span class="normal">813</span>
-<span class="normal">814</span>
-<span class="normal">815</span>
-<span class="normal">816</span>
-<span class="normal">817</span>
-<span class="normal">818</span>
-<span class="normal">819</span>
-<span class="normal">820</span>
-<span class="normal">821</span>
-<span class="normal">822</span>
-<span class="normal">823</span>
-<span class="normal">824</span>
-<span class="normal">825</span>
-<span class="normal">826</span>
-<span class="normal">827</span>
-<span class="normal">828</span>
-<span class="normal">829</span>
-<span class="normal">830</span>
-<span class="normal">831</span>
-<span class="normal">832</span>
-<span class="normal">833</span>
-<span class="normal">834</span>
-<span class="normal">835</span>
-<span class="normal">836</span>
-<span class="normal">837</span>
-<span class="normal">838</span>
-<span class="normal">839</span>
-<span class="normal">840</span>
-<span class="normal">841</span>
-<span class="normal">842</span>
-<span class="normal">843</span>
-<span class="normal">844</span>
-<span class="normal">845</span>
-<span class="normal">846</span>
-<span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span>
-<span class="normal">851</span>
-<span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
-<span class="normal">856</span>
-<span class="normal">857</span>
-<span class="normal">858</span>
-<span class="normal">859</span>
-<span class="normal">860</span>
-<span class="normal">861</span>
-<span class="normal">862</span>
-<span class="normal">863</span>
-<span class="normal">864</span>
-<span class="normal">865</span>
-<span class="normal">866</span>
-<span class="normal">867</span>
-<span class="normal">868</span>
-<span class="normal">869</span>
-<span class="normal">870</span>
-<span class="normal">871</span>
-<span class="normal">872</span>
-<span class="normal">873</span>
-<span class="normal">874</span>
-<span class="normal">875</span>
-<span class="normal">876</span>
-<span class="normal">877</span>
-<span class="normal">878</span>
-<span class="normal">879</span>
-<span class="normal">880</span>
-<span class="normal">881</span>
-<span class="normal">882</span>
-<span class="normal">883</span>
-<span class="normal">884</span>
-<span class="normal">885</span>
-<span class="normal">886</span>
-<span class="normal">887</span>
-<span class="normal">888</span>
-<span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
-<span class="normal">892</span>
-<span class="normal">893</span>
-<span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span>
-<span class="normal">897</span>
-<span class="normal">898</span>
-<span class="normal">899</span>
-<span class="normal">900</span>
-<span class="normal">901</span>
-<span class="normal">902</span>
-<span class="normal">903</span>
-<span class="normal">904</span>
-<span class="normal">905</span>
-<span class="normal">906</span>
-<span class="normal">907</span>
-<span class="normal">908</span>
-<span class="normal">909</span>
-<span class="normal">910</span>
-<span class="normal">911</span>
-<span class="normal">912</span>
-<span class="normal">913</span>
-<span class="normal">914</span>
-<span class="normal">915</span>
-<span class="normal">916</span>
-<span class="normal">917</span>
-<span class="normal">918</span>
-<span class="normal">919</span>
-<span class="normal">920</span>
-<span class="normal">921</span>
-<span class="normal">922</span>
-<span class="normal">923</span>
-<span class="normal">924</span>
-<span class="normal">925</span>
-<span class="normal">926</span>
-<span class="normal">927</span>
-<span class="normal">928</span>
-<span class="normal">929</span>
-<span class="normal">930</span>
-<span class="normal">931</span>
-<span class="normal">932</span>
-<span class="normal">933</span>
-<span class="normal">934</span>
-<span class="normal">935</span>
-<span class="normal">936</span>
-<span class="normal">937</span>
-<span class="normal">938</span>
-<span class="normal">939</span>
-<span class="normal">940</span>
-<span class="normal">941</span>
-<span class="normal">942</span>
-<span class="normal">943</span>
-<span class="normal">944</span>
-<span class="normal">945</span>
-<span class="normal">946</span>
-<span class="normal">947</span>
-<span class="normal">948</span>
-<span class="normal">949</span>
-<span class="normal">950</span>
-<span class="normal">951</span>
-<span class="normal">952</span>
-<span class="normal">953</span>
-<span class="normal">954</span>
-<span class="normal">955</span>
-<span class="normal">956</span>
-<span class="normal">957</span>
-<span class="normal">958</span>
-<span class="normal">959</span>
-<span class="normal">960</span>
-<span class="normal">961</span>
-<span class="normal">962</span>
-<span class="normal">963</span>
-<span class="normal">964</span>
-<span class="normal">965</span>
-<span class="normal">966</span>
-<span class="normal">967</span>
-<span class="normal">968</span>
-<span class="normal">969</span>
-<span class="normal">970</span>
-<span class="normal">971</span>
-<span class="normal">972</span>
-<span class="normal">973</span>
-<span class="normal">974</span>
-<span class="normal">975</span>
-<span class="normal">976</span>
-<span class="normal">977</span>
-<span class="normal">978</span>
-<span class="normal">979</span>
-<span class="normal">980</span>
-<span class="normal">981</span>
-<span class="normal">982</span>
-<span class="normal">983</span>
-<span class="normal">984</span>
-<span class="normal">985</span>
-<span class="normal">986</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 629</span>
+<span class="normal"> 630</span>
+<span class="normal"> 631</span>
+<span class="normal"> 632</span>
+<span class="normal"> 633</span>
+<span class="normal"> 634</span>
+<span class="normal"> 635</span>
+<span class="normal"> 636</span>
+<span class="normal"> 637</span>
+<span class="normal"> 638</span>
+<span class="normal"> 639</span>
+<span class="normal"> 640</span>
+<span class="normal"> 641</span>
+<span class="normal"> 642</span>
+<span class="normal"> 643</span>
+<span class="normal"> 644</span>
+<span class="normal"> 645</span>
+<span class="normal"> 646</span>
+<span class="normal"> 647</span>
+<span class="normal"> 648</span>
+<span class="normal"> 649</span>
+<span class="normal"> 650</span>
+<span class="normal"> 651</span>
+<span class="normal"> 652</span>
+<span class="normal"> 653</span>
+<span class="normal"> 654</span>
+<span class="normal"> 655</span>
+<span class="normal"> 656</span>
+<span class="normal"> 657</span>
+<span class="normal"> 658</span>
+<span class="normal"> 659</span>
+<span class="normal"> 660</span>
+<span class="normal"> 661</span>
+<span class="normal"> 662</span>
+<span class="normal"> 663</span>
+<span class="normal"> 664</span>
+<span class="normal"> 665</span>
+<span class="normal"> 666</span>
+<span class="normal"> 667</span>
+<span class="normal"> 668</span>
+<span class="normal"> 669</span>
+<span class="normal"> 670</span>
+<span class="normal"> 671</span>
+<span class="normal"> 672</span>
+<span class="normal"> 673</span>
+<span class="normal"> 674</span>
+<span class="normal"> 675</span>
+<span class="normal"> 676</span>
+<span class="normal"> 677</span>
+<span class="normal"> 678</span>
+<span class="normal"> 679</span>
+<span class="normal"> 680</span>
+<span class="normal"> 681</span>
+<span class="normal"> 682</span>
+<span class="normal"> 683</span>
+<span class="normal"> 684</span>
+<span class="normal"> 685</span>
+<span class="normal"> 686</span>
+<span class="normal"> 687</span>
+<span class="normal"> 688</span>
+<span class="normal"> 689</span>
+<span class="normal"> 690</span>
+<span class="normal"> 691</span>
+<span class="normal"> 692</span>
+<span class="normal"> 693</span>
+<span class="normal"> 694</span>
+<span class="normal"> 695</span>
+<span class="normal"> 696</span>
+<span class="normal"> 697</span>
+<span class="normal"> 698</span>
+<span class="normal"> 699</span>
+<span class="normal"> 700</span>
+<span class="normal"> 701</span>
+<span class="normal"> 702</span>
+<span class="normal"> 703</span>
+<span class="normal"> 704</span>
+<span class="normal"> 705</span>
+<span class="normal"> 706</span>
+<span class="normal"> 707</span>
+<span class="normal"> 708</span>
+<span class="normal"> 709</span>
+<span class="normal"> 710</span>
+<span class="normal"> 711</span>
+<span class="normal"> 712</span>
+<span class="normal"> 713</span>
+<span class="normal"> 714</span>
+<span class="normal"> 715</span>
+<span class="normal"> 716</span>
+<span class="normal"> 717</span>
+<span class="normal"> 718</span>
+<span class="normal"> 719</span>
+<span class="normal"> 720</span>
+<span class="normal"> 721</span>
+<span class="normal"> 722</span>
+<span class="normal"> 723</span>
+<span class="normal"> 724</span>
+<span class="normal"> 725</span>
+<span class="normal"> 726</span>
+<span class="normal"> 727</span>
+<span class="normal"> 728</span>
+<span class="normal"> 729</span>
+<span class="normal"> 730</span>
+<span class="normal"> 731</span>
+<span class="normal"> 732</span>
+<span class="normal"> 733</span>
+<span class="normal"> 734</span>
+<span class="normal"> 735</span>
+<span class="normal"> 736</span>
+<span class="normal"> 737</span>
+<span class="normal"> 738</span>
+<span class="normal"> 739</span>
+<span class="normal"> 740</span>
+<span class="normal"> 741</span>
+<span class="normal"> 742</span>
+<span class="normal"> 743</span>
+<span class="normal"> 744</span>
+<span class="normal"> 745</span>
+<span class="normal"> 746</span>
+<span class="normal"> 747</span>
+<span class="normal"> 748</span>
+<span class="normal"> 749</span>
+<span class="normal"> 750</span>
+<span class="normal"> 751</span>
+<span class="normal"> 752</span>
+<span class="normal"> 753</span>
+<span class="normal"> 754</span>
+<span class="normal"> 755</span>
+<span class="normal"> 756</span>
+<span class="normal"> 757</span>
+<span class="normal"> 758</span>
+<span class="normal"> 759</span>
+<span class="normal"> 760</span>
+<span class="normal"> 761</span>
+<span class="normal"> 762</span>
+<span class="normal"> 763</span>
+<span class="normal"> 764</span>
+<span class="normal"> 765</span>
+<span class="normal"> 766</span>
+<span class="normal"> 767</span>
+<span class="normal"> 768</span>
+<span class="normal"> 769</span>
+<span class="normal"> 770</span>
+<span class="normal"> 771</span>
+<span class="normal"> 772</span>
+<span class="normal"> 773</span>
+<span class="normal"> 774</span>
+<span class="normal"> 775</span>
+<span class="normal"> 776</span>
+<span class="normal"> 777</span>
+<span class="normal"> 778</span>
+<span class="normal"> 779</span>
+<span class="normal"> 780</span>
+<span class="normal"> 781</span>
+<span class="normal"> 782</span>
+<span class="normal"> 783</span>
+<span class="normal"> 784</span>
+<span class="normal"> 785</span>
+<span class="normal"> 786</span>
+<span class="normal"> 787</span>
+<span class="normal"> 788</span>
+<span class="normal"> 789</span>
+<span class="normal"> 790</span>
+<span class="normal"> 791</span>
+<span class="normal"> 792</span>
+<span class="normal"> 793</span>
+<span class="normal"> 794</span>
+<span class="normal"> 795</span>
+<span class="normal"> 796</span>
+<span class="normal"> 797</span>
+<span class="normal"> 798</span>
+<span class="normal"> 799</span>
+<span class="normal"> 800</span>
+<span class="normal"> 801</span>
+<span class="normal"> 802</span>
+<span class="normal"> 803</span>
+<span class="normal"> 804</span>
+<span class="normal"> 805</span>
+<span class="normal"> 806</span>
+<span class="normal"> 807</span>
+<span class="normal"> 808</span>
+<span class="normal"> 809</span>
+<span class="normal"> 810</span>
+<span class="normal"> 811</span>
+<span class="normal"> 812</span>
+<span class="normal"> 813</span>
+<span class="normal"> 814</span>
+<span class="normal"> 815</span>
+<span class="normal"> 816</span>
+<span class="normal"> 817</span>
+<span class="normal"> 818</span>
+<span class="normal"> 819</span>
+<span class="normal"> 820</span>
+<span class="normal"> 821</span>
+<span class="normal"> 822</span>
+<span class="normal"> 823</span>
+<span class="normal"> 824</span>
+<span class="normal"> 825</span>
+<span class="normal"> 826</span>
+<span class="normal"> 827</span>
+<span class="normal"> 828</span>
+<span class="normal"> 829</span>
+<span class="normal"> 830</span>
+<span class="normal"> 831</span>
+<span class="normal"> 832</span>
+<span class="normal"> 833</span>
+<span class="normal"> 834</span>
+<span class="normal"> 835</span>
+<span class="normal"> 836</span>
+<span class="normal"> 837</span>
+<span class="normal"> 838</span>
+<span class="normal"> 839</span>
+<span class="normal"> 840</span>
+<span class="normal"> 841</span>
+<span class="normal"> 842</span>
+<span class="normal"> 843</span>
+<span class="normal"> 844</span>
+<span class="normal"> 845</span>
+<span class="normal"> 846</span>
+<span class="normal"> 847</span>
+<span class="normal"> 848</span>
+<span class="normal"> 849</span>
+<span class="normal"> 850</span>
+<span class="normal"> 851</span>
+<span class="normal"> 852</span>
+<span class="normal"> 853</span>
+<span class="normal"> 854</span>
+<span class="normal"> 855</span>
+<span class="normal"> 856</span>
+<span class="normal"> 857</span>
+<span class="normal"> 858</span>
+<span class="normal"> 859</span>
+<span class="normal"> 860</span>
+<span class="normal"> 861</span>
+<span class="normal"> 862</span>
+<span class="normal"> 863</span>
+<span class="normal"> 864</span>
+<span class="normal"> 865</span>
+<span class="normal"> 866</span>
+<span class="normal"> 867</span>
+<span class="normal"> 868</span>
+<span class="normal"> 869</span>
+<span class="normal"> 870</span>
+<span class="normal"> 871</span>
+<span class="normal"> 872</span>
+<span class="normal"> 873</span>
+<span class="normal"> 874</span>
+<span class="normal"> 875</span>
+<span class="normal"> 876</span>
+<span class="normal"> 877</span>
+<span class="normal"> 878</span>
+<span class="normal"> 879</span>
+<span class="normal"> 880</span>
+<span class="normal"> 881</span>
+<span class="normal"> 882</span>
+<span class="normal"> 883</span>
+<span class="normal"> 884</span>
+<span class="normal"> 885</span>
+<span class="normal"> 886</span>
+<span class="normal"> 887</span>
+<span class="normal"> 888</span>
+<span class="normal"> 889</span>
+<span class="normal"> 890</span>
+<span class="normal"> 891</span>
+<span class="normal"> 892</span>
+<span class="normal"> 893</span>
+<span class="normal"> 894</span>
+<span class="normal"> 895</span>
+<span class="normal"> 896</span>
+<span class="normal"> 897</span>
+<span class="normal"> 898</span>
+<span class="normal"> 899</span>
+<span class="normal"> 900</span>
+<span class="normal"> 901</span>
+<span class="normal"> 902</span>
+<span class="normal"> 903</span>
+<span class="normal"> 904</span>
+<span class="normal"> 905</span>
+<span class="normal"> 906</span>
+<span class="normal"> 907</span>
+<span class="normal"> 908</span>
+<span class="normal"> 909</span>
+<span class="normal"> 910</span>
+<span class="normal"> 911</span>
+<span class="normal"> 912</span>
+<span class="normal"> 913</span>
+<span class="normal"> 914</span>
+<span class="normal"> 915</span>
+<span class="normal"> 916</span>
+<span class="normal"> 917</span>
+<span class="normal"> 918</span>
+<span class="normal"> 919</span>
+<span class="normal"> 920</span>
+<span class="normal"> 921</span>
+<span class="normal"> 922</span>
+<span class="normal"> 923</span>
+<span class="normal"> 924</span>
+<span class="normal"> 925</span>
+<span class="normal"> 926</span>
+<span class="normal"> 927</span>
+<span class="normal"> 928</span>
+<span class="normal"> 929</span>
+<span class="normal"> 930</span>
+<span class="normal"> 931</span>
+<span class="normal"> 932</span>
+<span class="normal"> 933</span>
+<span class="normal"> 934</span>
+<span class="normal"> 935</span>
+<span class="normal"> 936</span>
+<span class="normal"> 937</span>
+<span class="normal"> 938</span>
+<span class="normal"> 939</span>
+<span class="normal"> 940</span>
+<span class="normal"> 941</span>
+<span class="normal"> 942</span>
+<span class="normal"> 943</span>
+<span class="normal"> 944</span>
+<span class="normal"> 945</span>
+<span class="normal"> 946</span>
+<span class="normal"> 947</span>
+<span class="normal"> 948</span>
+<span class="normal"> 949</span>
+<span class="normal"> 950</span>
+<span class="normal"> 951</span>
+<span class="normal"> 952</span>
+<span class="normal"> 953</span>
+<span class="normal"> 954</span>
+<span class="normal"> 955</span>
+<span class="normal"> 956</span>
+<span class="normal"> 957</span>
+<span class="normal"> 958</span>
+<span class="normal"> 959</span>
+<span class="normal"> 960</span>
+<span class="normal"> 961</span>
+<span class="normal"> 962</span>
+<span class="normal"> 963</span>
+<span class="normal"> 964</span>
+<span class="normal"> 965</span>
+<span class="normal"> 966</span>
+<span class="normal"> 967</span>
+<span class="normal"> 968</span>
+<span class="normal"> 969</span>
+<span class="normal"> 970</span>
+<span class="normal"> 971</span>
+<span class="normal"> 972</span>
+<span class="normal"> 973</span>
+<span class="normal"> 974</span>
+<span class="normal"> 975</span>
+<span class="normal"> 976</span>
+<span class="normal"> 977</span>
+<span class="normal"> 978</span>
+<span class="normal"> 979</span>
+<span class="normal"> 980</span>
+<span class="normal"> 981</span>
+<span class="normal"> 982</span>
+<span class="normal"> 983</span>
+<span class="normal"> 984</span>
+<span class="normal"> 985</span>
+<span class="normal"> 986</span>
+<span class="normal"> 987</span>
+<span class="normal"> 988</span>
+<span class="normal"> 989</span>
+<span class="normal"> 990</span>
+<span class="normal"> 991</span>
+<span class="normal"> 992</span>
+<span class="normal"> 993</span>
+<span class="normal"> 994</span>
+<span class="normal"> 995</span>
+<span class="normal"> 996</span>
+<span class="normal"> 997</span>
+<span class="normal"> 998</span>
+<span class="normal"> 999</span>
+<span class="normal">1000</span>
+<span class="normal">1001</span>
+<span class="normal">1002</span>
+<span class="normal">1003</span>
+<span class="normal">1004</span>
+<span class="normal">1005</span>
+<span class="normal">1006</span>
+<span class="normal">1007</span>
+<span class="normal">1008</span>
+<span class="normal">1009</span>
+<span class="normal">1010</span>
+<span class="normal">1011</span>
+<span class="normal">1012</span>
+<span class="normal">1013</span>
+<span class="normal">1014</span>
+<span class="normal">1015</span>
+<span class="normal">1016</span>
+<span class="normal">1017</span>
+<span class="normal">1018</span>
+<span class="normal">1019</span>
+<span class="normal">1020</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
@@ -80093,6 +80718,7 @@ satisfied with validation performance to avoid test set contamination.</p>
 
     <span class="n">trials_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperParameterTrial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">best_logloss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">best_cv_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">for</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">ParameterGrid</span><span class="p">(</span><span class="n">grid</span><span class="p">):</span>
         <span class="c1"># Initialize model based on provided class</span>
@@ -80121,6 +80747,7 @@ satisfied with validation performance to avoid test set contamination.</p>
 
         <span class="k">if</span> <span class="n">cv_results</span><span class="p">[</span><span class="s2">&quot;valid_logloss&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best_logloss</span><span class="p">:</span>
             <span class="n">best_logloss</span> <span class="o">=</span> <span class="n">cv_results</span><span class="p">[</span><span class="s2">&quot;valid_logloss&quot;</span><span class="p">]</span>
+            <span class="n">best_cv_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span>
             <span class="n">best_model</span><span class="o">.</span><span class="n">pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
 
             <span class="c1"># Get feature metadata if available</span>
@@ -80216,6 +80843,29 @@ satisfied with validation performance to avoid test set contamination.</p>
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">best_training</span><span class="o">.</span><span class="n">test_results</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">evaluate_on_test</span>
+        <span class="ow">and</span> <span class="n">best_training</span><span class="o">.</span><span class="n">test_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="ow">and</span> <span class="n">y_test</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="n">best_model</span><span class="o">.</span><span class="n">selected_eval_metrics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;split&quot;</span><span class="p">:</span> <span class="s2">&quot;test&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log_loss&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_training</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;test_logloss&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;auroc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_training</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;test_auc&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;auprc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_training</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;test_auprc&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;n_samples&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_test</span><span class="p">)),</span>
+            <span class="s2">&quot;n_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_test</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+        <span class="p">}</span>
+    <span class="k">elif</span> <span class="n">best_cv_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">best_model</span><span class="o">.</span><span class="n">selected_eval_metrics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;split&quot;</span><span class="p">:</span> <span class="s2">&quot;valid&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;log_loss&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_logloss&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;auroc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_auc&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;auprc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_auprc&quot;</span><span class="p">]),</span>
+            <span class="s2">&quot;n_samples&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_valid</span><span class="p">)),</span>
+            <span class="s2">&quot;n_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_valid</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+        <span class="p">}</span>
 
     <span class="k">return</span> <span class="n">best_model</span>
 </code></pre></div></td></tr></table></div>
@@ -80621,41 +81271,7 @@ snapshots (<code>single_snapshot_per_visit=False</code>), by default True.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 989</span>
-<span class="normal"> 990</span>
-<span class="normal"> 991</span>
-<span class="normal"> 992</span>
-<span class="normal"> 993</span>
-<span class="normal"> 994</span>
-<span class="normal"> 995</span>
-<span class="normal"> 996</span>
-<span class="normal"> 997</span>
-<span class="normal"> 998</span>
-<span class="normal"> 999</span>
-<span class="normal">1000</span>
-<span class="normal">1001</span>
-<span class="normal">1002</span>
-<span class="normal">1003</span>
-<span class="normal">1004</span>
-<span class="normal">1005</span>
-<span class="normal">1006</span>
-<span class="normal">1007</span>
-<span class="normal">1008</span>
-<span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span>
-<span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
-<span class="normal">1015</span>
-<span class="normal">1016</span>
-<span class="normal">1017</span>
-<span class="normal">1018</span>
-<span class="normal">1019</span>
-<span class="normal">1020</span>
-<span class="normal">1021</span>
-<span class="normal">1022</span>
-<span class="normal">1023</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1023</span>
 <span class="normal">1024</span>
 <span class="normal">1025</span>
 <span class="normal">1026</span>
@@ -80733,7 +81349,41 @@ snapshots (<code>single_snapshot_per_visit=False</code>), by default True.</p>
 <span class="normal">1098</span>
 <span class="normal">1099</span>
 <span class="normal">1100</span>
-<span class="normal">1101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span>
+<span class="normal">1121</span>
+<span class="normal">1122</span>
+<span class="normal">1123</span>
+<span class="normal">1124</span>
+<span class="normal">1125</span>
+<span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span>
+<span class="normal">1130</span>
+<span class="normal">1131</span>
+<span class="normal">1132</span>
+<span class="normal">1133</span>
+<span class="normal">1134</span>
+<span class="normal">1135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
@@ -99300,7 +99950,7 @@ visualizing feature importance and their impact on model decisions.</p>
 
 
 <h4 id="patientflow.viz.shap.plot_shap" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">plot_shap</span><span class="p">(</span><span class="n">trained_models</span><span class="p">,</span> <span class="n">test_visits</span><span class="p">,</span> <span class="n">media_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_figure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;is_admitted&#39;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">plot_shap</span><span class="p">(</span><span class="n">trained_models</span><span class="p">,</span> <span class="n">test_visits</span><span class="p">,</span> <span class="n">media_file_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">return_figure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">&#39;is_admitted&#39;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 </h4>
 
@@ -99408,7 +100058,7 @@ only displayed.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If True, returns the figure instead of displaying it.</p>
+                <p>If True, returns the figure instead of displaying.</p>
               </div>
             </td>
             <td>
@@ -99448,6 +100098,23 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>show</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True, call <code>matplotlib.pyplot.show()</code> when not using <code>return_figure</code>.
+Default False avoids blocking or inline display in notebooks when saving only.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -99477,14 +100144,7 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/viz/shap.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 24</span>
-<span class="normal"> 25</span>
-<span class="normal"> 26</span>
-<span class="normal"> 27</span>
-<span class="normal"> 28</span>
-<span class="normal"> 29</span>
-<span class="normal"> 30</span>
-<span class="normal"> 31</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 31</span>
 <span class="normal"> 32</span>
 <span class="normal"> 33</span>
 <span class="normal"> 34</span>
@@ -99607,7 +100267,22 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
 <span class="normal">151</span>
 <span class="normal">152</span>
 <span class="normal">153</span>
-<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_shap</span><span class="p">(</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plot_shap</span><span class="p">(</span>
     <span class="n">trained_models</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TrainedClassifier</span><span class="p">]</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TrainedClassifier</span><span class="p">],</span>
     <span class="n">test_visits</span><span class="p">,</span>
     <span class="n">media_file_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -99616,6 +100291,7 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
     <span class="n">label_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;is_admitted&quot;</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">exclude_from_training_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">show</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate SHAP plots for multiple trained models.</span>
 
@@ -99635,18 +100311,24 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
 <span class="sd">    file_name : str, optional</span>
 <span class="sd">        Custom filename to use when saving the plot. If not provided, defaults to &quot;shap_plot.png&quot;.</span>
 <span class="sd">    return_figure : bool, default=False</span>
-<span class="sd">        If True, returns the figure instead of displaying it.</span>
+<span class="sd">        If True, returns the figure instead of displaying.</span>
 <span class="sd">    label_col : str, default=&quot;is_admitted&quot;</span>
 <span class="sd">        Name of the column containing the target labels.</span>
 <span class="sd">    exclude_from_training_data : List[str], optional, deprecated</span>
 <span class="sd">        This parameter is deprecated and ignored. Column selection is now handled</span>
 <span class="sd">        automatically by the pipeline&#39;s FeatureColumnTransformer.</span>
+<span class="sd">    show : bool, default=False</span>
+<span class="sd">        If True, call ``matplotlib.pyplot.show()`` when not using ``return_figure``.</span>
+<span class="sd">        Default False avoids blocking or inline display in notebooks when saving only.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    matplotlib.figure.Figure or None</span>
 <span class="sd">        If return_figure is True, returns the generated figure. Otherwise, returns None.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">SHAP_AVAILABLE</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;SHAP is not installed. Install with: pip install shap&quot;</span><span class="p">)</span>
+
     <span class="c1"># Convert dict to list if needed</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">trained_models</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="n">trained_models</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trained_models</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
@@ -99736,7 +100418,8 @@ automatically by the pipeline's FeatureColumnTransformer.</p>
         <span class="k">if</span> <span class="n">return_figure</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">fig</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">show</span><span class="p">:</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
             <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
