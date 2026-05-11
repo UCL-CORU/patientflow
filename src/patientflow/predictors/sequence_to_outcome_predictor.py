@@ -2,14 +2,17 @@
 This module implements a `SequenceToOutcomePredictor` class that models and predicts the probability distribution
 of sequences in categorical data. The class builds a model based on training data, where input sequences
 are mapped to specific outcome categories. It provides methods to fit the model, compute sequence-based
-probabilities, and make predictions on an unseen datatset of input sequences.
+probabilities, and make predictions on an unseen dataset of input sequences.
 
 Classes
 -------
 SequenceToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on input sequences.
-    Note: All sequence inputs are expected to be tuples. Lists will be automatically converted to tuples,
-    and None values will be converted to empty tuples.
+
+Notes
+-----
+All sequence inputs are expected to be tuples. Lists are converted to tuples automatically, and ``None``
+values are converted to empty tuples.
 """
 
 from typing import Dict

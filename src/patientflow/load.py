@@ -49,8 +49,10 @@ def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments for the training script.
 
-    Returns:
-        argparse.Namespace: The parsed arguments containing 'data_folder_name' and 'uclh' keys.
+    Returns
+    -------
+    argparse.Namespace
+        Parsed arguments; includes ``data_folder_name`` and ``uclh``.
     """
     parser = argparse.ArgumentParser(description="Train emergency demand models")
     parser.add_argument(
@@ -76,17 +78,26 @@ def set_project_root(env_var: Optional[str] = None, verbose: bool = True) -> Pat
     First checks specified environment variable for project root path.
     If not found, searches current path hierarchy for highest-level 'patientflow' directory.
 
-    Args:
-        env_var (Optional[str]): Name of environment variable containing project root path
-        verbose (bool): Whether to print status messages. Default True.
+    Parameters
+    ----------
+    env_var : str, optional
+        Name of environment variable containing project root path.
+    verbose : bool, default=True
+        Whether to print status messages.
 
-    Returns:
-        Path: Validated project root path
+    Returns
+    -------
+    pathlib.Path
+        Validated project root path.
 
-    Raises:
-        ValueError: If environment variable not set and 'patientflow' not found in path
-        NotADirectoryError: If path doesn't exist
-        TypeError: If env_var is not None and not a string
+    Raises
+    ------
+    NotADirectoryError
+        If the path from the environment variable does not exist or is not a directory.
+    ValueError
+        If the project root cannot be determined, or if converting ``env_path`` to ``Path`` fails (some cases are re-raised after logging).
+    TypeError
+        If converting ``env_path`` to ``Path`` raises ``TypeError`` (re-raised after logging).
     """
     # Only try to get env path if env_var is provided
     env_path: Optional[str] = os.getenv(env_var) if env_var is not None else None
@@ -225,19 +236,29 @@ def set_file_paths(
     verbose: bool = True,
 ) -> Tuple[Path, Path, Path, Path]:
     """
-    Sets up the file paths
+    Sets up the file paths.
 
-    Args:
-        project_root (Path): Root path of the project
-        data_folder_name (str): Name of the folder where data files are located
-        train_dttm (Optional[str], optional): A string representation of the datetime at which training commenced. Defaults to None
-        inference_time (bool, optional): A flag indicating whether it is inference time or not. Defaults to False
-        config_file (str, optional): Name of config file. Defaults to "config.yaml"
-        prefix (Optional[str], optional): String to prefix model folder names. Defaults to None
-        verbose (bool, optional): Whether to print path information. Defaults to True
+    Parameters
+    ----------
+    project_root : Path
+        Root path of the project.
+    data_folder_name : str
+        Name of the folder where data files are located.
+    train_dttm : str, optional
+        String representation of the datetime at which training commenced.
+    inference_time : bool, default=False
+        If True, skip creating model/media directories (inference-only run).
+    config_file : str, default="config.yaml"
+        Name of the config file under ``project_root``.
+    prefix : str, optional
+        Prefix for model folder names under ``trained-models``.
+    verbose : bool, default=True
+        Whether to print path information.
 
-    Returns:
-        tuple: Contains (data_file_path, media_file_path, model_file_path, config_path)
+    Returns
+    -------
+    tuple of Path
+        ``(data_file_path, media_file_path, model_file_path, config_path)``.
     """
 
     config_path = Path(project_root) / config_file

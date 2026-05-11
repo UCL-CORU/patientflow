@@ -8,7 +8,10 @@ Classes
 -------
 ValueToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on a single input value.
-    Note: All inputs are expected to be strings. None values will be converted to empty strings during preprocessing.
+
+Notes
+-----
+All inputs are expected to be strings. ``None`` values are converted to empty strings during preprocessing.
 """
 
 from typing import Dict
