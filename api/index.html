@@ -47092,8 +47092,7 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 57</span>
-<span class="normal"> 58</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 58</span>
 <span class="normal"> 59</span>
 <span class="normal"> 60</span>
 <span class="normal"> 61</span>
@@ -47148,7 +47147,8 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 <span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
-<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">113</span>
+<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">FlowInputs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a single source of patient flow.</span>
 
@@ -47260,8 +47260,7 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
 <span class="normal">105</span>
 <span class="normal">106</span>
 <span class="normal">107</span>
@@ -47270,7 +47269,8 @@ formatted automatically (underscores replaced with spaces, title cased).</p>
 <span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
-<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">113</span>
+<span class="normal">114</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_display_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Get human-readable display name.</span>
 
 <span class="sd">    Returns</span>
@@ -47422,8 +47422,7 @@ and easy extension to new flow types in the future.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">116</span>
-<span class="normal">117</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
 <span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
@@ -47561,7 +47560,8 @@ and easy extension to new flow types in the future.</p>
 <span class="normal">252</span>
 <span class="normal">253</span>
 <span class="normal">254</span>
-<span class="normal">255</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">255</span>
+<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ServicePredictionInputs</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Input parameters for service demand prediction.</span>
 
@@ -47730,7 +47730,7 @@ and easy extension to new flow types in the future.</p>
 
 
 <h4 id="patientflow.predict.service.build_service_data" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">build_service_data</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">ed_snapshots</span><span class="p">,</span> <span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">specialties</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">cdf_cut_points</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_admission_in_window_prob</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">build_service_data</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">ed_snapshots</span><span class="p">,</span> <span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">specialties</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">cdf_cut_points</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_admission_in_window_prob</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prediction_date</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -47966,6 +47966,26 @@ admitted within the prediction window.</p>
                   <code>True</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>prediction_date</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" title="datetime.date" href="https://docs.python.org/3/library/datetime.html#datetime.date">date</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Calendar date at the inference <code>prediction_time</code>. When provided, YTA
+Poisson means use per-weekday arrival profiles for models fitted with
+weekday stratification (the default for incoming admission predictors).
+When omitted (default), behaviour matches previous releases: pooled
+profiles are used and legacy callers stay warning-free.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -48043,12 +48063,7 @@ don't match between models and requested parameters</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span>
-<span class="normal">1097</span>
-<span class="normal">1098</span>
-<span class="normal">1099</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1099</span>
 <span class="normal">1100</span>
 <span class="normal">1101</span>
 <span class="normal">1102</span>
@@ -48186,7 +48201,20 @@ don't match between models and requested parameters</p>
 <span class="normal">1234</span>
 <span class="normal">1235</span>
 <span class="normal">1236</span>
-<span class="normal">1237</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
+<span class="normal">1237</span>
+<span class="normal">1238</span>
+<span class="normal">1239</span>
+<span class="normal">1240</span>
+<span class="normal">1241</span>
+<span class="normal">1242</span>
+<span class="normal">1243</span>
+<span class="normal">1244</span>
+<span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
     <span class="n">models</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
         <span class="n">Optional</span><span class="p">[</span><span class="n">TrainedClassifier</span><span class="p">],</span>
         <span class="n">Optional</span><span class="p">[</span><span class="n">TrainedClassifier</span><span class="p">],</span>
@@ -48218,6 +48246,7 @@ don't match between models and requested parameters</p>
     <span class="n">y2</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">cdf_cut_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">use_admission_in_window_prob</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">prediction_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ServicePredictionInputs</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build per-service inputs for downstream roll-up.</span>
 
@@ -48261,6 +48290,12 @@ don't match between models and requested parameters</p>
 <span class="sd">    use_admission_in_window_prob : bool, default=True</span>
 <span class="sd">        Whether to weight current ED admissions by their probability of being</span>
 <span class="sd">        admitted within the prediction window.</span>
+<span class="sd">    prediction_date : datetime.date, optional</span>
+<span class="sd">        Calendar date at the inference ``prediction_time``. When provided, YTA</span>
+<span class="sd">        Poisson means use per-weekday arrival profiles for models fitted with</span>
+<span class="sd">        weekday stratification (the default for incoming admission predictors).</span>
+<span class="sd">        When omitted (default), behaviour matches previous releases: pooled</span>
+<span class="sd">        profiles are used and legacy callers stay warning-free.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -48324,6 +48359,7 @@ don't match between models and requested parameters</p>
         <span class="n">x2</span><span class="p">,</span>
         <span class="n">y2</span><span class="p">,</span>
         <span class="n">base_probs</span><span class="p">,</span>
+        <span class="n">prediction_date</span><span class="o">=</span><span class="n">prediction_date</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># 4. Finalize with transfers</span>
@@ -48534,20 +48570,7 @@ probabilities.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1240</span>
-<span class="normal">1241</span>
-<span class="normal">1242</span>
-<span class="normal">1243</span>
-<span class="normal">1244</span>
-<span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span>
-<span class="normal">1248</span>
-<span class="normal">1249</span>
-<span class="normal">1250</span>
-<span class="normal">1251</span>
-<span class="normal">1252</span>
-<span class="normal">1253</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1253</span>
 <span class="normal">1254</span>
 <span class="normal">1255</span>
 <span class="normal">1256</span>
@@ -48703,7 +48726,20 @@ probabilities.</p>
 <span class="normal">1406</span>
 <span class="normal">1407</span>
 <span class="normal">1408</span>
-<span class="normal">1409</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
+<span class="normal">1409</span>
+<span class="normal">1410</span>
+<span class="normal">1411</span>
+<span class="normal">1412</span>
+<span class="normal">1413</span>
+<span class="normal">1414</span>
+<span class="normal">1415</span>
+<span class="normal">1416</span>
+<span class="normal">1417</span>
+<span class="normal">1418</span>
+<span class="normal">1419</span>
+<span class="normal">1420</span>
+<span class="normal">1421</span>
+<span class="normal">1422</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
     <span class="n">service_data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ServicePredictionInputs</span><span class="p">]],</span>
     <span class="n">transfer_model</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
     <span class="n">services</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
@@ -94442,7 +94478,7 @@ value is a <code>dict</code> mapping specialty name to probability.</p>
 
         <p>Build per-service prediction inputs for a snapshot.</p>
 <p>This is a convenience wrapper around
-<a class="autorefs autorefs-internal" title="build_service_data(models, prediction_time, ed_snapshots, inpatient_snapshots, specialties, prediction_window, x1, y1, x2, y2, cdf_cut_points=None, use_admission_in_window_prob=True)" href="#patientflow.predict.service.build_service_data">build_service_data</a> that unpacks
+<a class="autorefs autorefs-internal" title="build_service_data(models, prediction_time, ed_snapshots, inpatient_snapshots, specialties, prediction_window, x1, y1, x2, y2, cdf_cut_points=None, use_admission_in_window_prob=True, prediction_date=None)" href="#patientflow.predict.service.build_service_data">build_service_data</a> that unpacks
 the prediction inputs dictionary returned by
 <a class="autorefs autorefs-internal" title="prepare_prediction_inputs(data_folder_name, save_models=False, test_realtime=False, verbose=True)" href="#patientflow.train.emergency_demand.prepare_prediction_inputs">prepare_prediction_inputs</a>
 and retrieves the appropriate admission classifier for the given
