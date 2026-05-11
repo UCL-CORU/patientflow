@@ -513,15 +513,22 @@ yta_model_empirical.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Time interval of 0:15:00 used to bucket arrival rates.
+
+
     The error value for prediction will be 1e-07
+
+
     To see the weights saved by this model, use the get_weights() method
+
+
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
 <style>#sk-container-id-1 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: #000;
-  --sklearn-color-text-muted: #666;
+  --sklearn-color-text: black;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -666,21 +673,12 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-1 label.sk-toggleable__label {
   cursor: pointer;
-  display: flex;
+  display: block;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5em;
-}
-
-#sk-container-id-1 label.sk-toggleable__label .caption {
-  font-size: 0.6rem;
-  font-weight: lighter;
-  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-1 label.sk-toggleable__label-arrow:before {
@@ -833,8 +831,7 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 0.5em;
-  text-align: center;
+  margin-left: 1ex;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -933,7 +930,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 The survival curve that was calculated from the training set is saved with the returned object
 
@@ -1142,18 +1139,31 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Time interval of 0:15:00 used to bucket arrival rates.
+
+
     The error value for prediction will be 1e-07
+
+
     To see the weights saved by this model, use the get_weights() method
+
+
     EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
 
 <style>#sk-container-id-2 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: #000;
-  --sklearn-color-text-muted: #666;
+  --sklearn-color-text: black;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -1298,21 +1308,12 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-2 label.sk-toggleable__label {
   cursor: pointer;
-  display: flex;
+  display: block;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5em;
-}
-
-#sk-container-id-2 label.sk-toggleable__label .caption {
-  font-size: 0.6rem;
-  font-weight: lighter;
-  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-2 label.sk-toggleable__label-arrow:before {
@@ -1465,8 +1466,7 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 0.5em;
-  text-align: center;
+  margin-left: 1ex;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -1570,7 +1570,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
-                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>EmpiricalIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
+                                    verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-2" type="checkbox" checked><label for="sk-estimator-id-2" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={&#x27;haem/onc&#x27;: {&#x27;specialty&#x27;: &#x27;haem/onc&#x27;},
                                              &#x27;medical&#x27;: {&#x27;specialty&#x27;: &#x27;medical&#x27;},
                                              &#x27;paediatric&#x27;: {&#x27;specialty&#x27;: &#x27;paediatric&#x27;},
                                              &#x27;surgical&#x27;: {&#x27;specialty&#x27;: &#x27;surgical&#x27;}},
@@ -1708,14 +1708,19 @@ yta_model_parametric.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
     Time interval of 0:15:00 used to bucket arrival rates.
+
+
     The error value for prediction will be 1e-07
+
+
     To see the weights saved by this model, use the get_weights() method
 
 <style>#sk-container-id-3 {
   /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: #000;
-  --sklearn-color-text-muted: #666;
+  --sklearn-color-text: black;
   --sklearn-color-line: gray;
   /* Definition of color scheme for unfitted estimators */
   --sklearn-color-unfitted-level-0: #fff5e6;
@@ -1860,21 +1865,12 @@ clickable and can be expanded/collapsed.
 /* Toggleable label */
 #sk-container-id-3 label.sk-toggleable__label {
   cursor: pointer;
-  display: flex;
+  display: block;
   width: 100%;
   margin-bottom: 0;
   padding: 0.5em;
   box-sizing: border-box;
   text-align: center;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.5em;
-}
-
-#sk-container-id-3 label.sk-toggleable__label .caption {
-  font-size: 0.6rem;
-  font-weight: lighter;
-  color: var(--sklearn-color-text-muted);
 }
 
 #sk-container-id-3 label.sk-toggleable__label-arrow:before {
@@ -2027,8 +2023,7 @@ a:visited.sk-estimator-doc-link {
   height: 1em;
   width: 1em;
   text-decoration: none !important;
-  margin-left: 0.5em;
-  text-align: center;
+  margin-left: 1ex;
   /* unfitted */
   border: var(--sklearn-color-unfitted-level-1) 1pt solid;
   color: var(--sklearn-color-unfitted-level-1);
@@ -2127,7 +2122,7 @@ div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
   /* fitted */
   background-color: var(--sklearn-color-fitted-level-3);
 }
-</style><div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow"><div><div>ParametricIncomingAdmissionPredictor</div></div><div><span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></div></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
+</style><div id="sk-container-id-3" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-3" type="checkbox" checked><label for="sk-estimator-id-3" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;ParametricIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>ParametricIncomingAdmissionPredictor(filters={}, verbose=True)</pre></div> </div></div></div></div>
 
 Below we view the results of the fit method for the 12:00 prediction time.
 

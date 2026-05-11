@@ -1,14 +1,19 @@
 import unittest
+import warnings
 from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
 
+from patientflow.predict.emergency_demand import (
+    warn_specialty_mismatch as warn_specialty_from_emergency_demand,
+)
 from patientflow.predict.service import (
     build_service_data,
     ServicePredictionInputs,
     FlowInputs,
     compute_transfer_arrivals,
+    warn_specialty_mismatch,
 )
 from patientflow.predictors.transfer_predictor import TransferProbabilityEstimator
 from patientflow.model_artifacts import TrainedClassifier, TrainingResults
@@ -1047,6 +1052,22 @@ class TestComputeTransferArrivals(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             compute_transfer_arrivals(service_data_valid, unfitted_model, self.services)
+
+
+class TestWarnSpecialtyMismatchShim(unittest.TestCase):
+    def test_implementation_module_is_service(self):
+        self.assertEqual(
+            warn_specialty_mismatch.__module__,
+            "patientflow.predict.service",
+        )
+
+    def test_emergency_demand_import_delegates(self):
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            warn_specialty_from_emergency_demand(
+                {"x", "y"}, {"a", "b"}, "test artefact"
+            )
+        self.assertTrue(len(recorded) >= 1)
 
 
 if __name__ == "__main__":

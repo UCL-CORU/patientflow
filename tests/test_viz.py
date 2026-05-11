@@ -7,6 +7,7 @@ Tier 3: Render smoke tests — verify plotting functions produce figures without
 
 import unittest
 import warnings
+from unittest.mock import patch
 from datetime import date, datetime, timedelta
 
 import numpy as np
@@ -68,6 +69,7 @@ _VIZ_IMPORTS = [
     ("patientflow.viz.randomised_pit", ["plot_randomised_pit"]),
     ("patientflow.viz.survival_curve", ["plot_admission_time_survival_curve"]),
     ("patientflow.viz.trial_results", ["plot_trial_results"]),
+    ("patientflow.viz.shap", ["plot_shap", "SHAP_AVAILABLE"]),
 ]
 
 
@@ -86,11 +88,68 @@ class TestVizImports(unittest.TestCase):
                             hasattr(mod, name), f"{module_path}.{name} missing"
                         )
 
-    def test_import_shap(self):
-        try:
-            from patientflow.viz.shap import plot_shap  # noqa: F401
-        except ImportError:
-            self.skipTest("shap package not installed")
+    def test_import_shap_submodule(self):
+        import importlib
+
+        mod = importlib.import_module("patientflow.viz.shap")
+        self.assertTrue(hasattr(mod, "plot_shap"))
+        self.assertTrue(hasattr(mod, "SHAP_AVAILABLE"))
+
+
+class TestShapOptional(unittest.TestCase):
+    def test_plot_shap_import_error_when_shap_unavailable(self):
+        import patientflow.viz.shap as viz_shap
+
+        with patch.object(viz_shap, "SHAP_AVAILABLE", False):
+            with self.assertRaises(ImportError) as ctx:
+                viz_shap.plot_shap([], pd.DataFrame())
+        self.assertIn("pip install shap", str(ctx.exception).lower())
+
+    @unittest.skipUnless(
+        __import__("patientflow.viz.shap", fromlist=["SHAP_AVAILABLE"]).SHAP_AVAILABLE,
+        "shap not installed",
+    )
+    def test_plot_shap_show_false_does_not_call_pyplot_show(self):
+        import numpy as np
+
+        import patientflow.viz.shap as viz_shap
+        from patientflow.train.classifiers import train_classifier
+
+        n = 200
+        train_visits = pd.DataFrame(
+            {
+                "visit_number": range(n),
+                "age": np.random.randint(0, 100, n),
+                "sex": pd.Series(np.random.choice(["M", "F"], n), dtype="object"),
+                "arrival_method": pd.Series(
+                    np.random.choice(["ambulance", "walk-in", "referral"], n),
+                    dtype="object",
+                ),
+                "is_admitted": np.random.choice([0, 1], n, p=[0.7, 0.3]),
+                "snapshot_time": pd.date_range(start="2023-01-01", periods=n, freq="h"),
+                "prediction_time": [(4, 0)] * n,
+            }
+        )
+        grid = {"max_depth": [2], "learning_rate": [0.1], "n_estimators": [20]}
+        ordinal = {"arrival_method": ["walk-in", "referral", "ambulance"]}
+        model = train_classifier(
+            train_visits=train_visits,
+            valid_visits=train_visits,
+            prediction_time=(4, 0),
+            exclude_from_training_data=[
+                "snapshot_time",
+                "visit_number",
+                "prediction_time",
+            ],
+            grid=grid,
+            ordinal_mappings=ordinal,
+            visit_col="visit_number",
+            evaluate_on_test=False,
+            calibrate_probabilities=False,
+        )
+        with patch.object(viz_shap.plt, "show") as mock_show:
+            viz_shap.plot_shap([model], train_visits, show=False, return_figure=False)
+        mock_show.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

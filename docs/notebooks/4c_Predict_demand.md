@@ -92,6 +92,18 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
 )
 ```
 
+    Inferred project root: /Users/zellaking/Repos/patientflow
+
+
+
+    Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
+    Validation set starts on 2031-09-01 and ends on 2031-09-30 inclusive
+    Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
+
+
+    Split sizes: [62071, 10415, 29134]
+    Split sizes: [7716, 1285, 3898]
+
 The data has been prepared as a series of snapshots of each patient's data at five moments during the day. These five moments are the times when the bed managers wish to receive predictive models of emergency demand. If a patient arrives in the ED at 4 am, and leaves at 11 am, they will be represented in the 06:00 and 09:30 prediction times. Everything known about a patient up until that moment is included in that snapshot.
 
 The prediction times are presented as tuples in the form (hour, minute).
@@ -103,10 +115,22 @@ print("\nTimes of day at which predictions will be made")
 print(ed_visits.prediction_time.unique())
 ```
 
+    Times of day at which predictions will be made
+    [(22, 0) (15, 30) (6, 0) (12, 0) (9, 30)]
+
 ```python
 print("\nNumber of observations for each prediction time")
 print(ed_visits.prediction_time.value_counts())
 ```
+
+    Number of observations for each prediction time
+    prediction_time
+    (15, 30)    35310
+    (12, 0)     29942
+    (22, 0)     28457
+    (9, 30)     17642
+    (6, 0)      11984
+    Name: count, dtype: int64
 
 ## Train models
 
@@ -163,6 +187,20 @@ for prediction_time in ed_visits.prediction_time.unique():
 
     admissions_models[model_key] = model
 ```
+
+    Training model for (22, 0)
+
+
+    Training model for (15, 30)
+
+
+    Training model for (6, 0)
+
+
+    Training model for (12, 0)
+
+
+    Training model for (9, 30)
 
 The `SequenceToOutcomePredictor` is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model.
 
@@ -235,6 +273,11 @@ yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
               num_days=num_days )
 ```
 
+    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_window to fit() is deprecated; pass it to predict() / predict_mean() instead.
+      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
+    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_times to fit() is deprecated; any prediction time can be served at predict time. This argument is retained for backward compatibility only and will be removed in a future release.
+      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
+
 ## 1. Make predictions for the group of patients currently in the ED
 
 We now have models trained that we can use to create predicted probability distributions. Here is a detailed step-through of how to use those models to generate predictions at a particular moment.
@@ -279,6 +322,9 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     prediction_snapshots
     )
 ```
+
+    Number of adult patients in the ED at 22:00 on 2031-10-09: 69
+    Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 
 The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots:
 
@@ -417,6 +463,8 @@ fig.tight_layout()
 plt.show()
 ```
 
+![png](4c_Predict_demand_files/4c_Predict_demand_20_0.png)
+
 ## 2. Make predictions for patients yet-to-arrive to the ED who will need admission
 
 The trained yet-to-arrive model generates the same distribution for each prediction time, irrespective of day of week, for each specialty. Passing the randomly chosen prediction time, for each specialty, will return the required distributions.
@@ -450,6 +498,11 @@ fig.tight_layout()
 plt.show()
 ```
 
+    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1915240381.py:5: DeprecationWarning: Relying on prediction_window stored at fit() time is deprecated. Pass prediction_window explicitly to predict() / predict_mean().
+      weighted_poisson_prediction = yta_model_by_spec.predict(
+
+![png](4c_Predict_demand_files/4c_Predict_demand_22_1.png)
+
 ## 3. Production prediction pipeline
 
 In place of the lengthy code shown above, `patientflow` provides a function called `build_service_data` that encapsulates this logic. It assembles the trained models, snapshot data, and configuration parameters into the production data classes introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md) — `ServicePredictionInputs` containing `FlowInputs` for each source of demand — ready for use with `DemandPredictor`.
@@ -460,7 +513,6 @@ To make demand predictions at a given prediction moment, we call `build_service_
 
 ```python
 from patientflow.predict.service import build_service_data
-from patientflow.predict.demand import FlowSelection
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -473,19 +525,10 @@ prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snaps
 prediction_inputs = build_service_data(
     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
     prediction_time=random_prediction_time,
-    flow_selection=FlowSelection.custom(
-        include_ed_current=True,
-        include_ed_yta=True,
-        include_non_ed_yta=False,
-        include_elective_yta=False,
-        include_transfers_in=False,
-        include_departures=False,
-        cohort="emergency",
-    ),
-    specialties=specialty_filters.keys(),
-    prediction_window=timedelta(hours=8),
     ed_snapshots=prediction_snapshots_processed,
     inpatient_snapshots=None,
+    specialties=specialty_filters.keys(),
+    prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2
 )
 
@@ -496,6 +539,18 @@ The returned object is a dictionary mapping each specialty to a `ServicePredicti
 ```python
 prediction_inputs['medical']
 ```
+
+    ServicePredictionInputs(service='medical')
+      INFLOWS:
+        Admissions from current ED               PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6 of 79 patients in ED)
+        ED yet-to-arrive admissions              λ = 2.131
+        Non-ED emergency admissions              λ = 0.000
+        Elective admissions                      λ = 0.000
+        Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
+        Emergency transfers from other services  PMF[0:1]: [1.000] (E=0.0)
+      OUTFLOWS:
+        Emergency inpatient departures           PMF[0:1]: [1.000] (E=0.0 of 0 emergency patients in service)
+        Elective inpatient departures            PMF[0:1]: [1.000] (E=0.0 of 0 elective patients in service)
 
 We now use `DemandPredictor` and `FlowSelection` (both introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md)) to generate predictions from these inputs. Here I use `FlowSelection.custom()` to include only patients currently in the ED and exclude all other flows.
 
@@ -526,6 +581,12 @@ To view the constituent elements of the bundle, we can print it to get pretty ou
 print(current_ed_bundle)
 ```
 
+    PredictionBundle(service: medical)
+      Arrivals:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Departures:  PMF[0:1]: [1.000] (E=0.0)
+      Net flow:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=False, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
+
 From the bundle, we can extract a probability distribution for the number of beds needed for patients currently in the ED. We can view the expectation, or view the percentiles of the distribution as shown below.
 
 ```python
@@ -534,6 +595,12 @@ print(f'Most likely number of beds needed for the medical specialty: {current_ed
 print(f"Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability")
 print(f"Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability")
 ```
+
+    For patients currently in the ED:
+
+    Most likely number of beds needed for the medical specialty: 7
+    Need at least 4 beds with 90% probability
+    Need at least 5 beds with 70% probability
 
 To derive the yet-to-arrive predictions, we can set the FlowSelection accordingly.
 
@@ -557,6 +624,12 @@ print(f'Most likely number of beds needed for the medical specialty: {yet_to_arr
 print(f"Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.9)} beds with 90% probability")
 print(f"Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probability(0.7)} beds with 70% probability")
 ```
+
+    For patients yet-to-arrive to the ED:
+
+    Most likely number of beds needed for the medical specialty: 2
+    Need at least 0 beds with 90% probability
+    Need at least 1 beds with 70% probability
 
 ```python
 title = (
@@ -582,6 +655,8 @@ plot_prob_dist(bundle.arrivals.probabilities, title,
     probability_levels=[0.7,0.9],
     show_probability_thresholds=True, bar_colour=spec_colour_dict["single"]["medical"])
 ```
+
+![png](4c_Predict_demand_files/4c_Predict_demand_37_0.png)
 
 ## Summary
 
@@ -623,6 +698,11 @@ create_predictions(
     x2 = x2,
     y2 = y2)
 ```
+
+    {'medical': {'in_ed': [5, 4], 'yet_to_arrive': [1, 0]},
+     'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+     'paediatric': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]}}
 
 ### Alternative: using an empirical survival curve
 
@@ -667,6 +747,8 @@ survival_df = plot_admission_time_survival_curve(train_inpatient_arrivals_df.res
 )
 ```
 
+![png](4c_Predict_demand_files/4c_Predict_demand_44_0.png)
+
 `patientflow` includes a function to look up the probability of admission within a prediction window, using the survival curve. This is demonstrated below. It is used in the `create_predictions` function if the optional parameter `use_admission_in_window_prob` is set.
 
 ```python
@@ -680,6 +762,8 @@ prob_admission_in_window_from_survival_curve = calculate_admission_probability_f
 
 print(f'Probability of admission in prediction window of {prediction_window.total_seconds() / 3600:.0f} hours, assuming patient has been in ED for 1 hour: {prob_admission_in_window_from_survival_curve:.2}')
 ```
+
+    Probability of admission in prediction window of 8 hours, assuming patient has been in ED for 1 hour: 0.48
 
 For an array of patients, the probability of admission within the window would be created as shown below.
 
@@ -747,3 +831,8 @@ create_predictions(
     y2 = y2,
     use_admission_in_window_prob = True)
 ```
+
+    {'medical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+     'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
+     'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}

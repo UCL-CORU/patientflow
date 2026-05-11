@@ -13,12 +13,19 @@ from matplotlib import pyplot as plt
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.model_artifacts import TrainedClassifier
-import shap
 import scipy.sparse
 import numpy as np
 from sklearn.pipeline import Pipeline
 from typing import List, Optional
 from pathlib import Path
+
+try:
+    import shap  # type: ignore
+
+    SHAP_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised when shap is absent
+    shap = None  # type: ignore
+    SHAP_AVAILABLE = False
 
 
 def plot_shap(
@@ -30,6 +37,7 @@ def plot_shap(
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
+    show: bool = False,
 ):
     """Generate SHAP plots for multiple trained models.
 
@@ -49,18 +57,24 @@ def plot_shap(
     file_name : str, optional
         Custom filename to use when saving the plot. If not provided, defaults to "shap_plot.png".
     return_figure : bool, default=False
-        If True, returns the figure instead of displaying it.
+        If True, returns the figure instead of displaying.
     label_col : str, default="is_admitted"
         Name of the column containing the target labels.
     exclude_from_training_data : List[str], optional, deprecated
         This parameter is deprecated and ignored. Column selection is now handled
         automatically by the pipeline's FeatureColumnTransformer.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not using ``return_figure``.
+        Default False avoids blocking or inline display in notebooks when saving only.
 
     Returns
     -------
     matplotlib.figure.Figure or None
         If return_figure is True, returns the generated figure. Otherwise, returns None.
     """
+    if not SHAP_AVAILABLE:
+        raise ImportError("SHAP is not installed. Install with: pip install shap")
+
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
         trained_models = list(trained_models.values())
@@ -150,5 +164,6 @@ def plot_shap(
         if return_figure:
             return fig
         else:
-            plt.show()
+            if show:
+                plt.show()
             plt.close(fig)

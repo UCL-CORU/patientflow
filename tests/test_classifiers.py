@@ -1,4 +1,6 @@
 import unittest
+from datetime import timedelta
+
 import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
@@ -11,10 +13,15 @@ from patientflow.train.classifiers import (
     FeatureColumnTransformer,
     FeatureKind,
     create_column_transformer,
+    get_dataset_metadata,
     infer_feature_kind,
     train_classifier,
 )
-from patientflow.model_artifacts import TrainedClassifier
+from patientflow.model_artifacts import (
+    ServiceModels,
+    TrainedClassifier,
+    TrainingResults,
+)
 
 
 class TestClassifiers(unittest.TestCase):
@@ -89,6 +96,69 @@ class TestClassifiers(unittest.TestCase):
         self.assertIn("test_auc", model.training_results.test_results)
         self.assertIn("test_logloss", model.training_results.test_results)
         self.assertIn("test_auprc", model.training_results.test_results)
+
+        metrics = model.selected_eval_metrics
+        self.assertEqual(metrics["split"], "test")
+        for key in (
+            "log_loss",
+            "auroc",
+            "auprc",
+            "n_samples",
+            "n_positive_cases",
+        ):
+            self.assertIn(key, metrics)
+        info = model.training_results.training_info["dataset_info"][
+            "train_valid_test_set_no"
+        ]
+        self.assertEqual(metrics["n_samples"], info["test_set_no"])
+        self.assertLessEqual(metrics["n_positive_cases"], metrics["n_samples"])
+
+    def test_selected_eval_metrics_uses_validation_when_no_test_eval(self):
+        model = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            visit_col="visit_number",
+            evaluate_on_test=False,
+        )
+        m = model.selected_eval_metrics
+        self.assertEqual(m["split"], "valid")
+        self.assertIn("log_loss", m)
+        self.assertIn("auroc", m)
+        self.assertIn("auprc", m)
+        self.assertEqual(
+            m["n_samples"],
+            model.training_results.training_info["dataset_info"][
+                "train_valid_test_set_no"
+            ]["valid_set_no"],
+        )
+
+    def test_get_dataset_metadata_positive_cases(self):
+        X_train = self.train_visits.drop(columns=["is_admitted"]).iloc[:100]
+        y_train = self.train_visits["is_admitted"].iloc[:100]
+        X_valid = self.train_visits.drop(columns=["is_admitted"]).iloc[100:200]
+        y_valid = self.train_visits["is_admitted"].iloc[100:200]
+        meta = get_dataset_metadata(X_train, X_valid, y_train, y_valid)
+        self.assertEqual(
+            meta["train_valid_test_positive_cases"]["train_positive_cases"],
+            int((y_train == 1).sum()),
+        )
+        self.assertEqual(
+            meta["train_valid_test_positive_cases"]["valid_positive_cases"],
+            int((y_valid == 1).sum()),
+        )
+        self.assertIsNone(
+            meta["train_valid_test_positive_cases"]["test_positive_cases"],
+        )
+        meta_t = get_dataset_metadata(
+            X_train, X_valid, y_train, y_valid, X_train, y_train
+        )
+        self.assertIsNotNone(
+            meta_t["train_valid_test_positive_cases"]["test_positive_cases"],
+        )
 
     def test_optional_test_evaluation(self):
         """Test that test evaluation is optional and defaults to False."""
@@ -458,6 +528,41 @@ class TestClassifiers(unittest.TestCase):
         )
         probs = pipe.predict_proba(prepared)
         self.assertEqual(probs.shape[0], 2)
+
+
+class TestServiceModels(unittest.TestCase):
+    def test_to_tuple_canonical_order(self):
+        slots = [object() for _ in range(7)]
+        m = ServiceModels(
+            prediction_time=(7, 30),
+            prediction_window=timedelta(hours=8),
+            ed_classifier=slots[0],
+            inpatient_classifier=slots[1],
+            spec_model=slots[2],
+            ed_yta_model=slots[3],
+            non_ed_yta_model=slots[4],
+            elective_yta_model=slots[5],
+            transfer_model=slots[6],
+        )
+        self.assertEqual(m.to_tuple(), tuple(slots))
+
+    def test_defaults_are_none_except_time_window(self):
+        m = ServiceModels(
+            prediction_time=(0, 0),
+            prediction_window=timedelta(hours=1),
+        )
+        self.assertEqual(
+            m.to_tuple(),
+            (None, None, None, None, None, None, None),
+        )
+
+
+class TestTrainedClassifierArtifacts(unittest.TestCase):
+    def test_selected_eval_metrics_default(self):
+        tc = TrainedClassifier(
+            training_results=TrainingResults(prediction_time=(4, 0)),
+        )
+        self.assertEqual(tc.selected_eval_metrics, {})
 
 
 if __name__ == "__main__":
