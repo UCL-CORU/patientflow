@@ -58,7 +58,9 @@ def test_requires_admission_curve_params_without_model():
 
 
 def test_requires_admission_curve_params_parametric_ed_yta():
-    p = ParametricIncomingAdmissionPredictor.__new__(ParametricIncomingAdmissionPredictor)
+    p = ParametricIncomingAdmissionPredictor.__new__(
+        ParametricIncomingAdmissionPredictor
+    )
     fs = FlowSelection.custom(include_ed_yta=True)
     assert requires_admission_curve_params(
         fs,

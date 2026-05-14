@@ -175,3 +175,24 @@ def test_count_observed_unknown_mode():
             prediction_time=(10, 0),
             prediction_window=timedelta(hours=1),
         )
+
+
+def test_evaluate_package_import_paths():
+    from patientflow.evaluate.inputs import EvaluationInputsBuilder
+    from patientflow.evaluate.legacy_api import calculate_results, calc_mae_mpe
+    from patientflow.evaluate.runner import run_evaluation
+    from patientflow.evaluate.scalars import ScalarsCollector
+
+    assert callable(calculate_results)
+    assert callable(calc_mae_mpe)
+    assert callable(run_evaluation)
+    assert callable(ScalarsCollector)
+    assert EvaluationInputsBuilder is not None
+
+
+def test_calculate_results_legacy_api():
+    from patientflow.evaluate.legacy_api import calculate_results
+
+    r = calculate_results([1, 2], [1.0, 4.0])
+    assert r["mae"] == pytest.approx(1.0)
+    assert r["mpe"] == pytest.approx(25.0)

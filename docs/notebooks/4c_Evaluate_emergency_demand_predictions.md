@@ -245,7 +245,7 @@ Below I use two approaches to evaluate the predicted distributions.
 See notebook 3b for more on these approaches.
 
 ```python
-from patientflow.evaluate import calc_mae_mpe
+from patientflow.evaluate.legacy_api import calc_mae_mpe
 from patientflow.viz.observed_against_expected import plot_deltas
 specialties=['medical', 'surgical', 'haem/onc', 'paediatric']
 

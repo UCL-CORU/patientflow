@@ -258,7 +258,7 @@ prob_dist_dict_all = get_specialty_probability_distributions(
 I now evaluate the predicted distributions using the approaches introduced in notebook 3b. First, histograms showing the difference between observed and expected values for each hospital service. Then, EPUDD plots which evaluate the full predicted distribution against observed values.
 
 ```python
-from patientflow.evaluate import calc_mae_mpe
+from patientflow.evaluate.legacy_api import calc_mae_mpe
 from patientflow.viz.observed_against_expected import plot_deltas
 
 for specialty in specialties:
