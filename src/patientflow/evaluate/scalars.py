@@ -52,7 +52,9 @@ def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     `service="_all_"`. Classifier model-diagnostics rows use a non-empty
     `model_name` (the clocked model key, e.g. ``admissions_0600``) and may
     include ``metrics_split`` (``"valid"`` or ``"test"``) for the holdout used
-    at train time. Classifier probability-quality rows use flow-level keys
+    at train time (from ``TrainedClassifier.selected_eval_metrics``). Plot
+    cohort labels use run-level ``EvaluationInputs.eval_split`` instead.
+    Classifier probability-quality rows use flow-level keys
     with ``model_name=""`` and ``prediction_time=None``.
     """
     return (

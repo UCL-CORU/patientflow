@@ -10,6 +10,7 @@ Submodules should be imported explicitly, for example::
         EvaluationInputs,
         EvaluationInputsBuilder,
         EvaluationTarget,
+        eval_split_label,
     )
 
 See Also
@@ -56,6 +57,39 @@ EVALUATION_MODES: Tuple[str, ...] = (
     "arrival_deltas",
     "survival_curve",
 )
+
+EvalSplitLiteral = Literal["valid", "test"]
+
+EVAL_SPLITS: Tuple[str, ...] = ("valid", "test")
+
+
+def eval_split_label(split: Optional[str]) -> str:
+    """Return a human-readable cohort label for plot titles and reporting.
+
+    Parameters
+    ----------
+    split : str or None
+        Run-level evaluation holdout: ``"valid"``, ``"test"``, or ``None``.
+
+    Returns
+    -------
+    str
+        For example ``"validation set"`` or ``"evaluation cohort"`` when
+        ``split`` is unrecognised.
+    """
+    if split == "test":
+        return "test set"
+    if split == "valid":
+        return "validation set"
+    return "evaluation cohort"
+
+
+def _validate_eval_split(eval_split: str) -> EvalSplitLiteral:
+    if eval_split not in EVAL_SPLITS:
+        raise ValueError(
+            f"Unknown eval_split {eval_split!r}; expected one of {EVAL_SPLITS}"
+        )
+    return eval_split  # type: ignore[return-value]
 
 
 @dataclass(frozen=True)
@@ -148,11 +182,15 @@ class EvaluationInputs:
         When set, keys include `train_df`, `test_df`, column names, `labels`.
     observation_contexts : dict
         `flow_name` → `service` → visit frames for observation counting.
+    eval_split : str
+        Holdout assessed by this run: ``"valid"`` (default) or ``"test"``.
+        Drives plot cohort labels; visit frames and snapshot dates must match.
     """
 
     flow_selection: FlowSelection
     prediction_times: List[Tuple[int, int]]
     evaluation_targets: List[EvaluationTarget]
+    eval_split: EvalSplitLiteral = "valid"
     classifier_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     distribution_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     arrival_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -165,8 +203,10 @@ class EvaluationInputs:
 class EvaluationInputsBuilder:
     """Construct `EvaluationInputs` with a fluent `add_*` API.
 
-    `flow_selection` and `prediction_times` must be set (via the
-    constructor or setters) before any `add_*` method is called.
+    `flow_selection`, `prediction_times`, and `eval_split` must be set
+    (via the constructor or setters) before any `add_*` method is called.
+    Register visit frames and snapshot dates for the same holdout as
+    ``eval_split``.
 
     Parameters
     ----------
@@ -174,16 +214,22 @@ class EvaluationInputsBuilder:
         Scenario for the run; may be set later via `set_flow_selection`.
     prediction_times : list of tuple of int, optional
         Global prediction clock times; may be set via `set_prediction_times`.
+    eval_split : str, optional
+        Holdout for this run: ``"valid"`` (default) or ``"test"``. May be set
+        later via `set_eval_split`.
     """
 
     def __init__(
         self,
         flow_selection: Optional[FlowSelection] = None,
         prediction_times: Optional[List[Tuple[int, int]]] = None,
+        *,
+        eval_split: EvalSplitLiteral = "valid",
     ) -> None:
         """Create builder state; see class docstring for required fields before `add_*`."""
         self._flow_selection: Optional[FlowSelection] = flow_selection
         self._prediction_times: Optional[List[Tuple[int, int]]] = prediction_times
+        self._eval_split: EvalSplitLiteral = _validate_eval_split(eval_split)
         self._targets: List[EvaluationTarget] = []
         self._classifier_by_flow: Dict[str, Dict[str, Any]] = {}
         self._distribution_by_flow: Dict[str, Dict[str, Any]] = {}
@@ -225,6 +271,29 @@ class EvaluationInputsBuilder:
             `self` for method chaining.
         """
         self._prediction_times = list(prediction_times)
+        return self
+
+    def set_eval_split(self, eval_split: EvalSplitLiteral) -> EvaluationInputsBuilder:
+        """Set which temporal holdout this evaluation run assesses.
+
+        Parameters
+        ----------
+        eval_split : str
+            ``"valid"`` or ``"test"``. Register visit frames and snapshot dates
+            for the same cohort when calling `add_classifier`, `add_arrival_deltas`,
+            and distribution observation helpers.
+
+        Returns
+        -------
+        EvaluationInputsBuilder
+            `self` for method chaining.
+
+        Raises
+        ------
+        ValueError
+            If ``eval_split`` is not ``"valid"`` or ``"test"``.
+        """
+        self._eval_split = _validate_eval_split(eval_split)
         return self
 
     def with_evaluation_targets(
@@ -529,6 +598,7 @@ class EvaluationInputsBuilder:
             flow_selection=self._flow_selection,
             prediction_times=list(self._prediction_times),
             evaluation_targets=list(self._targets),
+            eval_split=self._eval_split,
             classifier_by_flow=dict(self._classifier_by_flow),
             distribution_by_flow=dict(self._distribution_by_flow),
             arrival_by_flow=dict(self._arrival_by_flow),

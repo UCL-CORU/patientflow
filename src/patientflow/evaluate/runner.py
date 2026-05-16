@@ -89,7 +89,8 @@ def write_evaluation_run_manifest(
 
     The ``training`` block is a copy of the project ``config.yaml`` (including
     ``prediction_times`` and date boundaries). The ``evaluation`` block holds
-    only settings specific to this run (paths, ``flow_selection``, target count).
+    only settings specific to this run (paths, ``flow_selection``, ``eval_split``,
+    target count).
 
     Parameters
     ----------
@@ -118,6 +119,7 @@ def write_evaluation_run_manifest(
         "evaluation": {
             "output_root": str(output_root),
             "run_name": run_name,
+            "eval_split": inputs.eval_split,
             "flow_selection": asdict(inputs.flow_selection),
             "n_targets": len(inputs.evaluation_targets),
         },
@@ -141,7 +143,8 @@ def run_evaluation(
     Creates a timestamped subdirectory under `output_root` containing:
 
     - `evaluation_run.yaml` — full project ``config.yaml`` under ``training:``,
-      plus evaluation-only settings under ``evaluation:``.
+      plus evaluation-only settings under ``evaluation:`` (including
+      ``eval_split``).
     - `scalars.json` — `evaluation_rows` plus optional `_service_summary`
       fragments merged by handlers (distribution and arrival modes attach
       per-slice service coverage).

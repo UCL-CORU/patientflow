@@ -11,6 +11,7 @@ plot_shap : function
 
 from matplotlib import pyplot as plt
 from patientflow.prepare import prepare_patient_snapshots
+from patientflow.viz.utils import apply_figure_suptitle
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.model_artifacts import TrainedClassifier
 import scipy.sparse
@@ -38,6 +39,7 @@ def plot_shap(
     *,
     exclude_from_training_data: Optional[List[str]] = None,
     show: bool = False,
+    suptitle: Optional[str] = None,
 ):
     """Generate SHAP plots for multiple trained models.
 
@@ -69,6 +71,9 @@ def plot_shap(
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when not using ``return_figure``.
         Default False avoids blocking or inline display in notebooks when saving only.
+    suptitle : str, optional
+        Figure-level title above the SHAP summary (for example cohort and
+        prediction clock). When omitted, a default title uses the clock only.
 
     Returns
     -------
@@ -90,8 +95,6 @@ def plot_shap(
     )
 
     for trained_model in trained_models_sorted:
-        fig, ax = plt.subplots(figsize=(8, 12))
-
         # use non-calibrated pipeline
         pipeline: Pipeline = trained_model.pipeline
         prediction_time = trained_model.training_results.prediction_time
@@ -149,26 +152,29 @@ def plot_shap(
             rng=rng,
         )
 
+        fig = plt.gcf()
+        fig.set_size_inches(8, 12)
         hour, minutes = prediction_time
-        ax.set_title(f"SHAP Values for Time of Day: {hour}:{minutes:02}")
-        ax.set_xlabel("SHAP Value")
-        plt.tight_layout()
+        clock = f"{hour:02d}:{minutes:02d}"
+        title = suptitle if suptitle is not None else f"SHAP summary at {clock}"
+        apply_figure_suptitle(fig, title, fontsize=14, top=0.90)
+        plt.gca().set_xlabel("SHAP value (impact on model output)")
 
         if media_file_path:
             # Save plot — disambiguate file_name when looping over several models
             if file_name:
                 fn = Path(file_name)
                 if len(trained_models_sorted) > 1:
-                    clock = f"{hour:02d}{minutes:02d}"
-                    unique_name = f"{fn.stem}_{clock}{fn.suffix}"
+                    clock_tag = f"{hour:02d}{minutes:02d}"
+                    unique_name = f"{fn.stem}_{clock_tag}{fn.suffix}"
                 else:
                     unique_name = fn.name
                 shap_plot_path = str(media_file_path / unique_name)
             else:
                 shap_plot_path = str(
-                    media_file_path / f"shap_plot_{hour:02}{minutes:02}.png"
+                    media_file_path / f"shap_{hour:02d}{minutes:02d}.png"
                 )
-            plt.savefig(shap_plot_path)
+            plt.savefig(shap_plot_path, bbox_inches="tight", pad_inches=0.2)
 
         if return_figure:
             return fig

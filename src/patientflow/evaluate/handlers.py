@@ -22,7 +22,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from patientflow.evaluate.inputs import EvaluationInputs, EvaluationTarget
+from patientflow.evaluate.inputs import (
+    EvaluationInputs,
+    EvaluationTarget,
+    eval_split_label,
+)
 from patientflow.evaluate.scalars import (
     SERVICE_SENTINEL_ALL,
     ScalarsCollector,
@@ -61,36 +65,137 @@ _DISTRIBUTION_COMPONENT_LABELS: Dict[str, str] = {
     "epudd_departures_all_inpatient": "All inpatient departures",
 }
 
-
-def _metrics_split_label(split: Optional[str]) -> str:
-    if split == "test":
-        return "test set"
-    if split == "valid":
-        return "validation set"
-    return "evaluation cohort"
+_ARRIVAL_FLOW_LABELS: Dict[str, str] = {
+    "ed_yta_arrival_rates": "ED yet-to-arrive arrival deltas",
+}
 
 
-def _classifier_quality_suptitle(
-    target: EvaluationTarget, chart: str, *, metrics_split: Optional[str] = None
-) -> str:
-    """Return a human-readable figure title for classifier probability-quality plots."""
-    flow_label = _FLOW_TYPE_LABELS.get(
+def _flow_label(target: EvaluationTarget) -> str:
+    """Return a display label for ``target.flow_type`` or ``target.flow_name``."""
+    return _FLOW_TYPE_LABELS.get(
         target.flow_type,
         target.flow_type.replace("_", " ").title(),
     )
-    cohort = _metrics_split_label(metrics_split)
+
+
+def _classifier_diagnostics_suptitle(
+    target: EvaluationTarget,
+    chart: str,
+    *,
+    eval_split: Optional[str],
+    prediction_time: Optional[Tuple[int, int]] = None,
+) -> str:
+    """Return a figure suptitle for classifier model-diagnostics charts.
+
+    Parameters
+    ----------
+    target : EvaluationTarget
+        Classifier model-diagnostics target.
+    chart : str
+        Chart description (for example ``"feature importances"``).
+    eval_split : str or None
+        Run-level holdout from `EvaluationInputs.eval_split`.
+    prediction_time : tuple of int or None, optional
+        ``(hour, minute)`` when the chart is for one prediction clock.
+
+    Returns
+    -------
+    str
+        Title including cohort label.
+    """
+    flow_label = _flow_label(target)
+    cohort = eval_split_label(eval_split)
+    if prediction_time is None:
+        return f"{flow_label}: {chart} ({cohort})"
+    hour, minute = prediction_time
+    return f"{flow_label}: {chart} at {hour:02d}:{minute:02d} ({cohort})"
+
+
+def _classifier_quality_suptitle(
+    target: EvaluationTarget, chart: str, *, eval_split: Optional[str] = None
+) -> str:
+    """Return a human-readable figure title for classifier probability-quality plots.
+
+    Parameters
+    ----------
+    target : EvaluationTarget
+        Classifier probability-quality target.
+    chart : str
+        Short chart name (for example ``"discrimination"``).
+    eval_split : str or None, optional
+        Run-level holdout from `EvaluationInputs.eval_split`.
+
+    Returns
+    -------
+    str
+        Title including the cohort label.
+    """
+    flow_label = _flow_label(target)
+    cohort = eval_split_label(eval_split)
     return f"{flow_label}: {chart} ({cohort})"
 
 
-def _distribution_epudd_suptitle(target: EvaluationTarget, service: str) -> str:
-    """Return a human-readable figure title for EPUDD distribution charts."""
+def _arrival_delta_suptitle(
+    target: EvaluationTarget,
+    service: str,
+    prediction_time: Tuple[int, int],
+    *,
+    eval_split: Optional[str],
+) -> str:
+    """Return a figure suptitle for cumulative arrival-delta charts.
+
+    Parameters
+    ----------
+    target : EvaluationTarget
+        Arrival-deltas evaluation target.
+    service : str
+        Hospital service name.
+    prediction_time : tuple of int
+        ``(hour, minute)`` for the prediction clock.
+    eval_split : str or None
+        Run-level holdout from `EvaluationInputs.eval_split`.
+
+    Returns
+    -------
+    str
+        Title including service, clock, and cohort label.
+    """
+    subject = _ARRIVAL_FLOW_LABELS.get(
+        target.flow_name,
+        target.flow_name.replace("_", " ").title(),
+    )
+    hour, minute = prediction_time
+    cohort = eval_split_label(eval_split)
+    return f"{subject}: {service} at {hour:02d}:{minute:02d} ({cohort})"
+
+
+def _distribution_epudd_suptitle(
+    target: EvaluationTarget, service: str, *, eval_split: Optional[str] = None
+) -> str:
+    """Return a human-readable figure title for EPUDD distribution charts.
+
+    Parameters
+    ----------
+    target : EvaluationTarget
+        Distribution evaluation target.
+    service : str
+        Hospital service name.
+    eval_split : str or None, optional
+        Run-level holdout from `EvaluationInputs.eval_split`.
+
+    Returns
+    -------
+    str
+        Title including service and cohort label.
+    """
     subject = _DISTRIBUTION_FLOW_LABELS.get(target.flow_name)
     if subject is None:
         subject = _DISTRIBUTION_COMPONENT_LABELS.get(
             target.component,
             target.flow_name.replace("_", " ").title(),
         )
-    return f"{subject}: {service}"
+    cohort = eval_split_label(eval_split)
+    return f"{subject}: {service} ({cohort})"
 
 
 try:
@@ -450,28 +555,44 @@ def evaluate_classifier_model_diagnostics(
     label_col: str = block["label_col"]
     classifiers_dir.mkdir(parents=True, exist_ok=True)
 
+    eval_split = inputs.eval_split
+
     for m in models:
         _require_classifier_eval_artifacts(m)
     plot_features(
         models,
         media_file_path=classifiers_dir,
-        file_name=f"{target.component}_features.png",
-        suptitle=f"{target.flow_name} {target.name}",
+        file_name="features.png",
+        suptitle=_classifier_diagnostics_suptitle(
+            target, "feature importances", eval_split=eval_split
+        ),
         return_figure=False,
     )
     plt.close("all")
 
     if SHAP_AVAILABLE and plot_shap is not None:
-        plot_shap(
-            models,
-            visits,
-            media_file_path=classifiers_dir,
-            file_name=f"{target.component}_shap.png",
-            return_figure=False,
-            label_col=label_col,
-            show=False,
-        )
-        plt.close("all")
+        multi_clock = len(models) > 1
+        for m in models:
+            plot_shap(
+                [m],
+                visits,
+                media_file_path=classifiers_dir,
+                file_name=_disambiguate_classifier_plot_filename(
+                    "shap.png",
+                    m.training_results.prediction_time,
+                    multi_clock=multi_clock,
+                ),
+                suptitle=_classifier_diagnostics_suptitle(
+                    target,
+                    "SHAP summary",
+                    eval_split=eval_split,
+                    prediction_time=m.training_results.prediction_time,
+                ),
+                return_figure=False,
+                label_col=label_col,
+                show=False,
+            )
+            plt.close("all")
 
     base_name = _classifier_base_name(block)
     for m in models:
@@ -524,7 +645,7 @@ def evaluate_classifier_probability_quality(
     if len(visits) == 0:
         return
 
-    metrics_split = models[0].selected_eval_metrics.get("split")
+    eval_split = inputs.eval_split
 
     plot_estimated_probabilities(
         models,
@@ -532,7 +653,7 @@ def evaluate_classifier_probability_quality(
         media_file_path=classifiers_dir,
         file_name="discrimination.png",
         suptitle=_classifier_quality_suptitle(
-            target, "discrimination", metrics_split=metrics_split
+            target, "discrimination", eval_split=eval_split
         ),
         return_figure=False,
         label_col=label_col,
@@ -545,7 +666,7 @@ def evaluate_classifier_probability_quality(
         media_file_path=classifiers_dir,
         file_name="madcap.png",
         suptitle=_classifier_quality_suptitle(
-            target, "MADCAP", metrics_split=metrics_split
+            target, "MADCAP", eval_split=eval_split
         ),
         return_figure=False,
         label_col=label_col,
@@ -558,12 +679,18 @@ def evaluate_classifier_probability_quality(
             [m],
             visits,
             grouping_var="age_group",
-            grouping_var_name="Age Group",
+            grouping_var_name="Age group",
             media_file_path=classifiers_dir,
             file_name=_disambiguate_classifier_plot_filename(
                 "madcap_by_age.png",
                 m.training_results.prediction_time,
                 multi_clock=multi_clock,
+            ),
+            suptitle=_classifier_diagnostics_suptitle(
+                target,
+                "MADCAP by age group",
+                eval_split=eval_split,
+                prediction_time=m.training_results.prediction_time,
             ),
             plot_difference=False,
             return_figure=False,
@@ -577,7 +704,7 @@ def evaluate_classifier_probability_quality(
         media_file_path=classifiers_dir,
         file_name="calibration.png",
         suptitle=_classifier_quality_suptitle(
-            target, "calibration", metrics_split=metrics_split
+            target, "calibration", eval_split=eval_split
         ),
         return_figure=False,
         label_col=label_col,
@@ -695,7 +822,9 @@ def evaluate_distribution(
             return_figure=True,
             media_file_path=svc_dir,
             file_name=f"{target.component}.png",
-            suptitle=_distribution_epudd_suptitle(target, str(service)),
+            suptitle=_distribution_epudd_suptitle(
+                target, str(service), eval_split=inputs.eval_split
+            ),
         )
         if fig is not None:
             plt.close(fig)
@@ -818,7 +947,12 @@ def evaluate_arrival_deltas(
                 predictor=pred,
                 filter_key=fk,
                 strict_prediction_date=strict,
-                suptitle=f"{target.flow_name} {svc} {h:02d}:{mi:02d}",
+                suptitle=_arrival_delta_suptitle(
+                    target,
+                    str(svc),
+                    (h, mi),
+                    eval_split=inputs.eval_split,
+                ),
             )
             plt.close("all")
             collector.add_row(
