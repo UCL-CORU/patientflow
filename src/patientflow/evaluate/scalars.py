@@ -30,9 +30,8 @@ SERVICE_SENTINEL_ALL: str = "_all_"
 def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     """Return a stable tuple key used to merge and deduplicate scalar rows.
 
-    Rows with different `evaluation_mode` or `model_name` (model-level A
-    versus service-level B/C) never share a key, so one grain cannot overwrite
-    another.
+    Rows with different `evaluation_mode`, `component`, `prediction_time`, or
+    `model_name` never share a key, so one grain cannot overwrite another.
 
     Parameters
     ----------
@@ -50,8 +49,11 @@ def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     Notes
     -----
     Survival rows use `prediction_time=None` and typically
-    `service="_all_"`. Model-level classifier rows carry a non-empty
-    `model_name`; service-level rows use `""` for that field.
+    `service="_all_"`. Classifier model-diagnostics rows use a non-empty
+    `model_name` (the clocked model key, e.g. ``admissions_0600``) and may
+    include ``metrics_split`` (``"valid"`` or ``"test"``) for the holdout used
+    at train time. Classifier probability-quality rows use flow-level keys
+    with ``model_name=""`` and ``prediction_time=None``.
     """
     return (
         row.get("evaluation_mode"),

@@ -34,6 +34,7 @@ import pandas as pd
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.viz.utils import apply_figure_suptitle, pyplot_show_if
 
 exclude_from_training_data = [
     "visit_number",
@@ -115,6 +116,7 @@ def plot_madcap(
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
+    show: bool = False,
 ) -> Optional[plt.Figure]:
     """Generate MADCAP plots for a list of trained models.
 
@@ -137,6 +139,8 @@ def plot_madcap(
     exclude_from_training_data : List[str], optional, deprecated
         This parameter is deprecated and ignored. Column selection is now handled
         automatically by the pipeline's FeatureColumnTransformer.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
     Returns
     -------
@@ -235,22 +239,17 @@ def plot_madcap(
             axes[row, col].axis("off")
 
     plt.tight_layout()
-
-    # Add suptitle if provided
-    if suptitle:
-        fig.suptitle(suptitle, fontsize=16, y=1.05)
-        # Adjust layout to accommodate suptitle
-        plt.subplots_adjust(top=0.85)
+    apply_figure_suptitle(fig, suptitle)
 
     if media_file_path:
         plot_name = file_name if file_name else "madcap_plot.png"
         madcap_plot_path = Path(media_file_path) / plot_name
-        plt.savefig(madcap_plot_path, bbox_inches="tight")
+        plt.savefig(madcap_plot_path, bbox_inches="tight", dpi=300)
 
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close(fig)
         return None
 
@@ -321,6 +320,8 @@ def _plot_madcap_by_group_single(
     file_name: Optional[str] = None,
     plot_difference=True,
     return_figure=False,
+    *,
+    show: bool = False,
 ):
     """Generate MADCAP plots for specific groups at a given prediction time.
 
@@ -434,7 +435,7 @@ def _plot_madcap_by_group_single(
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close(fig)
         return None
 
@@ -451,6 +452,7 @@ def plot_madcap_by_group(
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
+    show: bool = False,
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -477,6 +479,9 @@ def plot_madcap_by_group(
     exclude_from_training_data : List[str], optional, deprecated
         This parameter is deprecated and ignored. Column selection is now handled
         automatically by the pipeline's FeatureColumnTransformer.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when a grouped figure is not
+        returned (unused when ``return_figure`` is true, the usual path).
 
     Returns
     -------
@@ -543,6 +548,7 @@ def plot_madcap_by_group(
             file_name=file_name,
             plot_difference=plot_difference,
             return_figure=True,
+            show=show,
         )
         if return_figure:
             figures.append(fig)

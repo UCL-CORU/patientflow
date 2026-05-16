@@ -55,7 +55,10 @@ def plot_shap(
         Directory path where the generated plots will be saved. If None, plots are
         only displayed.
     file_name : str, optional
-        Custom filename to use when saving the plot. If not provided, defaults to "shap_plot.png".
+        Filename when saving a single model (e.g. ``"shap_summary.png"``). When
+        several ``trained_models`` are passed, each plot is saved as
+        ``{stem}_{HHMM}{suffix}`` so clocks do not overwrite the same path. If
+        omitted, uses ``shap_plot_{HHMM}.png`` per model.
     return_figure : bool, default=False
         If True, returns the figure instead of displaying.
     label_col : str, default="is_admitted"
@@ -152,9 +155,15 @@ def plot_shap(
         plt.tight_layout()
 
         if media_file_path:
-            # Save plot
+            # Save plot — disambiguate file_name when looping over several models
             if file_name:
-                shap_plot_path = str(media_file_path / file_name)
+                fn = Path(file_name)
+                if len(trained_models_sorted) > 1:
+                    clock = f"{hour:02d}{minutes:02d}"
+                    unique_name = f"{fn.stem}_{clock}{fn.suffix}"
+                else:
+                    unique_name = fn.name
+                shap_plot_path = str(media_file_path / unique_name)
             else:
                 shap_plot_path = str(
                     media_file_path / f"shap_plot_{hour:02}{minutes:02}.png"

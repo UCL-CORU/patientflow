@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,8 +34,64 @@ from patientflow.viz.epudd import plot_epudd
 from patientflow.viz.features import plot_features
 from patientflow.viz.observed_against_expected import plot_arrival_deltas
 from patientflow.viz.calibration import plot_calibration
-from patientflow.viz.madcap import plot_madcap
+from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
+from patientflow.viz.madcap import plot_madcap, plot_madcap_by_group
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
+
+
+def _safe_fs_segment(name: str) -> str:
+    """Return a filesystem-safe directory or filename token (no path separators)."""
+    return str(name).replace("/", "_").replace("\\", "_")
+
+
+_FLOW_TYPE_LABELS: Dict[str, str] = {
+    "admissions": "ED admission classifier",
+    "departures": "Inpatient departure classifier",
+}
+
+_DISTRIBUTION_FLOW_LABELS: Dict[str, str] = {
+    "ed_current_beds": "ED current bed demand",
+    "ed_yta_beds": "ED yet-to-arrive bed demand",
+}
+
+_DISTRIBUTION_COMPONENT_LABELS: Dict[str, str] = {
+    "epudd": "Bed demand",
+    "epudd_departures_elective": "Elective departures",
+    "epudd_departures_emergency": "Emergency departures",
+    "epudd_departures_all_inpatient": "All inpatient departures",
+}
+
+
+def _metrics_split_label(split: Optional[str]) -> str:
+    if split == "test":
+        return "test set"
+    if split == "valid":
+        return "validation set"
+    return "evaluation cohort"
+
+
+def _classifier_quality_suptitle(
+    target: EvaluationTarget, chart: str, *, metrics_split: Optional[str] = None
+) -> str:
+    """Return a human-readable figure title for classifier probability-quality plots."""
+    flow_label = _FLOW_TYPE_LABELS.get(
+        target.flow_type,
+        target.flow_type.replace("_", " ").title(),
+    )
+    cohort = _metrics_split_label(metrics_split)
+    return f"{flow_label}: {chart} ({cohort})"
+
+
+def _distribution_epudd_suptitle(target: EvaluationTarget, service: str) -> str:
+    """Return a human-readable figure title for EPUDD distribution charts."""
+    subject = _DISTRIBUTION_FLOW_LABELS.get(target.flow_name)
+    if subject is None:
+        subject = _DISTRIBUTION_COMPONENT_LABELS.get(
+            target.component,
+            target.flow_name.replace("_", " ").title(),
+        )
+    return f"{subject}: {service}"
+
 
 try:
     from patientflow.viz.shap import SHAP_AVAILABLE, plot_shap
@@ -88,6 +144,62 @@ def _sort_models(models: Sequence[TrainedClassifier]) -> List[TrainedClassifier]
     )
 
 
+def _classifier_base_name(block: Mapping[str, Any]) -> str:
+    """Return the model name prefix used with :func:`get_model_key`."""
+    return str(block.get("model_name") or "admissions")
+
+
+def _classifier_model_key(model: TrainedClassifier, base_name: str) -> str:
+    return get_model_key(base_name, model.training_results.prediction_time)
+
+
+def _disambiguate_classifier_plot_filename(
+    file_name: str,
+    prediction_time: Tuple[int, int],
+    *,
+    multi_clock: bool,
+) -> str:
+    """Return ``file_name`` or a per-clock variant when several models are plotted."""
+    if not multi_clock:
+        return file_name
+    hour, minutes = prediction_time
+    fn = Path(file_name)
+    clock = f"{hour:02d}{minutes:02d}"
+    return f"{fn.stem}_{clock}{fn.suffix}"
+
+
+def _classifier_diagnostics_scalar_row(
+    target: EvaluationTarget,
+    model: TrainedClassifier,
+    *,
+    base_name: str,
+) -> Dict[str, Any]:
+    """Build one model-diagnostics scalar row (headline metrics from training)."""
+    metrics = model.selected_eval_metrics
+    pt = model.training_results.prediction_time
+    info = (model.training_results.training_info or {}).get("dataset_info") or {}
+    pos_cases = info.get("train_valid_test_positive_cases") or {}
+    reliable = classifier_reliable(metrics, pos_cases)
+    hour, minute = pt
+    return {
+        "evaluation_mode": target.evaluation_mode,
+        "flow": target.flow_name,
+        "flow_type": target.flow_type,
+        "service": SERVICE_SENTINEL_ALL,
+        "component": target.component,
+        "prediction_time": [hour, minute],
+        "model_name": _classifier_model_key(model, base_name),
+        "metrics_split": metrics.get("split"),
+        "charts_generated": True,
+        "auroc": metrics.get("auroc"),
+        "auprc": metrics.get("auprc"),
+        "log_loss": metrics.get("log_loss"),
+        "n_samples": metrics.get("n_samples"),
+        "n_positive_cases": metrics.get("n_positive_cases"),
+        "reliable": reliable,
+    }
+
+
 def _ensure_epudd_leaf(data: Mapping[str, Any]) -> Dict[str, Any]:
     """Normalise one snapshot payload for `patientflow.viz.epudd.plot_epudd`.
 
@@ -112,6 +224,12 @@ def _ensure_epudd_leaf(data: Mapping[str, Any]) -> Dict[str, Any]:
     ap = out.get("agg_predicted")
     if isinstance(ap, dict) and "agg_proba" in ap:
         return out
+    if isinstance(ap, pd.DataFrame) and "agg_proba" in ap.columns:
+        arr = np.asarray(ap["agg_proba"].to_numpy(), dtype=float).flatten()
+        return {
+            "agg_predicted": {"agg_proba": arr},
+            "agg_observed": out.get("agg_observed", 0),
+        }
     if isinstance(ap, pd.Series):
         arr = np.asarray(ap.values, dtype=float).flatten()
         return {
@@ -119,13 +237,47 @@ def _ensure_epudd_leaf(data: Mapping[str, Any]) -> Dict[str, Any]:
             "agg_observed": out.get("agg_observed", 0),
         }
     raise TypeError(
-        "Each snapshot value must have agg_predicted as a Series or "
-        "as a dict with key 'agg_proba'."
+        "Each snapshot value must have agg_predicted as a Series, a DataFrame "
+        "with an 'agg_proba' column, or as a dict with key 'agg_proba'."
     )
 
 
+def _distribution_per_date_is_model_key_indexed(
+    per_date: Mapping[Any, Any],
+    model_name: str,
+    prediction_times: Sequence[Tuple[int, int]],
+) -> bool:
+    """Return True when *per_date* is ``model_key -> snapshot -> leaf`` (not date-first)."""
+    if not per_date:
+        return False
+    mk_set = {get_model_key(model_name, pt) for pt in prediction_times}
+    if not set(per_date.keys()) <= mk_set:
+        return False
+    inner = next(iter(per_date.values()))
+    return isinstance(inner, Mapping)
+
+
+def _flatten_distribution_leaves(
+    per_date: Mapping[Any, Any],
+    model_name: str,
+    prediction_times: Sequence[Tuple[int, int]],
+) -> List[Mapping[str, Any]]:
+    """Collect leaf dicts for inactive-service checks for either per-date encoding."""
+    if _distribution_per_date_is_model_key_indexed(
+        per_date, model_name, prediction_times
+    ):
+        leaves: List[Mapping[str, Any]] = []
+        for by_snap in per_date.values():
+            if isinstance(by_snap, Mapping):
+                for leaf in by_snap.values():
+                    if isinstance(leaf, Mapping):
+                        leaves.append(leaf)
+        return leaves
+    return [v for v in per_date.values() if isinstance(v, Mapping)]
+
+
 def _build_prob_dist_dict_all_for_service(
-    per_date: Mapping[Any, Mapping[str, Any]],
+    per_date: Mapping[Any, Any],
     model_name: str,
     prediction_times: Sequence[Tuple[int, int]],
 ) -> Dict[str, Dict[Any, Dict[str, Any]]]:
@@ -134,25 +286,40 @@ def _build_prob_dist_dict_all_for_service(
     Parameters
     ----------
     per_date : mapping
-        `snapshot` → raw leaf payload (passed through `_ensure_epudd_leaf`).
+        Either ``snapshot`` → raw leaf (legacy: same PMF copied under every
+        model key), or ``model_key`` → ``snapshot`` → leaf when each clock has
+        its own predicted PMFs (preferred for multi-panel EPUDD).
     model_name : str
         Base name for `patientflow.load.get_model_key`.
     prediction_times : sequence of tuple of int
-        Each tuple is `(hour, minute)`; the same `per_date` is attached under
-        every derived model key so EPUDD can overlay all clocks.
+        Each tuple is `(hour, minute)`.
 
     Returns
     -------
     dict
         `model_key` → `{snapshot: normalised_leaf, ...}`.
     """
+    if _distribution_per_date_is_model_key_indexed(
+        per_date, model_name, prediction_times
+    ):
+        out_mk: Dict[str, Dict[Any, Dict[str, Any]]] = {}
+        for pt in prediction_times:
+            mk = get_model_key(model_name, pt)
+            src = per_date.get(mk)
+            inner: Dict[Any, Dict[str, Any]] = {}
+            if isinstance(src, Mapping):
+                for snap, payload in src.items():
+                    inner[snap] = _ensure_epudd_leaf(payload)
+            out_mk[mk] = inner
+        return out_mk
+
     out: Dict[str, Dict[Any, Dict[str, Any]]] = {}
     for pt in prediction_times:
         mk = get_model_key(model_name, pt)
-        inner: Dict[Any, Dict[str, Any]] = {}
+        inner_legacy: Dict[Any, Dict[str, Any]] = {}
         for snap, payload in per_date.items():
-            inner[snap] = _ensure_epudd_leaf(payload)
-        out[mk] = inner
+            inner_legacy[snap] = _ensure_epudd_leaf(payload)
+        out[mk] = inner_legacy
     return out
 
 
@@ -174,20 +341,32 @@ def _distribution_expectation(leaf: Mapping[str, Any]) -> float:
     if isinstance(ap, dict) and "agg_proba" in ap:
         p = np.asarray(ap["agg_proba"], dtype=float).flatten()
         return float(np.dot(np.arange(len(p)), p))
+    if isinstance(ap, pd.DataFrame) and "agg_proba" in ap.columns:
+        p = np.asarray(ap["agg_proba"].values, dtype=float).flatten()
+        return float(np.dot(np.arange(len(p)), p))
     if isinstance(ap, pd.Series):
         return float(np.dot(ap.index.to_numpy(), ap.values.flatten()))
     return 0.0
 
 
 def _service_is_inactive_distribution(
-    per_date: Mapping[Any, Mapping[str, Any]],
+    per_date: Mapping[Any, Any],
+    *,
+    model_name: str,
+    prediction_times: Sequence[Tuple[int, int]],
 ) -> bool:
     """Return whether a service has no observed mass and negligible predicted mass.
 
     Parameters
     ----------
     per_date : mapping
-        `date` → leaf with `agg_observed` and `agg_predicted`.
+        `date` → leaf, or `model_key` → `date` → leaf (see
+        `_distribution_per_date_is_model_key_indexed`).
+    model_name : str
+        Base model name for resolving `get_model_key` when *per_date* is
+        model-key indexed.
+    prediction_times : sequence of tuple of int
+        Prediction clocks for the run (used only for the model-key form).
 
     Returns
     -------
@@ -195,9 +374,10 @@ def _service_is_inactive_distribution(
         `True` if total observed count is zero and the mean absolute predicted
         expectation across snapshots is below `1e-9`.
     """
+    leaves = _flatten_distribution_leaves(per_date, model_name, prediction_times)
     total_obs = 0
     expectations: List[float] = []
-    for leaf in per_date.values():
+    for leaf in leaves:
         total_obs += int(leaf.get("agg_observed", 0) or 0)
         try:
             expectations.append(abs(_distribution_expectation(leaf)))
@@ -293,31 +473,11 @@ def evaluate_classifier_model_diagnostics(
         )
         plt.close("all")
 
+    base_name = _classifier_base_name(block)
     for m in models:
         _require_classifier_eval_artifacts(m)
-        metrics = m.selected_eval_metrics
-        pt = m.training_results.prediction_time
-        info = (m.training_results.training_info or {}).get("dataset_info") or {}
-        pos_cases = info.get("train_valid_test_positive_cases") or {}
-        reliable = classifier_reliable(metrics, pos_cases)
-        hour, minute = pt
         collector.add_row(
-            {
-                "evaluation_mode": target.evaluation_mode,
-                "flow": target.flow_name,
-                "flow_type": target.flow_type,
-                "service": SERVICE_SENTINEL_ALL,
-                "component": target.component,
-                "prediction_time": [hour, minute],
-                "model_name": metrics.get("split", "model"),
-                "charts_generated": True,
-                "auroc": metrics.get("auroc"),
-                "auprc": metrics.get("auprc"),
-                "log_loss": metrics.get("log_loss"),
-                "n_samples": metrics.get("n_samples"),
-                "n_positive_cases": metrics.get("n_positive_cases"),
-                "reliable": reliable,
-            }
+            _classifier_diagnostics_scalar_row(target, m, base_name=base_name)
         )
 
 
@@ -325,10 +485,10 @@ def evaluate_classifier_probability_quality(
     inputs: EvaluationInputs,
     target: EvaluationTarget,
     *,
-    services_dir: Path,
+    classifiers_dir: Path,
     collector: ScalarsCollector,
 ) -> None:
-    """Plot MADCAP and calibration per service; emit service-level scalar rows.
+    """Plot discrimination, MADCAP, and calibration on all visits; emit one scalar row.
 
     Parameters
     ----------
@@ -336,17 +496,19 @@ def evaluate_classifier_probability_quality(
         Must include a classifier block for `target.flow_name`.
     target : EvaluationTarget
         `evaluation_mode` must be `"classifier_probability_quality"`.
-    services_dir : pathlib.Path
-        Base directory for per-flow outputs (`services_dir / target.flow_name`).
+    classifiers_dir : pathlib.Path
+        Output directory for this flow (same tree as model diagnostics:
+        `classifiers_dir / target.flow_name`).
     collector : ScalarsCollector
-        Receives one row per (service, model, prediction time).
+        Receives one flow-level row (``charts_generated`` only; no headline metrics).
 
     Notes
     -----
-    Services are taken from the `specialty` column when present; otherwise a
-    single aggregate pseudo-service is used. Skips quietly when no classifier
-    block exists. Uses `patientflow.viz.madcap.plot_madcap` and
-    `patientflow.viz.calibration.plot_calibration`.
+    Plots use the full registered `visits_df` (not split by specialty). Writes
+    ``discrimination.png``, ``madcap.png``, ``madcap_by_age.png`` (or per-clock
+    variants when several models are registered), and ``calibration.png``. Skips
+    quietly when no classifier block exists. Headline metrics are recorded under
+    ``classifier_model_diagnostics``.
     """
     block = inputs.classifier_by_flow.get(target.flow_name)
     if not block:
@@ -357,66 +519,84 @@ def evaluate_classifier_probability_quality(
     for m in models:
         _require_classifier_eval_artifacts(m)
 
-    services_dir.mkdir(parents=True, exist_ok=True)
+    classifiers_dir.mkdir(parents=True, exist_ok=True)
 
-    if "specialty" in visits.columns:
-        services = sorted(str(s) for s in visits["specialty"].dropna().unique())
-    else:
-        services = [SERVICE_SENTINEL_ALL]
+    if len(visits) == 0:
+        return
 
-    for svc in services:
-        if svc == SERVICE_SENTINEL_ALL:
-            sub = visits
-        else:
-            sub = visits[visits["specialty"] == svc]
-        if len(sub) == 0:
-            continue
-        plot_madcap(
-            models,
-            sub,
-            media_file_path=services_dir,
-            file_name=f"{target.component}_{svc}_madcap.png",
-            suptitle=f"{target.flow_name} {svc}",
+    metrics_split = models[0].selected_eval_metrics.get("split")
+
+    plot_estimated_probabilities(
+        models,
+        visits,
+        media_file_path=classifiers_dir,
+        file_name="discrimination.png",
+        suptitle=_classifier_quality_suptitle(
+            target, "discrimination", metrics_split=metrics_split
+        ),
+        return_figure=False,
+        label_col=label_col,
+        show=False,
+    )
+    plt.close("all")
+    plot_madcap(
+        models,
+        visits,
+        media_file_path=classifiers_dir,
+        file_name="madcap.png",
+        suptitle=_classifier_quality_suptitle(
+            target, "MADCAP", metrics_split=metrics_split
+        ),
+        return_figure=False,
+        label_col=label_col,
+        show=False,
+    )
+    plt.close("all")
+    multi_clock = len(models) > 1
+    for m in models:
+        plot_madcap_by_group(
+            [m],
+            visits,
+            grouping_var="age_group",
+            grouping_var_name="Age Group",
+            media_file_path=classifiers_dir,
+            file_name=_disambiguate_classifier_plot_filename(
+                "madcap_by_age.png",
+                m.training_results.prediction_time,
+                multi_clock=multi_clock,
+            ),
+            plot_difference=False,
             return_figure=False,
             label_col=label_col,
+            show=False,
         )
-        plt.close("all")
-        plot_calibration(
-            models,
-            sub,
-            media_file_path=services_dir,
-            file_name=f"{target.component}_{svc}_calibration.png",
-            suptitle=f"{target.flow_name} {svc}",
-            return_figure=False,
-            label_col=label_col,
-        )
-        plt.close("all")
+    plt.close("all")
+    plot_calibration(
+        models,
+        visits,
+        media_file_path=classifiers_dir,
+        file_name="calibration.png",
+        suptitle=_classifier_quality_suptitle(
+            target, "calibration", metrics_split=metrics_split
+        ),
+        return_figure=False,
+        label_col=label_col,
+        show=False,
+    )
+    plt.close("all")
 
-        for m in models:
-            metrics = m.selected_eval_metrics
-            pt = m.training_results.prediction_time
-            info = (m.training_results.training_info or {}).get("dataset_info") or {}
-            pos_cases = info.get("train_valid_test_positive_cases") or {}
-            reliable = classifier_reliable(metrics, pos_cases)
-            hour, minute = pt
-            collector.add_row(
-                {
-                    "evaluation_mode": target.evaluation_mode,
-                    "flow": target.flow_name,
-                    "flow_type": target.flow_type,
-                    "service": svc,
-                    "component": target.component,
-                    "prediction_time": [hour, minute],
-                    "model_name": "",
-                    "charts_generated": True,
-                    "auroc": metrics.get("auroc"),
-                    "auprc": metrics.get("auprc"),
-                    "log_loss": metrics.get("log_loss"),
-                    "n_samples": metrics.get("n_samples"),
-                    "n_positive_cases": metrics.get("n_positive_cases"),
-                    "reliable": reliable,
-                }
-            )
+    collector.add_row(
+        {
+            "evaluation_mode": target.evaluation_mode,
+            "flow": target.flow_name,
+            "flow_type": target.flow_type,
+            "service": SERVICE_SENTINEL_ALL,
+            "component": target.component,
+            "prediction_time": None,
+            "model_name": "",
+            "charts_generated": True,
+        }
+    )
 
 
 def evaluate_distribution(
@@ -472,9 +652,17 @@ def evaluate_distribution(
         per_date = per_date_raw  # type: ignore[assignment]
         if not isinstance(per_date, Mapping):
             continue
-        inactive = _service_is_inactive_distribution(per_date)
+        inactive = _service_is_inactive_distribution(
+            per_date,
+            model_name=model_name,
+            prediction_times=inputs.prediction_times,
+        )
         if inactive:
             inactive_names.append(str(service))
+            flat_leaves = _flatten_distribution_leaves(
+                per_date, model_name, inputs.prediction_times
+            )
+            n_snapshots_inactive = len(flat_leaves)
             for pt in inputs.prediction_times:
                 h, mi = pt
                 collector.add_row(
@@ -488,7 +676,7 @@ def evaluate_distribution(
                         "model_name": model_name,
                         "charts_generated": False,
                         "skip_reason": "inactive_service",
-                        "n_snapshots": len(per_date),
+                        "n_snapshots": n_snapshots_inactive,
                         "reliable": False,
                     }
                 )
@@ -498,7 +686,7 @@ def evaluate_distribution(
         prob_all = _build_prob_dist_dict_all_for_service(
             per_date, model_name, inputs.prediction_times
         )
-        svc_dir = distributions_dir / target.flow_name / str(service)
+        svc_dir = distributions_dir / target.flow_name / _safe_fs_segment(str(service))
         svc_dir.mkdir(parents=True, exist_ok=True)
         fig = plot_epudd(
             list(inputs.prediction_times),
@@ -506,8 +694,8 @@ def evaluate_distribution(
             model_name=model_name,
             return_figure=True,
             media_file_path=svc_dir,
-            file_name=f"{target.component}_epudd.png",
-            suptitle=f"{target.flow_name} {service} {target.component}",
+            file_name=f"{target.component}.png",
+            suptitle=_distribution_epudd_suptitle(target, str(service)),
         )
         if fig is not None:
             plt.close(fig)
@@ -615,7 +803,7 @@ def evaluate_arrival_deltas(
         strict = bool(strict_map.get(svc, False))
         for pt in inputs.prediction_times:
             h, mi = pt
-            out_dir = arrivals_dir / target.flow_name / str(svc)
+            out_dir = arrivals_dir / target.flow_name / _safe_fs_segment(str(svc))
             out_dir.mkdir(parents=True, exist_ok=True)
             fname = f"{target.component}_{h:02d}{mi:02d}.png"
             plot_arrival_deltas(

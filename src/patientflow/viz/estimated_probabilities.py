@@ -16,6 +16,8 @@ from patientflow.model_artifacts import TrainedClassifier
 from typing import List, Optional
 from pathlib import Path
 
+from patientflow.viz.utils import apply_figure_suptitle, pyplot_show_if
+
 
 # Define the color scheme
 primary_color = "#1f77b4"
@@ -33,6 +35,7 @@ def plot_estimated_probabilities(
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
+    show: bool = False,
 ):
     """Plot estimated probability distributions for multiple models.
 
@@ -152,20 +155,17 @@ def plot_estimated_probabilities(
         ax.legend()
 
     plt.tight_layout()
-
-    # Add suptitle if provided
-    if suptitle is not None:
-        plt.suptitle(suptitle, y=1.05, fontsize=16)
+    apply_figure_suptitle(fig, suptitle)
 
     if media_file_path:
         if file_name:
             filename = file_name
         else:
             filename = "estimated_probabilities.png"
-        plt.savefig(media_file_path / filename, dpi=300)
+        plt.savefig(media_file_path / filename, bbox_inches="tight", dpi=300)
 
     if return_figure:
         return fig
     else:
-        plt.show()
-        plt.close()
+        pyplot_show_if(show)
+        plt.close(fig)
