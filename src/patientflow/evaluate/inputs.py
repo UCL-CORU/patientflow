@@ -136,7 +136,8 @@ class EvaluationInputs:
     evaluation_targets : list of EvaluationTarget
         Targets the runner dispatches over.
     classifier_by_flow : dict
-        Nested `flow_name` → `{"trained_models", "visits_df", "label_col"}`.
+        Nested `flow_name` → `{"trained_models", "visits_df", "label_col",
+        "model_name"}` (``model_name`` is the prefix for :func:`get_model_key`).
     distribution_by_flow : dict
         Nested `flow_name` → distribution block (`prob_dist_by_service`,
         `model_name`, `prediction_window`, etc.).
@@ -259,6 +260,8 @@ class EvaluationInputsBuilder:
         ],
         visits_df: pd.DataFrame,
         label_col: str,
+        *,
+        model_name: str = "admissions",
     ) -> EvaluationInputsBuilder:
         """Register classifiers and visit data for one flow.
 
@@ -273,6 +276,9 @@ class EvaluationInputsBuilder:
             Visit-level frame for MADCAP / calibration / SHAP.
         label_col : str
             Binary outcome column on `visits_df`.
+        model_name : str, optional
+            Base model name passed to :func:`patientflow.load.get_model_key` when
+            recording scalar rows (default ``"admissions"``).
 
         Returns
         -------
@@ -290,6 +296,7 @@ class EvaluationInputsBuilder:
             "trained_models": models,
             "visits_df": visits_df,
             "label_col": label_col,
+            "model_name": model_name,
         }
         return self
 

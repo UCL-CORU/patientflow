@@ -37,18 +37,111 @@ try:
 except Exception:  # pragma: no cover
     pass
 
+EVALUATION_RUN_MANIFEST = "evaluation_run.yaml"
+
+
+def _load_yaml_mapping(path: Path) -> Dict[str, Any]:
+    if not path.is_file():
+        return {}
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return dict(loaded) if isinstance(loaded, dict) else {}
+
+
+def _resolve_project_config_path(project_config_path: Optional[Path] = None) -> Path:
+    """Locate the repository ``config.yaml`` for manifest snapshots.
+
+    Search order: explicit path (if it exists), ``config.yaml`` in the current
+    working directory, each parent of the cwd (so notebooks under ``notebooks/``
+    still find the repo root), then ``config.yaml`` next to the installed package
+    source tree.
+    """
+    if project_config_path is not None:
+        explicit = Path(project_config_path)
+        if explicit.is_file():
+            return explicit.resolve()
+
+    candidates: list[Path] = [Path.cwd() / "config.yaml"]
+    candidates.extend(parent / "config.yaml" for parent in Path.cwd().parents)
+    repo_root = Path(__file__).resolve().parents[3]
+    candidates.append(repo_root / "config.yaml")
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.is_file():
+            return resolved
+
+    return (project_config_path or Path.cwd() / "config.yaml").resolve()
+
+
+def write_evaluation_run_manifest(
+    run_dir: Path,
+    *,
+    output_root: Path,
+    run_name: str,
+    inputs: EvaluationInputs,
+    project_config_path: Optional[Path] = None,
+) -> Path:
+    """Write ``evaluation_run.yaml`` with project training config and run settings.
+
+    The ``training`` block is a copy of the project ``config.yaml`` (including
+    ``prediction_times`` and date boundaries). The ``evaluation`` block holds
+    only settings specific to this run (paths, ``flow_selection``, target count).
+
+    Parameters
+    ----------
+    run_dir : pathlib.Path
+        Evaluation run directory.
+    output_root : pathlib.Path
+        Base directory for evaluation runs.
+    run_name : str
+        Run subdirectory name (timestamp or custom).
+    inputs : EvaluationInputs
+        Built evaluation inputs.
+    project_config_path : pathlib.Path, optional
+        Path to the repository ``config.yaml``. When omitted, searches the cwd,
+        its parents, then the package source tree (works when the notebook cwd
+        is ``notebooks/``).
+
+    Returns
+    -------
+    pathlib.Path
+        Path to the written manifest file.
+    """
+    config_path = _resolve_project_config_path(project_config_path)
+    training_config = _load_yaml_mapping(config_path)
+    manifest: Dict[str, Any] = {
+        "training": training_config,
+        "evaluation": {
+            "output_root": str(output_root),
+            "run_name": run_name,
+            "flow_selection": asdict(inputs.flow_selection),
+            "n_targets": len(inputs.evaluation_targets),
+        },
+    }
+    manifest_path = run_dir / EVALUATION_RUN_MANIFEST
+    manifest_path.write_text(
+        yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+    )
+    return manifest_path
+
 
 def run_evaluation(
     output_root: Path,
     inputs: EvaluationInputs,
     *,
     run_name: Optional[str] = None,
+    project_config_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Execute every `EvaluationTarget` in `inputs` and write artefacts.
 
     Creates a timestamped subdirectory under `output_root` containing:
 
-    - `config.yaml` — `flow_selection`, `prediction_times`, and run metadata.
+    - `evaluation_run.yaml` — full project ``config.yaml`` under ``training:``,
+      plus evaluation-only settings under ``evaluation:``.
     - `scalars.json` — `evaluation_rows` plus optional `_service_summary`
       fragments merged by handlers (distribution and arrival modes attach
       per-slice service coverage).
@@ -71,12 +164,14 @@ def run_evaluation(
         Immutable inputs from `EvaluationInputsBuilder.build()`.
     run_name : str, optional
         Subdirectory name; default is `YYYYMMDD_HHMMSS` from the current time.
+    project_config_path : pathlib.Path, optional
+        Project ``config.yaml`` to snapshot under ``training`` in the manifest.
 
     Returns
     -------
     dict
-        Keys `run_dir`, `scalars_path` (each a `pathlib.Path`), and
-        `n_targets` (`int`).
+        Keys `run_dir`, `scalars_path`, `manifest_path` (each a `pathlib.Path`),
+        and `n_targets` (`int`).
     """
     output_root = Path(output_root)
     stamp = run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -88,19 +183,15 @@ def run_evaluation(
     if scalars_path.is_file():
         collector.load_prior_from_path(scalars_path)
 
-    config = {
-        "output_root": str(output_root),
-        "run_name": stamp,
-        "flow_selection": asdict(inputs.flow_selection),
-        "prediction_times": [list(t) for t in inputs.prediction_times],
-        "n_targets": len(inputs.evaluation_targets),
-    }
-    (run_dir / "config.yaml").write_text(
-        yaml.safe_dump(config, sort_keys=False), encoding="utf-8"
+    manifest_path = write_evaluation_run_manifest(
+        run_dir,
+        output_root=output_root,
+        run_name=stamp,
+        inputs=inputs,
+        project_config_path=project_config_path,
     )
 
     classifiers_dir = run_dir / "classifiers"
-    services_dir = run_dir / "services"
     distributions_dir = run_dir / "distributions"
     arrivals_dir = run_dir / "arrivals"
     survival_dir = run_dir / "survival"
@@ -119,12 +210,12 @@ def run_evaluation(
                 )
             case "classifier_probability_quality":
                 if inputs.classifier_by_flow.get(target.flow_name):
-                    if not services_dir.exists():
-                        services_dir.mkdir(parents=True, exist_ok=True)
+                    if not classifiers_dir.exists():
+                        classifiers_dir.mkdir(parents=True, exist_ok=True)
                 evaluate_classifier_probability_quality(
                     inputs,
                     target,
-                    services_dir=services_dir / target.flow_name,
+                    classifiers_dir=classifiers_dir / target.flow_name,
                     collector=collector,
                 )
             case "distribution":
@@ -156,5 +247,6 @@ def run_evaluation(
     return {
         "run_dir": run_dir,
         "scalars_path": scalars_path,
+        "manifest_path": manifest_path,
         "n_targets": len(inputs.evaluation_targets),
     }

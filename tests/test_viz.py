@@ -18,7 +18,11 @@ matplotlib.use("Agg")  # Non-interactive backend for headless testing
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 
-from patientflow.viz.utils import clean_title_for_filename, format_prediction_time
+from patientflow.viz.utils import (
+    clean_title_for_filename,
+    format_prediction_time,
+    pyplot_show_if,
+)
 from patientflow.viz.madcap import classify_age
 from patientflow.viz.probability_distribution import (
     _calculate_probability_thresholds,
@@ -203,6 +207,20 @@ class TestFormatPredictionTime(unittest.TestCase):
         for input_val, expected in cases:
             with self.subTest(input=input_val):
                 self.assertEqual(format_prediction_time(input_val), expected)
+
+
+class TestPyplotShowIf(unittest.TestCase):
+    """Tests for pyplot_show_if."""
+
+    def test_false_does_not_call_pyplot_show(self):
+        with patch.object(plt, "show") as mock_show:
+            pyplot_show_if(False)
+        mock_show.assert_not_called()
+
+    def test_true_calls_pyplot_show(self):
+        with patch.object(plt, "show") as mock_show:
+            pyplot_show_if(True)
+        mock_show.assert_called_once()
 
 
 class TestClassifyAge(unittest.TestCase):

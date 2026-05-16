@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import math
-from patientflow.viz.utils import format_prediction_time
+from patientflow.viz.utils import format_prediction_time, pyplot_show_if
 
 
 def plot_deltas(
@@ -35,6 +35,8 @@ def plot_deltas(
     media_file_path=None,
     file_name=None,
     return_figure=False,
+    *,
+    show: bool = False,
 ):
     """Plot histograms of observed minus expected values.
 
@@ -64,6 +66,8 @@ def plot_deltas(
         Custom filename to use when saving the plot. If not provided, defaults to "observed_vs_expected.png".
     return_figure : bool, default=False
         If True, returns the matplotlib figure object instead of displaying it.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
     Returns
     -------
@@ -171,7 +175,7 @@ def plot_deltas(
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close()
 
 
@@ -311,6 +315,8 @@ def plot_arrival_delta_single_instance(
     file_name=None,
     return_figure=False,
     fig_size=(10, 4),
+    *,
+    show: bool = False,
 ):
     """Plot comparison between observed arrivals and expected arrival rates.
 
@@ -338,6 +344,8 @@ def plot_arrival_delta_single_instance(
         If True, returns the figure instead of displaying it
     fig_size : tuple, default=(10, 4)
         Figure size as (width, height) in inches
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
     Returns
     -------
@@ -471,7 +479,7 @@ def plot_arrival_delta_single_instance(
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close()
 
 
@@ -566,6 +574,7 @@ def plot_arrival_deltas(
     filter_key: Optional[str] = None,
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
+    show: bool = False,
 ):
     """Plot delta charts for multiple snapshot dates on the same figure.
 
@@ -611,6 +620,8 @@ def plot_arrival_deltas(
     suptitle : str, optional
         Figure-level title. Typically the entity (service / specialty)
         being analysed. Rendered above the per-axis titles.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
     Returns
     -------
@@ -845,5 +856,5 @@ def plot_arrival_deltas(
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close()
