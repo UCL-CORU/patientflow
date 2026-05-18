@@ -13,6 +13,7 @@ from patientflow.evaluate.observations import (
     count_observed_arrived_and_admitted_in_window,
     count_observed_arrived_in_window,
     count_observed_departed_in_window,
+    validate_observation_mode_for_component,
 )
 
 
@@ -47,7 +48,7 @@ def test_admitted_at_some_point():
 
 def test_admitted_in_window_requires_column():
     df = pd.DataFrame([_ed_row()])
-    with pytest.raises(ValueError, match="admission_datetime"):
+    with pytest.raises(ValueError, match="departure_datetime"):
         count_observed_admitted_in_window(
             df,
             date(2024, 1, 1),
@@ -56,17 +57,22 @@ def test_admitted_in_window_requires_column():
         )
 
 
-def test_admitted_in_window_counts():
+def test_admitted_in_window_counts_departure_on_snapshot_cohort():
+    """Counts in-ED snapshot rows with is_admitted and leave-ED in window."""
     moment = datetime(2024, 1, 1, 10, 0, 0)
     df = pd.DataFrame(
         [
             {
                 **_ed_row(),
-                "admission_datetime": moment + timedelta(hours=2),
+                "departure_datetime": moment + timedelta(hours=2),
             },
             {
                 **_ed_row(),
-                "admission_datetime": moment + timedelta(hours=12),
+                "departure_datetime": moment + timedelta(hours=12),
+            },
+            {
+                **_ed_row(is_admitted=0),
+                "departure_datetime": moment + timedelta(hours=1),
             },
         ]
     )
@@ -79,9 +85,29 @@ def test_admitted_in_window_counts():
     assert n == 1
 
 
+def test_admitted_in_window_excludes_admission_datetime_semantics():
+    """admission_datetime in window does not count without departure_datetime."""
+    moment = datetime(2024, 1, 1, 10, 0, 0)
+    df = pd.DataFrame(
+        [
+            {
+                **_ed_row(),
+                "admission_datetime": moment + timedelta(hours=2),
+            },
+        ]
+    )
+    with pytest.raises(ValueError, match="departure_datetime"):
+        count_observed_admitted_in_window(
+            df,
+            date(2024, 1, 1),
+            (10, 0),
+            timedelta(hours=8),
+        )
+
+
 def test_arrived_in_window_on_arrivals_frame():
     moment = datetime(2024, 1, 1, 10, 0, 0)
-    visits = pd.DataFrame(
+    arrivals = pd.DataFrame(
         {
             "arrival_datetime": [
                 moment + timedelta(hours=1),
@@ -90,7 +116,7 @@ def test_arrived_in_window_on_arrivals_frame():
         }
     )
     n = count_observed_arrived_in_window(
-        visits,
+        arrivals,
         date(2024, 1, 1),
         (10, 0),
         timedelta(hours=8),
@@ -98,9 +124,29 @@ def test_arrived_in_window_on_arrivals_frame():
     assert n == 1
 
 
-def test_departed_in_window_requires_column():
+def test_arrived_in_window_does_not_use_ed_visits_fallback():
+    moment = datetime(2024, 1, 1, 10, 0, 0)
+    ed_visits = pd.DataFrame(
+        {
+            "arrival_datetime": [moment + timedelta(hours=1)],
+            "snapshot_date": [date(2024, 1, 1)],
+            "prediction_time": [(10, 0)],
+        }
+    )
+    n = count_observed(
+        "arrived_in_window",
+        snapshot_date=date(2024, 1, 1),
+        prediction_time=(10, 0),
+        prediction_window=timedelta(hours=8),
+        ed_visits=ed_visits,
+        arrivals=None,
+    )
+    assert n == 0
+
+
+def test_departed_in_window_requires_outcome_column():
     df = pd.DataFrame([{"snapshot_date": date(2024, 1, 1), "prediction_time": (10, 0)}])
-    with pytest.raises(ValueError, match="departure_datetime"):
+    with pytest.raises(ValueError, match="left_subspecialty_in_window"):
         count_observed_departed_in_window(
             df,
             date(2024, 1, 1),
@@ -109,24 +155,59 @@ def test_departed_in_window_requires_column():
         )
 
 
-def test_arrived_and_admitted_in_window():
-    moment = datetime(2024, 1, 1, 10, 0, 0)
+def test_departed_in_window_counts_label_not_datetime():
     df = pd.DataFrame(
         [
             {
-                **_ed_row(),
-                "arrival_datetime": moment - timedelta(hours=1),
-                "admission_datetime": moment + timedelta(hours=2),
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "left_subspecialty_in_window": True,
+                "specialty": "medical",
             },
             {
-                **_ed_row(),
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "left_subspecialty_in_window": False,
+                "specialty": "medical",
+            },
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "left_subspecialty_in_window": True,
+                "specialty": "surgical",
+            },
+        ]
+    )
+    n = count_observed_departed_in_window(
+        df,
+        date(2024, 1, 1),
+        (10, 0),
+        timedelta(hours=8),
+        specialty="medical",
+    )
+    assert n == 1
+
+
+def test_arrived_and_admitted_in_window_on_arrivals():
+    moment = datetime(2024, 1, 1, 10, 0, 0)
+    arrivals = pd.DataFrame(
+        [
+            {
+                "arrival_datetime": moment - timedelta(hours=1),
+                "departure_datetime": moment + timedelta(hours=2),
+            },
+            {
                 "arrival_datetime": moment + timedelta(hours=1),
-                "admission_datetime": moment + timedelta(hours=2),
+                "departure_datetime": moment + timedelta(hours=2),
+            },
+            {
+                "arrival_datetime": moment + timedelta(hours=1),
+                "departure_datetime": moment + timedelta(hours=12),
             },
         ]
     )
     n = count_observed_arrived_and_admitted_in_window(
-        df,
+        arrivals,
         date(2024, 1, 1),
         (10, 0),
         timedelta(hours=8),
@@ -138,32 +219,38 @@ def test_arrived_and_admitted_in_window():
 def test_count_observed_dispatcher_accepts_each_mode(mode):
     df = pd.DataFrame([_ed_row()])
     if mode == "admitted_in_window":
-        df["admission_datetime"] = datetime(2024, 1, 1, 12, 0, 0)
-    if mode == "arrived_and_admitted_in_window":
-        df["arrival_datetime"] = datetime(2024, 1, 1, 11, 0, 0)
-        df["admission_datetime"] = datetime(2024, 1, 1, 12, 0, 0)
+        df["departure_datetime"] = datetime(2024, 1, 1, 12, 0, 0)
     kwargs = dict(
         snapshot_date=date(2024, 1, 1),
         prediction_time=(10, 0),
         prediction_window=timedelta(hours=8),
-        ed_visits=df,
+        ed_visits=None,
+        arrivals=None,
+        inpatient_visits=None,
     )
+    if mode in ("admitted_at_some_point", "admitted_in_window"):
+        kwargs["ed_visits"] = df
     if mode == "departed_in_window":
         kwargs["inpatient_visits"] = pd.DataFrame(
             [
                 {
                     "snapshot_date": date(2024, 1, 1),
                     "prediction_time": (10, 0),
-                    "departure_datetime": datetime(2024, 1, 1, 12, 0, 0),
+                    "left_subspecialty_in_window": True,
                 }
             ]
         )
-        del kwargs["ed_visits"]
     if mode == "arrived_in_window":
-        kwargs["visits"] = pd.DataFrame(
+        kwargs["arrivals"] = pd.DataFrame(
             {"arrival_datetime": [datetime(2024, 1, 1, 11, 0, 0)]}
         )
-        del kwargs["ed_visits"]
+    if mode == "arrived_and_admitted_in_window":
+        kwargs["arrivals"] = pd.DataFrame(
+            {
+                "arrival_datetime": [datetime(2024, 1, 1, 11, 0, 0)],
+                "departure_datetime": [datetime(2024, 1, 1, 12, 0, 0)],
+            }
+        )
     count_observed(mode, **kwargs)
 
 
@@ -175,6 +262,15 @@ def test_count_observed_unknown_mode():
             prediction_time=(10, 0),
             prediction_window=timedelta(hours=1),
         )
+
+
+def test_validate_observation_mode_for_component():
+    validate_observation_mode_for_component("arrivals", "admitted_in_window")
+    validate_observation_mode_for_component("departures", "departed_in_window")
+    with pytest.raises(ValueError, match="arrivals"):
+        validate_observation_mode_for_component("arrivals", "departed_in_window")
+    with pytest.raises(ValueError, match="net_flow"):
+        validate_observation_mode_for_component("net_flow", "admitted_at_some_point")
 
 
 def test_evaluate_package_import_paths():

@@ -665,9 +665,7 @@ def evaluate_classifier_probability_quality(
         visits,
         media_file_path=classifiers_dir,
         file_name="madcap.png",
-        suptitle=_classifier_quality_suptitle(
-            target, "MADCAP", eval_split=eval_split
-        ),
+        suptitle=_classifier_quality_suptitle(target, "MADCAP", eval_split=eval_split),
         return_figure=False,
         label_col=label_col,
         show=False,

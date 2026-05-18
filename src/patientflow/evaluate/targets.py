@@ -60,7 +60,7 @@ def get_default_evaluation_targets() -> List[EvaluationTarget]:
             flow_type="admissions",
             evaluation_mode="distribution",
             component="epudd",
-            observation_mode="admitted_in_window",
+            observation_mode="admitted_at_some_point",
         ),
         EvaluationTarget(
             flow_name="main",

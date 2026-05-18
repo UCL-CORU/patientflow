@@ -122,9 +122,7 @@ def test_distribution_epudd_suptitle_uses_eval_split():
         component="epudd",
         observation_mode="admitted_at_some_point",
     )
-    title = _distribution_epudd_suptitle(
-        dist_target, "medical", eval_split="valid"
-    )
+    title = _distribution_epudd_suptitle(dist_target, "medical", eval_split="valid")
     assert "(validation set)" in title
 
 
@@ -165,9 +163,7 @@ def test_arrival_delta_suptitle_uses_eval_split():
         component="cumulative_arrival_delta",
         observation_mode="arrived_in_window",
     )
-    title = _arrival_delta_suptitle(
-        target, "medical", (9, 30), eval_split="valid"
-    )
+    title = _arrival_delta_suptitle(target, "medical", (9, 30), eval_split="valid")
     assert "(validation set)" in title
     assert "medical" in title
     assert "09:30" in title
