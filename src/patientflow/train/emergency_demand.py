@@ -260,7 +260,7 @@ def train_all_models(
     The function generates model names internally:
     - "admissions": "admissions"
     - "specialty": "ed_specialty"
-    - "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours"
+    - "yet_to_arrive": "yet_to_arrive"
     """
     # Validate parameters
     if save_models and model_file_path is None:
@@ -283,7 +283,7 @@ def train_all_models(
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
-        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours",
+        "yet_to_arrive": "yet_to_arrive",
     }
 
     if "arrival_datetime" in visits.columns:
@@ -369,9 +369,7 @@ def train_all_models(
     yta_model = train_parametric_admission_predictor(
         train_visits=train_visits,
         train_yta=train_yta,
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         epsilon=epsilon,
         num_days=num_days,
     )

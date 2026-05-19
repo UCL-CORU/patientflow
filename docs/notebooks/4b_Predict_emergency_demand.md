@@ -454,13 +454,12 @@ The trained yet-to-arrive model generates the same distribution for each predict
 ```python
 for specialty in [ 'medical', 'surgical', 'haem/onc', 'paediatric']:
 
-    prediction_context = {
-        specialty: {
-            'prediction_time': random_prediction_time
-        }
-    }
-
-    weighted_poisson_prediction = yta_model_by_spec.predict(prediction_context, x1=x1, y1=y1, x2=x2, y2=y2)
+    weighted_poisson_prediction = yta_model_by_spec.predict(
+        prediction_time=random_prediction_time,
+        prediction_window=timedelta(hours=8),
+        filter_keys=specialty,
+        x1=x1, y1=y1, x2=x2, y2=y2,
+    )
     title = (
     f'Probability distribution for number of {specialty} beds needed for patients '
     f'who will arrive after {format_prediction_time((random_prediction_time))} on {random_prediction_date} '

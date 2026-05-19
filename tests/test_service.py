@@ -207,13 +207,10 @@ def _create_parametric_yta_model(
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
     model = ParametricIncomingAdmissionPredictor(filters=filters)
-    prediction_times = [(7, 0)]
     num_days = 7
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         num_days=num_days,
     )
     return model
@@ -226,13 +223,10 @@ def _create_empirical_yta_model(
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
     model = EmpiricalIncomingAdmissionPredictor(filters=filters)
-    prediction_times = [(7, 0)]
     num_days = 7
     model.fit(
         train_df=arrivals_df,
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         num_days=num_days,
     )
     return model
@@ -243,13 +237,10 @@ def _create_direct_predictor(prediction_window, df, arrivals_df, yta_time_interv
     if isinstance(yta_time_interval, int):
         yta_time_interval = timedelta(minutes=yta_time_interval)
     model = DirectAdmissionPredictor(filters=filters)
-    prediction_times = [(7, 0)]
     num_days = 7
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         num_days=num_days,
     )
     return model

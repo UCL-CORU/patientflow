@@ -651,135 +651,6 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self.assertGreaterEqual(direct_expected, parametric_expected)
         self.assertGreaterEqual(direct_expected, empirical_expected)
 
-    # ------------------------------------------------------------------
-    # Deprecation path
-    # ------------------------------------------------------------------
-    def test_fit_emits_deprecation_warning_for_prediction_window(self):
-        """Passing prediction_window to fit() still works but emits DeprecationWarning."""
-        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            predictor.fit(
-                self.test_df,
-                prediction_window=self.prediction_window,
-                yta_time_interval=self.yta_time_interval,
-                num_days=self.num_days,
-            )
-        self.assertTrue(
-            any(
-                issubclass(w.category, DeprecationWarning)
-                and "prediction_window" in str(w.message)
-                for w in caught
-            )
-        )
-        # Legacy attributes populated for back-compat
-        self.assertEqual(predictor.prediction_window, self.prediction_window)
-
-    def test_fit_emits_deprecation_warning_for_prediction_times(self):
-        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            predictor.fit(
-                self.test_df,
-                yta_time_interval=self.yta_time_interval,
-                prediction_times=self.prediction_times,
-                num_days=self.num_days,
-            )
-        self.assertTrue(
-            any(
-                issubclass(w.category, DeprecationWarning)
-                and "prediction_times" in str(w.message)
-                for w in caught
-            )
-        )
-        self.assertEqual(predictor.prediction_times, self.prediction_times)
-
-    def test_predict_falls_back_to_fit_time_prediction_window(self):
-        """If prediction_window is omitted at predict(), the fit-time value is used with a warning."""
-        predictor = DirectAdmissionPredictor(filters=self.filters)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            predictor.fit(
-                self.test_df,
-                prediction_window=self.prediction_window,
-                yta_time_interval=self.yta_time_interval,
-                num_days=self.num_days,
-            )
-
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            predictions = predictor.predict(
-                prediction_time=(8, 0), filter_keys="medical"
-            )
-
-        self.assertIn("medical", predictions)
-        self.assertTrue(
-            any(
-                issubclass(w.category, DeprecationWarning)
-                and "prediction_window" in str(w.message)
-                for w in caught
-            )
-        )
-
-    def test_fit_legacy_positional_call_still_works(self):
-        """The legacy positional call `(df, window, interval, times, num_days)` still works."""
-        predictor = ParametricIncomingAdmissionPredictor(filters=self.filters)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            predictor.fit(
-                self.test_df,
-                self.prediction_window,
-                self.yta_time_interval,
-                self.prediction_times,
-                self.num_days,
-            )
-        self.assertIn("medical", predictor.weights)
-        self.assertIn("arrival_rates_dict", predictor.weights["medical"])
-
-    def test_deprecated_prediction_context_dict_warns(self):
-        """Legacy prediction_context emits DeprecationWarning and matches new API results."""
-        predictor = DirectAdmissionPredictor(filters=self.filters)
-        self._fit_new_api(predictor)
-        legacy_ctx = {"medical": {"prediction_time": (8, 0)}}
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            legacy_pred = predictor.predict(
-                prediction_context=legacy_ctx,
-                prediction_window=self.prediction_window,
-            )
-        self.assertTrue(
-            any(
-                issubclass(w.category, DeprecationWarning)
-                and "prediction_context" in str(w.message).lower()
-                for w in caught
-            )
-        )
-        new_pred = predictor.predict(
-            prediction_time=(8, 0),
-            prediction_window=self.prediction_window,
-            filter_keys="medical",
-        )
-        np.testing.assert_array_almost_equal(
-            legacy_pred["medical"]["agg_proba"].values,
-            new_pred["medical"]["agg_proba"].values,
-        )
-
-    def test_legacy_prediction_context_mismatched_times_raise(self):
-        predictor = DirectAdmissionPredictor(filters=self.filters)
-        self._fit_new_api(predictor)
-        bad_ctx = {
-            "medical": {"prediction_time": (8, 0)},
-            "surgical": {"prediction_time": (12, 0)},
-        }
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            with self.assertRaises(ValueError) as cm:
-                predictor.predict(
-                    prediction_context=bad_ctx,
-                    prediction_window=self.prediction_window,
-                )
-        self.assertIn("same prediction_time", str(cm.exception).lower())
-
     def test_predict_mean_requires_filter_key_when_multiple_services(self):
         predictor = DirectAdmissionPredictor(filters=self.filters)
         self._fit_new_api(predictor)
@@ -819,10 +690,11 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
                 pooled
             )
 
-        mean_no_date = predictor.predict_mean(
-            prediction_time=(8, 0),
-            prediction_window=self.prediction_window,
-        )
+        with self.assertWarns(UserWarning):
+            mean_no_date = predictor.predict_mean(
+                prediction_time=(8, 0),
+                prediction_window=self.prediction_window,
+            )
         mean_with_date = predictor.predict_mean(
             prediction_time=(8, 0),
             prediction_window=self.prediction_window,
@@ -1244,36 +1116,6 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             num_days=self.num_days,
         )
         self.assertEqual(predictor3.empty_filter_count, 0)
-
-    def test_legacy_prediction_context_with_prediction_date(self):
-        predictor = DirectAdmissionPredictor(filters=self.filters)
-        predictor.fit(
-            self.test_df,
-            yta_time_interval=self.yta_time_interval,
-            num_days=self.num_days,
-            stratify_by_weekday=True,
-        )
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            p1 = predictor.predict(
-                prediction_context={
-                    "medical": {
-                        "prediction_time": (8, 0),
-                        "prediction_date": date(2024, 1, 1),
-                    }
-                },
-                prediction_window=self.prediction_window,
-            )
-        p2 = predictor.predict(
-            prediction_time=(8, 0),
-            prediction_window=self.prediction_window,
-            filter_keys="medical",
-            prediction_date=date(2024, 1, 1),
-        )
-        np.testing.assert_array_almost_equal(
-            p1["medical"]["agg_proba"].values,
-            p2["medical"]["agg_proba"].values,
-        )
 
 
 if __name__ == "__main__":

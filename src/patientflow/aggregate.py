@@ -54,7 +54,6 @@ import pandas as pd
 import numpy as np
 from scipy.stats import norm
 from datetime import date, datetime, time, timedelta, timezone
-import warnings
 from typing import List, Tuple, Optional, Dict, Any, Union
 
 from patientflow.model_artifacts import ServiceModels
@@ -643,61 +642,6 @@ def prediction_to_eval_dict(
         index=range(len(probabilities)),
     )
     return {"agg_predicted": agg_predicted, "agg_observed": observed}
-
-
-def _count_observed_admissions(
-    ed_visits: pd.DataFrame,
-    snapshot_date: date,
-    prediction_time: Tuple[int, int],
-    prediction_window: timedelta,
-    specialty: Optional[str] = None,
-) -> int:
-    """Count admitted ED snapshot rows (legacy wrapper).
-
-    Deprecated: prefer `count_observed_admitted_at_some_point` in
-    `patientflow.evaluate.observations`. This wrapper remains for backward
-    compatibility and emits `DeprecationWarning` on each call.
-
-    Parameters
-    ----------
-    ed_visits : pandas.DataFrame
-        ED visits with `snapshot_date`, `prediction_time`, `is_admitted`,
-        and `specialty` when *specialty* is not `None`.
-    snapshot_date : datetime.date
-        Snapshot calendar date.
-    prediction_time : tuple of (int, int)
-        Hour and minute of the prediction moment.
-    prediction_window : datetime.timedelta
-        Passed through for signature compatibility; does not affect the count.
-    specialty : str, optional
-        If given, restrict to this specialty.
-
-    Returns
-    -------
-    int
-        Number of admitted rows, delegated to
-        `count_observed_admitted_at_some_point` in `patientflow.evaluate.observations`.
-
-    Warns
-    -----
-    DeprecationWarning
-        On every call.
-    """
-    warnings.warn(
-        "_count_observed_admissions is deprecated; use "
-        "patientflow.evaluate.observations.count_observed_admitted_at_some_point",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    from patientflow.evaluate.observations import count_observed_admitted_at_some_point
-
-    return count_observed_admitted_at_some_point(
-        ed_visits,
-        snapshot_date,
-        prediction_time,
-        prediction_window,
-        specialty=specialty,
-    )
 
 
 def get_prob_dist_by_service(

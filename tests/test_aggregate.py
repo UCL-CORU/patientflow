@@ -12,7 +12,6 @@ while maintaining comprehensive coverage of the core functionality.
 """
 
 import unittest
-import warnings
 
 import pandas as pd
 import numpy as np
@@ -26,7 +25,6 @@ from patientflow.aggregate import (
     get_prob_dist,
     get_prob_dist_using_survival_curve,
     get_prob_dist_by_service,
-    _count_observed_admissions,
     model_input_to_pred_proba,
 )
 from patientflow.predict.types import DemandPrediction, FlowSelection, PredictionBundle
@@ -454,9 +452,7 @@ class TestAggregateRefactored(unittest.TestCase):
         model = EmpiricalIncomingAdmissionPredictor()
         model.fit(
             train_df=test_df,
-            prediction_window=timedelta(hours=8),
             yta_time_interval=timedelta(minutes=15),
-            prediction_times=[(10, 0)],
             num_days=3,
             start_time_col="arrival_datetime",
             end_time_col="departure_datetime",
@@ -739,26 +735,4 @@ class TestGetProbDistByService(unittest.TestCase):
         )
         self.assertFalse(
             mock_build_service_data.call_args.kwargs["use_admission_in_window_prob"]
-        )
-
-    def test_count_observed_admissions_deprecation(self):
-        df = pd.DataFrame(
-            {
-                "snapshot_date": [date(2024, 1, 1)],
-                "prediction_time": [(10, 0)],
-                "is_admitted": [1],
-                "specialty": ["medical"],
-            }
-        )
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            _count_observed_admissions(
-                df,
-                date(2024, 1, 1),
-                (10, 0),
-                timedelta(hours=1),
-                specialty="medical",
-            )
-        self.assertTrue(
-            any(issubclass(x.category, DeprecationWarning) for x in w),
         )

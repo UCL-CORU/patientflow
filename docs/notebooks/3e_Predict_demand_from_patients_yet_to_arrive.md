@@ -1082,7 +1082,7 @@ If the model was fitted **without** filters, there is only one key in **`weights
 
 The result is still a dict whose keys match **`weights`** (e.g. service name); each value is the weighted Poisson distribution for that service.
 
-**Note:** the old nested **`prediction_context`** dict (`{service: {"prediction_time": ...}}`, as the first argument or as `prediction_context=...`) still works but triggers a **`DeprecationWarning`** and will be removed in a later version. Prefer **`prediction_time=`** and **`filter_keys=`** when you can.
+**Note:** the old nested **`prediction_context`** dict (`{service: {"prediction_time": ...}}`, is now deprecated. Use **`prediction_time=`** and **`filter_keys=`** as shown below.
 
 ```python
 # # deprecated code retained for reference

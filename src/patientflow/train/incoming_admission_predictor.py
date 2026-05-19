@@ -8,12 +8,11 @@ It includes utilities for creating specialty filters and training parametric adm
 The logic in this module is specific to the implementation at UCLH.
 """
 
-from typing import List, Optional
+from typing import Optional
 import pandas as pd
 from pandas import DataFrame
 from datetime import timedelta
 
-from patientflow.prepare import create_special_category_objects
 from patientflow.predictors.incoming_admission_predictors import (
     ParametricIncomingAdmissionPredictor,
 )
@@ -43,10 +42,9 @@ def create_yta_filters(df):
 
     """
     # Get the special category parameters using the picklable implementation
-    special_params = create_special_category_objects(df.columns)
+    from patientflow.predictors.subgroup_predictor import create_subgroup_system
 
-    # Extract necessary data from the special_params
-    special_category_dict = special_params["special_category_dict"]
+    special_category_dict = create_subgroup_system(df.columns)["special_category_dict"]
 
     # Create the specialty_filters dictionary
     specialty_filters = {}
@@ -65,9 +63,7 @@ def create_yta_filters(df):
 def train_parametric_admission_predictor(
     train_visits: DataFrame,
     train_yta: DataFrame,
-    prediction_window: timedelta,
     yta_time_interval: timedelta,
-    prediction_times: List[float],
     num_days: Optional[int] = None,
     epsilon: float = 10e-7,
 ) -> ParametricIncomingAdmissionPredictor:
@@ -80,15 +76,8 @@ def train_parametric_admission_predictor(
         Visits dataset (used for identifying special categories).
     train_yta : DataFrame
         Training data for yet-to-arrive predictions.
-    prediction_window : timedelta
-        Kept in the signature for backward compatibility. No longer required
-        by the underlying model at training time; the window is supplied at
-        ``predict()`` time. Validated here for early type-checking.
     yta_time_interval : timedelta
         Time interval for predictions as a timedelta.
-    prediction_times : List[float]
-        Kept in the signature for backward compatibility. No longer forwarded
-        to the underlying model.
     num_days : int, optional
         Divisor for pooled arrival rates; if omitted, inferred from ``train_yta``'s index
         (same as :meth:`~patientflow.predictors.incoming_admission_predictors.IncomingAdmissionPredictor.fit`).
@@ -103,16 +92,11 @@ def train_parametric_admission_predictor(
     Raises
     ------
     TypeError
-        If prediction_window or yta_time_interval are not timedelta objects.
+        If yta_time_interval is not a timedelta object.
     """
 
-    if not isinstance(prediction_window, timedelta):
-        raise TypeError("prediction_window must be a timedelta object")
     if not isinstance(yta_time_interval, timedelta):
         raise TypeError("yta_time_interval must be a timedelta object")
-
-    # prediction_times is retained only for signature compatibility
-    del prediction_times
 
     if train_yta.index.name is None:
         if "arrival_datetime" in train_yta.columns:

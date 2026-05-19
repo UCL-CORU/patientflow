@@ -307,14 +307,11 @@ def create_yta_model(prediction_window, df, arrivals_df, yta_time_interval=60):
     model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
 
     # Fit the model
-    prediction_times = [(7, 0)]  # 7am predictions
     num_days = 7  # One week of data
 
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         num_days=num_days,
     )
 
@@ -356,14 +353,11 @@ def create_empirical_yta_model(
     model_name = f"ed_yet_to_arrive_by_spec_{str(int(hours))}_hours"
 
     # Fit the model
-    prediction_times = [(7, 0)]  # 7am predictions
     num_days = 7  # One week of data
 
     model.fit(
         train_df=arrivals_df.set_index("arrival_datetime"),
-        prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
-        prediction_times=prediction_times,
         num_days=num_days,
     )
 
@@ -628,10 +622,23 @@ class TestCreatePredictions(unittest.TestCase):
         short_window_hrs = timedelta(minutes=6)  # 0.1 hours
         long_window_hrs = timedelta(hours=100)
 
-        # Test that an error is raised for where prediction_window is less than yta_time_interval
+        # prediction_window vs yta_time_interval is validated at predict time, not fit
+        short_yta_model, _ = create_yta_model(
+            self.prediction_window, self.df, self.arrivals_df
+        )
+        admission_model, spec_model, _ = self.models
         with self.assertRaises(ValueError):
-            short_yta_model, _ = create_yta_model(
-                short_window_hrs, self.df, self.arrivals_df
+            create_predictions(
+                models=(admission_model, spec_model, short_yta_model),
+                prediction_time=self.prediction_time,
+                prediction_snapshots=prediction_snapshots,
+                specialties=self.specialties,
+                prediction_window=short_window_hrs,
+                cdf_cut_points=self.cdf_cut_points,
+                x1=self.x1,
+                y1=self.y1,
+                x2=self.x2,
+                y2=self.y2,
             )
 
         short_window_hrs = timedelta(minutes=15)  # 0.25 hours
@@ -641,7 +648,6 @@ class TestCreatePredictions(unittest.TestCase):
             short_window_hrs, self.df, self.arrivals_df, yta_time_interval
         )
 
-        admission_model, spec_model, _ = self.models
         models = (admission_model, spec_model, short_yta_model)
 
         short_window_predictions = create_predictions(

@@ -10,10 +10,7 @@ The logic in this module is specific to the implementation at UCLH.
 
 from pandas import DataFrame
 
-from patientflow.prepare import (
-    select_one_snapshot_per_visit,
-    create_special_category_objects,
-)
+from patientflow.prepare import select_one_snapshot_per_visit
 from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
@@ -48,15 +45,17 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
 
     """
     # Get configuration for categorizing patients based on age columns
-    special_params = create_special_category_objects(admitted.columns)
+    from patientflow.predictors.subgroup_predictor import create_subgroup_system
+
+    subgroup_system = create_subgroup_system(admitted.columns)
 
     # Extract function that identifies non-paediatric patients
-    opposite_special_category_func = special_params["special_func_map"]["default"]
+    opposite_special_category_func = subgroup_system["special_func_map"]["default"]
 
     # Determine which category is the special category (should be "paediatric")
     special_category_key = next(
         key
-        for key, value in special_params["special_category_dict"].items()
+        for key, value in subgroup_system["special_category_dict"].items()
         if value == 1.0
     )
 

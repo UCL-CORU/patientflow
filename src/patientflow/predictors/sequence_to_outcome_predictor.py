@@ -21,8 +21,6 @@ import ast
 from sklearn.base import BaseEstimator, TransformerMixin
 from datetime import datetime
 
-from patientflow.predictors.legacy_compatibility import create_special_category_objects
-
 
 class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
     """
@@ -147,8 +145,20 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
 
         # Step 2: Optionally apply filtering for special categories
         if self.apply_special_category_filtering:
+            from patientflow.predictors.subgroup_predictor import (
+                create_subgroup_system,
+            )
+
             # Get configuration for categorizing patients based on columns
-            self.special_params = create_special_category_objects(df.columns)
+            subgroup_system = create_subgroup_system(df.columns)
+            self.special_params = {
+                key: subgroup_system[key]
+                for key in (
+                    "special_category_func",
+                    "special_category_dict",
+                    "special_func_map",
+                )
+            }
 
             # Extract function that identifies non-special category patients
             opposite_special_category_func = self.special_params["special_func_map"][

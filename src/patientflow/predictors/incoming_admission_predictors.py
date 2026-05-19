@@ -16,7 +16,7 @@ AdmissionGeneratingFunction
 
 IncomingAdmissionPredictor : BaseEstimator, TransformerMixin
     Base class for admission predictors that handles filtering and arrival rate calculation.
-    Uses generating functions for all predictors; the earlier flag is deprecated and ignored.
+    Uses generating functions for all predictors.
 
 DirectAdmissionPredictor : IncomingAdmissionPredictor
     Simplest predictor that assumes every arrival is admitted immediately. Uses direct
@@ -74,10 +74,6 @@ opted into at fit time:
 - ``strict_prediction_date=True`` at predict time turns any pooled fallback
   into a ``ValueError`` regardless of how ``stratify_by_weekday`` was set.
 
-The deprecated nested ``prediction_context`` dict (keyword or first positional
-argument) is still accepted and emits ``DeprecationWarning``. It may include
-``prediction_date`` per filter key (same date required for all keys).
-
 Assumptions
 -----------
 Parametric incoming-admissions use a simple per-slice Poisson arrivals model with
@@ -113,7 +109,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 import pandas as pd
-from typing import Dict, List, Optional, Sequence, Tuple, Union, cast
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 # from dissemination.patientflow.predict.emergency_demand.admission_in_prediction_window import (
 from patientflow.calculate.admission_in_prediction_window import (
@@ -286,8 +282,8 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     interfaces for compatibility with scikit-learn pipelines.
 
     For ``predict`` / ``predict_mean`` arguments (``prediction_time``,
-    ``filter_keys`` / ``filter_key``, legacy ``prediction_context``), see the
-    module docstring section *Prediction API*.
+    ``filter_keys`` / ``filter_key``), see the module docstring section
+    *Prediction API*.
 
     Diagnostic attributes
     ---------------------
@@ -301,18 +297,9 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         be hidden by the silent zero-rate fallback in ``_calculate_parameters``.
     """
 
-    def __init__(self, filters=None, verbose=False, use_generating_functions=True):
+    def __init__(self, filters=None, verbose=False):
         self.filters = filters if filters else {}
         self.verbose = verbose
-        # Always use generating-function path; keep flag only for backward compatibility
-        # If user explicitly sets False, warn and proceed with GF implementation
-        self.use_generating_functions = True
-        if use_generating_functions is False:
-            warnings.warn(
-                "use_generating_functions=False is deprecated and ignored; generating-function implementation is always used.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         self.metrics = {}  # Add metrics dictionary to store metadata
         self.empty_filter_count = 0
 
@@ -366,29 +353,24 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     def _resolve_prediction_window(
         self, prediction_window: Optional[timedelta]
     ) -> timedelta:
-        """Return the effective prediction window.
-
-        Resolution order:
-        1. Explicit ``prediction_window`` argument if provided.
-        2. ``prediction_window`` stored on the model at ``fit()`` time
-           (deprecated; emits `DeprecationWarning`).
-        3. Raise `ValueError`.
-        """
-        if prediction_window is not None:
-            return prediction_window
-        fit_window = getattr(self, "_deprecated_fit_prediction_window", None)
-        if fit_window is not None:
-            warnings.warn(
-                "Relying on prediction_window stored at fit() time is deprecated. "
-                "Pass prediction_window explicitly to predict() / predict_mean().",
-                DeprecationWarning,
-                stacklevel=3,
+        """Return a validated prediction window (required at predict time)."""
+        if prediction_window is None:
+            raise ValueError(
+                "prediction_window is required. Pass it as a keyword argument to "
+                "predict() / predict_mean()."
             )
-            return fit_window
-        raise ValueError(
-            "prediction_window is required. Pass it as a keyword argument to "
-            "predict() / predict_mean()."
-        )
+
+        effective = prediction_window
+        if not isinstance(effective, timedelta):
+            raise TypeError("prediction_window must be a timedelta object")
+        if effective.total_seconds() <= 0:
+            raise ValueError("prediction_window must be positive")
+        ratio = effective / self.yta_time_interval
+        if int(ratio) == 0:
+            raise ValueError(
+                "prediction_window must be significantly larger than yta_time_interval"
+            )
+        return effective
 
     def _snap_to_interval_boundary(self, prediction_time):
         """Snap a ``(hour, minute)`` tuple to the nearest ``yta_time_interval`` boundary within the 24-hour cycle."""
@@ -407,88 +389,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         if isinstance(prediction_time, (int, float)):
             return (int(prediction_time), 0)
         return prediction_time
-
-    def _parse_legacy_prediction_context(
-        self, prediction_context: Dict, *, for_predict_mean: bool
-    ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
-        """Parse deprecated ``prediction_context`` into one snapped time and filter keys.
-
-        Raises ``ValueError`` if times differ after snapping, if keys are unknown,
-        or if ``for_predict_mean`` and more than one filter key is present.
-        Optional ``prediction_date`` must match across keys when provided.
-        """
-        if not isinstance(prediction_context, dict) or not prediction_context:
-            raise ValueError("prediction_context must be a non-empty dict")
-
-        if for_predict_mean and len(prediction_context) > 1:
-            raise ValueError(
-                "predict_mean legacy prediction_context must contain exactly one filter key; "
-                "use prediction_time= and filter_key= instead."
-            )
-
-        snapped_times: List[Tuple[int, int]] = []
-        filter_keys_order: List[str] = []
-        prediction_dates_raw: List[Optional[date]] = []
-        for filter_key, filter_values in prediction_context.items():
-            if filter_key not in self.weights:
-                raise ValueError(
-                    f"Filter key '{filter_key}' is not recognized in the model weights."
-                )
-            if not isinstance(filter_values, dict):
-                raise ValueError(
-                    f"Values in prediction_context must be dicts; got {type(filter_values)!r} "
-                    f"for filter '{filter_key}'."
-                )
-            prediction_time = filter_values.get("prediction_time")
-            if prediction_time is None:
-                raise ValueError(
-                    f"No 'prediction_time' provided for filter '{filter_key}'."
-                )
-            normalized = self._normalize_prediction_time(prediction_time)
-            snapped = self._snap_to_interval_boundary(normalized)
-            if snapped != normalized:
-                warnings.warn(
-                    f"Requested prediction_time {normalized} does not fall on a "
-                    f"yta_time_interval boundary; snapping to {snapped}.",
-                    UserWarning,
-                    stacklevel=4,
-                )
-            snapped_times.append(snapped)
-            filter_keys_order.append(filter_key)
-
-            pd_raw = filter_values.get("prediction_date")
-            if pd_raw is not None:
-                if isinstance(pd_raw, datetime):
-                    pd_raw = pd_raw.date()
-                if not isinstance(pd_raw, date):
-                    raise TypeError(
-                        f"'prediction_date' for filter '{filter_key}' must be datetime.date "
-                        f"(or datetime.datetime), got {type(pd_raw)!r}."
-                    )
-            prediction_dates_raw.append(pd_raw)
-
-        if len(set(snapped_times)) > 1:
-            raise ValueError(
-                "prediction_context must use the same prediction_time (after snapping to "
-                "yta_time_interval) for all filter keys."
-            )
-
-        dates_defined = [d for d in prediction_dates_raw if d is not None]
-        if not dates_defined:
-            resolved_prediction_date = None
-        elif len(dates_defined) != len(prediction_dates_raw):
-            raise ValueError(
-                "prediction_context must provide 'prediction_date' for every filter key "
-                "when it is provided for any key."
-            )
-        elif len(set(dates_defined)) > 1:
-            raise ValueError(
-                "prediction_context must use the same prediction_date for all filter keys."
-            )
-        else:
-            resolved_prediction_date = dates_defined[0]
-
-        return snapped_times[0], filter_keys_order, resolved_prediction_date
 
     def _resolve_filter_keys(
         self, filter_keys: Optional[Union[str, Sequence[str]]]
@@ -534,74 +434,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
     def _prepare_prediction_targets_for_predict(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
     ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
         """Resolve snapped prediction time, filter keys, and optional calendar anchor."""
-        if prediction_context is not None:
-            if (
-                prediction_time is not None
-                or filter_keys is not None
-                or prediction_date is not None
-            ):
-                raise ValueError(
-                    "Pass either prediction_context (deprecated) or prediction_time with "
-                    "filter_keys / prediction_date, not both."
-                )
-            if args:
-                raise ValueError(
-                    "When using prediction_context=, do not pass a dict as a positional argument."
-                )
-            warnings.warn(
-                "prediction_context dict is deprecated; use prediction_time= and filter_keys= "
-                "(omit filter_keys when weights has only one key).",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            snapped, keys, ctx_date = self._parse_legacy_prediction_context(
-                prediction_context, for_predict_mean=False
-            )
-            return snapped, keys, ctx_date
-
-        if args:
-            if len(args) != 1 or not isinstance(args[0], dict):
-                raise TypeError(
-                    "predict() positional arguments are only accepted for the deprecated "
-                    "prediction_context dict; pass prediction_time as a keyword argument."
-                )
-            if (
-                prediction_time is not None
-                or filter_keys is not None
-                or prediction_date is not None
-            ):
-                raise ValueError(
-                    "Do not combine a positional prediction_context dict with "
-                    "prediction_time=, filter_keys=, or prediction_date=."
-                )
-            warnings.warn(
-                "Passing prediction_context as the first positional argument is deprecated; "
-                "use prediction_time= and filter_keys=.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            snapped, keys, ctx_date = self._parse_legacy_prediction_context(
-                cast(Dict, args[0]), for_predict_mean=False
-            )
-            return snapped, keys, ctx_date
-
-        if prediction_time is None:
-            raise TypeError(
-                "predict() requires prediction_time= when not using prediction_context."
-            )
-
         if prediction_date is not None and not isinstance(prediction_date, date):
-            raise TypeError(
-                "prediction_date must be a datetime.date (values inside prediction_context "
-                "may use datetime.datetime, which is coerced to date)."
-            )
+            raise TypeError("prediction_date must be a datetime.date")
 
         normalized = self._normalize_prediction_time(prediction_time)
         snapped = self._snap_to_interval_boundary(normalized)
@@ -617,73 +456,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
     def _prepare_prediction_targets_for_predict_mean(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         filter_key: Optional[str] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
     ) -> Tuple[Tuple[int, int], List[str], Optional[date]]:
         """Resolve snapped prediction time and a single-element key list for ``predict_mean()``."""
-        if prediction_context is not None:
-            if (
-                prediction_time is not None
-                or filter_key is not None
-                or prediction_date is not None
-            ):
-                raise ValueError(
-                    "Pass either prediction_context (deprecated) or prediction_time with "
-                    "filter_key / prediction_date, not both."
-                )
-            if args:
-                raise ValueError(
-                    "When using prediction_context=, do not pass a dict as a positional argument."
-                )
-            warnings.warn(
-                "prediction_context dict is deprecated; use prediction_time= and filter_key=.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            snapped, fk_list, ctx_date = self._parse_legacy_prediction_context(
-                prediction_context, for_predict_mean=True
-            )
-            return snapped, fk_list, ctx_date
-
-        if args:
-            if len(args) != 1 or not isinstance(args[0], dict):
-                raise TypeError(
-                    "predict_mean() positional arguments are only accepted for the deprecated "
-                    "prediction_context dict; pass prediction_time as a keyword argument."
-                )
-            if (
-                prediction_time is not None
-                or filter_key is not None
-                or prediction_date is not None
-            ):
-                raise ValueError(
-                    "Do not combine a positional prediction_context dict with "
-                    "prediction_time=, filter_key=, or prediction_date=."
-                )
-            warnings.warn(
-                "Passing prediction_context as the first positional argument is deprecated; "
-                "use prediction_time= and filter_key=.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-            snapped, fk_list, ctx_date = self._parse_legacy_prediction_context(
-                cast(Dict, args[0]), for_predict_mean=True
-            )
-            return snapped, fk_list, ctx_date
-
-        if prediction_time is None:
-            raise TypeError(
-                "predict_mean() requires prediction_time= when not using prediction_context."
-            )
-
         if prediction_date is not None and not isinstance(prediction_date, date):
-            raise TypeError(
-                "prediction_date must be a datetime.date (values inside prediction_context "
-                "may use datetime.datetime, which is coerced to date)."
-            )
+            raise TypeError("prediction_date must be a datetime.date")
 
         normalized = self._normalize_prediction_time(prediction_time)
         snapped = self._snap_to_interval_boundary(normalized)
@@ -896,9 +675,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window: Optional[timedelta] = None,
         yta_time_interval: Optional[timedelta] = None,
-        prediction_times: Optional[List[float]] = None,
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
@@ -907,27 +684,15 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         """Fit the model to the training data.
 
         The underlying arrival-rate calculation is independent of the prediction
-        window and the set of prediction times; these are now supplied at
-        ``predict()`` time. ``prediction_window`` and ``prediction_times`` are
-        therefore deprecated as ``fit()`` parameters: if provided, a
-        `DeprecationWarning` is emitted and the values are stored as
-        fall-back defaults for ``predict()``.
+        window and prediction time; supply ``prediction_window`` and
+        ``prediction_time`` at ``predict()`` / ``predict_mean()`` time.
 
         Parameters
         ----------
         train_df : pandas.DataFrame
             The training dataset with historical admission data.
-        prediction_window : timedelta, optional
-            Deprecated. Prefer passing ``prediction_window`` to
-            ``predict()`` / ``predict_mean()`` instead. If provided, will
-            be stored as a fall-back default for predict-time use.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets. Required.
-        prediction_times : list, optional
-            Deprecated. Prediction times are no longer needed at fit time; any
-            prediction time can be served at predict time (snapped to the
-            nearest ``yta_time_interval`` boundary). Retained for backward
-            compatibility only.
         num_days : int, optional
             Divisor for **pooled** arrival rates (``arrival_rates_dict``). If omitted,
             inferred from ``train_df``'s index as
@@ -972,13 +737,10 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         ------
         TypeError
             If ``yta_time_interval`` is missing or not a timedelta, or if
-            ``prediction_window`` (when supplied) is not a timedelta, or if
             ``num_days`` is omitted but cannot be inferred (e.g. index is not a
             ``DatetimeIndex``).
         ValueError
-            If ``yta_time_interval`` is not positive, or if
-            ``prediction_window`` (when supplied) is not positive or is not
-            significantly larger than ``yta_time_interval``.
+            If ``yta_time_interval`` is not positive.
         """
 
         # Validate required inputs
@@ -990,33 +752,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             raise ValueError("yta_time_interval must be positive")
         if yta_time_interval.total_seconds() > 4 * 3600:  # 4 hours in seconds
             warnings.warn("yta_time_interval appears to be longer than 4 hours")
-
-        # Deprecation handling for prediction_window / prediction_times
-        if prediction_window is not None:
-            warnings.warn(
-                "Passing prediction_window to fit() is deprecated; pass it to "
-                "predict() / predict_mean() instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if not isinstance(prediction_window, timedelta):
-                raise TypeError("prediction_window must be a timedelta object")
-            if prediction_window.total_seconds() <= 0:
-                raise ValueError("prediction_window must be positive")
-            ratio = prediction_window / yta_time_interval
-            if int(ratio) == 0:
-                raise ValueError(
-                    "prediction_window must be significantly larger than yta_time_interval"
-                )
-        if prediction_times is not None:
-            warnings.warn(
-                "Passing prediction_times to fit() is deprecated; any prediction "
-                "time can be served at predict time. This argument is retained "
-                "for backward compatibility only and will be removed in a future "
-                "release.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
 
         # Resolve the sentinel default for stratify_by_weekday and track whether
         # the user explicitly opted in. The flag gates the predict-time
@@ -1033,37 +768,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.epsilon = epsilon
         self.stratify_by_weekday = stratify_by_weekday
         self._user_opted_in_to_weekday = user_opted_in_to_weekday
-
-        # Store deprecated fit-time values as predict-time fall-backs
-        self._deprecated_fit_prediction_window = prediction_window
-        if prediction_times is not None:
-            normalized_times = [
-                tuple(x)
-                if isinstance(x, (list, np.ndarray))
-                else (x, 0)
-                if isinstance(x, (int, float))
-                else x
-                for x in prediction_times
-            ]
-        else:
-            normalized_times = None
-        self._deprecated_fit_prediction_times = normalized_times
-
-        # Maintain legacy attributes for backward compatibility with downstream
-        # "has been fit" checks and tests that read these directly. They are not
-        # used by the prediction code path.
-        self.prediction_window = prediction_window
-        self.prediction_times = normalized_times
-        self.prediction_window_hours: Optional[float] = (
-            prediction_window.total_seconds() / 3600
-            if prediction_window is not None
-            else None
-        )
-        self.NTimes: Optional[int] = (
-            int(prediction_window / yta_time_interval)
-            if prediction_window is not None
-            else None
-        )
 
         # Initialise weights with the full 24-hour arrival-rate dictionary.
         # ``empty_filter_count`` is reset here so repeated fits don't accumulate
@@ -1096,16 +800,6 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         effective_metadata_days = self._resolve_num_days(train_df, num_days)
 
         if self.verbose:
-            if normalized_times is not None:
-                self.logger.info(
-                    f"{self.__class__.__name__} fit-time prediction_times "
-                    f"(deprecated): {normalized_times}"
-                )
-            if prediction_window is not None:
-                self.logger.info(
-                    f"fit-time prediction window (deprecated) of "
-                    f"{prediction_window} after the time of prediction"
-                )
             self.logger.info(
                 f"Time interval of {yta_time_interval} used to bucket arrival rates."
             )
@@ -1134,13 +828,20 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         return self.weights
 
     @abstractmethod
-    def predict(self, *args, **kwargs) -> Dict:
+    def predict(
+        self,
+        prediction_time: Union[Tuple[int, int], List[int], int],
+        prediction_window: Optional[timedelta] = None,
+        filter_keys: Optional[Union[str, Sequence[str]]] = None,
+        prediction_date: Optional[date] = None,
+        strict_prediction_date: bool = False,
+        **kwargs,
+    ) -> Dict:
         """Predict the bed-demand count distribution per ``weights`` key; subclasses implement.
 
         Each key is typically a hospital **service** name (or ``unfiltered``). Callers
         should use ``prediction_time``, ``prediction_window``, and ``filter_keys``
-        (see module *Prediction API*). Legacy ``prediction_context`` (keyword or dict
-        as first positional) remains supported with ``DeprecationWarning``.
+        (see module *Prediction API*).
         """
         ...
 
@@ -1166,11 +867,9 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
     def predict_mean(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         prediction_window: Optional[timedelta] = None,
         filter_key: Optional[str] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
         strict_prediction_date: bool = False,
         **kwargs,
@@ -1179,19 +878,14 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         Parameters
         ----------
-        prediction_time : tuple or list or int, optional
-            Time of day ``(hour, minute)`` for slicing arrival rates. Required
-            unless using the deprecated ``prediction_context`` dict.
-        prediction_window : timedelta, optional
-            The prediction window. Required unless the value supplied at ``fit()``
-            is used (deprecated; emits ``DeprecationWarning``).
+        prediction_time : tuple or list or int
+            Time of day ``(hour, minute)`` for slicing arrival rates.
+        prediction_window : timedelta
+            The prediction window.
         filter_key : str, optional
             Which hospital **service** (or other stratum) to use: a key present in
             ``weights``, usually the same name as in ``filters``. Required when
-            ``weights`` has more than one key (unless using ``prediction_context``).
-        prediction_context : dict, optional
-            Deprecated. Former nested dict mapping filter key to
-            ``{"prediction_time": ...}``. Must contain exactly one filter key.
+            ``weights`` has more than one key.
         prediction_date : datetime.date, optional
             Calendar date at the snapped ``prediction_time``. When supplied,
             selects per-slice weekday arrival rates (crossing correctly into
@@ -1218,20 +912,15 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
 
         Raises
         ------
-        TypeError
-            If ``prediction_time`` is missing when not using ``prediction_context``.
         ValueError
-            If ``filter_key`` is required but omitted, keys are unknown, or legacy
-            ``prediction_context`` has multiple keys or inconsistent times.
+            If ``filter_key`` is required but omitted or keys are unknown.
         """
         prediction_window = self._resolve_prediction_window(prediction_window)
 
         snapped_time, filter_keys_list, resolved_date = (
             self._prepare_prediction_targets_for_predict_mean(
-                *args,
                 prediction_time=prediction_time,
                 filter_key=filter_key,
-                prediction_context=prediction_context,
                 prediction_date=prediction_date,
             )
         )
@@ -1287,11 +976,9 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
         strict_prediction_date: bool = False,
         **kwargs,
@@ -1300,17 +987,13 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
-        prediction_time : tuple or list or int, optional
-            Time of day for slicing arrival rates. Required unless using the
-            deprecated ``prediction_context`` dict API.
-        prediction_window : timedelta, optional
+        prediction_time : tuple or list or int
+            Time of day for slicing arrival rates.
+        prediction_window : timedelta
             The prediction window over which admissions are accumulated.
-            Required unless the value supplied at ``fit()`` is used (deprecated).
         filter_keys : str or sequence of str, optional
             Service name(s) or other ``weights`` key(s). Required when ``weights``
-            has more than one key (unless using ``prediction_context``).
-        prediction_context : dict, optional
-            Deprecated nested dict API.
+            has more than one key.
         prediction_date : datetime.date, optional
             Calendar anchor for weekday-stratified arrival rates. Pass it to
             use the matching weekday profile for each prediction slice; the
@@ -1335,21 +1018,16 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
 
         Raises
         ------
-        TypeError
-            If ``prediction_time`` is missing when not using legacy input.
         ValueError
-            If ``filter_keys`` is required but omitted, keys are invalid, or legacy
-            ``prediction_context`` has inconsistent times across keys.
+            If ``filter_keys`` is required but omitted or keys are invalid.
         """
         # Be lenient: ignore unrelated kwargs (e.g., parametric args passed by a higher-level API)
         prediction_window = self._resolve_prediction_window(prediction_window)
 
         snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
-                *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
-                prediction_context=prediction_context,
                 prediction_date=prediction_date,
             )
         )
@@ -1459,11 +1137,9 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
         strict_prediction_date: bool = False,
         **kwargs,
@@ -1472,15 +1148,12 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
-        prediction_time : tuple or list or int, optional
-            Required unless using deprecated ``prediction_context``.
-        prediction_window : timedelta, optional
-            Required unless using deprecated fit-time default.
+        prediction_time : tuple or list or int
+            Time of day for slicing arrival rates.
+        prediction_window : timedelta
+            The prediction window over which admissions are accumulated.
         filter_keys : str or sequence of str, optional
-            Required when ``weights`` has more than one key unless using
-            ``prediction_context``.
-        prediction_context : dict, optional
-            Deprecated nested dict API.
+            Required when ``weights`` has more than one key.
         prediction_date : datetime.date, optional
             Calendar anchor for weekday-stratified λ. Under the library
             default the pooled fallback is silent when ``prediction_date`` is
@@ -1521,10 +1194,8 @@ class ParametricIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
-                *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
-                prediction_context=prediction_context,
                 prediction_date=prediction_date,
             )
         )
@@ -1646,16 +1317,14 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         information for empirical probability calculations.
     """
 
-    def __init__(self, filters=None, verbose=False, use_generating_functions=True):
-        super().__init__(filters, verbose, use_generating_functions)
+    def __init__(self, filters=None, verbose=False):
+        super().__init__(filters, verbose)
         self.survival_df = None
 
     def fit(
         self,
         train_df: pd.DataFrame,
-        prediction_window: Optional[timedelta] = None,
         yta_time_interval: Optional[timedelta] = None,
-        prediction_times: Optional[List[float]] = None,
         num_days: Optional[int] = None,
         epsilon: float = 10**-7,
         y: Optional[None] = None,
@@ -1666,10 +1335,10 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
     ) -> "EmpiricalIncomingAdmissionPredictor":
         """Fit the model to the training data and calculate empirical survival curve.
 
-        The survival curve is independent of the prediction window and the set
-        of prediction times; these are now supplied at ``predict()`` time.
-        ``prediction_window`` and ``prediction_times`` are therefore deprecated
-        as ``fit()`` parameters; see `IncomingAdmissionPredictor.fit()`.
+        The survival curve is independent of the prediction window and prediction
+        time; supply ``prediction_window`` and ``prediction_time`` at
+        ``predict()`` / ``predict_mean()`` time. See
+        :meth:`IncomingAdmissionPredictor.fit`.
 
         Parameters
         ----------
@@ -1677,13 +1346,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
             The training dataset with historical admission data.
             Expected to have start_time_col as the index and end_time_col as a column.
             Alternatively, both can be regular columns.
-        prediction_window : timedelta, optional
-            Deprecated. Prefer passing ``prediction_window`` to
-            ``predict()`` / ``predict_mean()`` instead.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets. Required.
-        prediction_times : list, optional
-            Deprecated. Retained for backward compatibility only.
         num_days : int, optional
             Same as :meth:`IncomingAdmissionPredictor.fit`.
         epsilon : float, default=1e-7
@@ -1729,9 +1393,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         super().fit(
             train_df,
-            prediction_window=prediction_window,
             yta_time_interval=yta_time_interval,
-            prediction_times=prediction_times,
             num_days=num_days,
             epsilon=epsilon,
             y=y,
@@ -1847,11 +1509,9 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
     def predict(
         self,
-        *args,
-        prediction_time: Optional[Union[Tuple[int, int], List[int], int]] = None,
+        prediction_time: Union[Tuple[int, int], List[int], int],
         prediction_window: Optional[timedelta] = None,
         filter_keys: Optional[Union[str, Sequence[str]]] = None,
-        prediction_context: Optional[Dict] = None,
         prediction_date: Optional[date] = None,
         strict_prediction_date: bool = False,
         **kwargs,
@@ -1860,15 +1520,12 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         Parameters
         ----------
-        prediction_time : tuple or list or int, optional
-            Required unless using deprecated ``prediction_context``.
-        prediction_window : timedelta, optional
-            Required unless using deprecated fit-time default.
+        prediction_time : tuple or list or int
+            Time of day for slicing arrival rates.
+        prediction_window : timedelta
+            The prediction window over which admissions are accumulated.
         filter_keys : str or sequence of str, optional
-            Required when ``weights`` has more than one key unless using
-            ``prediction_context``.
-        prediction_context : dict, optional
-            Deprecated nested dict API.
+            Required when ``weights`` has more than one key.
         prediction_date : datetime.date, optional
             Calendar anchor for weekday-stratified λ. Under the library
             default the pooled fallback is silent when ``prediction_date`` is
@@ -1904,10 +1561,8 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
 
         snapped_time, resolved_filter_keys, resolved_date = (
             self._prepare_prediction_targets_for_predict(
-                *args,
                 prediction_time=prediction_time,
                 filter_keys=filter_keys,
-                prediction_context=prediction_context,
                 prediction_date=prediction_date,
             )
         )

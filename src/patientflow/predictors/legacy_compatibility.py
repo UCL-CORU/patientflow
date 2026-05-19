@@ -95,8 +95,9 @@ def create_yta_filters(df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
     dict
         Dictionary mapping specialty names to filter dictionaries
     """
-    special_params = create_special_category_objects(df.columns)
-    special_category_dict = special_params["special_category_dict"]
+    from patientflow.predictors.subgroup_predictor import create_subgroup_system
+
+    special_category_dict = create_subgroup_system(df.columns)["special_category_dict"]
 
     filters: Dict[str, Dict[str, Any]] = {}
     for specialty, is_paediatric_flag in special_category_dict.items():
