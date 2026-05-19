@@ -7,11 +7,13 @@ Predictions for patients yet to arrive are made up of two components:
 - Arrival rates calculated from past data, prepared for a series of time intervals within a prediction window after the moment of prediction
 - A probability of admission for any patient arriving within one of these time intervals being admitted within the prediction window. The probability of admission is generated using either an empirical survival curve, or an aspirational approach.
 
-We can evaluate these two components separately. First I evaluate the arrival rates, by comparing the arrival rates learned from the training set against observed arrival rates during the test set. Then I evaluate a survival-curve-based model, comparing its predicted bed count distributions against observed admissions.
+We can evaluate these two components separately. First I evaluate the arrival rates, by comparing the arrival rates learned from the training set against observed arrival rates during the test set (using `plot_arrival_deltas(..., arrival_rate_model=...)` so the expected baseline matches the fitted yet-to-arrive model, including per-weekday profiles when present). Then I evaluate a survival-curve-based model, comparing its predicted bed count distributions against observed admissions.
 
 ### About the data used in this notebook
 
 You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
+
+This notebook uses plotting helpers from `patientflow.viz` only — not the typed `patientflow.evaluate` package in the 4x\_ series (see notebook 4d).
 
 ```python
 # Reload functions every time
@@ -32,6 +34,7 @@ prediction_inputs = prepare_prediction_inputs(data_folder_name)
 # Unpack the results
 ed_visits = prediction_inputs['ed_visits']
 inpatient_arrivals = prediction_inputs['inpatient_arrivals']
+yta_model = prediction_inputs['yta_model']
 params = prediction_inputs['config']
 ```
 
@@ -85,6 +88,8 @@ _, _, test_inpatient_arrivals_df = create_temporal_splits(
 
 We can compare the arrival rates learned from the training set against observed arrival rates at the front door of the ED during the test set.
 
+The multi-date charts below pass `arrival_rate_model=yta_model` (from `prepare_prediction_inputs`) into `plot_arrival_deltas`, with a `filter_key` for each hospital service (the model is fit per specialty). That uses the model's stored arrival rates as the expected baseline — the same source as production predictions — rather than re-deriving pooled rates from the test-set dataframe alone.
+
 To illustrate, I start by plotting the cumulative arrivals of patients later admitted within a prediction window on one date. In the upper chart, the blue line shows the cumulative number of arrivals. The orange line shows the cumulative mean arrival rate.
 
 The lower chart shows the delta between the two lines.
@@ -102,8 +107,6 @@ plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
                         fig_size=(9, 3)
                         )
 ```
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_0.png)
 
 The chart below shows multiple versions of the delta for each date in the test set, for each prediction time, with the average delta shown in red.
 
@@ -128,23 +131,21 @@ prediction_times_sorted = sorted(
 )
 
 for prediction_time in prediction_times_sorted:
-    plot_arrival_deltas(test_inpatient_arrivals_df,
-                         prediction_time,
-                         snapshot_dates,
-                        prediction_window=timedelta(minutes=params["prediction_window"]),
-                        yta_time_interval = timedelta(minutes=params["yta_time_interval"])
-                         )
+    for specialty in sorted(yta_model.weights.keys()):
+        spec_test_df = test_inpatient_arrivals_df[
+            test_inpatient_arrivals_df["specialty"] == specialty
+        ]
+        plot_arrival_deltas(
+            spec_test_df,
+            prediction_time,
+            snapshot_dates,
+            prediction_window=timedelta(minutes=params["prediction_window"]),
+            yta_time_interval=timedelta(minutes=params["yta_time_interval"]),
+            arrival_rate_model=yta_model,
+            filter_key=specialty,
+            suptitle=specialty,
+        )
 ```
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_0.png)
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_1.png)
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_2.png)
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_3.png)
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_4.png)
 
 ## Evaluate predictions using survival curves
 

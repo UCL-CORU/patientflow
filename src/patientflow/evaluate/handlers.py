@@ -1104,7 +1104,7 @@ def evaluate_arrival_deltas(
                 media_file_path=out_dir,
                 file_name=fname,
                 return_figure=False,
-                predictor=pred,
+                arrival_rate_model=pred,
                 filter_key=fk,
                 strict_prediction_date=strict,
                 suptitle=_arrival_delta_suptitle(

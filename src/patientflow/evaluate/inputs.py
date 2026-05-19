@@ -510,12 +510,12 @@ class EvaluationInputsBuilder:
         predictors_by_service : mapping, optional
             Fitted incoming-admission predictors keyed by service (optional).
         filter_keys_by_service : mapping, optional
-            `predictor.weights` keys when predictors expose multiple profiles.
+            `arrival_rate_model.weights` keys when models expose multiple profiles.
         strict_prediction_date_by_service : mapping, optional
-            Per-service strict weekday flag for predictors.
+            Per-service strict weekday flag for arrival-rate models.
         yta_time_interval : datetime.timedelta, optional
-            Grid spacing; must match `predictor.yta_time_interval` when a
-            predictor is supplied (default 15 minutes).
+            Grid spacing; must match `arrival_rate_model.yta_time_interval` when a
+            model is supplied to `plot_arrival_deltas` (default 15 minutes).
 
         Returns
         -------

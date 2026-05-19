@@ -14,7 +14,7 @@ In this notebook, I'll use the example of predicting the number of beds needed f
 - a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data
 - a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
 
-I also demonstrate making predictions by specialty for demand from incoming patients, and how to stratify the predictions to take day of week into account.
+I also demonstrate predictions by specialty, and weekday-aware arrival rates: the library fits per-weekday profiles by default; pass `prediction_date` on `predict()` to select the day (see the final section).
 
 ```python
 # Reload functions every time
@@ -513,6 +513,9 @@ yta_model_empirical.fit(train_visits_copy,
 ```
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
 
 
     Time interval of 0:15:00 used to bucket arrival rates.
@@ -1141,13 +1144,25 @@ yta_model_by_spec_empirical.fit(train_visits_copy,
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
 
 
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+
+
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
+    Calculating weekday-stratified arrival rates for index span 2023-01-02–2023-02-14
+
+
+    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+
+
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
 
 
     Time interval of 0:15:00 used to bucket arrival rates.
@@ -1710,6 +1725,9 @@ yta_model_parametric.fit(train_visits_copy,
     Calculating time-varying arrival rates for data provided, which spans 45 unique dates
 
 
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+
+
     Time interval of 0:15:00 used to bucket arrival rates.
 
 
@@ -2173,7 +2191,7 @@ aspirational_prediction = yta_model_parametric.predict(
 
 ```
 
-The charts below compare the results of using this weighted predictor to generate a prediction for bed needed for patients yet to arrive, if the ED meets the 4-hour target for 80% of patients. The numbers are higher than the equivalent chart above.
+The charts below compare the results of using this weighted predictor to generate a prediction for beds needed for patients yet to arrive, if the ED meets the 4-hour target for 80% of patients. The numbers are higher than the equivalent chart above.
 
 ```python
 colour_dict = create_colour_dict()
@@ -2201,9 +2219,11 @@ plot_prob_dist(aspirational_prediction['unfiltered'], title,
 
 ![png](3e_Predict_demand_from_patients_yet_to_arrive_files/3e_Predict_demand_from_patients_yet_to_arrive_53_1.png)
 
-## Stratify by day of week
+## Weekday-aware arrival rates
 
-It is also possible to incorporate day of week into the models. The arrival rates for each day of the week are saved in a nested dictionary keyed by 'arrival_rates_by_weekday' with subkeys for each day of the week, where 0 is Monday.
+From `patientflow` 1.6 onward, `IncomingAdmissionPredictor.fit()` **fits per-weekday arrival profiles by default** (`stratify_by_weekday=None`). Pass `prediction_date=` on `predict()` to use the profile for that calendar day. Set `stratify_by_weekday=True` at fit time if you want a **warning** when `prediction_date` is omitted; use `strict_prediction_date=True` on `predict()` to raise instead of falling back to pooled rates.
+
+The arrival rates for each day of the week are stored under `arrival_rates_by_weekday` (Monday = 0).
 
 ```python
 from patientflow.predictors.incoming_admission_predictors import ParametricIncomingAdmissionPredictor
@@ -2215,10 +2235,11 @@ num_days = (start_validation_set - start_training_set).days
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
-yta_model_parametric.fit(train_visits_copy,
-              yta_time_interval=timedelta(minutes=15),
-              stratify_by_weekday=True,
-              )
+# stratify_by_weekday=None is the library default: fit per-weekday arrival profiles
+yta_model_parametric.fit(
+    train_visits_copy,
+    yta_time_interval=timedelta(minutes=15),
+)
 
 print(f'Weekday keys: {yta_model_parametric.weights["unfiltered"]["arrival_rates_by_weekday"].keys()}')
 

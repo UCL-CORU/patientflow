@@ -493,27 +493,27 @@ def _prepare_common_values(prediction_time):
     return prediction_time_obj, default_datetime
 
 
-def _resolve_predictor_filter_key(predictor, filter_key):
-    weights = getattr(predictor, "weights", None)
+def _resolve_predictor_filter_key(arrival_rate_model, filter_key):
+    weights = getattr(arrival_rate_model, "weights", None)
     if not isinstance(weights, dict) or len(weights) == 0:
-        raise ValueError("predictor.weights is empty; has the predictor been fit?")
+        raise ValueError("arrival_rate_model.weights is empty; has the model been fit?")
     if filter_key is None:
         if len(weights) == 1:
             return next(iter(weights.keys()))
         raise ValueError(
-            "filter_key is required when predictor.weights has more than one "
+            "filter_key is required when arrival_rate_model.weights has more than one "
             f"key (e.g. multiple fitted services). Available keys: {sorted(weights.keys())}."
         )
     if filter_key not in weights:
         raise ValueError(
-            f"filter_key '{filter_key}' is not recognized in predictor.weights. "
+            f"filter_key '{filter_key}' is not recognized in arrival_rate_model.weights. "
             f"Available keys: {sorted(weights.keys())}."
         )
     return filter_key
 
 
 def _predictor_rates_for_window(
-    predictor,
+    arrival_rate_model,
     filter_key: str,
     prediction_time: tuple,
     prediction_window: timedelta,
@@ -522,18 +522,18 @@ def _predictor_rates_for_window(
 ) -> "OrderedDict[time, float]":
     import warnings
 
-    weights = predictor.weights[filter_key]
+    weights = arrival_rate_model.weights[filter_key]
     arrival_rates_dict = weights.get("arrival_rates_dict")
     if arrival_rates_dict is None:
         raise ValueError(
             f"No arrival_rates_dict found under filter '{filter_key}' on the "
-            "supplied predictor. Has the predictor been fit?"
+            "supplied arrival_rate_model. Has the model been fit?"
         )
     by_weekday = weights.get("arrival_rates_by_weekday")
 
     if by_weekday is None:
         message = (
-            "predictor was fit without weekday stratification "
+            "arrival_rate_model was fit without weekday stratification "
             f"(filter '{filter_key}'). Pooled arrival rates will be used as "
             "the expected baseline for every snapshot date."
         )
@@ -541,7 +541,7 @@ def _predictor_rates_for_window(
             raise ValueError(message)
         warnings.warn(message, UserWarning, stacklevel=3)
 
-    yta_time_interval = predictor.yta_time_interval
+    yta_time_interval = arrival_rate_model.yta_time_interval
     Ntimes = int(prediction_window / yta_time_interval)
     anchor = datetime.combine(
         snapshot_date, time(hour=prediction_time[0], minute=prediction_time[1])
@@ -570,7 +570,7 @@ def plot_arrival_deltas(
     return_figure=False,
     fig_size=(15, 6),
     *,
-    predictor=None,
+    arrival_rate_model=None,
     filter_key: Optional[str] = None,
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
@@ -589,9 +589,9 @@ def plot_arrival_deltas(
     prediction_window : timedelta
         Prediction window length.
     yta_time_interval : timedelta, default=timedelta(minutes=15)
-        Time-interval grid for arrival rates. When ``predictor`` is supplied,
-        this must equal ``predictor.yta_time_interval``; otherwise a
-        ``ValueError`` is raised.
+        Time-interval grid for arrival rates. When ``arrival_rate_model`` is
+        supplied, this must equal ``arrival_rate_model.yta_time_interval``;
+        otherwise a ``ValueError`` is raised.
     media_file_path : Path, optional
         Path to save the plot.
     file_name : str, optional
@@ -601,22 +601,22 @@ def plot_arrival_deltas(
         If True, returns the figure instead of displaying it.
     fig_size : tuple, default=(15, 6)
         Figure size as ``(width, height)`` in inches.
-    predictor : IncomingAdmissionPredictor, optional
-        Fitted predictor whose stored arrival rates will be used as the
-        expected baseline. When the predictor's ``weights`` contain an
+    arrival_rate_model : IncomingAdmissionPredictor, optional
+        Fitted incoming-admission model whose stored arrival rates will be used
+        as the expected baseline. When the model's ``weights`` contain an
         ``arrival_rates_by_weekday`` profile (the library-default fit), each
         snapshot date uses the rates for its own weekday so the diagnostic
-        agrees with the deployed model. When ``predictor`` is ``None``
+        agrees with the deployed model. When ``arrival_rate_model`` is ``None``
         (default), the function falls back to pooled rates derived from
         ``df`` (legacy behaviour).
     filter_key : str, optional
-        Which ``weights`` key of ``predictor`` to read rates from. Required
-        only when the predictor has more than one fitted key (e.g. multiple
-        services). Ignored when ``predictor`` is ``None``.
+        Which ``weights`` key of ``arrival_rate_model`` to read rates from.
+        Required only when the model has more than one fitted key (e.g.
+        multiple services). Ignored when ``arrival_rate_model`` is ``None``.
     strict_prediction_date : bool, default=False
-        Passed through to the predictor: when ``True`` and the predictor
-        lacks per-weekday rates for the supplied filter key, a
-        ``ValueError`` is raised instead of falling back to pooled rates.
+        When ``True`` and ``arrival_rate_model`` lacks per-weekday rates for
+        the supplied filter key, a ``ValueError`` is raised instead of
+        falling back to pooled rates.
     suptitle : str, optional
         Figure-level title. Typically the entity (service / specialty)
         being analysed. Rendered above the per-axis titles.
@@ -631,29 +631,34 @@ def plot_arrival_deltas(
     Raises
     ------
     ValueError
-        If ``predictor`` is supplied and ``yta_time_interval`` does not match
-        ``predictor.yta_time_interval``, or if the predictor is unfitted /
-        the requested ``filter_key`` is unknown.
+        If ``arrival_rate_model`` is supplied and ``yta_time_interval`` does not
+        match ``arrival_rate_model.yta_time_interval``, or if the model is
+        unfitted / the requested ``filter_key`` is unknown.
     """
-    if predictor is not None:
-        predictor_interval = getattr(predictor, "yta_time_interval", None)
-        if predictor_interval is None:
+    if arrival_rate_model is not None:
+        model_interval = getattr(arrival_rate_model, "yta_time_interval", None)
+        if model_interval is None:
             raise ValueError(
-                "predictor.yta_time_interval is not set; has the predictor " "been fit?"
+                "arrival_rate_model.yta_time_interval is not set; has the model "
+                "been fit?"
             )
-        if predictor_interval != yta_time_interval:
+        if model_interval != yta_time_interval:
             raise ValueError(
                 "yta_time_interval mismatch: plot_arrival_deltas was called with "
-                f"{yta_time_interval!r} but predictor.yta_time_interval is "
-                f"{predictor_interval!r}. Pass yta_time_interval=predictor."
+                f"{yta_time_interval!r} but arrival_rate_model.yta_time_interval is "
+                f"{model_interval!r}. Pass yta_time_interval=arrival_rate_model."
                 "yta_time_interval to silence this error."
             )
-        resolved_filter_key = _resolve_predictor_filter_key(predictor, filter_key)
+        resolved_filter_key = _resolve_predictor_filter_key(
+            arrival_rate_model, filter_key
+        )
         baseline_source = (
-            "weekday-specific rates (from fitted predictor)"
-            if predictor.weights[resolved_filter_key].get("arrival_rates_by_weekday")
+            "weekday-specific rates (from fitted model)"
+            if arrival_rate_model.weights[resolved_filter_key].get(
+                "arrival_rates_by_weekday"
+            )
             is not None
-            else "pooled rates (from fitted predictor)"
+            else "pooled rates (from fitted model)"
         )
     else:
         resolved_filter_key = None
@@ -692,9 +697,9 @@ def plot_arrival_deltas(
         arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
         # Calculate arrival rates and prepare time points
-        if predictor is not None:
+        if arrival_rate_model is not None:
             mean_arrival_rates = _predictor_rates_for_window(
-                predictor,
+                arrival_rate_model,
                 resolved_filter_key,
                 prediction_time,
                 prediction_window,

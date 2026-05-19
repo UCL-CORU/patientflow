@@ -461,7 +461,7 @@ plt.show()
 
 ## 2. Make predictions for patients yet-to-arrive to the ED who will need admission
 
-The trained yet-to-arrive model generates the same distribution for each prediction time, irrespective of day of week, for each specialty. Passing the randomly chosen prediction time, for each specialty, will return the required distributions.
+The yet-to-arrive model was fit with `stratify_by_weekday=True`, so arrival rates vary by day of week. For each specialty, pass the randomly chosen `prediction_time` and the snapshot `prediction_date` (`random_prediction_date`) so `predict()` uses the matching weekday profile rather than the pooled 24-hour rates.
 
 ```python
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
@@ -472,6 +472,7 @@ for ax, specialty in zip(axes.flat, plot_order):
         prediction_time=random_prediction_time,
         prediction_window=prediction_window,
         filter_keys=specialty,
+        prediction_date=random_prediction_date,
         x1=x1, y1=y1, x2=x2, y2=y2)
     title = specialty.title()
     plot_prob_dist(weighted_poisson_prediction[specialty], title,
@@ -493,16 +494,7 @@ fig.tight_layout()
 plt.show()
 ```
 
-    /Users/zellaking/Repos/patientflow/.venv/lib/python3.12/site-packages/IPython/core/interactiveshell.py:3701: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'medical'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      exec(code_obj, self.user_global_ns, self.user_ns)
-    /Users/zellaking/Repos/patientflow/.venv/lib/python3.12/site-packages/IPython/core/interactiveshell.py:3701: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'surgical'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      exec(code_obj, self.user_global_ns, self.user_ns)
-    /Users/zellaking/Repos/patientflow/.venv/lib/python3.12/site-packages/IPython/core/interactiveshell.py:3701: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'haem/onc'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      exec(code_obj, self.user_global_ns, self.user_ns)
-    /Users/zellaking/Repos/patientflow/.venv/lib/python3.12/site-packages/IPython/core/interactiveshell.py:3701: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'paediatric'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      exec(code_obj, self.user_global_ns, self.user_ns)
-
-![png](4c_Predict_demand_files/4c_Predict_demand_22_1.png)
+![png](4c_Predict_demand_files/4c_Predict_demand_22_0.png)
 
 ## 3. Production prediction pipeline
 
@@ -510,11 +502,12 @@ In place of the lengthy code shown above, `patientflow` provides a function call
 
 ### Use of `build_service_data` from the `predict.service` module
 
-To make demand predictions at a given prediction moment, we call `build_service_data` with the trained models, the snapshot data for that moment, the yet-to-arrive parameters, the requested prediction window, and **`flow_selection`** (a `FlowSelection` instance, as in notebook 4a). Only the models and snapshot columns needed for the selected flows are required. This single call replaces all of the step-through code above.
+To make demand predictions at a given prediction moment, we call `build_service_data` with a `ServiceModels` bundle, the snapshot data for that moment, the yet-to-arrive parameters, the requested prediction window, and **`flow_selection`** (a `FlowSelection` instance, as in notebook 4a). Only the models and snapshot columns needed for the selected flows are required. This single call replaces all of the step-through code above.
 
 ```python
 from patientflow.predict.service import build_service_data
 from patientflow.predict.demand import FlowSelection
+from patientflow.model_artifacts import ServiceModels
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -523,9 +516,21 @@ admission_model = admissions_models[get_model_key(model_name, random_prediction_
 prediction_snapshots_processed = prediction_snapshots.copy(deep=True)
 prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snapshots_processed['elapsed_los'], unit='s')
 
+service_models = ServiceModels(
+    prediction_time=random_prediction_time,
+    prediction_window=prediction_window,
+    ed_classifier=admission_model,
+    inpatient_classifier=None,
+    spec_model=spec_model,
+    ed_yta_model=yta_model_by_spec,
+    non_ed_yta_model=None,
+    elective_yta_model=None,
+    transfer_model=None,
+)
+
 # generate the prediction inputs
 prediction_inputs = build_service_data(
-    models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
+    models=service_models,
     prediction_time=random_prediction_time,
     flow_selection=FlowSelection.custom(
         include_ed_current=True,
@@ -537,7 +542,7 @@ prediction_inputs = build_service_data(
         cohort="emergency",
     ),
     specialties=specialty_filters.keys(),
-    prediction_window=timedelta(hours=8),
+    prediction_window=prediction_window,
     prediction_date=random_prediction_date,
     ed_snapshots=prediction_snapshots_processed,
     inpatient_snapshots=None,
@@ -664,8 +669,7 @@ bundle = predictor.predict_service(
 
 plot_prob_dist(bundle.arrivals.probabilities, title,
     include_titles=True, truncate_at_beds=20,
-    probability_levels=[0.7,0.9],
-    show_probability_thresholds=True, bar_colour=spec_colour_dict["single"]["medical"])
+    bar_colour=spec_colour_dict["single"]["medical"])
 ```
 
 ![png](4c_Predict_demand_files/4c_Predict_demand_37_0.png)
@@ -693,7 +697,7 @@ The legacy approach uses a `ParametricIncomingAdmissionPredictor` to model yet-t
 
 ### Legacy `create_predictions` function with ED targets
 
-The `create_predictions` function below combines admission probabilities, specialty assignments, and yet-to-arrive predictions into a single call. It uses parametric curves based on specified ED performance targets to calculate the probability that each patient will be admitted within the prediction window.
+The `create_predictions` function below combines admission probabilities, specialty assignments, and yet-to-arrive predictions into a single call. It uses parametric curves based on specified ED performance targets to calculate the probability that each patient will be admitted within the prediction window. Pass `prediction_date=` when the yet-to-arrive model was fit with weekday stratification (as here), matching the step-through and `build_service_data` examples above.
 
 ```python
 from patientflow.predict.emergency_demand import create_predictions
@@ -704,25 +708,13 @@ create_predictions(
     prediction_snapshots = prediction_snapshots_processed,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window = timedelta(hours=8),
+    prediction_date = random_prediction_date,
     cdf_cut_points =  [0.7, 0.9],
     x1 = x1,
     y1 = y1,
     x2 = x2,
     y2 = y2)
 ```
-
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_10780/888972642.py:3: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'medical'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      create_predictions(
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_10780/888972642.py:3: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'surgical'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      create_predictions(
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_10780/888972642.py:3: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'haem/onc'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      create_predictions(
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_10780/888972642.py:3: UserWarning: predictor was fit with stratify_by_weekday=True but no prediction_date was supplied for filter 'paediatric'. Pass prediction_date= to predict() / predict_mean() to use the matching weekday profile; otherwise pooled arrival_rates_dict is used.
-      create_predictions(
-
-
-
-
 
     {'medical': {'in_ed': [5, 4], 'yet_to_arrive': [1, 0]},
      'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
@@ -733,7 +725,7 @@ create_predictions(
 
 Not all hospitals set ED performance targets, or you may prefer predictions that reflect actual past performance rather than aspirational targets. In this case, the probability of admission within the prediction window can be calculated from an empirical survival curve fitted to historical data.
 
-Below I show how a survival curve is constructed and used with the legacy `create_predictions` function. This approach replaces the parametric curve with an `EmpiricalIncomingAdmissionPredictor`.
+Below I show how a survival curve is constructed and used with the legacy `create_predictions` function. This approach replaces the parametric curve with an `EmpiricalIncomingAdmissionPredictor`. Pass `prediction_date=` so yet-to-arrive rates use the weekday profile for the snapshot day (the empirical model uses the library default weekday stratification at fit time).
 
 ```python
 ## Add synthetic value for admitted_to_ward_datetime to the dataset, if not available
@@ -849,6 +841,7 @@ create_predictions(
     prediction_snapshots = prediction_snapshots,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window = prediction_window,
+    prediction_date = random_prediction_date,
     cdf_cut_points =  [0.7, 0.9],
     x1 = x1,
     y1 = y1,
