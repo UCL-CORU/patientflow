@@ -193,6 +193,17 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
     - Timedelta -> pd.Timedelta(0)
     - Categorical / ordinal -> mode, or "Unknown" if empty
     - Otherwise -> pd.NA
+
+    Parameters
+    ----------
+    explicit_defaults : Dict[str, Any], optional
+        Optional mapping of column name -> default value. These values take
+        precedence over heuristics learned from the training data.
+    ordinal_mappings : Dict[str, List[Any]], optional
+        Same mapping passed to ``create_column_transformer`` so ordinal
+        columns get consistent kind and defaults.
+    verbose : bool, default=False
+        If True, prints which columns were added at transform time.
     """
 
     def __init__(
@@ -201,18 +212,6 @@ class FeatureColumnTransformer(BaseEstimator, TransformerMixin):
         ordinal_mappings: Optional[Dict[str, List[Any]]] = None,
         verbose: bool = False,
     ):
-        """
-        Parameters
-        ----------
-        explicit_defaults : Dict[str, Any], optional
-            Optional mapping of column name -> default value. These values take
-            precedence over heuristics learned from the training data.
-        ordinal_mappings : Dict[str, List[Any]], optional
-            Same mapping passed to ``create_column_transformer`` so ordinal
-            columns get consistent kind and defaults.
-        verbose : bool, default=False
-            If True, prints which columns were added at transform time.
-        """
         self.explicit_defaults = explicit_defaults or {}
         self.ordinal_mappings: Dict[str, List[Any]] = ordinal_mappings or {}
         self.verbose = verbose

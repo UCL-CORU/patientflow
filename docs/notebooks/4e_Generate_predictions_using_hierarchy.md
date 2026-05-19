@@ -187,10 +187,22 @@ print(f'Number of patients under the age of 18 in the ED at {format_prediction_t
     Number of adult patients in the ED at 22:00 on 2031-10-09: 69
     Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 
-Using the function below, I prepare prediction inputs, ready for the hierarchy orchestrator. The `build_service_data` function is introduced with more detail in notebook 4c.
+Using the function below, I prepare prediction inputs, ready for the hierarchy orchestrator. The `build_service_data` function is introduced with more detail in [notebook 4c](4c_Predict_demand.md). Pass an explicit `FlowSelection` (as in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md)) and `prediction_date=` when the yet-to-arrive model uses weekday stratification.
 
 ```python
 from patientflow.predict.service import build_service_data
+from patientflow.predict.demand import FlowSelection
+
+# ED current + ED yet-to-arrive only (same narrow selection as notebook 4c section 3)
+flow_sel_ed_inflows = FlowSelection.custom(
+    include_ed_current=True,
+    include_ed_yta=True,
+    include_non_ed_yta=False,
+    include_elective_yta=False,
+    include_transfers_in=False,
+    include_departures=False,
+    cohort="emergency",
+)
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -203,11 +215,13 @@ prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snaps
 prediction_inputs = build_service_data(
     models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
     prediction_time=random_prediction_time,
+    flow_selection=flow_sel_ed_inflows,
     ed_snapshots=prediction_snapshots_processed,
     inpatient_snapshots=None,
     specialties=specialty_filters.keys(),
-    prediction_window=timedelta(hours=8),
-    x1=x1, y1=y1, x2=x2, y2=y2
+    prediction_window=prediction_window,
+    prediction_date=random_prediction_date,
+    x1=x1, y1=y1, x2=x2, y2=y2,
 )
 
 ```
@@ -220,8 +234,8 @@ prediction_inputs['medical']
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[1:11]: [0.010, 0.028, 0.062, 0.111, 0.159, 0.184, 0.172, 0.130, 0.079, 0.039] (E=6.2 of 79 patients in ED)
-        ED yet-to-arrive admissions              λ = 2.128
+        Admissions from current ED               PMF[0:10]: [0.010, 0.023, 0.056, 0.108, 0.163, 0.194, 0.182, 0.134, 0.077, 0.035] (E=5.2 of 79 patients in ED)
+        ED yet-to-arrive admissions              λ = 1.836
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
         Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
@@ -233,7 +247,7 @@ prediction_inputs['medical']
 I can now use the prediction inputs to generate predictions for the lowest level.
 
 ```python
-from patientflow.predict.demand import DemandPredictor, FlowSelection
+from patientflow.predict.demand import DemandPredictor
 predictor = DemandPredictor(k_sigma=8.0)  # Controls distribution width caps
 from patientflow.viz.probability_distribution import plot_prob_dist
 
@@ -245,27 +259,19 @@ title = (
 
 bundle = predictor.predict_service(
     inputs=prediction_inputs['medical'],
-    flow_selection=FlowSelection.custom(
-        include_ed_current=True,
-        include_ed_yta=True,
-        include_non_ed_yta=False,
-        include_elective_yta=False,
-        include_transfers_in=False,
-        include_departures=False,  # No departures
-        # cohort="emergency" # No need to specify this as we have not included elective patients
-    ))
+    flow_selection=flow_sel_ed_inflows,
+)
 
 plot_prob_dist(bundle.arrivals.probabilities, title,
     include_titles=True, truncate_at_beds=20,
-    probability_levels=[0.7,0.9],
-    show_probability_thresholds=True, bar_colour='orange')
+    bar_colour='orange')
 ```
 
 ![png](4e_Generate_predictions_using_hierarchy_files/4e_Generate_predictions_using_hierarchy_18_0.png)
 
 ## 4. Generate predictions using the hierarchy
 
-Using the hierarchy, we can generate predictions at higher levels, like the Medical Division or the Hospital as a whole
+Using the hierarchy, we can generate predictions at higher levels, like the Medical Division or the Hospital as a whole. `HierarchicalPredictor.predict_all_levels` requires an explicit **`flow_selection`** argument (the same `FlowSelection` type introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md)).
 
 ```python
 from patientflow.predict.hierarchy import HierarchicalPredictor
@@ -276,18 +282,11 @@ hierarchical_predictor = HierarchicalPredictor(
     hierarchy,
     DemandPredictor(k_sigma=8.0))
 
-# Run predictions, specifying flow selection
+# Run predictions with the same ED inflow selection used above
 results = hierarchical_predictor.predict_all_levels(
     prediction_inputs,
-    flow_selection=FlowSelection.custom(
-        include_ed_current=True,
-        include_ed_yta=True,
-        include_non_ed_yta=False,
-        include_elective_yta=False,
-        include_transfers_in=False,
-        include_departures=False,  # No departures
-        cohort="emergency"
-    ))
+    flow_selection=flow_sel_ed_inflows,
+)
 ```
 
 The returned object is a dictionary with keys for each entity in the hierarchy, at any level.
@@ -315,10 +314,10 @@ print(results['medical'])
 
     The predicted demand for an entity can be neatly viewed by printing it, producing the following output:
 
-    PredictionBundle(service: medical)
-      Arrivals:    PMF[3:13]: [0.018, 0.039, 0.070, 0.107, 0.139, 0.153, 0.146, 0.120, 0.086, 0.055] (E=8.3)
+    PredictionBundle(service: medical) [aspirational]
+      Arrivals:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[3:13]: [0.018, 0.039, 0.070, 0.107, 0.139, 0.153, 0.146, 0.120, 0.086, 0.055] (E=8.3)
+      Net flow:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 ## 5. Access results at any level
@@ -335,24 +334,24 @@ print(results['Hospital'])
 ```
 
     Results for medical specialty
-    PredictionBundle(service: medical)
-      Arrivals:    PMF[3:13]: [0.018, 0.039, 0.070, 0.107, 0.139, 0.153, 0.146, 0.120, 0.086, 0.055] (E=8.3)
+    PredictionBundle(service: medical) [aspirational]
+      Arrivals:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[3:13]: [0.018, 0.039, 0.070, 0.107, 0.139, 0.153, 0.146, 0.120, 0.086, 0.055] (E=8.3)
+      Net flow:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
     Results for Medical Division
-    PredictionBundle(division: Medical Division)
-      Arrivals:    PMF[6:16]: [0.032, 0.055, 0.084, 0.112, 0.131, 0.136, 0.126, 0.104, 0.077, 0.052] (E=11.0)
+    PredictionBundle(division: Medical Division) [aspirational]
+      Arrivals:    PMF[4:14]: [0.022, 0.043, 0.072, 0.104, 0.131, 0.143, 0.137, 0.116, 0.088, 0.059] (E=9.4)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[6:16]: [0.032, 0.055, 0.084, 0.112, 0.131, 0.136, 0.126, 0.104, 0.077, 0.052] (E=11.0)
+      Net flow:    PMF[4:14]: [0.022, 0.043, 0.072, 0.104, 0.131, 0.143, 0.137, 0.116, 0.088, 0.059] (E=9.4)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
     Results for Hospital
-    PredictionBundle(hospital: Hospital)
-      Arrivals:    PMF[12:22]: [0.049, 0.067, 0.085, 0.099, 0.107, 0.108, 0.101, 0.088, 0.071, 0.054] (E=16.7)
+    PredictionBundle(hospital: Hospital) [aspirational]
+      Arrivals:    PMF[9:19]: [0.044, 0.065, 0.086, 0.104, 0.115, 0.116, 0.108, 0.092, 0.073, 0.053] (E=13.8)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[12:22]: [0.049, 0.067, 0.085, 0.099, 0.107, 0.108, 0.101, 0.088, 0.071, 0.054] (E=16.7)
+      Net flow:    PMF[9:19]: [0.044, 0.065, 0.086, 0.104, 0.115, 0.116, 0.108, 0.092, 0.073, 0.053] (E=13.8)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 Components of the arrivals flow can be examined.
@@ -364,8 +363,8 @@ print(f"25th, 50th and 75th percentiles for probability distribution are: {resul
 
 ```
 
-    11.0 patients are expected to need beds in the Medical Division.
-    25th, 50th and 75th percentiles for probability distribution are: {25: 9, 50: 11, 75: 13}
+    9.4 patients are expected to need beds in the Medical Division.
+    25th, 50th and 75th percentiles for probability distribution are: {25: 7, 50: 9, 75: 11}
 
 We can get the minimum number of beds needed with a given probability, as shown in notebook 4c.
 
@@ -379,13 +378,9 @@ print(
 )
 ```
 
-    There is a 90% probability of needing at least 7 beds for arrivals to the Medical Division in the 8 hours after the prediction moment
+    There is a 90% probability of needing at least 6 beds for arrivals to the Medical Division in the 8 hours after the prediction moment
 
 Although the keys in the results object are prefixed with the entity type, as shown below, the entity can be accessed either with or without the prefix. The prefix has been added to handle name collisions.
-
-```python
-
-```
 
 ```python
 print(f'The keys in the results object are: {results.keys()}')
@@ -424,6 +419,43 @@ print(f"hierarchical_predictor.hierarchy.get_children('Medical Division') return
     hierarchical_predictor.hierarchy.get_children('Hospital') returns: ['Medical Division', 'Surgical Division', 'Specialist Hospitals Division']
     hierarchical_predictor.hierarchy.get_children('Medical Division') returns: ['haem/onc', 'medical']
 
+### `FlowSelection.emergency_only()` and `FlowSelection.elective_only()`
+
+For whole-hospital roll-ups you can use presets instead of `FlowSelection.custom(...)`:
+
+- **`FlowSelection.emergency_only()`** — ED current and yet-to-arrive, non-ED emergency yet-to-arrive, and emergency-cohort transfers and departures. Use for emergency bed-pressure views (typical A&E demand reporting).
+- **`FlowSelection.elective_only()`** — elective yet-to-arrive, transfers, and departures only. Use for planned-admission or elective capacity views.
+
+This notebook only populates ED current and ED yet-to-arrive in `build_service_data`, so `elective_only()` returns near-zero demand here; the calls still show the API pattern. With a full model bundle, `emergency_only()` can exceed the narrow `flow_sel_ed_inflows` selection because it also includes non-ED emergency inflows and emergency departures.
+
+```python
+results_emergency = hierarchical_predictor.predict_all_levels(
+    prediction_inputs,
+    flow_selection=FlowSelection.emergency_only(),
+)
+results_elective = hierarchical_predictor.predict_all_levels(
+    prediction_inputs,
+    flow_selection=FlowSelection.elective_only(),
+)
+
+print(
+    f"Medical Division expected arrivals (flow_sel_ed_inflows): "
+    f"{results['Medical Division'].arrivals.expectation:.1f}"
+)
+print(
+    f"Medical Division expected arrivals (emergency_only): "
+    f"{results_emergency['Medical Division'].arrivals.expectation:.1f}"
+)
+print(
+    f"Medical Division expected arrivals (elective_only): "
+    f"{results_elective['Medical Division'].arrivals.expectation:.1f}"
+)
+```
+
+    Medical Division expected arrivals (flow_sel_ed_inflows): 9.4
+    Medical Division expected arrivals (emergency_only): 9.4
+    Medical Division expected arrivals (elective_only): 0.0
+
 ### A useful shortcut
 
 We can skip manually creating and populating the Hierarchy object by using the `create_hierarchical_predictor()` function which does the following:
@@ -456,22 +488,15 @@ shortcut_predictor = create_hierarchical_predictor(
 # Run predictions just as before
 shortcut_results = shortcut_predictor.predict_all_levels(
     prediction_inputs,
-    flow_selection=FlowSelection.custom(
-        include_ed_current=True,
-        include_ed_yta=True,
-        include_non_ed_yta=False,
-        include_elective_yta=False,
-        include_transfers_in=False,
-        include_departures=False,  # No departures
-        cohort="emergency"
-    ))
+    flow_selection=flow_sel_ed_inflows,
+)
 print(f"Shortcut method produced predictions for {len(shortcut_results)} entities.")
 print(f"{results['Medical Division'].arrivals.expectation:.1f} patients are expected to need beds in the Medical Division.")
 
 ```
 
     Shortcut method produced predictions for 8 entities.
-    11.0 patients are expected to need beds in the Medical Division.
+    9.4 patients are expected to need beds in the Medical Division.
 
 ## Summary
 

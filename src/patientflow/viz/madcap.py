@@ -322,6 +322,7 @@ def _plot_madcap_by_group_single(
     return_figure=False,
     *,
     show: bool = False,
+    suptitle: Optional[str] = None,
 ):
     """Generate MADCAP plots for specific groups at a given prediction time.
 
@@ -346,6 +347,11 @@ def _plot_madcap_by_group_single(
         and observed outcomes.
     return_figure : bool, default=False
         If True, returns the figure object instead of displaying it.
+    show : bool, default=False
+        If True, display the figure when not returning it.
+    suptitle : str, optional
+        Figure-level title. When omitted, a default title is derived from
+        ``group_name`` and the prediction clock.
 
     Returns
     -------
@@ -414,9 +420,9 @@ def _plot_madcap_by_group_single(
     fig.tight_layout(pad=1.08)
 
     # Then add super title
-    fig.suptitle(
-        f"MADCAP Plots by {group_name} for {hour}:{minutes:02}", fontsize=10, y=1.04
-    )
+    if suptitle is None:
+        suptitle = f"MADCAP by {group_name} at {hour}:{minutes:02}"
+    fig.suptitle(suptitle, fontsize=10, y=1.04)
 
     # Fine-tune the layout
     fig.subplots_adjust(top=0.90)
@@ -453,6 +459,7 @@ def plot_madcap_by_group(
     *,
     exclude_from_training_data: Optional[List[str]] = None,
     show: bool = False,
+    suptitle: Optional[str] = None,
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -482,6 +489,9 @@ def plot_madcap_by_group(
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when a grouped figure is not
         returned (unused when ``return_figure`` is true, the usual path).
+    suptitle : str, optional
+        Figure-level title passed to each grouped figure. When omitted, each
+        figure uses a default title from ``grouping_var_name`` and the clock.
 
     Returns
     -------
@@ -549,6 +559,7 @@ def plot_madcap_by_group(
             plot_difference=plot_difference,
             return_figure=True,
             show=show,
+            suptitle=suptitle,
         )
         if return_figure:
             figures.append(fig)

@@ -24,7 +24,7 @@ create_predictions : function
 
 import warnings
 from typing import List, Dict, Tuple, Union, Optional, Any
-from datetime import timedelta
+from datetime import date, timedelta
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
@@ -308,6 +308,7 @@ def create_predictions(
     y2: float,
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
+    prediction_date: Optional[date] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Create predictions for emergency demand for a single prediction moment.
 
@@ -342,6 +343,10 @@ def create_predictions(
         Whether to use probability calculation for admission within prediction window for patients
         already in the ED. If False, probability is set to 1.0 for all current ED patients.
         This parameter does not affect the yet-to-arrive predictions. By default True
+    prediction_date : Optional[date], optional
+        Calendar date for yet-to-arrive predictions when the model was fit with
+        ``stratify_by_weekday=True``. Passed through to ``predict()`` on the
+        yet-to-arrive model.
 
     Returns
     -------
@@ -593,12 +598,14 @@ def create_predictions(
                     prediction_time=prediction_time,
                     prediction_window=prediction_window,
                     filter_keys=specialty,
+                    prediction_date=prediction_date,
                 )
             else:
                 agg_predicted_yta = yet_to_arrive_model.predict(
                     prediction_time=prediction_time,
                     prediction_window=prediction_window,
                     filter_keys=specialty,
+                    prediction_date=prediction_date,
                     x1=x1,
                     y1=y1,
                     x2=x2,

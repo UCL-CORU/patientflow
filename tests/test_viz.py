@@ -458,7 +458,7 @@ class TestPlotRendering(unittest.TestCase):
 
 
 class TestPlotArrivalDeltas(unittest.TestCase):
-    """Tests for plot_arrival_deltas with and without a fitted predictor."""
+    """Tests for plot_arrival_deltas with and without a fitted arrival-rate model."""
 
     @classmethod
     def setUpClass(cls):
@@ -520,8 +520,8 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         )
         self.assertGreater(sum(rates_mon.values()), sum(rates_tue.values()))
 
-    def test_plot_with_predictor_uses_weekday_baseline(self):
-        """Annotation indicates weekday-specific predictor baseline was used."""
+    def test_plot_with_arrival_rate_model_uses_weekday_baseline(self):
+        """Annotation indicates weekday-specific model baseline was used."""
         predictor = self._make_predictor()
         fig = plot_arrival_deltas(
             self.df,
@@ -529,14 +529,14 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
-            predictor=predictor,
+            arrival_rate_model=predictor,
             return_figure=True,
         )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
-        self.assertIn("weekday-specific rates (from fitted predictor)", title_text)
+        self.assertIn("weekday-specific rates (from fitted model)", title_text)
 
-    def test_plot_without_predictor_uses_pooled_baseline(self):
+    def test_plot_without_arrival_rate_model_uses_pooled_baseline(self):
         """Default path falls back to pooled rates derived from the dataframe."""
         fig = plot_arrival_deltas(
             self.df,
@@ -551,7 +551,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         self.assertIn("pooled rates (from dataframe)", title_text)
 
     def test_plot_raises_on_yta_interval_mismatch(self):
-        """yta_time_interval must match predictor.yta_time_interval."""
+        """yta_time_interval must match arrival_rate_model.yta_time_interval."""
         predictor = self._make_predictor()
         with self.assertRaises(ValueError) as cm:
             plot_arrival_deltas(
@@ -560,13 +560,13 @@ class TestPlotArrivalDeltas(unittest.TestCase):
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=timedelta(minutes=30),
-                predictor=predictor,
+                arrival_rate_model=predictor,
                 return_figure=True,
             )
         self.assertIn("yta_time_interval mismatch", str(cm.exception))
 
-    def test_plot_with_pooled_predictor_uses_pooled_predictor_baseline(self):
-        """Predictor without weekday profiles → 'pooled rates (from fitted predictor)'."""
+    def test_plot_with_pooled_model_uses_pooled_model_baseline(self):
+        """Model without weekday profiles → 'pooled rates (from fitted model)'."""
         predictor = self._make_predictor(stratify_by_weekday=False)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
@@ -576,14 +576,14 @@ class TestPlotArrivalDeltas(unittest.TestCase):
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
-                predictor=predictor,
+                arrival_rate_model=predictor,
                 return_figure=True,
             )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
-        self.assertIn("pooled rates (from fitted predictor)", title_text)
+        self.assertIn("pooled rates (from fitted model)", title_text)
 
-    def test_plot_strict_raises_when_predictor_lacks_weekday(self):
+    def test_plot_strict_raises_when_model_lacks_weekday(self):
         """strict_prediction_date=True surfaces missing weekday profiles."""
         predictor = self._make_predictor(stratify_by_weekday=False)
         with self.assertRaises(ValueError):
@@ -593,7 +593,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
-                predictor=predictor,
+                arrival_rate_model=predictor,
                 strict_prediction_date=True,
                 return_figure=True,
             )
@@ -607,7 +607,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
-            predictor=predictor,
+            arrival_rate_model=predictor,
             suptitle="Medical service",
             return_figure=True,
         )
