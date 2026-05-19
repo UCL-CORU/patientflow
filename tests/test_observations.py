@@ -10,11 +10,19 @@ from patientflow.evaluate.observations import (
     count_observed,
     count_observed_admitted_at_some_point,
     count_observed_admitted_in_window,
+    count_observed_applies_specialty_filter,
     count_observed_arrived_and_admitted_in_window,
     count_observed_arrived_in_window,
     count_observed_departed_in_window,
     validate_observation_mode_for_component,
 )
+
+
+def test_count_observed_applies_specialty_filter():
+    assert count_observed_applies_specialty_filter("admitted_at_some_point")
+    assert count_observed_applies_specialty_filter("admitted_in_window")
+    assert not count_observed_applies_specialty_filter("arrived_in_window")
+    assert not count_observed_applies_specialty_filter("departed_in_window")
 
 
 def _ed_row(**kwargs):
@@ -139,7 +147,7 @@ def test_arrived_in_window_does_not_use_ed_visits_fallback():
         prediction_time=(10, 0),
         prediction_window=timedelta(hours=8),
         ed_visits=ed_visits,
-        arrivals=None,
+        inpatient_arrivals=None,
     )
     assert n == 0
 
@@ -225,7 +233,7 @@ def test_count_observed_dispatcher_accepts_each_mode(mode):
         prediction_time=(10, 0),
         prediction_window=timedelta(hours=8),
         ed_visits=None,
-        arrivals=None,
+        inpatient_arrivals=None,
         inpatient_visits=None,
     )
     if mode in ("admitted_at_some_point", "admitted_in_window"):
@@ -241,11 +249,11 @@ def test_count_observed_dispatcher_accepts_each_mode(mode):
             ]
         )
     if mode == "arrived_in_window":
-        kwargs["arrivals"] = pd.DataFrame(
+        kwargs["inpatient_arrivals"] = pd.DataFrame(
             {"arrival_datetime": [datetime(2024, 1, 1, 11, 0, 0)]}
         )
     if mode == "arrived_and_admitted_in_window":
-        kwargs["arrivals"] = pd.DataFrame(
+        kwargs["inpatient_arrivals"] = pd.DataFrame(
             {
                 "arrival_datetime": [datetime(2024, 1, 1, 11, 0, 0)],
                 "departure_datetime": [datetime(2024, 1, 1, 12, 0, 0)],
@@ -262,6 +270,36 @@ def test_count_observed_unknown_mode():
             prediction_time=(10, 0),
             prediction_window=timedelta(hours=1),
         )
+
+
+def test_departed_in_window_filters_admission_type():
+    df = pd.DataFrame(
+        [
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "left_subspecialty_in_window": True,
+                "admission_type": "elective",
+                "specialty": "medical",
+            },
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "left_subspecialty_in_window": True,
+                "admission_type": "emergency",
+                "specialty": "medical",
+            },
+        ]
+    )
+    n = count_observed_departed_in_window(
+        df,
+        date(2024, 1, 1),
+        (10, 0),
+        timedelta(hours=8),
+        specialty="medical",
+        admission_type="elective",
+    )
+    assert n == 1
 
 
 def test_validate_observation_mode_for_component():

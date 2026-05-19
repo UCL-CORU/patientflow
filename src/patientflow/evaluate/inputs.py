@@ -16,7 +16,6 @@ Submodules should be imported explicitly, for example::
 See Also
 --------
 patientflow.evaluate.runner.run_evaluation
-patientflow.evaluate.targets.get_default_evaluation_targets
 """
 
 from __future__ import annotations
@@ -104,8 +103,6 @@ class EvaluationTarget:
     ----------
     flow_name : str
         Key passed to `add_*` methods on `EvaluationInputsBuilder`.
-    name : str
-        Stable identifier for this target within the flow.
     flow_type : str
         Logical pathway type (for example `"admissions"` or `"departures"`).
     evaluation_mode : str
@@ -124,7 +121,6 @@ class EvaluationTarget:
     """
 
     flow_name: str
-    name: str
     flow_type: str
     evaluation_mode: EvaluationModeLiteral
     component: str
@@ -226,7 +222,6 @@ class EvaluationInputsBuilder:
         *,
         eval_split: EvalSplitLiteral = "valid",
     ) -> None:
-        """Create builder state; see class docstring for required fields before `add_*`."""
         self._flow_selection: Optional[FlowSelection] = flow_selection
         self._prediction_times: Optional[List[Tuple[int, int]]] = prediction_times
         self._eval_split: EvalSplitLiteral = _validate_eval_split(eval_split)
@@ -415,30 +410,28 @@ class EvaluationInputsBuilder:
     def add_distribution_observations(
         self,
         flow_name: str,
-        observations_by_service: Mapping[str, pd.DataFrame],
         prediction_window: timedelta,
         *,
-        ed_visits_key: str = "ed_visits",
-        inpatient_visits_key: str = "inpatient_visits",
-        visits_key: str = "visits",
+        ed_visits_by_service: Optional[Mapping[str, pd.DataFrame]] = None,
+        inpatient_arrivals_by_service: Optional[Mapping[str, pd.DataFrame]] = None,
+        inpatient_visits_by_service: Optional[Mapping[str, pd.DataFrame]] = None,
     ) -> EvaluationInputsBuilder:
-        """Attach per-service visit frames for future `count_observed` wiring.
+        """Attach per-service observation frames for distribution evaluation.
 
         Parameters
         ----------
         flow_name : str
             Must match `EvaluationTarget.flow_name` for targets that use this block.
-        observations_by_service : mapping
-            `service` → dataframe stored under `ed_visits_key`,
-            `inpatient_visits_key`, and `visits_key` in the observation context.
         prediction_window : datetime.timedelta
-            Horizon stored on the distribution block.
-        ed_visits_key : str, optional
-            Context key for ED frames (default `"ed_visits"`).
-        inpatient_visits_key : str, optional
-            Context key for inpatient frames (default `"inpatient_visits"`).
-        visits_key : str, optional
-            Context key for generic visits (default `"visits"`).
+            Horizon stored on the distribution block and passed to
+            `count_observed` when `evaluate_distribution` recomputes
+            `agg_observed`.
+        ed_visits_by_service : mapping, optional
+            `service` → ED snapshot dataframe (`ed_visits` context key).
+        inpatient_arrivals_by_service : mapping, optional
+            `service` → inpatient arrival-time rows (`inpatient_arrivals` key).
+        inpatient_visits_by_service : mapping, optional
+            `service` → inpatient snapshot dataframe (`inpatient_visits` key).
 
         Returns
         -------
@@ -448,13 +441,21 @@ class EvaluationInputsBuilder:
         Raises
         ------
         ValueError
-            If `flow_selection` or `prediction_times` has not been set.
-
-        Notes
-        -----
-        Handlers may still use caller-supplied `agg_observed` inside
-        `prob_dist_by_service` until observation recomputation is implemented.
+            If `flow_selection` or `prediction_times` has not been set, or if
+            no observation mapping is provided.
         """
+        if not any(
+            (
+                ed_visits_by_service,
+                inpatient_arrivals_by_service,
+                inpatient_visits_by_service,
+            )
+        ):
+            raise ValueError(
+                "add_distribution_observations requires at least one of "
+                "ed_visits_by_service, inpatient_arrivals_by_service, or "
+                "inpatient_visits_by_service"
+            )
         self._require_basics()
         block = self._distribution_by_flow.setdefault(
             flow_name,
@@ -466,11 +467,19 @@ class EvaluationInputsBuilder:
         )
         block["prediction_window"] = prediction_window
         obs_ctx = self._observation_contexts.setdefault(flow_name, {})
-        for svc, df in observations_by_service.items():
-            ctx = obs_ctx.setdefault(str(svc), {})
-            ctx[ed_visits_key] = df
-            ctx[inpatient_visits_key] = df
-            ctx[visits_key] = df
+
+        def _register(
+            mapping: Optional[Mapping[str, pd.DataFrame]], frame_key: str
+        ) -> None:
+            if not mapping:
+                return
+            for svc, df in mapping.items():
+                ctx = obs_ctx.setdefault(str(svc), {})
+                ctx[frame_key] = df
+
+        _register(ed_visits_by_service, "ed_visits")
+        _register(inpatient_arrivals_by_service, "inpatient_arrivals")
+        _register(inpatient_visits_by_service, "inpatient_visits")
         return self
 
     def add_arrival_deltas(

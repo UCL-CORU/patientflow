@@ -26,15 +26,15 @@ admitted_in_window
     *use_admission_in_window_prob*: True.
 
 arrived_in_window
-  Pre-filtered `arrivals` cohort (caller supplies the appropriate rows). *X*:
-  `arrival_datetime` in (moment, moment + *prediction_window*] only; ward
-  departure time is out of scope.
+  Pre-filtered `inpatient_arrivals` cohort (caller supplies the appropriate
+  rows). *X*: `arrival_datetime` in (moment, moment + *prediction_window*]
+  only; ward departure time is out of scope.
 
 arrived_and_admitted_in_window
-  Pre-filtered `arrivals` cohort (caller chooses direct-admission vs ED YTA
-  pathway rows). *X*: rows with `arrival_datetime` and `departure_datetime`
-  (ward admission / leave-ED) both in (moment, moment + *prediction_window*].
-  Frame: `arrivals`.
+  Pre-filtered `inpatient_arrivals` cohort (caller chooses direct-admission vs
+  ED YTA pathway rows). *X*: rows with `arrival_datetime` and
+  `departure_datetime` (ward admission / leave-ED) both in (moment, moment +
+  *prediction_window*]. Frame: `inpatient_arrivals`.
 
 departed_in_window
     Inpatient departures (`get_prob_dist_by_service`, component=`departures`).
@@ -57,6 +57,22 @@ OBSERVATION_MODES: tuple[str, ...] = (
     "arrived_in_window",
     "arrived_and_admitted_in_window",
 )  #: Allowed observation_mode strings accepted by count_observed.
+
+# Context keys on ``EvaluationInputs.observation_contexts[flow][service]``.
+OBSERVATION_CONTEXT_FRAME_KEYS: dict[str, str] = {
+    "admitted_at_some_point": "ed_visits",
+    "admitted_in_window": "ed_visits",
+    "arrived_in_window": "inpatient_arrivals",
+    "arrived_and_admitted_in_window": "inpatient_arrivals",
+    "departed_in_window": "inpatient_visits",
+}
+
+# ``EvaluationTarget.component`` for departures distribution → ``admission_type`` filter.
+# Keys must match ``target.component`` exactly; an unknown component applies no route filter.
+DEPARTURES_DISTRIBUTION_ADMISSION_TYPE: dict[str, str] = {
+    "departures_elective": "elective",
+    "departures_emergency": "emergency",
+}
 
 _ARRIVAL_OBSERVATION_MODES = frozenset({"admitted_at_some_point", "admitted_in_window"})
 _DEPARTURE_OBSERVATION_MODES = frozenset({"departed_in_window"})
@@ -188,6 +204,38 @@ def count_observed_admitted_in_window(
     return int(mask.sum())
 
 
+def observation_context_frame_key(observation_mode: str) -> str:
+    """Return the ``observation_contexts`` key for *observation_mode*."""
+    try:
+        return OBSERVATION_CONTEXT_FRAME_KEYS[observation_mode]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown observation_mode {observation_mode!r}; "
+            f"expected one of {OBSERVATION_MODES}"
+        ) from exc
+
+
+def count_observed_applies_specialty_filter(observation_mode: str) -> bool:
+    """Whether ``count_observed`` should filter by the service name on a specialty column.
+
+    ED current modes register the same ``ed_visits`` snapshot frame for every
+    service; the service key selects rows via ``specialty``. Arrival and inpatient
+    snapshot modes use per-service frames from ``add_distribution_observations``
+    (for example YTA ``is_child`` for paediatric); those cohorts are already scoped.
+    """
+    return observation_mode in _ARRIVAL_OBSERVATION_MODES
+
+
+def admission_type_filter_for_distribution_component(
+    component: str,
+) -> Optional[str]:
+    """Return ``admission_type`` filter for departures distribution components.
+
+    Returns ``None`` for all-inpatient departures or non-departures components.
+    """
+    return DEPARTURES_DISTRIBUTION_ADMISSION_TYPE.get(component)
+
+
 def count_observed_departed_in_window(
     inpatient_visits: pd.DataFrame,
     snapshot_date: date,
@@ -196,6 +244,7 @@ def count_observed_departed_in_window(
     *,
     specialty: Optional[str] = None,
     outcome_column: str = "left_subspecialty_in_window",
+    admission_type: Optional[str] = None,
 ) -> int:
     """Count inpatients with a true departure label on the snapshot cohort.
 
@@ -221,6 +270,9 @@ def count_observed_departed_in_window(
     outcome_column : str, optional
         Boolean column naming departure within the window on the snapshot
         cohort. Default is `left_subspecialty_in_window`.
+    admission_type : str, optional
+        If given (e.g. ``"elective"`` or ``"emergency"``), keep rows with that
+        value in an ``admission_type`` column. Default is None (no route filter).
 
     Returns
     -------
@@ -246,11 +298,18 @@ def count_observed_departed_in_window(
         mask = mask & (inpatient_visits["current_subspecialty"] == specialty)
     elif specialty is not None and "specialty" in inpatient_visits.columns:
         mask = mask & (inpatient_visits["specialty"] == specialty)
+    if admission_type is not None:
+        if "admission_type" not in inpatient_visits.columns:
+            raise ValueError(
+                "departed_in_window with admission_type requires column "
+                "'admission_type' on inpatient_visits"
+            )
+        mask = mask & (inpatient_visits["admission_type"] == admission_type)
     return int(mask.sum())
 
 
 def count_observed_arrived_in_window(
-    arrivals: pd.DataFrame,
+    inpatient_arrivals: pd.DataFrame,
     snapshot_date: date,
     prediction_time: Tuple[int, int],
     prediction_window: timedelta,
@@ -260,12 +319,12 @@ def count_observed_arrived_in_window(
 ) -> int:
     """Count arrivals with arrival time in `(moment, moment + window]`.
 
-    Caller supplies a pre-filtered *arrivals* cohort; counts
+    Caller supplies a pre-filtered *inpatient_arrivals* cohort; counts
     *arrival_datetime_col* in (moment, moment + window] only.
 
     Parameters
     ----------
-    arrivals : pandas.DataFrame
+    inpatient_arrivals : pandas.DataFrame
         Pre-filtered pathway rows; must include *arrival_datetime_col*.
     snapshot_date : datetime.date
         Snapshot calendar date; defines the prediction moment.
@@ -287,23 +346,24 @@ def count_observed_arrived_in_window(
     Raises
     ------
     ValueError
-        If *arrival_datetime_col* is missing from *arrivals*.
+        If *arrival_datetime_col* is missing from *inpatient_arrivals*.
     """
-    if arrival_datetime_col not in arrivals.columns:
+    if arrival_datetime_col not in inpatient_arrivals.columns:
         raise ValueError(
-            f"arrived_in_window requires column {arrival_datetime_col!r} on arrivals"
+            f"arrived_in_window requires column {arrival_datetime_col!r} "
+            "on inpatient_arrivals"
         )
     moment = _prediction_moment(snapshot_date, prediction_time)
-    col = arrivals[arrival_datetime_col]
+    col = inpatient_arrivals[arrival_datetime_col]
     moment = _align_tz(moment, col)
     mask = (col > moment) & (col <= moment + prediction_window)
-    if specialty is not None and "specialty" in arrivals.columns:
-        mask = mask & (arrivals["specialty"] == specialty)
+    if specialty is not None and "specialty" in inpatient_arrivals.columns:
+        mask = mask & (inpatient_arrivals["specialty"] == specialty)
     return int(mask.sum())
 
 
 def count_observed_arrived_and_admitted_in_window(
-    arrivals: pd.DataFrame,
+    inpatient_arrivals: pd.DataFrame,
     snapshot_date: date,
     prediction_time: Tuple[int, int],
     prediction_window: timedelta,
@@ -314,14 +374,14 @@ def count_observed_arrived_and_admitted_in_window(
 ) -> int:
     """Count pathway rows with arrival and departure time in the window.
 
-    Caller supplies a pre-filtered *arrivals* cohort (e.g. direct admission or
-    ED yet-to-arrive). Counts rows whose *arrival_datetime_col* and
-    *departure_datetime_col* (ward admission / leave-ED) both fall in
+    Caller supplies a pre-filtered *inpatient_arrivals* cohort (e.g. direct
+    admission or ED yet-to-arrive). Counts rows whose *arrival_datetime_col*
+    and *departure_datetime_col* (ward admission / leave-ED) both fall in
     (moment, moment + *prediction_window*].
 
     Parameters
     ----------
-    arrivals : pandas.DataFrame
+    inpatient_arrivals : pandas.DataFrame
         Pre-filtered pathway rows. Must include *arrival_datetime_col* and
         *departure_datetime_col*.
     snapshot_date : datetime.date
@@ -347,16 +407,17 @@ def count_observed_arrived_and_admitted_in_window(
     Raises
     ------
     ValueError
-        If a required datetime column is missing from *arrivals*.
+        If a required datetime column is missing from *inpatient_arrivals*.
     """
     for coln in (arrival_datetime_col, departure_datetime_col):
-        if coln not in arrivals.columns:
+        if coln not in inpatient_arrivals.columns:
             raise ValueError(
-                f"arrived_and_admitted_in_window requires column {coln!r} on arrivals"
+                f"arrived_and_admitted_in_window requires column {coln!r} "
+                "on inpatient_arrivals"
             )
     moment = _prediction_moment(snapshot_date, prediction_time)
-    arr = arrivals[arrival_datetime_col]
-    dep = arrivals[departure_datetime_col]
+    arr = inpatient_arrivals[arrival_datetime_col]
+    dep = inpatient_arrivals[departure_datetime_col]
     moment_arr = _align_tz(moment, arr)
     moment_dep = _align_tz(moment, dep)
     window_end_arr = moment_arr + prediction_window
@@ -367,8 +428,8 @@ def count_observed_arrived_and_admitted_in_window(
         & (dep > moment_dep)
         & (dep <= window_end_dep)
     )
-    if specialty is not None and "specialty" in arrivals.columns:
-        mask = mask & (arrivals["specialty"] == specialty)
+    if specialty is not None and "specialty" in inpatient_arrivals.columns:
+        mask = mask & (inpatient_arrivals["specialty"] == specialty)
     return int(mask.sum())
 
 
@@ -423,9 +484,10 @@ def count_observed(
     prediction_window: timedelta,
     ed_visits: Optional[pd.DataFrame] = None,
     inpatient_visits: Optional[pd.DataFrame] = None,
-    arrivals: Optional[pd.DataFrame] = None,
+    inpatient_arrivals: Optional[pd.DataFrame] = None,
     specialty: Optional[str] = None,
     outcome_column: str = "left_subspecialty_in_window",
+    admission_type: Optional[str] = None,
     arrival_datetime_col: str = "arrival_datetime",
     departure_datetime_col: str = "departure_datetime",
 ) -> int:
@@ -445,7 +507,7 @@ def count_observed(
         ED snapshot frame; required for `admitted_*` modes.
     inpatient_visits : pandas.DataFrame, optional
         Inpatient snapshot frame; required for `departed_in_window`.
-    arrivals : pandas.DataFrame, optional
+    inpatient_arrivals : pandas.DataFrame, optional
         Pre-filtered pathway rows; required for `arrived_in_window` and
         `arrived_and_admitted_in_window`.
     specialty : str, optional
@@ -458,6 +520,9 @@ def count_observed(
     outcome_column : str, optional
         Passed to `count_observed_departed_in_window`.
         Default is `left_subspecialty_in_window`.
+    admission_type : str, optional
+        Passed to `count_observed_departed_in_window` for route-specific
+        departures targets (e.g. ``"elective"``). Default is None.
     arrival_datetime_col : str, optional
         Passed to `count_observed_arrived_in_window` and
         `count_observed_arrived_and_admitted_in_window`.
@@ -485,7 +550,7 @@ def count_observed(
     Notes
     -----
     See the module docstring pairing table for which frame (*ed_visits*,
-    *inpatient_visits*, *arrivals*) pairs with each *observation_mode*.
+    *inpatient_arrivals*, *inpatient_visits*) pairs with each *observation_mode*.
     """
     if observation_mode not in OBSERVATION_MODES:
         raise ValueError(
@@ -523,12 +588,13 @@ def count_observed(
             prediction_window,
             specialty=specialty,
             outcome_column=outcome_column,
+            admission_type=admission_type,
         )
     if observation_mode == "arrived_in_window":
-        if arrivals is None:
+        if inpatient_arrivals is None:
             return 0
         return count_observed_arrived_in_window(
-            arrivals,
+            inpatient_arrivals,
             snapshot_date,
             prediction_time,
             prediction_window,
@@ -536,10 +602,10 @@ def count_observed(
             arrival_datetime_col=arrival_datetime_col,
         )
     if observation_mode == "arrived_and_admitted_in_window":
-        if arrivals is None:
+        if inpatient_arrivals is None:
             return 0
         return count_observed_arrived_and_admitted_in_window(
-            arrivals,
+            inpatient_arrivals,
             snapshot_date,
             prediction_time,
             prediction_window,

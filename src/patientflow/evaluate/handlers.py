@@ -14,7 +14,7 @@ patientflow.evaluate.scalars.ScalarsCollector
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -26,6 +26,12 @@ from patientflow.evaluate.inputs import (
     EvaluationInputs,
     EvaluationTarget,
     eval_split_label,
+)
+from patientflow.evaluate.observations import (
+    admission_type_filter_for_distribution_component,
+    count_observed,
+    count_observed_applies_specialty_filter,
+    observation_context_frame_key,
 )
 from patientflow.evaluate.scalars import (
     SERVICE_SENTINEL_ALL,
@@ -59,10 +65,11 @@ _DISTRIBUTION_FLOW_LABELS: Dict[str, str] = {
 }
 
 _DISTRIBUTION_COMPONENT_LABELS: Dict[str, str] = {
-    "epudd": "Bed demand",
-    "epudd_departures_elective": "Elective departures",
-    "epudd_departures_emergency": "Emergency departures",
-    "epudd_departures_all_inpatient": "All inpatient departures",
+    "bed_demand_ed_current": "ED current bed demand",
+    "bed_demand_ed_yta": "ED yet-to-arrive bed demand",
+    "departures_elective": "Elective departures",
+    "departures_emergency": "Emergency departures",
+    "departures_all_inpatient": "All inpatient departures",
 }
 
 _ARRIVAL_FLOW_LABELS: Dict[str, str] = {
@@ -169,10 +176,10 @@ def _arrival_delta_suptitle(
     return f"{subject}: {service} at {hour:02d}:{minute:02d} ({cohort})"
 
 
-def _distribution_epudd_suptitle(
+def _distribution_comparison_suptitle(
     target: EvaluationTarget, service: str, *, eval_split: Optional[str] = None
 ) -> str:
-    """Return a human-readable figure title for EPUDD distribution charts.
+    """Return a human-readable figure title for distribution comparison charts.
 
     Parameters
     ----------
@@ -305,7 +312,7 @@ def _classifier_diagnostics_scalar_row(
     }
 
 
-def _ensure_epudd_leaf(data: Mapping[str, Any]) -> Dict[str, Any]:
+def _ensure_distribution_leaf(data: Mapping[str, Any]) -> Dict[str, Any]:
     """Normalise one snapshot payload for `patientflow.viz.epudd.plot_epudd`.
 
     Parameters
@@ -414,7 +421,7 @@ def _build_prob_dist_dict_all_for_service(
             inner: Dict[Any, Dict[str, Any]] = {}
             if isinstance(src, Mapping):
                 for snap, payload in src.items():
-                    inner[snap] = _ensure_epudd_leaf(payload)
+                    inner[snap] = _ensure_distribution_leaf(payload)
             out_mk[mk] = inner
         return out_mk
 
@@ -423,9 +430,143 @@ def _build_prob_dist_dict_all_for_service(
         mk = get_model_key(model_name, pt)
         inner_legacy: Dict[Any, Dict[str, Any]] = {}
         for snap, payload in per_date.items():
-            inner_legacy[snap] = _ensure_epudd_leaf(payload)
+            inner_legacy[snap] = _ensure_distribution_leaf(payload)
         out[mk] = inner_legacy
     return out
+
+
+def _coerce_snapshot_date(snap: Any) -> date:
+    """Parse a snapshot key from a distribution tree as `datetime.date`."""
+    if isinstance(snap, datetime):
+        return snap.date()
+    if isinstance(snap, date):
+        return snap
+    if isinstance(snap, str):
+        return date.fromisoformat(snap)
+    raise TypeError(
+        f"Cannot interpret distribution snapshot key {snap!r} as a calendar date"
+    )
+
+
+def _observation_frame_for_distribution(
+    inputs: EvaluationInputs,
+    target: EvaluationTarget,
+    service: str,
+) -> pd.DataFrame:
+    """Return the observation dataframe for *target* and *service*."""
+    frame_key = observation_context_frame_key(target.observation_mode)
+    flow_ctx = inputs.observation_contexts.get(target.flow_name) or {}
+    svc_ctx = flow_ctx.get(str(service))
+    if svc_ctx is None:
+        raise ValueError(
+            f"Distribution evaluation for flow {target.flow_name!r}, service "
+            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"observation context {frame_key!r}; register "
+            f"add_distribution_observations on this flow with "
+            f"{frame_key}_by_service=..."
+        )
+    frame = svc_ctx.get(frame_key)
+    if frame is None:
+        raise ValueError(
+            f"Distribution evaluation for flow {target.flow_name!r}, service "
+            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"observation context {frame_key!r}; register "
+            f"add_distribution_observations with {frame_key}_by_service=..."
+        )
+    return frame
+
+
+def _recompute_leaf_agg_observed(
+    leaf: Dict[str, Any],
+    *,
+    target: EvaluationTarget,
+    service: str,
+    snapshot_date: date,
+    prediction_time: Tuple[int, int],
+    prediction_window: timedelta,
+    observation_frame: pd.DataFrame,
+) -> None:
+    """Recompute and set `agg_observed` on one distribution leaf."""
+    frame_key = observation_context_frame_key(target.observation_mode)
+    count_kwargs: Dict[str, Any] = {
+        "snapshot_date": snapshot_date,
+        "prediction_time": prediction_time,
+        "prediction_window": prediction_window,
+    }
+    if count_observed_applies_specialty_filter(target.observation_mode):
+        count_kwargs["specialty"] = str(service)
+    if frame_key == "ed_visits":
+        count_kwargs["ed_visits"] = observation_frame
+    elif frame_key == "inpatient_arrivals":
+        count_kwargs["inpatient_arrivals"] = observation_frame
+    else:
+        count_kwargs["inpatient_visits"] = observation_frame
+        route = admission_type_filter_for_distribution_component(target.component)
+        if route is not None:
+            count_kwargs["admission_type"] = route
+
+    recomputed = count_observed(target.observation_mode, **count_kwargs)
+    prior = leaf.get("agg_observed")
+    if prior is not None and int(prior) != int(recomputed):
+        raise AssertionError(
+            f"agg_observed on leaf ({prior!r}) does not match recomputed count "
+            f"({recomputed!r}) for flow {target.flow_name!r}, service {service!r}, "
+            f"snapshot_date={snapshot_date!r}, prediction_time={prediction_time!r}, "
+            f"observation_mode={target.observation_mode!r}"
+        )
+    leaf["agg_observed"] = recomputed
+
+
+def _recompute_distribution_observed_counts(
+    per_date: Mapping[Any, Any],
+    *,
+    target: EvaluationTarget,
+    service: str,
+    model_name: str,
+    prediction_times: Sequence[Tuple[int, int]],
+    prediction_window: timedelta,
+    observation_frame: pd.DataFrame,
+) -> None:
+    """Update `agg_observed` on every leaf in a per-service distribution tree."""
+    if _distribution_per_date_is_model_key_indexed(
+        per_date, model_name, prediction_times
+    ):
+        for pt in prediction_times:
+            mk = get_model_key(model_name, pt)
+            by_snap = per_date.get(mk)
+            if not isinstance(by_snap, Mapping):
+                continue
+            for snap, leaf in by_snap.items():
+                if not isinstance(leaf, dict):
+                    continue
+                _recompute_leaf_agg_observed(
+                    leaf,
+                    target=target,
+                    service=service,
+                    snapshot_date=_coerce_snapshot_date(snap),
+                    prediction_time=pt,
+                    prediction_window=prediction_window,
+                    observation_frame=observation_frame,
+                )
+        return
+
+    mk_set = {get_model_key(model_name, pt) for pt in prediction_times}
+    for snap, leaf in per_date.items():
+        if snap in mk_set:
+            continue
+        if not isinstance(leaf, dict):
+            continue
+        snap_date = _coerce_snapshot_date(snap)
+        for pt in prediction_times:
+            _recompute_leaf_agg_observed(
+                leaf,
+                target=target,
+                service=service,
+                snapshot_date=snap_date,
+                prediction_time=pt,
+                prediction_window=prediction_window,
+                observation_frame=observation_frame,
+            )
 
 
 def _distribution_expectation(leaf: Mapping[str, Any]) -> float:
@@ -434,7 +575,7 @@ def _distribution_expectation(leaf: Mapping[str, Any]) -> float:
     Parameters
     ----------
     leaf : mapping
-        Normalised leaf from `_ensure_epudd_leaf` (or compatible).
+        Normalised leaf from `_ensure_distribution_leaf` (or compatible).
 
     Returns
     -------
@@ -748,7 +889,9 @@ def evaluate_distribution(
     Notes
     -----
     Inactive services (no observed mass and negligible predicted mass) skip charts
-    and emit `skip_reason: inactive_service` rows. Uses
+    and emit `skip_reason: inactive_service` rows. Recomputes `agg_observed` on
+    each leaf from `observation_contexts` and `target.observation_mode` before
+    plotting (asserts if a pre-set `agg_observed` disagrees). Uses
     `patientflow.viz.epudd.plot_epudd`.
     """
     block = inputs.distribution_by_flow.get(target.flow_name)
@@ -756,6 +899,13 @@ def evaluate_distribution(
         return
     prob_by_svc: Mapping[str, Any] = block.get("prob_dist_by_service") or {}
     model_name: str = str(block.get("model_name") or "admissions")
+    prediction_window = block.get("prediction_window")
+    if prediction_window is None:
+        raise ValueError(
+            f"distribution block for flow {target.flow_name!r} has no "
+            "prediction_window; call add_distribution_observations with "
+            "prediction_window=..."
+        )
     if not prob_by_svc:
         collector.merge_service_summary_slice(
             f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -777,6 +927,18 @@ def evaluate_distribution(
         per_date = per_date_raw  # type: ignore[assignment]
         if not isinstance(per_date, Mapping):
             continue
+        observation_frame = _observation_frame_for_distribution(
+            inputs, target, str(service)
+        )
+        _recompute_distribution_observed_counts(
+            per_date,
+            target=target,
+            service=str(service),
+            model_name=model_name,
+            prediction_times=inputs.prediction_times,
+            prediction_window=prediction_window,
+            observation_frame=observation_frame,
+        )
         inactive = _service_is_inactive_distribution(
             per_date,
             model_name=model_name,
@@ -820,7 +982,7 @@ def evaluate_distribution(
             return_figure=True,
             media_file_path=svc_dir,
             file_name=f"{target.component}.png",
-            suptitle=_distribution_epudd_suptitle(
+            suptitle=_distribution_comparison_suptitle(
                 target, str(service), eval_split=inputs.eval_split
             ),
         )

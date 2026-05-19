@@ -158,7 +158,7 @@ class ScalarsCollector:
         ----------
         slice_key : str
             Unique key for this handler slice (for example
-            `distribution/main/epudd`).
+            `distribution/ed_current_beds/bed_demand_ed_current`).
         fragment : mapping
             Service coverage counters and inactive service names for that slice.
         """
