@@ -26,6 +26,7 @@ from patientflow.evaluate.inputs import (
     EvaluationInputs,
     EvaluationTarget,
     eval_split_label,
+    prediction_times_from_dict,
 )
 from patientflow.evaluate.observations import (
     admission_type_filter_for_distribution_component,
@@ -523,11 +524,11 @@ def _recompute_distribution_observed_counts(
     target: EvaluationTarget,
     service: str,
     model_name: str,
-    prediction_times: Sequence[Tuple[int, int]],
-    prediction_window: timedelta,
+    prediction_dict: Mapping[Tuple[int, int], timedelta],
     observation_frame: pd.DataFrame,
 ) -> None:
     """Update `agg_observed` on every leaf in a per-service distribution tree."""
+    prediction_times = prediction_times_from_dict(prediction_dict)
     if _distribution_per_date_is_model_key_indexed(
         per_date, model_name, prediction_times
     ):
@@ -545,7 +546,7 @@ def _recompute_distribution_observed_counts(
                     service=service,
                     snapshot_date=_coerce_snapshot_date(snap),
                     prediction_time=pt,
-                    prediction_window=prediction_window,
+                    prediction_window=prediction_dict[pt],
                     observation_frame=observation_frame,
                 )
         return
@@ -564,7 +565,7 @@ def _recompute_distribution_observed_counts(
                 service=service,
                 snapshot_date=snap_date,
                 prediction_time=pt,
-                prediction_window=prediction_window,
+                prediction_window=prediction_dict[pt],
                 observation_frame=observation_frame,
             )
 
@@ -899,13 +900,7 @@ def evaluate_distribution(
         return
     prob_by_svc: Mapping[str, Any] = block.get("prob_dist_by_service") or {}
     model_name: str = str(block.get("model_name") or "admissions")
-    prediction_window = block.get("prediction_window")
-    if prediction_window is None:
-        raise ValueError(
-            f"distribution block for flow {target.flow_name!r} has no "
-            "prediction_window; call add_distribution_observations with "
-            "prediction_window=..."
-        )
+    prediction_dict = inputs.prediction_dict
     if not prob_by_svc:
         collector.merge_service_summary_slice(
             f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -935,8 +930,7 @@ def evaluate_distribution(
             target=target,
             service=str(service),
             model_name=model_name,
-            prediction_times=inputs.prediction_times,
-            prediction_window=prediction_window,
+            prediction_dict=prediction_dict,
             observation_frame=observation_frame,
         )
         inactive = _service_is_inactive_distribution(
@@ -1056,7 +1050,7 @@ def evaluate_arrival_deltas(
         return
     by_svc: Mapping[str, pd.DataFrame] = block.get("arrivals_by_service") or {}
     snap_dates: Sequence[date] = block.get("snapshot_dates") or []
-    pred_window = block["prediction_window"]
+    prediction_dict = inputs.prediction_dict
     predictors = block.get("predictors_by_service") or {}
     filter_keys = block.get("filter_keys_by_service") or {}
     strict_map = block.get("strict_prediction_date_by_service") or {}
@@ -1099,7 +1093,7 @@ def evaluate_arrival_deltas(
                 df,
                 pt,
                 list(snap_dates),
-                pred_window,
+                prediction_dict[pt],
                 yta_time_interval=yta_iv,
                 media_file_path=out_dir,
                 file_name=fname,

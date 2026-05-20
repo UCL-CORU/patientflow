@@ -50,6 +50,9 @@ Public ED extracts omit `departure_datetime`; this notebook synthesises leave-ED
 You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you do not have the public data, set `data_folder_name` to `'data-synthetic'`.
 
 ```python
+from typing import Any
+
+
 from patientflow.train.emergency_demand import prepare_prediction_inputs
 from patientflow.prepare import create_temporal_splits
 from patientflow.load import get_model_key
@@ -72,6 +75,7 @@ x1, y1, x2, y2 = params["x1"], params["y1"], params["x2"], params["y2"]
 prediction_window = timedelta(minutes=params["prediction_window"])
 yta_time_interval = timedelta(minutes=params["yta_time_interval"])
 prediction_times = params["prediction_times"]
+prediction_dict = {tuple[Any, ...](pt): prediction_window for pt in prediction_times}
 
 start_training_set = params["start_training_set"]
 start_validation_set = params["start_validation_set"]
@@ -370,7 +374,7 @@ flow_sel_ed_current = FlowSelection.custom(
 ed_current_by_service = {svc: {} for svc in specialties}
 ed_yta_by_service = {svc: {} for svc in specialties}
 
-for prediction_time in prediction_times:
+for prediction_time, prediction_window in prediction_dict.items():
     model_key = get_model_key(model_name, prediction_time)
     admission_model = admissions_models[model_key]
     service_models = ServiceModels(
@@ -485,16 +489,16 @@ print(ed_yta_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg
 
     ED current snapshots predicted distribution for surgical service on 2031-09-16:
           agg_proba
-    0  1.272620e-01
+    0  1.272621e-01
     1  2.217735e-01
     2  2.928779e-01
     3  2.256789e-01
     4  1.014280e-01
     5  2.655857e-02
     6  4.044790e-03
-    7  3.575432e-04
+    7  3.575431e-04
     8  1.830299e-05
-    9  5.413717e-07
+    9  5.413715e-07
     ... (44 total)
 
     ED current snapshots observed values for number admitted at some point to surgical service on 2031-09-16:
@@ -630,7 +634,7 @@ eval_flow_selection = FlowSelection.custom(
 
 builder = EvaluationInputsBuilder(
     flow_selection=eval_flow_selection,
-    prediction_times=prediction_times,
+    prediction_dict=prediction_dict,
     eval_split=eval_split,
 ).with_evaluation_targets(evaluation_targets)
 
@@ -650,7 +654,7 @@ builder.add_classifier(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x119828890>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
 
 ### 3d. Add ED current bed demand evaluation task to the builder
 
@@ -670,13 +674,12 @@ obs_ed_current_by_service = {service: eval_visits_df for service in specialties}
 # add the observed values to the builder
 builder.add_distribution_observations(
     flow_name="ed_current_beds",
-    prediction_window=prediction_window,
     ed_visits_by_service=obs_ed_current_by_service,
 )
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x119828890>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
 
 ### 3e. Add ED yet-to-arrive bed demand evaluation task to the builder.
 
@@ -701,13 +704,12 @@ obs_ed_yta_by_service = {
 # add the observed values to the builder
 builder.add_distribution_observations(
     "ed_yta_beds",
-    prediction_window=prediction_window,
     inpatient_arrivals_by_service=obs_ed_yta_by_service,
 )
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x119828890>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
 
 ### 3f. Add ED yet-to-arrive arrival deltas to the evaluation task
 
@@ -718,7 +720,6 @@ builder.add_arrival_deltas(
     flow_name="ed_yta_arrival_rates",
     arrivals_by_service=obs_ed_yta_by_service,
     snapshot_dates=eval_snapshot_dates,
-    prediction_window=prediction_window,
     yta_time_interval=yta_time_interval,
     predictors_by_service={s: yta_model_by_spec for s in specialties},
     filter_keys_by_service={s: s for s in specialties},
@@ -726,7 +727,7 @@ builder.add_arrival_deltas(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x119828890>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
 
 ### 3g. Build `EvaluationInputs`
 
@@ -760,33 +761,47 @@ from datetime import datetime
 from patientflow.evaluate.runner import run_evaluation
 
 run_name = f"notebook4d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-out = run_evaluation(Path("eval-output"), inputs, run_name=run_name)
+out = run_evaluation(
+    Path("eval-output"),
+    inputs,
+    run_name=run_name,
+    training_metadata={
+        "start_training_set": str(start_training_set),
+        "start_validation_set": str(start_validation_set),
+        "start_test_set": str(start_test_set),
+        "end_test_set": str(end_test_set),
+        "yta_time_interval_minutes": int(yta_time_interval.total_seconds() // 60),
+    },
+)
 out
 
 ```
 
-    Predicted classification (not admitted, admitted):  [662 399]
-
-
-    Predicted classification (not admitted, admitted):  [1039  505]
-
-
-    Predicted classification (not admitted, admitted):  [1751  809]
-
-
-    Predicted classification (not admitted, admitted):  [1918  944]
-
-
-    Predicted classification (not admitted, admitted):  [1549  839]
+    /Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
+      from .autonotebook import tqdm as notebook_tqdm
 
 
 
+    ---------------------------------------------------------------------------
+
+    KeyError                                  Traceback (most recent call last)
+
+    Cell In[18], line 11
+          3 from patientflow.evaluate.runner import run_evaluation
+          5 run_name = f"notebook4d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+          6 out = run_evaluation(
+          7     Path("eval-output"),
+          8     inputs,
+          9     run_name=run_name,
+         10     training_metadata={
+    ---> 11         "modelling_dates": params["modelling_dates"],
+         12         "yta_time_interval_minutes": int(yta_time_interval.total_seconds() // 60),
+         13     },
+         14 )
+         15 out
 
 
-    {'run_dir': PosixPath('eval-output/notebook4d_20260519_121044'),
-     'scalars_path': PosixPath('eval-output/notebook4d_20260519_121044/scalars.json'),
-     'manifest_path': PosixPath('eval-output/notebook4d_20260519_121044/evaluation_run.yaml'),
-     'n_targets': 5}
+    KeyError: 'modelling_dates'
 
 ## 5. Review outputs
 
