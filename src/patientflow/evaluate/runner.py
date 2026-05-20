@@ -13,10 +13,11 @@ patientflow.evaluate.inputs.EvaluationInputsBuilder
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import yaml
 
@@ -37,44 +38,30 @@ try:
 except Exception:  # pragma: no cover
     pass
 
+from importlib.metadata import version as package_version
+
 EVALUATION_RUN_MANIFEST = "evaluation_run.yaml"
 
 
-def _load_yaml_mapping(path: Path) -> Dict[str, Any]:
-    if not path.is_file():
-        return {}
-    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return dict(loaded) if isinstance(loaded, dict) else {}
+def _patientflow_version() -> str:
+    try:
+        return package_version("patientflow")
+    except Exception:
+        return "unknown"
 
 
-def _resolve_project_config_path(project_config_path: Optional[Path] = None) -> Path:
-    """Locate the repository ``config.yaml`` for manifest snapshots.
+def prediction_dict_for_manifest(
+    prediction_dict: Mapping[Tuple[int, int], timedelta],
+) -> Dict[str, float]:
+    """Serialise a prediction schedule for ``evaluation_run.yaml``.
 
-    Search order: explicit path (if it exists), ``config.yaml`` in the current
-    working directory, each parent of the cwd (so notebooks under ``notebooks/``
-    still find the repo root), then ``config.yaml`` next to the installed package
-    source tree.
+    Keys use uclhflow-style stringified ``[hour, minute]`` tuples; values are
+    horizon length in hours.
     """
-    if project_config_path is not None:
-        explicit = Path(project_config_path)
-        if explicit.is_file():
-            return explicit.resolve()
-
-    candidates: list[Path] = [Path.cwd() / "config.yaml"]
-    candidates.extend(parent / "config.yaml" for parent in Path.cwd().parents)
-    repo_root = Path(__file__).resolve().parents[3]
-    candidates.append(repo_root / "config.yaml")
-
-    seen: set[Path] = set()
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved in seen:
-            continue
-        seen.add(resolved)
-        if resolved.is_file():
-            return resolved
-
-    return (project_config_path or Path.cwd() / "config.yaml").resolve()
+    return {
+        json.dumps(list(pt)): window.total_seconds() / 3600.0
+        for pt, window in sorted(prediction_dict.items())
+    }
 
 
 def write_evaluation_run_manifest(
@@ -83,14 +70,14 @@ def write_evaluation_run_manifest(
     output_root: Path,
     run_name: str,
     inputs: EvaluationInputs,
-    project_config_path: Optional[Path] = None,
+    training_metadata: Optional[Mapping[str, Any]] = None,
 ) -> Path:
-    """Write ``evaluation_run.yaml`` with project training config and run settings.
+    """Write ``evaluation_run.yaml`` describing this evaluation run.
 
-    The ``training`` block is a copy of the project ``config.yaml`` (including
-    ``prediction_times`` and date boundaries). The ``evaluation`` block holds
-    only settings specific to this run (paths, ``flow_selection``, ``eval_split``,
-    target count).
+    The ``evaluation`` block records run settings and the ``prediction_dict``
+    schedule used. An optional ``training_metadata`` block may be supplied by the
+    caller (for example uclhflow splits or aspirational curve parameters);
+    patientflow does not load or copy any repository ``config.yaml`` by default.
 
     Parameters
     ----------
@@ -102,28 +89,28 @@ def write_evaluation_run_manifest(
         Run subdirectory name (timestamp or custom).
     inputs : EvaluationInputs
         Built evaluation inputs.
-    project_config_path : pathlib.Path, optional
-        Path to the repository ``config.yaml``. When omitted, searches the cwd,
-        its parents, then the package source tree (works when the notebook cwd
-        is ``notebooks/``).
+    training_metadata : mapping, optional
+        Caller-supplied YAML-serialisable training context (not auto-discovered).
 
     Returns
     -------
     pathlib.Path
         Path to the written manifest file.
     """
-    config_path = _resolve_project_config_path(project_config_path)
-    training_config = _load_yaml_mapping(config_path)
     manifest: Dict[str, Any] = {
-        "training": training_config,
         "evaluation": {
             "output_root": str(output_root),
             "run_name": run_name,
             "eval_split": inputs.eval_split,
             "flow_selection": asdict(inputs.flow_selection),
             "n_targets": len(inputs.evaluation_targets),
+            "prediction_dict": prediction_dict_for_manifest(inputs.prediction_dict),
+            "patientflow_version": _patientflow_version(),
         },
     }
+    if training_metadata is not None:
+        manifest["training_metadata"] = dict(training_metadata)
+
     manifest_path = run_dir / EVALUATION_RUN_MANIFEST
     manifest_path.write_text(
         yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
@@ -136,15 +123,15 @@ def run_evaluation(
     inputs: EvaluationInputs,
     *,
     run_name: Optional[str] = None,
-    project_config_path: Optional[Path] = None,
+    training_metadata: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Execute every `EvaluationTarget` in `inputs` and write artefacts.
 
     Creates a timestamped subdirectory under `output_root` containing:
 
-    - `evaluation_run.yaml` — full project ``config.yaml`` under ``training:``,
-      plus evaluation-only settings under ``evaluation:`` (including
-      ``eval_split``).
+    - `evaluation_run.yaml` — run settings under ``evaluation:`` (including
+      ``prediction_dict`` and ``eval_split``), plus optional caller
+      ``training_metadata``.
     - `scalars.json` — `evaluation_rows` plus optional `_service_summary`
       fragments merged by handlers (distribution and arrival modes attach
       per-slice service coverage).
@@ -167,8 +154,9 @@ def run_evaluation(
         Immutable inputs from `EvaluationInputsBuilder.build()`.
     run_name : str, optional
         Subdirectory name; default is `YYYYMMDD_HHMMSS` from the current time.
-    project_config_path : pathlib.Path, optional
-        Project ``config.yaml`` to snapshot under ``training`` in the manifest.
+    training_metadata : mapping, optional
+        Optional training context written under ``training_metadata`` in the
+        manifest (caller-defined; not loaded from patientflow ``config.yaml``).
 
     Returns
     -------
@@ -191,7 +179,7 @@ def run_evaluation(
         output_root=output_root,
         run_name=stamp,
         inputs=inputs,
-        project_config_path=project_config_path,
+        training_metadata=training_metadata,
     )
 
     classifiers_dir = run_dir / "classifiers"

@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 
 from patientflow.evaluate.handlers import (
     _arrival_delta_suptitle,
@@ -22,11 +23,22 @@ from patientflow.evaluate.inputs import (
     EvaluationInputsBuilder,
     EvaluationTarget,
     eval_split_label,
+    normalize_prediction_dict,
 )
-from patientflow.evaluate.runner import write_evaluation_run_manifest
+from patientflow.evaluate.runner import (
+    prediction_dict_for_manifest,
+    write_evaluation_run_manifest,
+)
 from patientflow.evaluate.scalars import ScalarsCollector
 from patientflow.load import get_model_key
 from patientflow.predict.demand import FlowSelection
+
+
+def _uniform_prediction_dict(
+    times: list[tuple[int, int]], *, hours: float = 8.0
+) -> dict[tuple[int, int], timedelta]:
+    window = timedelta(hours=hours)
+    return {pt: window for pt in times}
 
 
 # --- eval_split: inputs and manifest ---
@@ -42,7 +54,7 @@ def test_eval_split_label():
 def test_builder_defaults_eval_split_valid():
     builder = EvaluationInputsBuilder(
         flow_selection=FlowSelection.emergency_only(),
-        prediction_times=[(6, 0)],
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
     )
     inputs = builder.build()
     assert inputs.eval_split == "valid"
@@ -51,7 +63,7 @@ def test_builder_defaults_eval_split_valid():
 def test_builder_set_eval_split_test():
     builder = EvaluationInputsBuilder(
         flow_selection=FlowSelection.emergency_only(),
-        prediction_times=[(6, 0)],
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
         eval_split="test",
     ).set_eval_split("test")
     inputs = builder.build()
@@ -64,7 +76,7 @@ def test_builder_rejects_unknown_eval_split():
 
     builder = EvaluationInputsBuilder(
         flow_selection=FlowSelection.emergency_only(),
-        prediction_times=[(6, 0)],
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
     )
     with pytest.raises(ValueError, match="Unknown eval_split"):
         builder.set_eval_split("train")  # type: ignore[arg-type]
@@ -74,11 +86,25 @@ def test_eval_splits_constant():
     assert EVAL_SPLITS == ("valid", "test")
 
 
-def test_manifest_records_eval_split(tmp_path: Path):
+def test_builder_requires_non_empty_prediction_dict():
+    with pytest.raises(ValueError, match="prediction_dict must not be empty"):
+        normalize_prediction_dict({})
+
+
+def test_prediction_times_derived_sorted():
+    inputs = EvaluationInputsBuilder(
+        flow_selection=FlowSelection.emergency_only(),
+        prediction_dict={(22, 0): timedelta(hours=8), (6, 0): timedelta(hours=4)},
+    ).build()
+    assert inputs.prediction_times == [(6, 0), (22, 0)]
+
+
+def test_manifest_records_eval_split_and_prediction_dict(tmp_path: Path):
     flow = FlowSelection.emergency_only()
+    prediction_dict = _uniform_prediction_dict([(6, 0), (12, 0)])
     inputs = EvaluationInputs(
         flow_selection=flow,
-        prediction_times=[(6, 0)],
+        prediction_dict=prediction_dict,
         evaluation_targets=[],
         eval_split="test",
     )
@@ -89,10 +115,33 @@ def test_manifest_records_eval_split(tmp_path: Path):
         output_root=tmp_path,
         run_name="run",
         inputs=inputs,
-        project_config_path=tmp_path / "missing_config.yaml",
     )
-    text = manifest_path.read_text(encoding="utf-8")
-    assert "eval_split: test" in text
+    loaded = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    assert "training" not in loaded
+    assert loaded["evaluation"]["eval_split"] == "test"
+    assert loaded["evaluation"]["prediction_dict"] == prediction_dict_for_manifest(
+        prediction_dict
+    )
+    assert "patientflow_version" in loaded["evaluation"]
+
+
+def test_manifest_optional_training_metadata(tmp_path: Path):
+    inputs = EvaluationInputs(
+        flow_selection=FlowSelection.emergency_only(),
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
+        evaluation_targets=[],
+    )
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    write_evaluation_run_manifest(
+        run_dir,
+        output_root=tmp_path,
+        run_name="run",
+        inputs=inputs,
+        training_metadata={"start_validation_set": "2025-10-01"},
+    )
+    loaded = yaml.safe_load((run_dir / "evaluation_run.yaml").read_text())
+    assert loaded["training_metadata"]["start_validation_set"] == "2025-10-01"
 
 
 # --- eval_split: handler suptitles ---
@@ -196,30 +245,25 @@ def _model_key_distribution(
 def test_add_distribution_observations_requires_a_frame_mapping():
     builder = EvaluationInputsBuilder(
         flow_selection=FlowSelection.emergency_only(),
-        prediction_times=[(10, 0)],
+        prediction_dict=_uniform_prediction_dict([(10, 0)]),
     )
     with pytest.raises(ValueError, match="at least one of"):
-        builder.add_distribution_observations(
-            "flow",
-            prediction_window=timedelta(hours=8),
-        )
+        builder.add_distribution_observations("flow")
 
 
 def test_add_distribution_observations_stores_distinct_frame_keys():
     builder = EvaluationInputsBuilder(
         flow_selection=FlowSelection.emergency_only(),
-        prediction_times=[(10, 0)],
+        prediction_dict=_uniform_prediction_dict([(10, 0)]),
     )
     ed = pd.DataFrame({"snapshot_date": [date(2024, 1, 1)]})
     arrivals = pd.DataFrame({"arrival_datetime": [datetime(2024, 1, 1, 11, 0)]})
     builder.add_distribution_observations(
         "ed_flow",
-        prediction_window=timedelta(hours=8),
         ed_visits_by_service={"medical": ed},
     )
     builder.add_distribution_observations(
         "yta_flow",
-        prediction_window=timedelta(hours=8),
         inpatient_arrivals_by_service={"medical": arrivals},
     )
     inputs = builder.build()
@@ -259,7 +303,7 @@ def test_evaluate_distribution_recomputes_yta_from_inpatient_arrivals(
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[prediction_time],
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -273,7 +317,6 @@ def test_evaluate_distribution_recomputes_yta_from_inpatient_arrivals(
         )
         .add_distribution_observations(
             "ed_yta_beds",
-            prediction_window=timedelta(hours=8),
             ed_visits_by_service={"medical": ed_visits},
             inpatient_arrivals_by_service={"medical": inpatient_arrivals},
         )
@@ -289,6 +332,72 @@ def test_evaluate_distribution_recomputes_yta_from_inpatient_arrivals(
     assert leaf["agg_observed"] == 1
 
 
+def test_evaluate_distribution_uses_per_time_prediction_window(tmp_path: Path):
+    """Each clock time uses its own horizon from prediction_dict."""
+    snapshot = date(2024, 1, 1)
+    pt_short = (10, 0)
+    pt_long = (14, 0)
+    model_name = "beds"
+    moment_short = datetime(2024, 1, 1, 10, 0, 0)
+    moment_long = datetime(2024, 1, 1, 14, 0, 0)
+    # 5 h after 10:00 is outside a 4 h window; 5 h after 14:00 is inside 8 h.
+    arrivals_short = pd.DataFrame(
+        {"arrival_datetime": [moment_short + timedelta(hours=5)]}
+    )
+    arrivals_long = pd.DataFrame(
+        {"arrival_datetime": [moment_long + timedelta(hours=5)]}
+    )
+    leaf_short = _distribution_leaf()
+    leaf_long = _distribution_leaf()
+
+    target = EvaluationTarget(
+        flow_name="ed_yta_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_yta",
+        observation_mode="arrived_in_window",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict={
+                pt_short: timedelta(hours=4),
+                pt_long: timedelta(hours=8),
+            },
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_yta_beds",
+            prob_dist_by_service={
+                "svc_a": _model_key_distribution(
+                    model_name, pt_short, snapshot, leaf_short
+                ),
+                "svc_b": _model_key_distribution(
+                    model_name, pt_long, snapshot, leaf_long
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_yta_beds",
+            inpatient_arrivals_by_service={
+                "svc_a": arrivals_short,
+                "svc_b": arrivals_long,
+            },
+        )
+        .build()
+    )
+
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=ScalarsCollector(),
+    )
+    assert leaf_short["agg_observed"] == 0
+    assert leaf_long["agg_observed"] == 1
+
+
 def test_evaluate_distribution_yta_pre_filtered_cohort_not_specialty_column(
     tmp_path: Path,
 ):
@@ -297,7 +406,6 @@ def test_evaluate_distribution_yta_pre_filtered_cohort_not_specialty_column(
     prediction_time = (6, 0)
     model_name = "beds"
     moment = datetime(2031, 9, 4, 6, 0, 0)
-    window = timedelta(hours=8)
 
     inpatient_arrivals = pd.DataFrame(
         {
@@ -322,7 +430,7 @@ def test_evaluate_distribution_yta_pre_filtered_cohort_not_specialty_column(
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[prediction_time],
+            prediction_dict={prediction_time: timedelta(hours=8)},
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -336,7 +444,6 @@ def test_evaluate_distribution_yta_pre_filtered_cohort_not_specialty_column(
         )
         .add_distribution_observations(
             "ed_yta_beds",
-            prediction_window=window,
             inpatient_arrivals_by_service={"paediatric": paediatric_cohort},
         )
         .build()
@@ -385,7 +492,7 @@ def test_evaluate_distribution_ed_current_applies_specialty_on_shared_frame(
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[prediction_time],
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -402,7 +509,6 @@ def test_evaluate_distribution_ed_current_applies_specialty_on_shared_frame(
         )
         .add_distribution_observations(
             "ed_current_beds",
-            prediction_window=timedelta(hours=8),
             ed_visits_by_service={
                 "medical": ed_visits,
                 "surgical": ed_visits,
@@ -446,7 +552,7 @@ def test_evaluate_distribution_asserts_on_leaf_mismatch(tmp_path: Path):
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[prediction_time],
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -460,7 +566,6 @@ def test_evaluate_distribution_asserts_on_leaf_mismatch(tmp_path: Path):
         )
         .add_distribution_observations(
             "ed_current_beds",
-            prediction_window=timedelta(hours=8),
             ed_visits_by_service={"medical": ed_visits},
         )
         .build()
@@ -507,7 +612,7 @@ def test_evaluate_distribution_departures_admission_type_filter(tmp_path: Path):
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[prediction_time],
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -521,7 +626,6 @@ def test_evaluate_distribution_departures_admission_type_filter(tmp_path: Path):
         )
         .add_distribution_observations(
             "departures_elective",
-            prediction_window=timedelta(hours=8),
             inpatient_visits_by_service={"medical": inpatient_visits},
         )
         .build()
@@ -546,7 +650,7 @@ def test_evaluate_distribution_raises_when_observation_frame_missing():
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
-            prediction_times=[(10, 0)],
+            prediction_dict=_uniform_prediction_dict([(10, 0)]),
         )
         .with_evaluation_targets([target])
         .add_distributions_from_service_dict(
@@ -563,7 +667,6 @@ def test_evaluate_distribution_raises_when_observation_frame_missing():
         )
         .add_distribution_observations(
             "ed_yta_beds",
-            prediction_window=timedelta(hours=8),
             ed_visits_by_service={"medical": pd.DataFrame()},
         )
         .build()
