@@ -21,10 +21,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
+from patientflow.evaluate.inputs import EvaluationTarget
+
 # Reliability: minimum positive cases on the evaluated split for classifier headline metrics.
 RELIABILITY_MIN_POSITIVE_CASES: int = 30
 
 SERVICE_SENTINEL_ALL: str = "_all_"
+
+
+def scalar_target_fields(target: EvaluationTarget) -> Dict[str, Any]:
+    """Return identity fields shared by every ``evaluation_rows`` entry for *target*.
+
+    Includes ``observation_mode`` so downstream tables can interpret distribution
+    and benchmark scalars without joining back to ``EvaluationTarget`` definitions.
+    """
+    return {
+        "evaluation_mode": target.evaluation_mode,
+        "flow": target.flow_name,
+        "flow_type": target.flow_type,
+        "observation_mode": target.observation_mode,
+    }
 
 
 def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
@@ -37,7 +53,8 @@ def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     ----------
     row : mapping
         Scalar row dictionary (typically including `evaluation_mode`,
-        `flow`, `service`, `component`, `prediction_time`, `model_name`).
+        `observation_mode`, `flow`, `service`, `component`, `prediction_time`,
+        `model_name`).
 
     Returns
     -------

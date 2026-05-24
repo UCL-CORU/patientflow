@@ -14,6 +14,7 @@ from patientflow.evaluate.observations import (
     count_observed_arrived_and_admitted_in_window,
     count_observed_arrived_in_window,
     count_observed_departed_in_window,
+    count_observed_label_kwargs,
     validate_observation_mode_for_component,
 )
 
@@ -150,6 +151,47 @@ def test_arrived_in_window_does_not_use_ed_visits_fallback():
         inpatient_arrivals=None,
     )
     assert n == 0
+
+
+def test_count_observed_label_kwargs_from_benchmark_cohorts():
+    cohorts = {
+        "admissions": {"label_col": "was_admitted"},
+        "departures": {"label_col": "left_ward"},
+    }
+    assert count_observed_label_kwargs("admitted_at_some_point", cohorts) == {
+        "admission_label_col": "was_admitted",
+    }
+    assert count_observed_label_kwargs("departed_in_window", cohorts) == {
+        "outcome_column": "left_ward",
+    }
+    assert count_observed_label_kwargs("arrived_in_window", cohorts) == {}
+
+
+def test_admitted_at_some_point_custom_label_col():
+    df = pd.DataFrame(
+        [
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "was_admitted": True,
+                "specialty": "medical",
+            },
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "was_admitted": False,
+                "specialty": "medical",
+            },
+        ]
+    )
+    n = count_observed_admitted_at_some_point(
+        df,
+        date(2024, 1, 1),
+        (10, 0),
+        timedelta(hours=8),
+        admission_label_col="was_admitted",
+    )
+    assert n == 1
 
 
 def test_departed_in_window_requires_outcome_column():

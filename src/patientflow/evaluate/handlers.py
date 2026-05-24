@@ -22,6 +22,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from patientflow.evaluate.calibration import (
+    MIN_DISTRIBUTION_SNAPSHOTS,
+    benchmark_cohort_key_for_observation_mode,
+    build_benchmark_prob_dist_dict,
+    global_p_bar_by_prediction_time,
+    rpit_cvm_calibration_score,
+    rpit_cvm_result_to_scalar_fields,
+)
 from patientflow.evaluate.inputs import (
     EvaluationInputs,
     EvaluationTarget,
@@ -32,12 +40,14 @@ from patientflow.evaluate.observations import (
     admission_type_filter_for_distribution_component,
     count_observed,
     count_observed_applies_specialty_filter,
+    count_observed_label_kwargs,
     observation_context_frame_key,
 )
 from patientflow.evaluate.scalars import (
     SERVICE_SENTINEL_ALL,
     ScalarsCollector,
     classifier_reliable,
+    scalar_target_fields,
 )
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier
@@ -295,9 +305,7 @@ def _classifier_diagnostics_scalar_row(
     reliable = classifier_reliable(metrics, pos_cases)
     hour, minute = pt
     return {
-        "evaluation_mode": target.evaluation_mode,
-        "flow": target.flow_name,
-        "flow_type": target.flow_type,
+        **scalar_target_fields(target),
         "service": SERVICE_SENTINEL_ALL,
         "component": target.component,
         "prediction_time": [hour, minute],
@@ -486,6 +494,7 @@ def _recompute_leaf_agg_observed(
     prediction_time: Tuple[int, int],
     prediction_window: timedelta,
     observation_frame: pd.DataFrame,
+    benchmark_cohorts: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Recompute and set `agg_observed` on one distribution leaf."""
     frame_key = observation_context_frame_key(target.observation_mode)
@@ -493,6 +502,7 @@ def _recompute_leaf_agg_observed(
         "snapshot_date": snapshot_date,
         "prediction_time": prediction_time,
         "prediction_window": prediction_window,
+        **count_observed_label_kwargs(target.observation_mode, benchmark_cohorts),
     }
     if count_observed_applies_specialty_filter(target.observation_mode):
         count_kwargs["specialty"] = str(service)
@@ -526,6 +536,7 @@ def _recompute_distribution_observed_counts(
     model_name: str,
     prediction_dict: Mapping[Tuple[int, int], timedelta],
     observation_frame: pd.DataFrame,
+    benchmark_cohorts: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Update `agg_observed` on every leaf in a per-service distribution tree."""
     prediction_times = prediction_times_from_dict(prediction_dict)
@@ -548,6 +559,7 @@ def _recompute_distribution_observed_counts(
                     prediction_time=pt,
                     prediction_window=prediction_dict[pt],
                     observation_frame=observation_frame,
+                    benchmark_cohorts=benchmark_cohorts,
                 )
         return
 
@@ -567,6 +579,7 @@ def _recompute_distribution_observed_counts(
                 prediction_time=pt,
                 prediction_window=prediction_dict[pt],
                 observation_frame=observation_frame,
+                benchmark_cohorts=benchmark_cohorts,
             )
 
 
@@ -854,15 +867,35 @@ def evaluate_classifier_probability_quality(
 
     collector.add_row(
         {
-            "evaluation_mode": target.evaluation_mode,
-            "flow": target.flow_name,
-            "flow_type": target.flow_type,
+            **scalar_target_fields(target),
             "service": SERVICE_SENTINEL_ALL,
             "component": target.component,
             "prediction_time": None,
             "model_name": "",
             "charts_generated": True,
         }
+    )
+
+
+def _benchmark_p_bar_by_prediction_time(
+    inputs: EvaluationInputs,
+    target: EvaluationTarget,
+) -> Optional[Dict[Tuple[int, int], float]]:
+    """Global p̄ per clock when observation mode supports a binomial benchmark."""
+    cohort_key = benchmark_cohort_key_for_observation_mode(target.observation_mode)
+    if cohort_key is None:
+        return None
+    spec = inputs.distribution_benchmark_cohorts.get(cohort_key)
+    if not spec:
+        return None
+    visits_df = spec.get("visits_df")
+    label_col = spec.get("label_col")
+    if visits_df is None or label_col is None:
+        return None
+    return global_p_bar_by_prediction_time(
+        visits_df,
+        inputs.prediction_times,
+        label_col=str(label_col),
     )
 
 
@@ -873,7 +906,7 @@ def evaluate_distribution(
     distributions_dir: Path,
     collector: ScalarsCollector,
 ) -> None:
-    """Plot EPUDD per active service and record per-time snapshot counts.
+    """Plot EPUDD and rPIT+CvM calibration per active service and prediction time.
 
     Parameters
     ----------
@@ -889,11 +922,13 @@ def evaluate_distribution(
 
     Notes
     -----
-    Inactive services (no observed mass and negligible predicted mass) skip charts
-    and emit `skip_reason: inactive_service` rows. Recomputes `agg_observed` on
-    each leaf from `observation_contexts` and `target.observation_mode` before
-    plotting (asserts if a pre-set `agg_observed` disagrees). Uses
-    `patientflow.viz.epudd.plot_epudd`.
+    Inactive services skip evaluation (`skip_reason: inactive_service`).
+    Active services with fewer than ``MIN_DISTRIBUTION_SNAPSHOTS`` snapshot
+    leaves per clock skip EPUDD and calibration
+    (`skip_reason: insufficient_observations`). Binomial benchmark scalars are
+    emitted only when ``observation_mode`` supports a benchmark cohort and
+    ``add_distribution_benchmark_cohort`` registered the matching eval-split
+    frame (not for yet-to-arrive ``arrived_in_window`` modes).
     """
     block = inputs.distribution_by_flow.get(target.flow_name)
     if not block:
@@ -901,6 +936,7 @@ def evaluate_distribution(
     prob_by_svc: Mapping[str, Any] = block.get("prob_dist_by_service") or {}
     model_name: str = str(block.get("model_name") or "admissions")
     prediction_dict = inputs.prediction_dict
+    p_bar_by_pt = _benchmark_p_bar_by_prediction_time(inputs, target)
     if not prob_by_svc:
         collector.merge_service_summary_slice(
             f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -908,6 +944,7 @@ def evaluate_distribution(
                 "mode": "distribution",
                 "flow": target.flow_name,
                 "component": target.component,
+                "observation_mode": target.observation_mode,
                 "n_active_services": 0,
                 "n_inactive_services": 0,
                 "inactive_service_names": [],
@@ -932,6 +969,7 @@ def evaluate_distribution(
             model_name=model_name,
             prediction_dict=prediction_dict,
             observation_frame=observation_frame,
+            benchmark_cohorts=inputs.distribution_benchmark_cohorts,
         )
         inactive = _service_is_inactive_distribution(
             per_date,
@@ -948,9 +986,7 @@ def evaluate_distribution(
                 h, mi = pt
                 collector.add_row(
                     {
-                        "evaluation_mode": target.evaluation_mode,
-                        "flow": target.flow_name,
-                        "flow_type": target.flow_type,
+                        **scalar_target_fields(target),
                         "service": str(service),
                         "component": target.component,
                         "prediction_time": [h, mi],
@@ -967,43 +1003,87 @@ def evaluate_distribution(
         prob_all = _build_prob_dist_dict_all_for_service(
             per_date, model_name, inputs.prediction_times
         )
+        epudd_times = [
+            pt
+            for pt in inputs.prediction_times
+            if len(prob_all.get(get_model_key(model_name, pt)) or {})
+            >= MIN_DISTRIBUTION_SNAPSHOTS
+        ]
         svc_dir = distributions_dir / target.flow_name / _safe_fs_segment(str(service))
         svc_dir.mkdir(parents=True, exist_ok=True)
-        fig = plot_epudd(
-            list(inputs.prediction_times),
-            prob_all,
-            model_name=model_name,
-            return_figure=True,
-            media_file_path=svc_dir,
-            file_name=f"{target.component}.png",
-            suptitle=_distribution_comparison_suptitle(
-                target, str(service), eval_split=inputs.eval_split
-            ),
-        )
-        if fig is not None:
-            plt.close(fig)
-        else:
-            plt.close("all")
+        if epudd_times:
+            fig = plot_epudd(
+                epudd_times,
+                prob_all,
+                model_name=model_name,
+                return_figure=True,
+                media_file_path=svc_dir,
+                file_name=f"{target.component}.png",
+                suptitle=_distribution_comparison_suptitle(
+                    target, str(service), eval_split=inputs.eval_split
+                ),
+            )
+            if fig is not None:
+                plt.close(fig)
+            else:
+                plt.close("all")
 
         for pt in inputs.prediction_times:
             h, mi = pt
             mk = get_model_key(model_name, pt)
             series_dict = prob_all.get(mk) or {}
             n_snap = len(series_dict)
-            collector.add_row(
-                {
-                    "evaluation_mode": target.evaluation_mode,
-                    "flow": target.flow_name,
-                    "flow_type": target.flow_type,
-                    "service": str(service),
-                    "component": target.component,
-                    "prediction_time": [h, mi],
-                    "model_name": model_name,
-                    "charts_generated": True,
-                    "n_snapshots": n_snap,
-                    "reliable": n_snap > 0,
-                }
-            )
+            base_row: Dict[str, Any] = {
+                **scalar_target_fields(target),
+                "service": str(service),
+                "component": target.component,
+                "prediction_time": [h, mi],
+                "model_name": model_name,
+                "n_snapshots": n_snap,
+            }
+            if n_snap < MIN_DISTRIBUTION_SNAPSHOTS:
+                collector.add_row(
+                    {
+                        **base_row,
+                        "charts_generated": False,
+                        "skip_reason": "insufficient_observations",
+                        "reliable": False,
+                    }
+                )
+                continue
+
+            pf_result = rpit_cvm_calibration_score(series_dict)
+            row: Dict[str, Any] = {
+                **base_row,
+                "charts_generated": True,
+                "reliable": True,
+            }
+            if pf_result is not None:
+                row.update(rpit_cvm_result_to_scalar_fields(pf_result, seed=None))
+
+            if p_bar_by_pt is not None:
+                p_bar = p_bar_by_pt.get(pt)
+                if p_bar is not None:
+                    bench_dict = build_benchmark_prob_dist_dict(
+                        series_dict, p_bar=p_bar
+                    )
+                    bm_result = rpit_cvm_calibration_score(bench_dict)
+                    if bm_result is not None and pf_result is not None:
+                        row.update(
+                            rpit_cvm_result_to_scalar_fields(
+                                bm_result, prefix="rpit_cvm_benchmark", seed=None
+                            )
+                        )
+                        row.update(
+                            {
+                                "rpit_cvm_w2_reduction": (
+                                    bm_result.mean_w2 - pf_result.mean_w2
+                                ),
+                                "rpit_cvm_benchmark_p_bar": p_bar,
+                            }
+                        )
+
+            collector.add_row(row)
 
     collector.merge_service_summary_slice(
         f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -1011,6 +1091,7 @@ def evaluate_distribution(
             "mode": "distribution",
             "flow": target.flow_name,
             "component": target.component,
+            "observation_mode": target.observation_mode,
             "n_active_services": active_count,
             "n_inactive_services": len(inactive_names),
             "inactive_service_names": inactive_names,
@@ -1066,9 +1147,7 @@ def evaluate_arrival_deltas(
                 h, mi = pt
                 collector.add_row(
                     {
-                        "evaluation_mode": target.evaluation_mode,
-                        "flow": target.flow_name,
-                        "flow_type": target.flow_type,
+                        **scalar_target_fields(target),
                         "service": str(svc),
                         "component": target.component,
                         "prediction_time": [h, mi],
@@ -1111,9 +1190,7 @@ def evaluate_arrival_deltas(
             plt.close("all")
             collector.add_row(
                 {
-                    "evaluation_mode": target.evaluation_mode,
-                    "flow": target.flow_name,
-                    "flow_type": target.flow_type,
+                    **scalar_target_fields(target),
                     "service": str(svc),
                     "component": target.component,
                     "prediction_time": [h, mi],
@@ -1129,6 +1206,7 @@ def evaluate_arrival_deltas(
             "mode": "arrival_deltas",
             "flow": target.flow_name,
             "component": target.component,
+            "observation_mode": target.observation_mode,
             "n_active_services": active,
             "n_inactive_services": len(inactive_names),
             "inactive_service_names": inactive_names,
@@ -1180,9 +1258,7 @@ def evaluate_survival_curve(
     plt.close("all")
     collector.add_row(
         {
-            "evaluation_mode": target.evaluation_mode,
-            "flow": target.flow_name,
-            "flow_type": target.flow_type,
+            **scalar_target_fields(target),
             "service": SERVICE_SENTINEL_ALL,
             "component": target.component,
             "prediction_time": None,
