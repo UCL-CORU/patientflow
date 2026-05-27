@@ -324,6 +324,13 @@ def test_evaluate_package_import_paths():
     assert EvaluationInputsBuilder is not None
 
 
+def test_evaluate_package_top_level_reexports():
+    from patientflow.evaluate import calc_mae_mpe, calculate_results
+
+    assert callable(calc_mae_mpe)
+    assert callable(calculate_results)
+
+
 def test_calculate_results_legacy_api():
     from patientflow.evaluate.legacy_api import calculate_results
 

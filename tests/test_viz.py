@@ -536,6 +536,39 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         title_text = fig.axes[0].get_title()
         self.assertIn("weekday-specific rates (from fitted model)", title_text)
 
+    def test_plot_predictor_alias_matches_arrival_rate_model(self):
+        """1.6.2 predictor= keyword still selects the fitted baseline."""
+        predictor = self._make_predictor()
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_time=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            predictor=predictor,
+            return_figure=True,
+        )
+        self.assertIsInstance(fig, Figure)
+        self.assertIn(
+            "weekday-specific rates (from fitted model)",
+            fig.axes[0].get_title(),
+        )
+
+    def test_plot_raises_when_predictor_and_arrival_rate_model_both_passed(self):
+        predictor = self._make_predictor()
+        with self.assertRaises(ValueError) as cm:
+            plot_arrival_deltas(
+                self.df,
+                prediction_time=(8, 0),
+                snapshot_dates=self.snapshot_dates,
+                prediction_window=self.prediction_window,
+                yta_time_interval=self.yta_time_interval,
+                predictor=predictor,
+                arrival_rate_model=predictor,
+                return_figure=True,
+            )
+        self.assertIn("not both", str(cm.exception))
+
     def test_plot_without_arrival_rate_model_uses_pooled_baseline(self):
         """Default path falls back to pooled rates derived from the dataframe."""
         fig = plot_arrival_deltas(

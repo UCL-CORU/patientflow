@@ -1204,7 +1204,7 @@ def build_service_data(
     inpatient_snapshots: Optional[pd.DataFrame],
     specialties: List[str],
     prediction_window,
-    flow_selection: FlowSelection,
+    flow_selection: Optional[FlowSelection] = None,
     x1: Optional[float] = None,
     y1: Optional[float] = None,
     x2: Optional[float] = None,
@@ -1249,8 +1249,9 @@ def build_service_data(
         List of services/specialties to prepare inputs for
     prediction_window : datetime.timedelta
         Time window over which to predict admissions
-    flow_selection : FlowSelection
+    flow_selection : FlowSelection, optional
         Which flows are included; drives validation of models and snapshots.
+        When omitted, defaults to `FlowSelection.default()` for 1.6.2-style callers.
     x1, y1, x2, y2 : float, optional
         Parameters for the parametric admission-in-window curve. Required when
         the selected flows use a parametric ED YTA model or parametric
@@ -1301,6 +1302,9 @@ def build_service_data(
     6. Transfer arrivals from other subspecialties (converted to probability mass function)
 
     """
+    if flow_selection is None:
+        flow_selection = FlowSelection.default()
+
     service_models = _normalize_to_service_models(
         models, prediction_time, prediction_window
     )

@@ -571,6 +571,7 @@ def plot_arrival_deltas(
     fig_size=(15, 6),
     *,
     arrival_rate_model=None,
+    predictor=None,
     filter_key: Optional[str] = None,
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
@@ -609,6 +610,9 @@ def plot_arrival_deltas(
         agrees with the deployed model. When ``arrival_rate_model`` is ``None``
         (default), the function falls back to pooled rates derived from
         ``df`` (legacy behaviour).
+    predictor : IncomingAdmissionPredictor, optional
+        Deprecated alias for ``arrival_rate_model`` (1.6.2 parameter name).
+        Do not pass both ``predictor`` and ``arrival_rate_model``.
     filter_key : str, optional
         Which ``weights`` key of ``arrival_rate_model`` to read rates from.
         Required only when the model has more than one fitted key (e.g.
@@ -631,10 +635,18 @@ def plot_arrival_deltas(
     Raises
     ------
     ValueError
-        If ``arrival_rate_model`` is supplied and ``yta_time_interval`` does not
+        If both ``predictor`` and ``arrival_rate_model`` are supplied, if
+        ``arrival_rate_model`` is supplied and ``yta_time_interval`` does not
         match ``arrival_rate_model.yta_time_interval``, or if the model is
         unfitted / the requested ``filter_key`` is unknown.
     """
+    if predictor is not None and arrival_rate_model is not None:
+        raise ValueError(
+            "Pass only one of arrival_rate_model= or predictor=, not both."
+        )
+    if predictor is not None:
+        arrival_rate_model = predictor
+
     if arrival_rate_model is not None:
         model_interval = getattr(arrival_rate_model, "yta_time_interval", None)
         if model_interval is None:
