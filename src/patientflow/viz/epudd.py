@@ -37,6 +37,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from patientflow.load import get_model_key
+from patientflow.viz.utils import apply_figure_suptitle
 
 
 def _calculate_cdf_values(
@@ -303,14 +304,13 @@ def plot_epudd(
 
     # Final plot configuration
     plt.tight_layout()
-    if suptitle:
-        plt.suptitle(suptitle, fontsize=16, y=1.05)
+    apply_figure_suptitle(fig, suptitle)
     if media_file_path:
         if file_name:
             filename = file_name
         else:
             filename = "plot_epudd.png"
-        plt.savefig(media_file_path / filename, dpi=300)
+        plt.savefig(media_file_path / filename, bbox_inches="tight", dpi=300)
 
     # Return based on flags
     if return_figure and return_dataframe:

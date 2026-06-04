@@ -254,7 +254,7 @@ for _prediction_time in prediction_times:
 The mean difference between observed and expected values is reported below.
 
 ```python
-from patientflow.evaluate import calc_mae_mpe
+from patientflow.evaluate.legacy_api import calc_mae_mpe
 results = calc_mae_mpe(prob_dist_dict_all)
 
 print("\nTime    MAE    MPE")

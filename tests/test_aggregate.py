@@ -12,10 +12,12 @@ while maintaining comprehensive coverage of the core functionality.
 """
 
 import unittest
+import warnings
+
 import pandas as pd
 import numpy as np
 from datetime import date, datetime, timezone, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from patientflow.aggregate import (
     BernoulliGeneratingFunction,
@@ -23,8 +25,11 @@ from patientflow.aggregate import (
     get_prob_dist_for_prediction_moment,
     get_prob_dist,
     get_prob_dist_using_survival_curve,
+    get_prob_dist_by_service,
+    _count_observed_admissions,
     model_input_to_pred_proba,
 )
+from patientflow.predict.types import DemandPrediction, FlowSelection, PredictionBundle
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
@@ -521,3 +526,296 @@ class TestAggregateRefactored(unittest.TestCase):
             call.kwargs["prediction_date"] for call in model.predict.call_args_list
         ]
         self.assertEqual(called_prediction_dates, snapshot_dates)
+
+
+class TestGetProbDistByService(unittest.TestCase):
+    def _minimal_ed_visits(self, *, admitted: bool = True, departure_offset_hours=None):
+        row = {
+            "snapshot_date": date(2024, 1, 1),
+            "prediction_time": (10, 0),
+            "is_admitted": int(admitted),
+            "specialty": "medical",
+            "elapsed_los": timedelta(hours=1),
+        }
+        if departure_offset_hours is not None:
+            moment = datetime(2024, 1, 1, 10, 0, 0)
+            row["departure_datetime"] = moment + timedelta(hours=departure_offset_hours)
+        return pd.DataFrame([row])
+
+    @staticmethod
+    def _ed_only_flow() -> FlowSelection:
+        return FlowSelection.custom(
+            include_ed_current=True,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+        )
+
+    @staticmethod
+    def _departures_only_flow() -> FlowSelection:
+        return FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=True,
+        )
+
+    def _mock_prediction_bundle(self):
+        demand = DemandPrediction(
+            entity_id="medical",
+            entity_type="service",
+            probabilities=np.array([1.0, 0.0]),
+            expectation=0.0,
+            mode=0,
+            percentiles={50: 0},
+        )
+        return PredictionBundle(
+            entity_id="medical",
+            entity_type="service",
+            arrivals=demand,
+            departures=demand,
+            net_flow=demand,
+            flow_selection=FlowSelection.default(),
+        )
+
+    def test_missing_ed_visits_raises_when_ed_current_included(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                None,
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                FlowSelection.default(),
+                observation_mode="admitted_at_some_point",
+            )
+        self.assertIn("ed_visits", str(ctx.exception))
+
+    def test_net_flow_observation_mode_rejected(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                self._minimal_ed_visits(),
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                FlowSelection.default(),
+                observation_mode="admitted_at_some_point",
+                component="net_flow",
+            )
+        self.assertIn("net_flow", str(ctx.exception))
+
+    def test_arrivals_rejects_departed_observation_mode(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                self._minimal_ed_visits(),
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                FlowSelection.default(),
+                observation_mode="departed_in_window",
+            )
+        self.assertIn("arrivals", str(ctx.exception))
+
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_observation_modes_differ_for_admissions(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        ed_visits = self._minimal_ed_visits(departure_offset_hours=2)
+        ed_visits = pd.concat(
+            [
+                ed_visits,
+                self._minimal_ed_visits(departure_offset_hours=12),
+            ],
+            ignore_index=True,
+        )
+        ed_visits.loc[1, "is_admitted"] = 1
+        kwargs = dict(
+            ed_visits=ed_visits,
+            snapshot_dates=[date(2024, 1, 1)],
+            prediction_time=(10, 0),
+            models=(None,) * 7,
+            specialties=["medical"],
+            prediction_window=timedelta(hours=8),
+            flow_selection=self._ed_only_flow(),
+            services=["medical"],
+        )
+        at_some_point = get_prob_dist_by_service(
+            **kwargs,
+            observation_mode="admitted_at_some_point",
+        )
+        in_window = get_prob_dist_by_service(
+            **kwargs,
+            observation_mode="admitted_in_window",
+        )
+        self.assertEqual(
+            at_some_point["medical"][date(2024, 1, 1)]["agg_observed"],
+            2,
+        )
+        self.assertEqual(
+            in_window["medical"][date(2024, 1, 1)]["agg_observed"],
+            1,
+        )
+
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_departed_in_window_uses_label_on_inpatient_visits(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        inpatient_visits = pd.DataFrame(
+            [
+                {
+                    "snapshot_date": date(2024, 1, 1),
+                    "prediction_time": (10, 0),
+                    "left_subspecialty_in_window": True,
+                    "specialty": "medical",
+                    "elapsed_los": timedelta(hours=1),
+                },
+                {
+                    "snapshot_date": date(2024, 1, 1),
+                    "prediction_time": (10, 0),
+                    "left_subspecialty_in_window": False,
+                    "specialty": "medical",
+                    "elapsed_los": timedelta(hours=1),
+                },
+            ]
+        )
+        flow = self._departures_only_flow()
+        result = get_prob_dist_by_service(
+            None,
+            [date(2024, 1, 1)],
+            (10, 0),
+            (None,) * 7,
+            ["medical"],
+            timedelta(hours=8),
+            flow,
+            observation_mode="departed_in_window",
+            inpatient_visits=inpatient_visits,
+            component="departures",
+            services=["medical"],
+        )
+        self.assertEqual(
+            result["medical"][date(2024, 1, 1)]["agg_observed"],
+            1,
+        )
+
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_use_admission_in_window_prob_forwarded(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        get_prob_dist_by_service(
+            self._minimal_ed_visits(),
+            [date(2024, 1, 1)],
+            (10, 0),
+            (None,) * 7,
+            ["medical"],
+            timedelta(hours=8),
+            self._ed_only_flow(),
+            observation_mode="admitted_at_some_point",
+            use_admission_in_window_prob=False,
+            services=["medical"],
+        )
+        self.assertFalse(
+            mock_build_service_data.call_args.kwargs["use_admission_in_window_prob"]
+        )
+
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_legacy_defaults_without_flow_selection_or_observation_mode(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        ed_visits = self._minimal_ed_visits()
+        ed_visits = pd.concat(
+            [ed_visits, self._minimal_ed_visits(admitted=False)],
+            ignore_index=True,
+        )
+        inpatient_visits = pd.DataFrame(
+            [
+                {
+                    "snapshot_date": date(2024, 1, 1),
+                    "prediction_time": (10, 0),
+                    "left_subspecialty_in_window": False,
+                    "specialty": "medical",
+                    "elapsed_los": timedelta(hours=1),
+                }
+            ]
+        )
+        base_kwargs = dict(
+            ed_visits=ed_visits,
+            snapshot_dates=[date(2024, 1, 1)],
+            prediction_time=(10, 0),
+            models=(None,) * 7,
+            specialties=["medical"],
+            prediction_window=timedelta(hours=8),
+            inpatient_visits=inpatient_visits,
+            services=["medical"],
+        )
+        implicit = get_prob_dist_by_service(**base_kwargs)
+        explicit = get_prob_dist_by_service(
+            **base_kwargs,
+            flow_selection=FlowSelection.default(),
+            observation_mode="admitted_at_some_point",
+        )
+        observed = implicit["medical"][date(2024, 1, 1)]["agg_observed"]
+        self.assertEqual(
+            observed,
+            explicit["medical"][date(2024, 1, 1)]["agg_observed"],
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            legacy = _count_observed_admissions(
+                ed_visits,
+                date(2024, 1, 1),
+                (10, 0),
+                timedelta(hours=8),
+                specialty="medical",
+            )
+        self.assertEqual(observed, legacy)
+
+    def test_count_observed_admissions_deprecation(self):
+        df = pd.DataFrame(
+            {
+                "snapshot_date": [date(2024, 1, 1)],
+                "prediction_time": [(10, 0)],
+                "is_admitted": [1],
+                "specialty": ["medical"],
+            }
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            _count_observed_admissions(
+                df,
+                date(2024, 1, 1),
+                (10, 0),
+                timedelta(hours=1),
+                specialty="medical",
+            )
+        self.assertTrue(
+            any(issubclass(x.category, DeprecationWarning) for x in w),
+        )

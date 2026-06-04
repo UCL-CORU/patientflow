@@ -257,6 +257,25 @@ prob_dist_dict_all = get_specialty_probability_distributions(
 
 I now evaluate the predicted distributions using the approaches introduced in notebook 3b. First, histograms showing the difference between observed and expected values for each hospital service. Then, EPUDD plots which evaluate the full predicted distribution against observed values.
 
+### Using the evaluate package from this workflow
+
+This notebook uses the legacy-compatible evaluation path from notebook 3b. From `patientflow` 1.7, these helpers are available directly from the evaluate package root:
+
+```python
+from patientflow.evaluate import calc_mae_mpe
+```
+
+This allows 3-series workflows to keep the same evaluation pattern without adopting the 4-series prediction packaging APIs.
+
+If you want fully packaged evaluation runs (standard output folders, run metadata, and central orchestration), see notebook `4d_Evaluate_demand_predictions.md`, which uses `EvaluationInputsBuilder` and `run_evaluation`.
+
+### Evaluation options: 3-series vs 4-series
+
+| Workflow                 | Best when                                                         | Typical API                                 |
+| ------------------------ | ----------------------------------------------------------------- | ------------------------------------------- |
+| 3-series (this notebook) | You already have `get_prob_dist` outputs and want minimal changes | `calc_mae_mpe`, `plot_deltas`, `plot_epudd` |
+| 4-series (`4d`)          | You want a structured, run-based evaluation pipeline              | `EvaluationInputsBuilder`, `run_evaluation` |
+
 ```python
 from patientflow.evaluate import calc_mae_mpe
 from patientflow.viz.observed_against_expected import plot_deltas
@@ -266,14 +285,6 @@ for specialty in specialties:
     results = calc_mae_mpe(specialty_prob_dist)
     plot_deltas(results, suptitle=f"Histograms of Observed - Expected Values for {specialty} service")
 ```
-
-![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_0.png)
-
-![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_1.png)
-
-![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_2.png)
-
-![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_3.png)
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -298,6 +309,8 @@ for specialty in specialties:
 ## Summary
 
 In this notebook I have shown how to evaluate predicted bed count distributions by hospital service, using the evaluation approaches introduced in notebook 3b. In the appendix below, I compare the service prediction model against a baseline that uses average admission proportions by hospital service.
+
+For the same PMFs run through `patientflow.evaluate` (`EvaluationInputsBuilder` and `run_evaluation`), see notebook **3g**.
 
 In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.
 

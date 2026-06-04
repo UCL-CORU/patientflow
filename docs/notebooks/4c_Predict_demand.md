@@ -10,7 +10,7 @@ The predictions combine two sources of demand:
 
 **Section 2: Patients yet to arrive** - We predict the expected number of patients who will arrive at the ED and need admission within the prediction window, by service. Again, this section includes **a step-through in Python** demonstrating the real-time inference steps.
 
-**Section 3: Production prediction pipeline** - Using the data classes introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md) (`FlowInputs`, `ServicePredictionInputs`, `DemandPredictor`, `FlowSelection`, `PredictionBundle`), I show how `build_service_data` encapsulates all the step-through logic into a single function call for real-time inference.
+**Section 3: Production prediction pipeline** - Using the data classes introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md) (`FlowInputs`, `ServicePredictionInputs`, `DemandPredictor`, `FlowSelection`, `PredictionBundle`), I show how `build_service_data` — with an explicit `FlowSelection` matching the flows you intend to predict — encapsulates all the step-through logic into a single function call for real-time inference.
 
 Sections 1–3 use an **aspirational approach** to predicting demand for beds within the prediction window, assuming that ED four-hour targets are met via parametric curves based on specified ED performance targets.
 
@@ -267,16 +267,10 @@ if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
     train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
 
 yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-              prediction_window=prediction_window,
               yta_time_interval=yta_time_interval,
-              prediction_times=ed_visits.prediction_time.unique(),
+              stratify_by_weekday=True,
               num_days=num_days )
 ```
-
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_window to fit() is deprecated; pass it to predict() / predict_mean() instead.
-      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1213350650.py:24: DeprecationWarning: Passing prediction_times to fit() is deprecated; any prediction time can be served at predict time. This argument is retained for backward compatibility only and will be removed in a future release.
-      yta_model_by_spec =yta_model_by_spec.fit(train_inpatient_arrivals_df,
 
 ## 1. Make predictions for the group of patients currently in the ED
 
@@ -467,7 +461,7 @@ plt.show()
 
 ## 2. Make predictions for patients yet-to-arrive to the ED who will need admission
 
-The trained yet-to-arrive model generates the same distribution for each prediction time, irrespective of day of week, for each specialty. Passing the randomly chosen prediction time, for each specialty, will return the required distributions.
+The yet-to-arrive model was fit with `stratify_by_weekday=True`, so arrival rates vary by day of week. For each specialty, pass the randomly chosen `prediction_time` and the snapshot `prediction_date` (`random_prediction_date`) so `predict()` uses the matching weekday profile rather than the pooled 24-hour rates.
 
 ```python
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
@@ -476,7 +470,9 @@ for ax, specialty in zip(axes.flat, plot_order):
 
     weighted_poisson_prediction = yta_model_by_spec.predict(
         prediction_time=random_prediction_time,
+        prediction_window=prediction_window,
         filter_keys=specialty,
+        prediction_date=random_prediction_date,
         x1=x1, y1=y1, x2=x2, y2=y2)
     title = specialty.title()
     plot_prob_dist(weighted_poisson_prediction[specialty], title,
@@ -498,21 +494,20 @@ fig.tight_layout()
 plt.show()
 ```
 
-    /var/folders/lr/pm79dxzs0v70y4gz98dl13440000gn/T/ipykernel_85644/1915240381.py:5: DeprecationWarning: Relying on prediction_window stored at fit() time is deprecated. Pass prediction_window explicitly to predict() / predict_mean().
-      weighted_poisson_prediction = yta_model_by_spec.predict(
-
-![png](4c_Predict_demand_files/4c_Predict_demand_22_1.png)
+![png](4c_Predict_demand_files/4c_Predict_demand_22_0.png)
 
 ## 3. Production prediction pipeline
 
-In place of the lengthy code shown above, `patientflow` provides a function called `build_service_data` that encapsulates this logic. It assembles the trained models, snapshot data, and configuration parameters into the production data classes introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md) — `ServicePredictionInputs` containing `FlowInputs` for each source of demand — ready for use with `DemandPredictor`.
+In place of the lengthy code shown above, `patientflow` provides a function called `build_service_data` that encapsulates this logic. It assembles the trained models, snapshot data, configuration parameters, and a `FlowSelection` into the production data classes introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md) — `ServicePredictionInputs` containing `FlowInputs` for each source of demand — ready for use with `DemandPredictor`. The `FlowSelection` tells the builder which flows to populate (for example current ED only, yet-to-arrive only, or both); it should match the selection you pass later to `DemandPredictor.predict_service`.
 
 ### Use of `build_service_data` from the `predict.service` module
 
-To make demand predictions at a given prediction moment, we call `build_service_data` with the trained models, the snapshot data for that moment, the yet-to-arrive parameters, and the requested prediction window. This single call replaces all of the step-through code above.
+To make demand predictions at a given prediction moment, we call `build_service_data` with a `ServiceModels` bundle, the snapshot data for that moment, the yet-to-arrive parameters, the requested prediction window, and **`flow_selection`** (a `FlowSelection` instance, as in notebook 4a). Only the models and snapshot columns needed for the selected flows are required. This single call replaces all of the step-through code above.
 
 ```python
 from patientflow.predict.service import build_service_data
+from patientflow.predict.demand import FlowSelection
+from patientflow.model_artifacts import ServiceModels
 
 # select the relevant ED admissions model based on the prediction time
 admission_model = admissions_models[get_model_key(model_name, random_prediction_time)]
@@ -521,14 +516,36 @@ admission_model = admissions_models[get_model_key(model_name, random_prediction_
 prediction_snapshots_processed = prediction_snapshots.copy(deep=True)
 prediction_snapshots_processed['elapsed_los'] = pd.to_timedelta(prediction_snapshots_processed['elapsed_los'], unit='s')
 
+service_models = ServiceModels(
+    prediction_time=random_prediction_time,
+    prediction_window=prediction_window,
+    ed_classifier=admission_model,
+    inpatient_classifier=None,
+    spec_model=spec_model,
+    ed_yta_model=yta_model_by_spec,
+    non_ed_yta_model=None,
+    elective_yta_model=None,
+    transfer_model=None,
+)
+
 # generate the prediction inputs
 prediction_inputs = build_service_data(
-    models=(admission_model, None, spec_model, yta_model_by_spec, None, None, None),
+    models=service_models,
     prediction_time=random_prediction_time,
+    flow_selection=FlowSelection.custom(
+        include_ed_current=True,
+        include_ed_yta=True,
+        include_non_ed_yta=False,
+        include_elective_yta=False,
+        include_transfers_in=False,
+        include_departures=False,
+        cohort="emergency",
+    ),
+    specialties=specialty_filters.keys(),
+    prediction_window=prediction_window,
+    prediction_date=random_prediction_date,
     ed_snapshots=prediction_snapshots_processed,
     inpatient_snapshots=None,
-    specialties=specialty_filters.keys(),
-    prediction_window=timedelta(hours=8),
     x1=x1, y1=y1, x2=x2, y2=y2
 )
 
@@ -542,8 +559,8 @@ prediction_inputs['medical']
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6 of 79 patients in ED)
-        ED yet-to-arrive admissions              λ = 2.131
+        Admissions from current ED               PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6 of 79 patients in ED)
+        ED yet-to-arrive admissions              λ = 1.836
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
         Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
@@ -582,9 +599,9 @@ print(current_ed_bundle)
 ```
 
     PredictionBundle(service: medical)
-      Arrivals:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Arrivals:    PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[2:12]: [0.019, 0.046, 0.091, 0.143, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Net flow:    PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=False, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 From the bundle, we can extract a probability distribution for the number of beds needed for patients currently in the ED. We can view the expectation, or view the percentiles of the distribution as shown below.
@@ -627,7 +644,7 @@ print(f"Need at least {yet_to_arrive_to_ed_bundle.arrivals.min_beds_with_probabi
 
     For patients yet-to-arrive to the ED:
 
-    Most likely number of beds needed for the medical specialty: 2
+    Most likely number of beds needed for the medical specialty: 1
     Need at least 0 beds with 90% probability
     Need at least 1 beds with 70% probability
 
@@ -652,8 +669,7 @@ bundle = predictor.predict_service(
 
 plot_prob_dist(bundle.arrivals.probabilities, title,
     include_titles=True, truncate_at_beds=20,
-    probability_levels=[0.7,0.9],
-    show_probability_thresholds=True, bar_colour=spec_colour_dict["single"]["medical"])
+    bar_colour=spec_colour_dict["single"]["medical"])
 ```
 
 ![png](4c_Predict_demand_files/4c_Predict_demand_37_0.png)
@@ -667,7 +683,7 @@ Here I have shown how `patientflow` is used at UCLH to generate predictions of e
 
 Both sets of predictions assume specified ED targets are met.
 
-I showed a full step-through in code to make the logic transparent, then demonstrated how `build_service_data` encapsulates all of this into a single function call, producing the `ServicePredictionInputs` and `FlowInputs` data structures introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md). The `DemandPredictor` and `FlowSelection` classes then generate the final predictions.
+I showed a full step-through in code to make the logic transparent, then demonstrated how `build_service_data` — with the same `FlowSelection` used for `predict_service` — encapsulates all of this into a single function call, producing the `ServicePredictionInputs` and `FlowInputs` data structures introduced in [notebook 4a](4a_Organise_predictions_for_a_production_pipeline.md). The `DemandPredictor` and `FlowSelection` classes then generate the final predictions.
 
 In the appendix, I show two legacy approaches using the original `create_predictions` function: one using empirical survival curves (instead of ED targets) and one using ED targets directly.
 
@@ -681,7 +697,7 @@ The legacy approach uses a `ParametricIncomingAdmissionPredictor` to model yet-t
 
 ### Legacy `create_predictions` function with ED targets
 
-The `create_predictions` function below combines admission probabilities, specialty assignments, and yet-to-arrive predictions into a single call. It uses parametric curves based on specified ED performance targets to calculate the probability that each patient will be admitted within the prediction window.
+The `create_predictions` function below combines admission probabilities, specialty assignments, and yet-to-arrive predictions into a single call. It uses parametric curves based on specified ED performance targets to calculate the probability that each patient will be admitted within the prediction window. Pass `prediction_date=` when the yet-to-arrive model was fit with weekday stratification (as here), matching the step-through and `build_service_data` examples above.
 
 ```python
 from patientflow.predict.emergency_demand import create_predictions
@@ -692,6 +708,7 @@ create_predictions(
     prediction_snapshots = prediction_snapshots_processed,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window = timedelta(hours=8),
+    prediction_date = random_prediction_date,
     cdf_cut_points =  [0.7, 0.9],
     x1 = x1,
     y1 = y1,
@@ -708,7 +725,7 @@ create_predictions(
 
 Not all hospitals set ED performance targets, or you may prefer predictions that reflect actual past performance rather than aspirational targets. In this case, the probability of admission within the prediction window can be calculated from an empirical survival curve fitted to historical data.
 
-Below I show how a survival curve is constructed and used with the legacy `create_predictions` function. This approach replaces the parametric curve with an `EmpiricalIncomingAdmissionPredictor`.
+Below I show how a survival curve is constructed and used with the legacy `create_predictions` function. This approach replaces the parametric curve with an `EmpiricalIncomingAdmissionPredictor`. Pass `prediction_date=` so yet-to-arrive rates use the weekday profile for the snapshot day (the empirical model uses the library default weekday stratification at fit time).
 
 ```python
 ## Add synthetic value for admitted_to_ward_datetime to the dataset, if not available
@@ -824,6 +841,7 @@ create_predictions(
     prediction_snapshots = prediction_snapshots,
     specialties = ['medical', 'surgical', 'haem/onc', 'paediatric'],
     prediction_window = prediction_window,
+    prediction_date = random_prediction_date,
     cdf_cut_points =  [0.7, 0.9],
     x1 = x1,
     y1 = y1,

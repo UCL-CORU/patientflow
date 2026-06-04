@@ -11,6 +11,7 @@ This notebook introduces the data classes that `patientflow` uses to organise pr
 3. **`DemandPredictor`** — the prediction engine that convolves flows into a combined distribution
 4. **`FlowSelection`** — a toggle for which flows to include in a prediction
 5. **`PredictionBundle`** — the output: arrivals, departures, and net flow bundled together
+6. **`ServiceModels`** — bundles admission classifiers, specialty model, and yet-to-arrive predictor for `build_service_data()`, replacing the older seven-tuple model bundle used in previous notebooks
 
 The 4x\_ notebooks use these classes extensively. By understanding them here, you will be well prepared for the full UCLH implementation that follows.
 
@@ -832,7 +833,7 @@ print(service_inputs)
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[2:12]: [0.007, 0.026, 0.071, 0.135, 0.191, 0.204, 0.169, 0.109, 0.056, 0.022] (E=6.9 of 21 patients in ED)
+        Admissions from current ED               PMF[2:12]: [0.008, 0.030, 0.076, 0.141, 0.194, 0.202, 0.163, 0.104, 0.052, 0.021] (E=6.8 of 21 patients in ED)
         ED yet-to-arrive admissions              λ = 18.618
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
@@ -884,9 +885,9 @@ print(f'Percentiles:          {arrivals.percentiles}')
 print(f'PMF shape:            {arrivals.probabilities.shape}')
 ```
 
-    Expectation:          6.9
+    Expectation:          6.8
     Expected value:       7
-    Percentiles:          {25: 6, 50: 7, 75: 8}
+    Percentiles:          {25: 5, 50: 7, 75: 8}
     PMF shape:            (22,)
 
 ```python
@@ -929,9 +930,9 @@ print(f'Combined — expected beds: {combined_bundle.arrivals.expectation:.1f}')
 
 ```
 
-    Current ED only — expected beds: 6.9
+    Current ED only — expected beds: 6.8
     Yet-to-arrive only — Poisson rate: 18.6
-    Combined — expected beds: 25.5
+    Combined — expected beds: 25.4
 
 The expected value of the combined distribution equals the sum of the individual expected values — a property of convolution. But the full probability distribution captures the combined uncertainty, not just the means.
 
@@ -944,8 +945,6 @@ title = (
 plot_prob_dist(
     combined_bundle.arrivals.probabilities, title,
     include_titles=True,
-    probability_levels=[0.75, 0.25],
-    show_probability_thresholds=True,
     bar_colour='orange'
 )
 ```
@@ -977,14 +976,16 @@ print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
 ```
 
     === FlowSelection.incoming_only() ===
-      Expected arrivals:   25.5
+
+
+      Expected arrivals:   25.4
       Expected departures: 0.0
-      Expected net flow:   25.5
+      Expected net flow:   25.4
 
     === FlowSelection.default() ===
-      Expected arrivals:   25.5
+      Expected arrivals:   25.4
       Expected departures: 7.0
-      Expected net flow:   18.5
+      Expected net flow:   18.4
 
 The available presets are:
 
@@ -1010,9 +1011,9 @@ print(combined_bundle)
 ```
 
     PredictionBundle(service: medical)
-      Arrivals:    PMF[20:30]: [0.046, 0.057, 0.068, 0.077, 0.082, 0.085, 0.083, 0.078, 0.070, 0.061] (E=25.5)
+      Arrivals:    PMF[20:30]: [0.047, 0.058, 0.069, 0.077, 0.083, 0.085, 0.083, 0.077, 0.069, 0.060] (E=25.4)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[20:30]: [0.046, 0.057, 0.068, 0.077, 0.082, 0.085, 0.083, 0.078, 0.070, 0.061] (E=25.5)
+      Net flow:    PMF[20:30]: [0.047, 0.058, 0.069, 0.077, 0.083, 0.085, 0.083, 0.077, 0.069, 0.060] (E=25.4)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 Each `DemandPrediction` carries useful summary statistics:
@@ -1027,10 +1028,10 @@ print(f'90% probability:     need at least {arrivals.min_beds_with_probability(0
 print(f'PMF array length:    {len(arrivals.probabilities)}')
 ```
 
-    Expected beds:       25.5
+    Expected beds:       25.4
     Most likely (mode):  25
     Percentiles:         {25: 22, 50: 25, 75: 29}
-    90% probability:     need at least 20 beds
+    90% probability:     need at least 19 beds
     PMF array length:    76
 
 The `flow_selection` attribute records which flows were included:
@@ -1066,4 +1067,6 @@ In this notebook we traced the path from familiar 3x* outputs to the structured 
 | Ad-hoc selection of which inputs to include                | `FlowSelection.incoming_only()`, `.default()`, `.custom(...)` | Explicit, reproducible toggle                          |
 | Individual result arrays                                   | `PredictionBundle` with arrivals, departures, net flow        | Structured output with summary statistics              |
 
-In notebook 4c, you'll see how `build_service_data()` constructs all of these automatically from trained models for the full UCLH implementation — building a dictionary of `ServicePredictionInputs` for every specialty in a single call.
+In notebook 4c, you'll see how `build_service_data()` constructs all of these automatically from trained models for the full UCLH implementation — building a dictionary of `ServicePredictionInputs` for every specialty in a single call, using a **`ServiceModels`** bundle rather than passing models as a separate seven-tuple.
+
+Notebook 4d evaluates the full pipeline with the typed `patientflow.evaluate` package. Classifier diagnostics there can include optional SHAP plots (`show=False` by default in evaluation figures; run `pip install shap` when you want them).

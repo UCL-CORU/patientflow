@@ -15,7 +15,7 @@ add_specialty_predictions : function
     Attach a per-row specialty probability dict to a snapshot DataFrame.
 build_pipeline_prediction_inputs : function
     Build per-service prediction inputs for a given snapshot using
-    ``build_service_data`` from ``patientflow.predict.service``.
+    `build_service_data` from `patientflow.predict.service`.
 in_ed_now_plot : function
     Scatter plot of patients currently in the ED, optionally coloured by
     predicted probability of admission.
@@ -47,7 +47,7 @@ DEFAULT_LOCATION_MAPPING = {
     "resus": "Majors/Resus",
     "taf": "Other",
 }
-#: Default mapping from raw ``current_location_type`` values to
+#: Default mapping from raw `current_location_type` values to
 #: simplified display categories used on the y-axis of pipeline plots.
 
 DEFAULT_CATEGORY_ORDER = ["Majors/Resus", "Minors", "Other"]
@@ -60,15 +60,15 @@ def create_colour_dict():
 
     Returns a nested dictionary with two keys:
 
-    * ``"single"`` – maps each specialty name to a single hex colour.
-    * ``"spectrum"`` – maps each specialty name to a
+    * `"single"` – maps each specialty name to a single hex colour.
+    * `"spectrum"` – maps each specialty name to a
       `matplotlib.colors.LinearSegmentedColormap` that runs from
       a pale tint to the corresponding single colour at full intensity.
 
     Returns
     -------
     dict
-        ``{"single": {<specialty>: <hex>}, "spectrum": {<specialty>: <cmap>}}``
+        `{"single": {<specialty>: <hex>}, "spectrum": {<specialty>: <cmap>}}`
     """
     spec_colour_dict = {
         "single": {
@@ -114,33 +114,33 @@ def prepare_snapshot_data(
     """Filter and prepare a single snapshot of ED visits for plotting.
 
     Selects visits for the given *snapshot_date* and *prediction_time*,
-    optionally excludes certain location types (e.g. ``"OTF"``), and maps
-    the raw ``current_location_type`` values to simplified display
-    categories stored in a new ``loc_new`` column.
+    optionally excludes certain location types (e.g. `"OTF"`), and maps
+    the raw `current_location_type` values to simplified display
+    categories stored in a new `loc_new` column.
 
     Parameters
     ----------
     visits : pandas.DataFrame
         The full visits DataFrame.  Must contain at least the columns
-        ``snapshot_date``, ``prediction_time``, and
-        ``current_location_type``.
+        `snapshot_date`, `prediction_time`, and
+        `current_location_type`.
     snapshot_date : object
-        The date to select (must match values in ``visits["snapshot_date"]``).
+        The date to select (must match values in `visits["snapshot_date"]`).
     prediction_time : tuple
-        ``(hour, minute)`` prediction time to select.
+        `(hour, minute)` prediction time to select.
     location_mapping : dict or None, optional
-        Mapping from raw ``current_location_type`` values to display
+        Mapping from raw `current_location_type` values to display
         category names.  Defaults to `DEFAULT_LOCATION_MAPPING`.
     category_order : list of str or None, optional
         Ordered list of display category names for the y-axis.
         Defaults to `DEFAULT_CATEGORY_ORDER`.
     exclude_locations : list of str or None, optional
-        Raw location types to exclude.  Defaults to ``["OTF"]``.
+        Raw location types to exclude.  Defaults to `["OTF"]`.
 
     Returns
     -------
     pandas.DataFrame
-        A copy of the filtered data with a ``loc_new`` categorical column
+        A copy of the filtered data with a `loc_new` categorical column
         added.
     """
     if location_mapping is None:
@@ -177,27 +177,27 @@ def add_specialty_predictions(
     (as a `pandas.Series`) so that models which need additional
     context (e.g. [MultiSubgroupPredictor][patientflow.predictors.subgroup_predictor.MultiSubgroupPredictor])
     can determine the correct sub-model.  The result is stored in a new
-    ``specialty_prob`` column whose values are ``dict[str, float]``.
+    `specialty_prob` column whose values are `dict[str, float]`.
 
     Parameters
     ----------
     df : pandas.DataFrame
         Snapshot data – typically the output of [prepare_snapshot_data][patientflow.viz.pipeline_plots.prepare_snapshot_data].
         Must contain at least the column used by
-        ``specialty_model.input_var`` (usually ``consultation_sequence``).
+        `specialty_model.input_var` (usually `consultation_sequence`).
     specialty_model : object
-        Trained specialty prediction model.  Must expose ``input_var``
-        (str) and ``predict(row)`` where *row* is a `pandas.Series`.
+        Trained specialty prediction model.  Must expose `input_var`
+        (str) and `predict(row)` where *row* is a `pandas.Series`.
     specialties : list of str or None, optional
         Specialty names to ensure are present in every returned dict
-        (missing keys are filled with ``0``).
-        Defaults to ``["medical", "surgical", "haem/onc", "paediatric"]``.
+        (missing keys are filled with `0`).
+        Defaults to `["medical", "surgical", "haem/onc", "paediatric"]`.
 
     Returns
     -------
     pandas.DataFrame
-        A copy of *df* with a ``specialty_prob`` column added.  Each
-        value is a ``dict`` mapping specialty name to probability.
+        A copy of *df* with a `specialty_prob` column added.  Each
+        value is a `dict` mapping specialty name to probability.
     """
     if specialties is None:
         specialties = ["medical", "surgical", "haem/onc", "paediatric"]
@@ -238,41 +238,51 @@ def build_pipeline_prediction_inputs(
 ):
     """Build per-service prediction inputs for a snapshot.
 
-    This is a convenience wrapper around
-    [build_service_data][patientflow.predict.service.build_service_data] that unpacks
-    the prediction inputs dictionary returned by
-    [prepare_prediction_inputs][patientflow.train.emergency_demand.prepare_prediction_inputs]
-    and retrieves the appropriate admission classifier for the given
-    *prediction_time*.
+    This is a convenience wrapper around `build_service_data` in
+    `patientflow.predict.service` that unpacks the dictionary returned by
+    `prepare_prediction_inputs` in `patientflow.train.emergency_demand` and
+    selects the admission classifier matching *prediction_time*.
+
+    A fixed `FlowSelection` (from `patientflow.predict.types`) is applied:
+    emergency cohort, current ED and/or ED YTA enabled according to which
+    models are present, with transfers, non-ED YTA, elective YTA, and
+    departures disabled (pipeline figures only need ED-side inputs).
 
     Parameters
     ----------
     prediction_inputs : dict
-        Dictionary returned by ``prepare_prediction_inputs()``, containing
-        keys ``"admission_models"``, ``"specialty_model"``,
-        ``"yta_model"``, ``"specialties"``, and ``"config"``.
+        Dictionary returned by `prepare_prediction_inputs()`, containing
+        keys `"admission_models"`, `"specialty_model"`,
+        `"yta_model"`, `"specialties"`, and `"config"`.
     prediction_time : tuple of (int, int)
-        ``(hour, minute)`` of the prediction moment.
+        `(hour, minute)` of the prediction moment.
     prediction_snapshots : pandas.DataFrame
         Snapshot of patients currently in the ED at the prediction moment.
-        Must contain an ``elapsed_los`` column (in seconds – it will be
-        converted to [timedelta][datetime.timedelta] internally).
+        Must contain an `elapsed_los` column (in seconds; converted to
+        `datetime.timedelta` internally).
     prediction_window : datetime.timedelta
         Horizon over which to predict demand.
     use_admission_in_window_prob : bool, default=True
         Whether to weight current ED admissions by their probability of
-        being admitted within the prediction window.  When ``False``,
+        being admitted within the prediction window.  When `False`,
         every current ED patient is treated as certain to be admitted
         (probability = 1.0).
 
     Returns
     -------
     dict of str to ServicePredictionInputs
-        Per-service prediction input objects ready for downstream
-        aggregation or plotting.
+        Mapping each specialty name to a `ServicePredictionInputs` instance
+        ready for `DemandPredictor.predict_service` (`patientflow.predict.demand`)
+        or plotting.
+
+    See Also
+    --------
+    patientflow.predict.service.build_service_data
+    patientflow.predict.types.FlowSelection.custom
     """
     from patientflow.load import get_model_key
     from patientflow.predict.service import build_service_data
+    from patientflow.predict.types import FlowSelection
 
     admission_models = prediction_inputs["admission_models"]
     specialty_model = prediction_inputs["specialty_model"]
@@ -314,6 +324,15 @@ def build_pipeline_prediction_inputs(
         inpatient_snapshots=None,
         specialties=specialties,
         prediction_window=prediction_window,
+        flow_selection=FlowSelection.custom(
+            include_ed_current=admission_model is not None,
+            include_ed_yta=yta_model is not None,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+            cohort="emergency",
+        ),
         x1=x1,
         y1=y1,
         x2=x2,
@@ -343,65 +362,65 @@ def in_ed_now_plot(
     """Scatter plot of patients currently in the ED.
 
     Each dot represents one patient, positioned by elapsed length-of-stay
-    on the x-axis and ED pathway (``loc_new`` column) on the y-axis.
+    on the x-axis and ED pathway (`loc_new` column) on the y-axis.
     Optionally, dots can be coloured by predicted probability of admission.
 
     Parameters
     ----------
     ex : pandas.DataFrame
-        Snapshot data.  Must contain ``elapsed_los`` (in seconds) and
-        ``loc_new`` (categorical) columns.  When *colour* is ``True`` the
+        Snapshot data.  Must contain `elapsed_los` (in seconds) and
+        `loc_new` (categorical) columns.  When *colour* is `True` the
         column named by *preds_col* must also be present.
     title : str
         Title text for the figure.
     media_file_path : str, Path or None, optional
-        Directory in which to save the figure.  If ``None`` the figure is
+        Directory in which to save the figure.  If `None` the figure is
         not saved to disk.
     file_name : str or None, optional
         File name (without path) to save the figure as.  Spaces are
         replaced with underscores.  Only used when *media_file_path* is
-        not ``None``.
+        not `None`.
     figsize : tuple of float, optional
-        ``(width, height)`` in inches.  Default ``(6, 3)``.
+        `(width, height)` in inches.  Default `(6, 3)`.
     include_titles : bool, optional
-        If ``True``, render the title, x-label, and y-label on the plot.
+        If `True`, render the title, x-label, and y-label on the plot.
     truncate_at_hours : int or float, optional
         Maximum elapsed hours to show.  Patients with a longer stay are
-        excluded.  Default ``8``.
+        excluded.  Default `8`.
     colour : bool, optional
-        If ``True``, colour the dots by the values in *preds_col* and
-        show a colour-bar.  Default ``False``.
+        If `True`, colour the dots by the values in *preds_col* and
+        show a colour-bar.  Default `False`.
     text_size : int or None, optional
         Font size for tick labels and (if shown) titles.
     jitter_amount : float, optional
-        Vertical jitter applied to dots.  Default ``0.1``.
+        Vertical jitter applied to dots.  Default `0.1`.
     jitter_offsets : pandas.Series or dict or None, optional
-        Precomputed per-row jitter values keyed by ``ex.index``. When
+        Precomputed per-row jitter values keyed by `ex.index`. When
         provided, these values are used instead of generating fresh random
         jitter, which allows consistent vertical offsets across multiple
-        related plots. Default ``None``.
+        related plots. Default `None`.
     size : int, optional
-        Marker size.  Default ``50``.
+        Marker size.  Default `50`.
     preds_col : str, optional
         Column name for the prediction probabilities.
-        Default ``"preds"``.
+        Default `"preds"`.
     colour_map : str or Colormap, optional
-        Matplotlib colour map (or name) used when *colour* is ``True``.
-        Default ``"Spectral_r"``.
+        Matplotlib colour map (or name) used when *colour* is `True`.
+        Default `"Spectral_r"`.
     return_figure : bool, optional
-        If ``True`` return ``(fig, ax)`` instead of calling
-        ``plt.show()``.  Default ``False``.
+        If `True` return `(fig, ax)` instead of calling
+        `plt.show()`.  Default `False`.
     ax : matplotlib.axes.Axes or None, optional
         An existing Axes to draw into.  When provided, *figsize*,
         *media_file_path*, *file_name*, and *return_figure* are ignored
         and the function draws directly into *ax* (useful for subplots).
-        Default is ``None`` (creates a new figure).
+        Default is `None` (creates a new figure).
 
     Returns
     -------
     matplotlib.axes.Axes or tuple of (Figure, Axes) or None
-        Returns *ax* when an external Axes is provided, ``(fig, ax)``
-        when *return_figure* is ``True``, or ``None`` otherwise.
+        Returns *ax* when an external Axes is provided, `(fig, ax)`
+        when *return_figure* is `True`, or `None` otherwise.
     """
     spec_colour_dict = create_colour_dict()
 
@@ -560,26 +579,26 @@ def main(
     Parameters
     ----------
     prediction_time : tuple of (int, int), optional
-        ``(hour, minute)`` of the prediction moment.
-        Default ``(9, 30)``.
+        `(hour, minute)` of the prediction moment.
+        Default `(9, 30)`.
     output_dir : str or Path, optional
         Root directory in which a dated sub-folder will be created for
-        the plots.  Default ``"pipeline_plots_output"``.
+        the plots.  Default `"pipeline_plots_output"`.
     data_folder_name : str, optional
         Name of the data folder containing the training datasets.
-        Default ``"data-public"``.
+        Default `"data-public"`.
     random_state : int, optional
         Random state used for sampling the snapshot date.
-        Default ``0``.
+        Default `0`.
     include_titles : bool, optional
-        If ``True``, render titles, axis labels, and colour-bar labels
+        If `True`, render titles, axis labels, and colour-bar labels
         on every plot.  The output folder name is also suffixed with
-        ``_with_titles`` so titled and untitled runs do not overwrite
-        each other.  Default ``False``.
+        `_with_titles` so titled and untitled runs do not overwrite
+        each other.  Default `False`.
     show_observed : bool, optional
-        If ``True``, draw a vertical line on probability distribution
+        If `True`, draw a vertical line on probability distribution
         plots to indicate the actual observed value.
-        Default ``False``.
+        Default `False`.
 
     Returns
     -------

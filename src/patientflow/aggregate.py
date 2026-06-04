@@ -54,7 +54,11 @@ import pandas as pd
 import numpy as np
 from scipy.stats import norm
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List, Tuple, Optional, Dict, Any
+import warnings
+from typing import List, Tuple, Optional, Dict, Any, Union
+
+from patientflow.model_artifacts import ServiceModels
+from patientflow.predict.types import FlowSelection
 from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
 )
@@ -531,9 +535,9 @@ def get_prob_dist_using_survival_curve(
 
     Notes
     -----
-    The current snapshot date ``dt`` is forwarded to the YTA model as
-    ``prediction_date=dt`` on each predict call. This enables weekday-stratified
-    arrival-rate slicing for models fitted with ``stratify_by_weekday=True``.
+    The current snapshot date `dt` is forwarded to the YTA model as
+    `prediction_date=dt` on each predict call. This enables weekday-stratified
+    arrival-rate slicing for models fitted with `stratify_by_weekday=True`.
     Models without weekday stratification remain on pooled behaviour.
 
     Returns
@@ -622,17 +626,17 @@ def prediction_to_eval_dict(
     Parameters
     ----------
     probabilities : np.ndarray
-        Probability mass function array where ``probabilities[k] = P(count = k)``.
-        Typically obtained from ``DemandPrediction.probabilities``.
+        Probability mass function array where `probabilities[k] = P(count = k)`.
+        Typically obtained from `DemandPrediction.probabilities`.
     observed : int
         The observed count for this prediction moment.
 
     Returns
     -------
     Dict[str, Any]
-        Dictionary with keys ``'agg_predicted'`` (a DataFrame with column
-        ``'agg_proba'``) and ``'agg_observed'`` (int), compatible with
-        ``plot_epudd``, ``plot_randomised_pit``, ``qq_plot``, etc.
+        Dictionary with keys `'agg_predicted'` (a DataFrame with column
+        `'agg_proba'`) and `'agg_observed'` (int), compatible with
+        `plot_epudd`, `plot_randomised_pit`, `qq_plot`, etc.
     """
     agg_predicted = pd.DataFrame(
         {"agg_proba": probabilities},
@@ -648,147 +652,217 @@ def _count_observed_admissions(
     prediction_window: timedelta,
     specialty: Optional[str] = None,
 ) -> int:
-    """Count actual admissions for a given snapshot date, prediction time and
-    (optionally) specialty.
+    """Count admitted ED snapshot rows (legacy wrapper).
+
+    Deprecated: prefer `count_observed_admitted_at_some_point` in
+    `patientflow.evaluate.observations`. This wrapper remains for backward
+    compatibility and emits `DeprecationWarning` on each call.
 
     Parameters
     ----------
-    ed_visits : pd.DataFrame
-        Full ED visits dataframe.  Must contain columns ``snapshot_date``,
-        ``prediction_time``, ``is_admitted``, and (when *specialty* is given)
-        ``specialty``.
-    snapshot_date : date
-        The date of the snapshot.
-    prediction_time : Tuple[int, int]
-        ``(hour, minute)`` of the prediction moment.
-    prediction_window : timedelta
-        Not used for counting (admissions are identified by the ``is_admitted``
-        flag on the snapshot), but reserved for future use with time-windowed
-        counting.
+    ed_visits : pandas.DataFrame
+        ED visits with `snapshot_date`, `prediction_time`, `is_admitted`,
+        and `specialty` when *specialty* is not `None`.
+    snapshot_date : datetime.date
+        Snapshot calendar date.
+    prediction_time : tuple of (int, int)
+        Hour and minute of the prediction moment.
+    prediction_window : datetime.timedelta
+        Passed through for signature compatibility; does not affect the count.
     specialty : str, optional
-        If provided, count only admissions to this specialty.
+        If given, restrict to this specialty.
 
     Returns
     -------
     int
-        Number of admitted patients matching the criteria.
+        Number of admitted rows, delegated to
+        `count_observed_admitted_at_some_point` in `patientflow.evaluate.observations`.
+
+    Warns
+    -----
+    DeprecationWarning
+        On every call.
     """
-    mask = (
-        (ed_visits["snapshot_date"] == snapshot_date)
-        & (ed_visits["prediction_time"] == prediction_time)
-        & (ed_visits["is_admitted"].astype(bool))
+    warnings.warn(
+        "_count_observed_admissions is deprecated; use "
+        "patientflow.evaluate.observations.count_observed_admitted_at_some_point",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    if specialty is not None:
-        mask = mask & (ed_visits["specialty"] == specialty)
-    return int(mask.sum())
+    from patientflow.evaluate.observations import count_observed_admitted_at_some_point
+
+    return count_observed_admitted_at_some_point(
+        ed_visits,
+        snapshot_date,
+        prediction_time,
+        prediction_window,
+        specialty=specialty,
+    )
 
 
 def get_prob_dist_by_service(
-    ed_visits: pd.DataFrame,
+    ed_visits: Optional[pd.DataFrame],
     snapshot_dates: List[date],
     prediction_time: Tuple[int, int],
-    models: tuple,
+    models: Union[tuple, ServiceModels],
     specialties: List[str],
     prediction_window: timedelta,
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
+    flow_selection: Optional[FlowSelection] = None,
+    observation_mode: str = "admitted_at_some_point",
+    x1: Optional[float] = None,
+    y1: Optional[float] = None,
+    x2: Optional[float] = None,
+    y2: Optional[float] = None,
     services: Optional[List[str]] = None,
     inpatient_visits: Optional[pd.DataFrame] = None,
-    flow_selection: Optional[Any] = None,
     component: str = "arrivals",
+    use_admission_in_window_prob: Optional[bool] = None,
+    outcome_column: str = "left_subspecialty_in_window",
     verbose: bool = False,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
-    Unlike ``get_prob_dist`` and ``get_prob_dist_using_survival_curve``, which
+    Unlike `get_prob_dist` and `get_prob_dist_using_survival_curve`, which
     evaluate a single model component at a time, this function evaluates the
     composed prediction for one or more services — multiple flows (ED current,
     yet-to-arrive, transfers, departures) convolved together via
-    ``DemandPredictor``.
-
-    ``build_service_data`` is called once per snapshot date and produces
-    ``ServicePredictionInputs`` for *all* specialties simultaneously, so
-    requesting multiple services adds negligible cost.
-
-    For each snapshot date, this function:
-
-    1. Extracts the ED and (optionally) inpatient snapshots for the given
-       ``prediction_time``.
-    2. Calls ``build_service_data`` to produce ``ServicePredictionInputs``
-       for all specialties.
-    3. Runs ``DemandPredictor.predict_service`` with the given
-       ``flow_selection`` for each requested service.
-    4. Counts the observed admissions from the data for each service.
-    5. Packages the predicted PMF and observed count into the standard
-       evaluation dictionary format consumed by ``plot_epudd``,
-       ``plot_randomised_pit``, ``qq_plot``, etc.
+    `DemandPredictor`.
 
     Parameters
     ----------
-    ed_visits : pd.DataFrame
-        Full ED visits dataframe (all dates, all prediction times).  Must
-        contain columns ``snapshot_date``, ``prediction_time``,
-        ``is_admitted``, ``specialty``, and ``elapsed_los`` (as timedelta).
-    snapshot_dates : List[date]
+    ed_visits : pandas.DataFrame, optional
+        Full ED visits dataframe (all dates, all prediction times). Required
+        when the flow selection includes current ED patients or when
+        *observation_mode* counts from ED snapshots. Must contain columns
+        `snapshot_date`, `prediction_time`, `is_admitted`, `specialty`, and
+        `elapsed_los` (as `timedelta`) when provided.
+    snapshot_dates : list of datetime.date
         Dates in the test set to evaluate.
-    prediction_time : Tuple[int, int]
-        ``(hour, minute)`` of the prediction moment.
-    models : tuple
-        Seven-element tuple of trained models (or ``None``), as expected by
-        ``build_service_data``: ``(ed_classifier, inpatient_classifier,
-        spec_model, yta_model, non_ed_yta_model, elective_yta_model,
-        transfer_model)``.
-    specialties : List[str]
-        All specialties to pass to ``build_service_data``.  This determines
-        the full set of ``ServicePredictionInputs`` that are prepared.
-    prediction_window : timedelta
+    prediction_time : tuple of (int, int)
+        Hour and minute of the prediction moment.
+    models : tuple or ServiceModels
+        Seven-element tuple of trained models (or `None`), or a `ServiceModels`
+        bundle from `patientflow.model_artifacts`, as accepted by
+        `build_service_data`.
+    specialties : list of str
+        All specialties to pass to `build_service_data`. Determines the full
+        set of `ServicePredictionInputs` prepared.
+    prediction_window : datetime.timedelta
         Prediction horizon.
-    x1, y1, x2, y2 : float
-        Parameters for the admission-in-window probability curve.
-    services : List[str], optional
-        Which services to evaluate and return results for.  Each must be
-        present in *specialties*.  If ``None``, all *specialties* are
-        evaluated.
-    inpatient_visits : pd.DataFrame, optional
-        Full inpatient visits dataframe (all dates, all prediction times).
-        If provided, must contain columns ``snapshot_date``,
-        ``prediction_time``, and ``elapsed_los`` (as timedelta).  Used
-        to supply inpatient snapshots for departure predictions.  If
-        ``None``, departures are predicted as zero.
     flow_selection : FlowSelection, optional
-        Which flows to include in the prediction.  If ``None``,
-        ``FlowSelection.default()`` is used.
-    component : str, default ``"arrivals"``
-        Which component of the ``PredictionBundle`` to extract for
-        evaluation.  One of ``"arrivals"``, ``"departures"``, or
-        ``"net_flow"``.
-    verbose : bool, default ``False``
-        If ``True``, print a one-line summary on completion.
+        Which flows to include; drives which inputs and curve parameters are
+        required. When omitted, defaults to `FlowSelection.default()` (as in
+        1.6.2 when `flow_selection=None`).
+    observation_mode : str, optional
+        Counting rule passed to `patientflow.evaluate.observations.count_observed`.
+        Default is `admitted_at_some_point`, matching legacy
+        `_count_observed_admissions` for arrivals. For `component='arrivals'`
+        use `admitted_in_window` explicitly when evaluating the aspirational
+        setting (two evaluations require two calls). For `component='departures'`
+        use `departed_in_window`.
+    x1, y1, x2, y2 : float, optional
+        Parameters for the parametric admission-in-window curve when required
+        by the models and flow selection.
+    services : list of str, optional
+        Services to evaluate and return. Each must appear in *specialties*.
+        If `None`, all *specialties* are evaluated.
+    inpatient_visits : pandas.DataFrame, optional
+        Full inpatient snapshot dataframe (all dates, all prediction times).
+        Required when the flow selection includes departures or transfers, and
+        for `observation_mode='departed_in_window'` (must include
+        *outcome_column*). If provided for prediction, must contain columns
+        `snapshot_date`, `prediction_time`, and `elapsed_los` (as `timedelta`).
+    component : {'arrivals', 'departures', 'net_flow'}, optional
+        Which `PredictionBundle` attribute to extract. Default is `arrivals`.
+        Distribution evaluation for `net_flow` is not supported.
+    use_admission_in_window_prob : bool, optional
+        Whether to weight current ED admissions by in-window admission
+        probability in `build_service_data`. When omitted, defaults to True
+        for `admitted_in_window` and False for `admitted_at_some_point`.
+    outcome_column : str, optional
+        Boolean label column for `observation_mode='departed_in_window'`.
+        Default is `left_subspecialty_in_window`.
+    verbose : bool, optional
+        If True, print a one-line summary on completion. Default is False.
 
     Returns
     -------
-    Dict[str, Dict[date, Dict[str, Any]]]
-        Dictionary mapping each service name to a dict mapping each
-        snapshot date to a dict with keys ``'agg_predicted'`` (DataFrame
-        with ``'agg_proba'`` column) and ``'agg_observed'`` (int).  The
-        inner dict is the standard format expected by the evaluation
-        visualisation functions.
+    dict[str, dict[datetime.date, dict[str, Any]]]
+        Nested mapping service -> snapshot_date -> leaf, where each *leaf* has
+        keys `agg_predicted` (DataFrame with `agg_proba` column) and
+        `agg_observed` (int), as expected by evaluation plots.
 
     Raises
     ------
     ValueError
-        If ``component`` is not one of the recognised values, or
-        if any entry in *services* is not found in *specialties*.
+        If *component* is not recognised, if *services* contains unknown
+        specialties, if required visit frames or curve parameters are missing
+        for *flow_selection*, if *component* is incompatible with
+        *flow_selection*, if *observation_mode* is incompatible with
+        *component*, or if a required observation frame is missing for
+        *observation_mode*.
+    TypeError
+        Propagated from `build_service_data` (`patientflow.predict.service`)
+        when *models* is not a `ServiceModels` instance or a seven-tuple.
+
+    Notes
+    -----
+    `build_service_data` is called once per snapshot date and produces inputs
+    for all *specialties*; requesting multiple *services* adds negligible cost.
+
+    For each snapshot date the function:
+
+    1. Extracts ED and (optionally) inpatient snapshots for *prediction_time*
+       when *flow_selection* requires them.
+    2. Calls `build_service_data`.
+    3. Runs `DemandPredictor.predict_service` for each requested service.
+    4. Counts observed totals via `patientflow.evaluate.observations.count_observed`
+       (see the pairing notes in that module's docstring).
+    5. Packages predicted PMF and observed count for EPUDD / PIT / QQ plots.
+
+    For each *snapshot_date*, `prediction_date` is set to that date when
+    calling `build_service_data` so weekday-stratified yet-to-arrive models
+    receive a calendar date.
+
+    See Also
+    --------
+    patientflow.evaluate.observations.count_observed
+    patientflow.evaluate.observations.validate_observation_mode_for_component
     """
+    from patientflow.evaluate.observations import (
+        count_observed,
+        validate_observation_mode_for_component,
+    )
+    from patientflow.predict.demand import DemandPredictor
+    from patientflow.predict.flow_selection_checks import (
+        assert_component_matches_flow_selection,
+        requires_ed_snapshots,
+        requires_inpatient_snapshots,
+    )
     from patientflow.predict.service import build_service_data
-    from patientflow.predict.demand import DemandPredictor, FlowSelection
+
+    if flow_selection is None:
+        flow_selection = FlowSelection.default()
 
     valid_components = ("arrivals", "departures", "net_flow")
     if component not in valid_components:
         raise ValueError(
             f"component must be one of {valid_components}, " f"got '{component}'"
+        )
+
+    validate_observation_mode_for_component(component, observation_mode)
+
+    if use_admission_in_window_prob is None:
+        use_admission_in_window_prob = observation_mode == "admitted_in_window"
+
+    if observation_mode in ("admitted_at_some_point", "admitted_in_window"):
+        if ed_visits is None:
+            raise ValueError(
+                f"ed_visits is required for observation_mode={observation_mode!r}"
+            )
+    if observation_mode == "departed_in_window" and inpatient_visits is None:
+        raise ValueError(
+            "inpatient_visits is required for observation_mode='departed_in_window'"
         )
 
     if services is None:
@@ -800,31 +874,67 @@ def get_prob_dist_by_service(
                 f"services {unknown} not found in specialties {specialties}"
             )
 
-    if flow_selection is None:
-        flow_selection = FlowSelection.default()
+    flow_selection.validate()
+    assert_component_matches_flow_selection(component, flow_selection)
+
+    if isinstance(models, ServiceModels):
+        transfer_model = models.transfer_model
+    else:
+        transfer_model = models[6]
+
+    if requires_ed_snapshots(flow_selection) and ed_visits is None:
+        raise ValueError(
+            "ed_visits is required when flow_selection.include_ed_current is True"
+        )
+    if requires_inpatient_snapshots(flow_selection, transfer_model) and (
+        inpatient_visits is None
+    ):
+        raise ValueError(
+            "inpatient_visits is required when the flow_selection includes "
+            "departures or transfers with a transfer model"
+        )
 
     predictor = DemandPredictor(k_sigma=8.0)
     result: Dict[str, Dict[date, Dict[str, Any]]] = {svc: {} for svc in services}
 
+    def _observed_for_service(svc: str, dt: date) -> int:
+        return count_observed(
+            observation_mode,
+            snapshot_date=dt,
+            prediction_time=prediction_time,
+            prediction_window=prediction_window,
+            ed_visits=ed_visits,
+            inpatient_visits=inpatient_visits,
+            specialty=svc,
+            outcome_column=outcome_column,
+        )
+
     for dt in snapshot_dates:
-        ed_snapshot = ed_visits[
-            (ed_visits["snapshot_date"] == dt)
-            & (ed_visits["prediction_time"] == prediction_time)
-        ]
+        ed_snapshot_processed: Optional[pd.DataFrame] = None
+        if requires_ed_snapshots(flow_selection):
+            assert ed_visits is not None
+            ed_snapshot = ed_visits[
+                (ed_visits["snapshot_date"] == dt)
+                & (ed_visits["prediction_time"] == prediction_time)
+            ]
+            if ed_snapshot.empty:
+                for svc in services:
+                    result[svc][dt] = prediction_to_eval_dict(
+                        np.array([1.0]), observed=_observed_for_service(svc, dt)
+                    )
+                continue
 
-        if ed_snapshot.empty:
-            for svc in services:
-                result[svc][dt] = prediction_to_eval_dict(np.array([1.0]), observed=0)
-            continue
-
-        ed_snapshot_processed = ed_snapshot.copy(deep=True)
-        if not pd.api.types.is_timedelta64_dtype(ed_snapshot_processed["elapsed_los"]):
-            ed_snapshot_processed["elapsed_los"] = pd.to_timedelta(
-                ed_snapshot_processed["elapsed_los"], unit="s"
-            )
+            ed_snapshot_processed = ed_snapshot.copy(deep=True)
+            if not pd.api.types.is_timedelta64_dtype(
+                ed_snapshot_processed["elapsed_los"]
+            ):
+                ed_snapshot_processed["elapsed_los"] = pd.to_timedelta(
+                    ed_snapshot_processed["elapsed_los"], unit="s"
+                )
 
         inpatient_snapshot = None
-        if inpatient_visits is not None:
+        if requires_inpatient_snapshots(flow_selection, transfer_model):
+            assert inpatient_visits is not None
             ip_mask = (inpatient_visits["snapshot_date"] == dt) & (
                 inpatient_visits["prediction_time"] == prediction_time
             )
@@ -845,10 +955,13 @@ def get_prob_dist_by_service(
             inpatient_snapshots=inpatient_snapshot,
             specialties=specialties,
             prediction_window=prediction_window,
+            flow_selection=flow_selection,
             x1=x1,
             y1=y1,
             x2=x2,
             y2=y2,
+            use_admission_in_window_prob=use_admission_in_window_prob,
+            prediction_date=dt,
         )
 
         for svc in services:
@@ -859,16 +972,9 @@ def get_prob_dist_by_service(
 
             demand_prediction = getattr(bundle, component)
 
-            observed = _count_observed_admissions(
-                ed_visits,
-                dt,
-                prediction_time,
-                prediction_window,
-                specialty=svc,
-            )
-
             result[svc][dt] = prediction_to_eval_dict(
-                demand_prediction.probabilities, observed
+                demand_prediction.probabilities,
+                _observed_for_service(svc, dt),
             )
 
     if verbose:

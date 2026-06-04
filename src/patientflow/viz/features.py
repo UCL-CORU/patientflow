@@ -16,6 +16,8 @@ from sklearn.pipeline import Pipeline
 from typing import Optional
 from pathlib import Path
 
+from patientflow.viz.utils import pyplot_show_if
+
 
 def plot_features(
     trained_models: list[TrainedClassifier] | dict[str, TrainedClassifier],
@@ -24,6 +26,8 @@ def plot_features(
     top_n: int = 20,
     suptitle: Optional[str] = None,
     return_figure: bool = False,
+    *,
+    show: bool = False,
 ) -> Optional[plt.Figure]:
     """Plot feature importance for multiple models.
 
@@ -41,6 +45,9 @@ def plot_features(
         Super title for the entire figure.
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` after drawing (when not
+        returning the figure). Leave false for non-interactive backends.
 
     Returns
     -------
@@ -116,6 +123,6 @@ def plot_features(
     if return_figure:
         return fig
     else:
-        plt.show()
+        pyplot_show_if(show)
         plt.close()
         return None

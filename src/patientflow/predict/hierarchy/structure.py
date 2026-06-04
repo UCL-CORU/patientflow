@@ -68,7 +68,7 @@ class Hierarchy:
     -----
     **Prefixed ID System:**
 
-    Internally, the hierarchy uses prefixed IDs (e.g., ``"subspecialty:Gsurg LowGI"``)
+    Internally, the hierarchy uses prefixed IDs (e.g., `"subspecialty:Gsurg LowGI"`)
     to ensure unique identification across entity types. This prevents name collisions
     when the same entity name appears at different levels (e.g., a subspecialty and
     a reporting unit both named "Acute Medicine").
@@ -76,11 +76,11 @@ class Hierarchy:
     **When You See Prefixed IDs vs Original Names:**
 
     - **Internal storage**: All entity IDs are stored with prefixes (e.g.,
-      ``"subspecialty:Gsurg LowGI"``, ``"division:Surgery Division"``)
+      `"subspecialty:Gsurg LowGI"`, `"division:Surgery Division"`)
     - **Public API**: Methods that return entity IDs use **original names** (without prefixes)
       for user convenience. For example:
-      - `get_children()` returns ``['Gsurg LowGI', 'Gsurg UppGI']`` (original names)
-      - `get_parent()` returns ``'Surgery Division'`` (original name)
+      - `get_children()` returns `['Gsurg LowGI', 'Gsurg UppGI']` (original names)
+      - `get_parent()` returns `'Surgery Division'` (original name)
       - `predict_all_levels()` returns results keyed by original names
     - **Input methods**: Methods that accept entity IDs accept **either** original names
       or prefixed IDs. The class automatically handles the conversion.
@@ -98,9 +98,9 @@ class Hierarchy:
     "Surgery Division" and a division "Surgery Division"), the prefixed ID system automatically
     handles this. When calling methods, you can use either:
 
-    - Original name: ``hierarchy.get_children("Gastrointestinal Surgery")`` - the method will
+    - Original name: `hierarchy.get_children("Gastrointestinal Surgery")` - the method will
       attempt to infer the entity type from context
-    - Prefixed ID: ``hierarchy.get_children("reporting_unit:Gastrointestinal Surgery")`` - explicitly
+    - Prefixed ID: `hierarchy.get_children("reporting_unit:Gastrointestinal Surgery")` - explicitly
       specifies the entity type
 
     If there's ambiguity (same name at multiple levels), prefer using prefixed IDs
@@ -150,10 +150,10 @@ class Hierarchy:
         -----
         The YAML file defines **structure only** (entity types and their
         parent-child relationships), not the actual entity IDs. Entity IDs are
-        populated later via ``populate_hierarchy_from_dataframe()``.
+        populated later via `populate_hierarchy_from_dataframe()`.
 
         The YAML must define a proper tree with exactly one top-level entity
-        type (``parent_type: null``). Level order starts at 0 for the bottom
+        type (`parent_type: null`). Level order starts at 0 for the bottom
         level and increases upward. Entity type names are case-sensitive.
         """
         with open(config_path, "r") as f:
@@ -472,14 +472,14 @@ def populate_hierarchy_from_dataframe(
     """Populate a hierarchy with entities and relationships from a DataFrame.
 
     Each row of the DataFrame represents one path through the hierarchy from
-    bottom to top. The ``column_mapping`` maps DataFrame column names to entity
+    bottom to top. The `column_mapping` maps DataFrame column names to entity
     type names defined in the hierarchy.
 
     Parameters
     ----------
     hierarchy : Hierarchy
         Hierarchy instance with levels already defined (e.g. from
-        ``Hierarchy.from_yaml()`` or ``Hierarchy.create_default_hospital()``).
+        `Hierarchy.from_yaml()` or `Hierarchy.create_default_hospital()`).
     hierarchy_df : pandas.DataFrame
         Organisational structure where each row is one bottom-to-top path.
         Must form a proper tree (each child has exactly one parent).

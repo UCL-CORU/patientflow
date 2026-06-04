@@ -14,6 +14,7 @@ from sklearn.calibration import calibration_curve
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.prepare import prepare_patient_snapshots
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.viz.utils import apply_figure_suptitle, pyplot_show_if
 from typing import List, Optional
 from pathlib import Path
 
@@ -33,6 +34,7 @@ def plot_calibration(
     label_col: str = "is_admitted",
     *,
     exclude_from_training_data: Optional[List[str]] = None,
+    show: bool = False,
 ):
     """Plot calibration curves for multiple models.
 
@@ -63,6 +65,8 @@ def plot_calibration(
     exclude_from_training_data : List[str], optional, deprecated
         This parameter is deprecated and ignored. Column selection is now handled
         automatically by the pipeline's FeatureColumnTransformer.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
     Returns
     -------
@@ -145,20 +149,17 @@ def plot_calibration(
         ax.legend()
 
     plt.tight_layout()
-
-    # Add suptitle if provided
-    if suptitle:
-        plt.suptitle(suptitle, fontsize=16, y=1.05)
+    apply_figure_suptitle(fig, suptitle)
 
     if media_file_path:
         if file_name:
             calib_plot_path = media_file_path / file_name
         else:
             calib_plot_path = media_file_path / "calibration_plot.png"
-        plt.savefig(calib_plot_path)
+        plt.savefig(calib_plot_path, bbox_inches="tight", dpi=300)
 
     if return_figure:
         return fig
     else:
-        plt.show()
-        plt.close()
+        pyplot_show_if(show)
+        plt.close(fig)

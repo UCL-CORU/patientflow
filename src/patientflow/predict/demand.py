@@ -65,7 +65,7 @@ class DemandPredictor:
     def predict_service(
         self,
         inputs: ServicePredictionInputs,
-        flow_selection: Optional[FlowSelection] = None,
+        flow_selection: FlowSelection,
     ) -> PredictionBundle:
         """Predict service demand with flexible flow selection.
 
@@ -78,14 +78,20 @@ class DemandPredictor:
         inputs : ServicePredictionInputs
             Dataclass containing all prediction inputs for this service.
             See ServicePredictionInputs for field details.
-        flow_selection : FlowSelection, optional
-            Selection specifying which flows to include. If None, uses
-            FlowSelection.default() which includes all flows.
+        flow_selection : FlowSelection
+            Selection specifying which flows to include.
 
         Returns
         -------
         PredictionBundle
-            Bundle containing arrivals, departures, and net flow predictions
+            Bundle containing arrivals, departures, and net flow predictions.
+
+        Raises
+        ------
+        ValueError
+            If `flow_selection.validate()` raises (invalid `FlowSelection`).
+        KeyError
+            If `inputs` lacks inflow or outflow keys required by *flow_selection*.
 
         Notes
         -----
@@ -95,10 +101,6 @@ class DemandPredictor:
         2. Departures: Convolution of all selected outflow distributions
         3. Net flow: Difference of expected values (arrivals - departures)
         """
-        if flow_selection is None:
-            flow_selection = FlowSelection.default()
-
-        # Validate flow selection configuration
         flow_selection.validate()
 
         service_id = inputs.service_id
@@ -334,10 +336,39 @@ class DemandPredictor:
         entity_id: str,
         entity_type: str,
         child_bundles: List[PredictionBundle],
+        flow_selection: FlowSelection,
         arrivals_max_support: Optional[int] = None,
         departures_max_support: Optional[int] = None,
     ) -> PredictionBundle:
-        """Create a prediction bundle by aggregating child bundles."""
+        """Aggregate child `PredictionBundle` objects into one parent bundle.
+
+        Parameters
+        ----------
+        entity_id : str
+            Identifier for the parent entity.
+        entity_type : str
+            Entity type label (e.g. `'reporting_unit'`).
+        child_bundles : list of PredictionBundle
+            Child-level bundles to convolve.
+        flow_selection : FlowSelection
+            Selection recorded on the parent bundle (must match the selection
+            used when predicting children).
+        arrivals_max_support : int, optional
+            Optional cap for the arrivals convolution.
+        departures_max_support : int, optional
+            Optional cap hint; departures may be recomputed from child PMF
+            physical limits.
+
+        Returns
+        -------
+        PredictionBundle
+            Aggregated arrivals, departures, net flow, and metadata.
+
+        Notes
+        -----
+        When `child_bundles` is empty, convolution yields degenerate PMFs and
+        `flow_selection` is still attached to the returned bundle.
+        """
         arrivals_preds = [b.arrivals for b in child_bundles]
         departures_preds = [b.departures for b in child_bundles]
 
@@ -369,13 +400,6 @@ class DemandPredictor:
             flow_type="departures",
         )
         net_flow = self._compute_net_flow(arrivals, departures, entity_id)
-
-        # Use flow_selection from first child if available, otherwise use default
-        flow_selection = (
-            child_bundles[0].flow_selection
-            if child_bundles
-            else FlowSelection.default()
-        )
 
         is_aspirational = any(b.is_aspirational for b in child_bundles)
 
