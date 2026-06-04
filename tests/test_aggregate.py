@@ -741,6 +741,63 @@ class TestGetProbDistByService(unittest.TestCase):
             mock_build_service_data.call_args.kwargs["use_admission_in_window_prob"]
         )
 
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_legacy_defaults_without_flow_selection_or_observation_mode(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        ed_visits = self._minimal_ed_visits()
+        ed_visits = pd.concat(
+            [ed_visits, self._minimal_ed_visits(admitted=False)],
+            ignore_index=True,
+        )
+        inpatient_visits = pd.DataFrame(
+            [
+                {
+                    "snapshot_date": date(2024, 1, 1),
+                    "prediction_time": (10, 0),
+                    "left_subspecialty_in_window": False,
+                    "specialty": "medical",
+                    "elapsed_los": timedelta(hours=1),
+                }
+            ]
+        )
+        base_kwargs = dict(
+            ed_visits=ed_visits,
+            snapshot_dates=[date(2024, 1, 1)],
+            prediction_time=(10, 0),
+            models=(None,) * 7,
+            specialties=["medical"],
+            prediction_window=timedelta(hours=8),
+            inpatient_visits=inpatient_visits,
+            services=["medical"],
+        )
+        implicit = get_prob_dist_by_service(**base_kwargs)
+        explicit = get_prob_dist_by_service(
+            **base_kwargs,
+            flow_selection=FlowSelection.default(),
+            observation_mode="admitted_at_some_point",
+        )
+        observed = implicit["medical"][date(2024, 1, 1)]["agg_observed"]
+        self.assertEqual(
+            observed,
+            explicit["medical"][date(2024, 1, 1)]["agg_observed"],
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            legacy = _count_observed_admissions(
+                ed_visits,
+                date(2024, 1, 1),
+                (10, 0),
+                timedelta(hours=8),
+                specialty="medical",
+            )
+        self.assertEqual(observed, legacy)
+
     def test_count_observed_admissions_deprecation(self):
         df = pd.DataFrame(
             {

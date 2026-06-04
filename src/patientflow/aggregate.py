@@ -707,8 +707,8 @@ def get_prob_dist_by_service(
     models: Union[tuple, ServiceModels],
     specialties: List[str],
     prediction_window: timedelta,
-    flow_selection: FlowSelection,
-    observation_mode: str,
+    flow_selection: Optional[FlowSelection] = None,
+    observation_mode: str = "admitted_at_some_point",
     x1: Optional[float] = None,
     y1: Optional[float] = None,
     x2: Optional[float] = None,
@@ -749,14 +749,17 @@ def get_prob_dist_by_service(
         set of `ServicePredictionInputs` prepared.
     prediction_window : datetime.timedelta
         Prediction horizon.
-    flow_selection : FlowSelection
+    flow_selection : FlowSelection, optional
         Which flows to include; drives which inputs and curve parameters are
-        required.
-    observation_mode : str
+        required. When omitted, defaults to `FlowSelection.default()` (as in
+        1.6.2 when `flow_selection=None`).
+    observation_mode : str, optional
         Counting rule passed to `patientflow.evaluate.observations.count_observed`.
-        For `component='arrivals'` use `admitted_at_some_point` or
-        `admitted_in_window` explicitly (two evaluations require two calls).
-        For `component='departures'` use `departed_in_window`.
+        Default is `admitted_at_some_point`, matching legacy
+        `_count_observed_admissions` for arrivals. For `component='arrivals'`
+        use `admitted_in_window` explicitly when evaluating the aspirational
+        setting (two evaluations require two calls). For `component='departures'`
+        use `departed_in_window`.
     x1, y1, x2, y2 : float, optional
         Parameters for the parametric admission-in-window curve when required
         by the models and flow selection.
@@ -837,6 +840,9 @@ def get_prob_dist_by_service(
         requires_inpatient_snapshots,
     )
     from patientflow.predict.service import build_service_data
+
+    if flow_selection is None:
+        flow_selection = FlowSelection.default()
 
     valid_components = ("arrivals", "departures", "net_flow")
     if component not in valid_components:

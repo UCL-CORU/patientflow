@@ -391,6 +391,42 @@ class TestBuildServiceData(unittest.TestCase):
             self.assertIsInstance(spec_data.inflows["non_ed_yta"].distribution, float)
             self.assertIsInstance(spec_data.inflows["elective_yta"].distribution, float)
 
+    def test_omitted_flow_selection_matches_default(self):
+        """1.6.2-style callers omitting flow_selection get FlowSelection.default()."""
+        ed_snapshots = self._make_snapshots(50)
+        inpatient_snapshots = self._make_inpatient_snapshots(30)
+        kwargs = dict(
+            models=self.models,
+            prediction_time=self.prediction_time,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+        )
+        explicit = build_service_data(**kwargs, flow_selection=FlowSelection.default())
+        implicit = build_service_data(**kwargs)
+        self.assertEqual(set(explicit.keys()), set(implicit.keys()))
+        for spec in self.specialties:
+            self.assertEqual(
+                set(explicit[spec].inflows.keys()),
+                set(implicit[spec].inflows.keys()),
+            )
+            self.assertEqual(
+                set(explicit[spec].outflows.keys()),
+                set(implicit[spec].outflows.keys()),
+            )
+            for flow_id in explicit[spec].inflows:
+                exp = explicit[spec].inflows[flow_id].distribution
+                got = implicit[spec].inflows[flow_id].distribution
+                if isinstance(exp, float):
+                    self.assertEqual(exp, got)
+                else:
+                    np.testing.assert_array_equal(np.asarray(exp), np.asarray(got))
+
     def test_empirical_yta_integration(self):
         empirical_arrivals = _create_random_arrivals_with_departures(n=1000)
         empirical_yta = _create_empirical_yta_model(
