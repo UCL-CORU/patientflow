@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../4_Specify_demand_model/">
+        <link rel="prev" href="../3d_Evaluate_bed_demand_by_hospital_service/">
       
       
-        <link rel="next" href="../4a_Organise_predictions_for_a_production_pipeline/">
+        <link rel="next" href="../3e_Predict_demand_from_patients_yet_to_arrive/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>4a. Specify requirements for emergency demand prediction - PatientFlow</title>
+        <title>3d_i. Evaluate bed demand with patientflow.evaluate - PatientFlow</title>
       
     
     
@@ -110,7 +110,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#4a-specify-requirements-for-emergency-demand-prediction" class="md-skip">
+        <a href="#3d_i-evaluate-bed-demand-with-patientflowevaluate" class="md-skip">
           Skip to content
         </a>
       
@@ -146,7 +146,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              4a. Specify requirements for emergency demand prediction
+              3d_i. Evaluate bed demand with patientflow.evaluate
             
           </span>
         </div>
@@ -737,10 +737,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d_i. Evaluate bed demand with patientflow.evaluate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -756,6 +783,142 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-use-the-evaluate-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why use the evaluate package?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        About the data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#load-data-and-train-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load data and train models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-by-hospital-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate predicted distributions by hospital service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#register-inputs-on-evaluationinputsbuilder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register inputs on EvaluationInputsBuilder
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Register inputs on EvaluationInputsBuilder">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#evaluationtarget-fields-one-distribution-target-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EvaluationTarget fields (one distribution target here)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-inputs-set-on-this-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder inputs set on this run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -849,37 +1012,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    4a. Specify requirements for emergency demand prediction
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../4_Specify_emergency_demand_model/" class="md-nav__link">
         
   
   
@@ -895,48 +1031,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#recap-on-the-requirements-of-our-users" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recap on the requirements of our users
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-current-output-from-the-uclh-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The current output from the UCLH application
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1365,10 +1459,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#recap-on-the-requirements-of-our-users" class="md-nav__link">
+  <a href="#why-use-the-evaluate-package" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recap on the requirements of our users
+        Why use the evaluate package?
       
     </span>
   </a>
@@ -1376,10 +1470,104 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-current-output-from-the-uclh-application" class="md-nav__link">
+  <a href="#prerequisites" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The current output from the UCLH application
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-the-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        About the data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#load-data-and-train-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Load data and train models
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generate-predicted-distributions-by-hospital-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generate predicted distributions by hospital service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#register-inputs-on-evaluationinputsbuilder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register inputs on EvaluationInputsBuilder
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Register inputs on EvaluationInputsBuilder">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#evaluationtarget-fields-one-distribution-target-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EvaluationTarget fields (one distribution target here)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-inputs-set-on-this-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Builder inputs set on this run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
       
     </span>
   </a>
@@ -1403,7 +1591,7 @@
 
 
   
-    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/4_Specify_emergency_demand_model.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/zmek/patientflow/edit/main/docs/notebooks/3d_i_Evaluate_bed_demand_with_evaluate_package.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1411,38 +1599,410 @@
   
 
 
-<h1 id="4a-specify-requirements-for-emergency-demand-prediction">4a. Specify requirements for emergency demand prediction</h1>
-<p>In previous notebooks I have introduced all of the building blocks provided in <code>patientflow</code> to make predictions of bed counts within a prediction window. In the next notebook I show how we used these building blocks in our application at University College London Hospital (UCLH) to predict emergency demand for beds, by specialty, over the next 8 hours. The predictions are aspirational; they assume that ED four-hour targets are met.</p>
-<p>First, a brief recap on the requirements of our models.</p>
-<h2 id="recap-on-the-requirements-of-our-users">Recap on the requirements of our users</h2>
-<p>In notebook 1 I introduced bed managers and their work. Through working closely with them over five years, we have developed an understanding their requirements for emergency demand predictions.</p>
+<h1 id="3d_i-evaluate-bed-demand-with-patientflowevaluate">3d_i. Evaluate bed demand with <code>patientflow.evaluate</code></h1>
+<p>In notebook <strong>3d</strong>, I evaluated specialty-weighted bed demand predictions with manual plots (<code>calc_mae_mpe</code>, <code>plot_deltas</code>, <code>plot_epudd</code>).</p>
+<p>This notebook shows the same <strong>distribution</strong> evaluation through the <code>patientflow.evaluate</code> package: declare an <code>EvaluationTarget</code>, register predicted PMFs on <code>EvaluationInputsBuilder</code>, and call <code>run_evaluation</code> to write a timestamped output directory (<code>scalars.json</code>, EPUDD charts under <code>distributions/</code>).</p>
+<h3 id="why-use-the-evaluate-package">Why use the evaluate package?</h3>
+<p>Notebook <strong>3d</strong> is a good way to learn the evaluation logic: you build PMFs, compute scalar summaries, and call plotting functions directly.</p>
+<p>The evaluate package is preferable when you want evaluation to behave more like a <strong>repeatable pipeline</strong>:</p>
 <ul>
-<li>They want information at specific times of day to coincide with their flow huddles, with an 8-hour view of incoming demand at these times</li>
-<li>The 8-hour view needs to take account of patients who are yet to arrive, who should be admitted within that time</li>
-<li>The predictions should be based on the assumption that the ED is meeting its 4-hour targets for performance (for example, the target that 80% of patients are to be admitted or discharged within 4 hours of arriving at the front door)</li>
-<li>The predictions should exclude patients who already have decisions to admit under a specialty; these should be counted as known demand for that specialty</li>
-<li>The predictions should be provided as numbers of bed needed (rather than predictions of whether any individual patient will be admitted) and should be grouped by speciality of admission, since a specialty breakdown helps to inform targeted actions</li>
-<li>The predictions should be sent by email, with a spreadsheet attached</li>
-<li>The output should communicate a low threshold number of beds needed with 90% probability, and with 70% probability</li>
+<li><strong>Scale across many services</strong> — in <strong>3d</strong>, each hospital service gets its own histogram and EPUDD figure. That is manageable for a handful of specialties, but visual inspection does not scale when you evaluate many services (or many prediction times). A run directory with <code>scalars.json</code> lets you scan and compare results in tabular form, and open only the charts you need.</li>
+<li><strong>Standard output layout</strong> — each run writes a timestamped folder with <code>evaluation_run.yaml</code>, <code>scalars.json</code>, and charts in predictable subfolders, rather than ad hoc figures in the notebook.</li>
+<li><strong>Explicit evaluation contract</strong> — an <code>EvaluationTarget</code> records what you are measuring (<code>evaluation_mode</code>, <code>observation_mode</code>, <code>component</code>), which makes runs easier to compare and audit.</li>
+<li><strong>Centralised observation counting</strong> — observed values are recomputed from registered visit frames using <code>patientflow.evaluate.observations</code>, so the same counting rules apply across services and prediction times.</li>
+<li><strong>Less notebook glue code</strong> — once PMFs are registered on the builder, <code>run_evaluation</code> handles dispatch, file naming, and scalar collection for you.</li>
+<li><strong>Room to grow</strong> — you can add further evaluation targets later without rewriting the manual plot loops from <strong>3d</strong>.</li>
+<li><strong>Future evaluation options</strong> — later <code>patientflow</code> releases will add new evaluation capabilities on top of this package (for example, additional metrics for assessing predicted distributions). Adopting <code>run_evaluation</code> now means those options can plug into the same run layout rather than requiring another one-off notebook workflow.</li>
 </ul>
-<p>For more information about these requirements, and how we tailored the UCLH application to meet them, check out this talk by me, with Craig Wood, bed manager at UCLH, at the Health and Care Analytics Conference 2023:</p>
-<p><a href="https://www.youtube.com/watch?v=1V1IzWmOyX8" target="_blank">
-    <img src="https://img.youtube.com/vi/1V1IzWmOyX8/0.jpg" alt="Watch the video" width="600"/>
-</a></p>
-<h2 id="the-current-output-from-the-uclh-application">The current output from the UCLH application</h2>
-<p>The annotated figure below shows the output that our application currently generates at UCLH</p>
-<pre><code class="language-python">from IPython.display import Image
-Image(filename='img/thumbnail_UCLH_application.jpg')
+<p>You still use the same prediction method as <strong>3d</strong> (specialty-weighted <code>get_prob_dist</code> PMFs). This notebook only changes how those PMFs are evaluated and stored.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<ul>
+<li>Notebooks <strong>3b</strong>, <strong>3c</strong>, and <strong>3d</strong> (same models and evaluation concepts)</li>
+<li><code>patientflow</code> 1.7 or later (evaluate package and backward-compatible imports)</li>
+</ul>
+<h3 id="about-the-data">About the data</h3>
+<p>You can request the UCLH datasets on <a href="https://zenodo.org/records/14866057">Zenodo</a>. If you do not have the public data, change <code>data_folder_name</code> from <code>'data-public'</code> to <code>'data-synthetic'</code>.</p>
+<pre><code class="language-python"># Reload functions every time
+%load_ext autoreload
+%autoreload 2
 </code></pre>
-<p><img alt="jpeg" src="../4_Specify_emergency_demand_model_files/4_Specify_emergency_demand_model_1_0.jpg" /></p>
-<p>The modelling output</p>
+<h2 id="load-data-and-train-models">Load data and train models</h2>
+<p>This section matches notebook <strong>3d</strong>: <code>prepare_prediction_inputs</code> trains admission models at each prediction time and a hospital service model, then I take the <strong>test</strong> holdout for evaluation.</p>
+<pre><code class="language-python">from datetime import datetime, timedelta
+
+from patientflow.prepare import create_temporal_splits
+from patientflow.train.emergency_demand import prepare_prediction_inputs
+
+data_folder_name = &quot;data-public&quot;
+prediction_inputs = prepare_prediction_inputs(data_folder_name)
+
+admissions_models = prediction_inputs[&quot;admission_models&quot;]
+spec_model = prediction_inputs[&quot;specialty_model&quot;]
+ed_visits = prediction_inputs[&quot;ed_visits&quot;]
+specialties = prediction_inputs[&quot;specialties&quot;]
+params = prediction_inputs[&quot;config&quot;]
+
+model_name = &quot;admissions&quot;
+prediction_window = timedelta(minutes=params[&quot;prediction_window&quot;])
+prediction_times = list(params[&quot;prediction_times&quot;])
+prediction_dict = {tuple(pt): prediction_window for pt in prediction_times}
+
+start_training_set = params[&quot;start_training_set&quot;]
+start_validation_set = params[&quot;start_validation_set&quot;]
+start_test_set = params[&quot;start_test_set&quot;]
+end_test_set = params[&quot;end_test_set&quot;]
+
+_, _, test_visits_df = create_temporal_splits(
+    ed_visits,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;snapshot_date&quot;,
+)
+</code></pre>
+<pre><code>Split sizes: [62071, 10415, 29134]
+Split sizes: [7716, 1285, 3898]
+
+Processing: (6, 0)
+
+
+
+Processing: (9, 30)
+
+
+
+Processing: (12, 0)
+
+
+
+Processing: (15, 30)
+
+
+
+Processing: (22, 0)
+
+
+Split sizes: [62071, 10415, 29134]
+</code></pre>
+<h2 id="generate-predicted-distributions-by-hospital-service">Generate predicted distributions by hospital service</h2>
+<p>I reuse the helper from notebook <strong>3d</strong> to build specialty-weighted PMFs with <code>get_prob_dist</code> for every prediction time and hospital service.</p>
+<pre><code class="language-python">from patientflow.aggregate import get_prob_dist
+from patientflow.load import get_model_key
+from patientflow.prepare import prepare_group_snapshot_dict, prepare_patient_snapshots
+
+
+def get_specialty_probability_distributions(
+    test_visits_df,
+    spec_model,
+    admissions_models,
+    model_name,
+    specialties=None,
+):
+    if specialties is None:
+        specialties = [&quot;medical&quot;, &quot;surgical&quot;, &quot;haem/onc&quot;, &quot;paediatric&quot;]
+
+    if hasattr(spec_model, &quot;predict_dataframe&quot;):
+        test_visits_df = test_visits_df.copy()
+        test_visits_df.loc[:, &quot;specialty_prob&quot;] = spec_model.predict_dataframe(
+            test_visits_df
+        )
+    else:
+
+        def determine_specialty(row):
+            return spec_model.predict(row[&quot;consultation_sequence&quot;])
+
+        test_visits_df = test_visits_df.copy()
+        test_visits_df.loc[:, &quot;specialty_prob&quot;] = test_visits_df.apply(
+            determine_specialty, axis=1
+        )
+
+    prob_dist_dict_all = {}
+
+    for _prediction_time in test_visits_df.prediction_time.unique():
+        prob_dist_dict_for_pats_in_ED = {}
+        print(&quot;\nProcessing :&quot; + str(_prediction_time))
+        model_key = get_model_key(model_name, _prediction_time)
+
+        for specialty in specialties:
+            print(
+                f&quot;Predicting bed counts for {specialty} service, &quot;
+                &quot;for all snapshots in the test set&quot;
+            )
+
+            prob_admission_to_specialty = test_visits_df[&quot;specialty_prob&quot;].apply(
+                lambda x: x.get(specialty, 0.0) if isinstance(x, dict) else 0.0
+            )
+
+            X_test, y_test = prepare_patient_snapshots(
+                df=test_visits_df,
+                prediction_time=_prediction_time,
+                single_snapshot_per_visit=False,
+                visit_col=&quot;visit_number&quot;,
+            )
+
+            group_snapshots_dict = prepare_group_snapshot_dict(
+                test_visits_df[test_visits_df.prediction_time == _prediction_time]
+            )
+
+            admitted_to_specialty = test_visits_df[&quot;specialty&quot;] == specialty
+
+            prob_dist_dict_for_pats_in_ED[specialty] = get_prob_dist(
+                group_snapshots_dict,
+                X_test,
+                y_test,
+                admissions_models[model_key],
+                weights=prob_admission_to_specialty,
+                category_filter=admitted_to_specialty,
+                normal_approx_threshold=30,
+            )
+
+        prob_dist_dict_all[model_key] = prob_dist_dict_for_pats_in_ED
+
+    return prob_dist_dict_all
+
+
+prob_dist_dict_all = get_specialty_probability_distributions(
+    test_visits_df,
+    spec_model,
+    admissions_models,
+    model_name,
+    specialties=specialties,
+)
+</code></pre>
+<pre><code>Processing :(22, 0)
+Predicting bed counts for surgical service, for all snapshots in the test set
+
+
+Predicting bed counts for haem/onc service, for all snapshots in the test set
+
+
+Predicting bed counts for medical service, for all snapshots in the test set
+
+
+Predicting bed counts for paediatric service, for all snapshots in the test set
+
+
+
+Processing :(6, 0)
+Predicting bed counts for surgical service, for all snapshots in the test set
+
+
+Predicting bed counts for haem/onc service, for all snapshots in the test set
+
+
+Predicting bed counts for medical service, for all snapshots in the test set
+
+
+Predicting bed counts for paediatric service, for all snapshots in the test set
+
+
+
+Processing :(15, 30)
+Predicting bed counts for surgical service, for all snapshots in the test set
+
+
+Predicting bed counts for haem/onc service, for all snapshots in the test set
+
+
+Predicting bed counts for medical service, for all snapshots in the test set
+
+
+Predicting bed counts for paediatric service, for all snapshots in the test set
+
+
+
+Processing :(9, 30)
+Predicting bed counts for surgical service, for all snapshots in the test set
+
+
+Predicting bed counts for haem/onc service, for all snapshots in the test set
+
+
+Predicting bed counts for medical service, for all snapshots in the test set
+
+
+Predicting bed counts for paediatric service, for all snapshots in the test set
+
+
+
+Processing :(12, 0)
+Predicting bed counts for surgical service, for all snapshots in the test set
+
+
+Predicting bed counts for haem/onc service, for all snapshots in the test set
+
+
+Predicting bed counts for medical service, for all snapshots in the test set
+
+
+Predicting bed counts for paediatric service, for all snapshots in the test set
+</code></pre>
+<h2 id="register-inputs-on-evaluationinputsbuilder">Register inputs on <code>EvaluationInputsBuilder</code></h2>
+<p>Notebook <strong>3d</strong> stores PMFs as <code>{model_key → specialty → snapshot_date → leaf}</code>. The evaluate package expects <code>{specialty → model_key → snapshot_date → leaf}</code> for <code>add_distributions_from_service_dict</code>.</p>
+<p>The steps match notebook <strong>4d</strong>: declare <strong><code>EvaluationTarget</code></strong> rows, initialise <strong><code>EvaluationInputsBuilder</code></strong>, register predicted PMFs and observation frames with matching <strong><code>flow_name</code></strong> keys, then call <strong><code>build()</code></strong>.</p>
+<h3 id="evaluationtarget-fields-one-distribution-target-here"><code>EvaluationTarget</code> fields (one distribution target here)</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>flow_name</code></td>
+<td>Links the target to builder data. The same string must be passed to <strong><code>add_distributions_from_service_dict</code></strong> and <strong><code>add_distribution_observations</code></strong>. Not the same as <strong><code>FlowSelection</code></strong>.</td>
+</tr>
+<tr>
+<td><code>flow_type</code></td>
+<td>Logical pathway label for scalars and reporting (here <code>"admissions"</code>).</td>
+</tr>
+<tr>
+<td><code>evaluation_mode</code></td>
+<td>Selects the runner handler. Here <code>"distribution"</code> runs EPUDD charts and distribution scalars.</td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>Names the chart and scalar family for this target. For distribution mode, it sets the PNG basename under each service folder: <code>distributions/&lt;flow_name&gt;/&lt;service&gt;/{component}.png</code>.</td>
+</tr>
+<tr>
+<td><code>observation_mode</code></td>
+<td>Names the <strong><code>count_observed</code></strong> strategy when the runner recomputes <strong><code>agg_observed</code></strong> on each leaf (here <code>"admitted_at_some_point"</code> — admitted patients at the prediction moment, filtered by specialty when evaluating per service).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="builder-inputs-set-on-this-run">Builder inputs set on this run</h3>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Value in this notebook</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>flow_selection</code></strong></td>
+<td>ED current patients only (<code>FlowSelection.custom</code> with inflows off except <strong><code>include_ed_current=True</code></strong>). Written to <strong><code>evaluation_run.yaml</code></strong>; reflects the broad scenario for this run.</td>
+</tr>
+<tr>
+<td><strong><code>prediction_dict</code></strong></td>
+<td>Maps each <code>(hour, minute)</code> to <strong><code>prediction_window</code></strong> (from <code>config.yaml</code>). Required before any <strong><code>add_*</code></strong> call.</td>
+</tr>
+<tr>
+<td><strong><code>eval_split</code></strong></td>
+<td><code>"test"</code> — visit frames and plot titles refer to the test holdout (notebook <strong>3d</strong> uses the same split).</td>
+</tr>
+<tr>
+<td><strong><code>evaluation_targets</code></strong></td>
+<td>One distribution target: <strong><code>flow_name="ed_current_beds"</code></strong>, <strong><code>component="bed_demand_ed_current"</code></strong>.</td>
+</tr>
+<tr>
+<td><strong><code>add_distributions_from_service_dict</code></strong></td>
+<td>Registers reshaped specialty PMFs under <strong><code>flow_name="ed_current_beds"</code></strong>.</td>
+</tr>
+<tr>
+<td><strong><code>add_distribution_observations</code></strong></td>
+<td>Registers ED visit frames for observed counting via <strong><code>ed_visits_by_service</code></strong> (same <strong><code>test_visits_df</code></strong> per service, as in <strong>4d</strong>).</td>
+</tr>
+</tbody>
+</table>
+<p>Distribution evaluation <strong>recomputes</strong> <strong><code>agg_observed</code></strong> from those frames and raises an error if a pre-built leaf disagrees with the recomputed count.</p>
+<pre><code class="language-python">from patientflow.evaluate.inputs import EvaluationInputsBuilder, EvaluationTarget
+from patientflow.predict.types import FlowSelection
+
+FLOW_NAME = &quot;ed_current_beds&quot;
+
+prob_dist_by_service = {
+    specialty: {
+        model_key: prob_dist_dict_all[model_key][specialty]
+        for model_key in prob_dist_dict_all
+    }
+    for specialty in specialties
+}
+
+evaluation_targets = [
+    EvaluationTarget(
+        flow_name=FLOW_NAME,
+        flow_type=&quot;admissions&quot;,
+        evaluation_mode=&quot;distribution&quot;,
+        component=&quot;bed_demand_ed_current&quot;,
+        observation_mode=&quot;admitted_at_some_point&quot;,
+    ),
+]
+
+eval_flow_selection = FlowSelection.custom(
+    include_ed_current=True,
+    include_ed_yta=False,
+    include_non_ed_yta=False,
+    include_elective_yta=False,
+    include_transfers_in=False,
+    include_departures=False,
+)
+
+builder = EvaluationInputsBuilder(
+    flow_selection=eval_flow_selection,
+    prediction_dict=prediction_dict,
+    eval_split=&quot;test&quot;,
+).with_evaluation_targets(evaluation_targets)
+
+builder.add_distributions_from_service_dict(
+    flow_name=FLOW_NAME,
+    prob_dist_by_service=prob_dist_by_service,
+    model_name=model_name,
+)
+
+ed_visits_by_service = {service: test_visits_df for service in specialties}
+builder.add_distribution_observations(
+    flow_name=FLOW_NAME,
+    ed_visits_by_service=ed_visits_by_service,
+)
+
+inputs = builder.build()
+for target in inputs.evaluation_targets:
+    print(
+        f&quot;  {target.flow_name}/{target.component}: {target.evaluation_mode} &quot;
+        f&quot;(observation_mode={target.observation_mode})&quot;
+    )
+</code></pre>
+<pre><code>  ed_current_beds/bed_demand_ed_current: distribution (observation_mode=admitted_at_some_point)
+</code></pre>
+<h2 id="run-evaluation">Run evaluation</h2>
+<p><code>run_evaluation</code> writes:</p>
 <ul>
-<li>Differentiates between patients with a decision to admit (columns B:C) and those without (columns D:G)</li>
-<li>Provides separate predictions for patients in the ED and SDEC now (columns D:E), and those yet to arrive (columns F:G)</li>
-<li>Breaks down the output by speciality (rows 4:7); this is currently done at a high level - medical, surgical, haematology/oncology and paediatric - but a future version will provide predictions at detailed specialty level</li>
-<li>Shows the minimum number of beds needed with 90% probability (columns D and F) and with 70% probability (columns E and G)</li>
+<li><code>evaluation_run.yaml</code> — run settings, <strong><code>flow_selection</code></strong>, <strong><code>prediction_dict</code></strong>, and <strong><code>eval_split</code></strong></li>
+<li><code>scalars.json</code> — summary metrics per target, service, and prediction time</li>
+<li><code>distributions/ed_current_beds/&lt;service&gt;/bed_demand_ed_current.png</code> — EPUDD charts (one PNG per active service)</li>
 </ul>
-<p>The next notebook will show the implementation in code.</p>
+<pre><code class="language-python">from pathlib import Path
+
+from patientflow.evaluate.runner import run_evaluation
+
+output_root = Path(&quot;eval-output&quot;)
+run_name = f&quot;notebook3g_{datetime.now().strftime('%Y%m%d_%H%M%S')}&quot;
+
+out = run_evaluation(
+    output_root=output_root,
+    inputs=inputs,
+    run_name=run_name,
+)
+
+print(f&quot;Run directory: {out['run_dir']}&quot;)
+print(f&quot;Scalars path: {out['scalars_path']}&quot;)
+print(f&quot;Manifest path: {out['manifest_path']}&quot;)
+print(f&quot;Targets evaluated: {out['n_targets']}&quot;)
+</code></pre>
+<pre><code>Run directory: eval-output/notebook3g_20260527_211917
+Scalars path: eval-output/notebook3g_20260527_211917/scalars.json
+Manifest path: eval-output/notebook3g_20260527_211917/evaluation_run.yaml
+Targets evaluated: 1
+</code></pre>
+<h2 id="summary">Summary</h2>
+<ul>
+<li>I generated the same specialty-weighted PMFs as notebook <strong>3d</strong>, then passed them to <code>EvaluationInputsBuilder</code> and <code>run_evaluation</code>.</li>
+<li>For manual histograms and EPUDD plots in the notebook, continue to use notebook <strong>3d</strong>.</li>
+<li>If <code>run_evaluation</code> raises an error about <code>agg_observed</code> not matching a recomputed count, compare one <code>(service, snapshot_date, prediction_time)</code> between the PMF leaf from <code>get_prob_dist</code> and <code>count_observed(..., observation_mode="admitted_at_some_point", specialty=...)</code> on <code>test_visits_df</code>. Notebook <strong>3d</strong> counts observed admissions via <code>category_filter</code> on snapshot subsets; the package counts admitted rows on the full ED frame at each prediction moment.</li>
+</ul>
 
 
 

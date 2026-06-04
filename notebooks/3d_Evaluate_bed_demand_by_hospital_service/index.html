@@ -16,7 +16,7 @@
         <link rel="prev" href="../3c_Predict_bed_demand_by_hospital_service/">
       
       
-        <link rel="next" href="../3e_Predict_demand_from_patients_yet_to_arrive/">
+        <link rel="next" href="../3d_i_Evaluate_bed_demand_with_evaluate_package/">
       
       
         
@@ -813,6 +813,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Evaluate predictions by hospital service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-evaluate-package-from-this-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the evaluate package from this workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluation-options-3-series-vs-4-series" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation options: 3-series vs 4-series
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -841,6 +869,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d_i. Evaluate bed demand with patientflow.evaluate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1422,6 +1478,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Evaluate predictions by hospital service">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-evaluate-package-from-this-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the evaluate package from this workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evaluation-options-3-series-vs-4-series" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation options: 3-series vs 4-series
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1707,6 +1791,34 @@ Predicting bed counts for paediatric service, for all snapshots in the test set
 </code></pre>
 <h2 id="evaluate-predictions-by-hospital-service">Evaluate predictions by hospital service</h2>
 <p>I now evaluate the predicted distributions using the approaches introduced in notebook 3b. First, histograms showing the difference between observed and expected values for each hospital service. Then, EPUDD plots which evaluate the full predicted distribution against observed values.</p>
+<h3 id="using-the-evaluate-package-from-this-workflow">Using the evaluate package from this workflow</h3>
+<p>This notebook uses the legacy-compatible evaluation path from notebook 3b. From <code>patientflow</code> 1.7, these helpers are available directly from the evaluate package root:</p>
+<pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
+</code></pre>
+<p>This allows 3-series workflows to keep the same evaluation pattern without adopting the 4-series prediction packaging APIs.</p>
+<p>If you want fully packaged evaluation runs (standard output folders, run metadata, and central orchestration), see notebook <code>4d_Evaluate_demand_predictions.md</code>, which uses <code>EvaluationInputsBuilder</code> and <code>run_evaluation</code>.</p>
+<h3 id="evaluation-options-3-series-vs-4-series">Evaluation options: 3-series vs 4-series</h3>
+<table>
+<thead>
+<tr>
+<th>Workflow</th>
+<th>Best when</th>
+<th>Typical API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3-series (this notebook)</td>
+<td>You already have <code>get_prob_dist</code> outputs and want minimal changes</td>
+<td><code>calc_mae_mpe</code>, <code>plot_deltas</code>, <code>plot_epudd</code></td>
+</tr>
+<tr>
+<td>4-series (<code>4d</code>)</td>
+<td>You want a structured, run-based evaluation pipeline</td>
+<td><code>EvaluationInputsBuilder</code>, <code>run_evaluation</code></td>
+</tr>
+</tbody>
+</table>
 <pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
 from patientflow.viz.observed_against_expected import plot_deltas
 
@@ -1715,10 +1827,6 @@ for specialty in specialties:
     results = calc_mae_mpe(specialty_prob_dist)
     plot_deltas(results, suptitle=f&quot;Histograms of Observed - Expected Values for {specialty} service&quot;)
 </code></pre>
-<p><img alt="png" src="../3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_0.png" /></p>
-<p><img alt="png" src="../3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_1.png" /></p>
-<p><img alt="png" src="../3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_2.png" /></p>
-<p><img alt="png" src="../3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_10_3.png" /></p>
 <pre><code class="language-python">from patientflow.viz.epudd import plot_epudd
 
 for specialty in specialties:
@@ -1735,6 +1843,7 @@ for specialty in specialties:
 <p><img alt="png" src="../3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_11_3.png" /></p>
 <h2 id="summary">Summary</h2>
 <p>In this notebook I have shown how to evaluate predicted bed count distributions by hospital service, using the evaluation approaches introduced in notebook 3b. In the appendix below, I compare the service prediction model against a baseline that uses average admission proportions by hospital service.</p>
+<p>For the same PMFs run through <code>patientflow.evaluate</code> (<code>EvaluationInputsBuilder</code> and <code>run_evaluation</code>), see notebook <strong>3g</strong>.</p>
 <p>In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.</p>
 <h2 id="appendix-comparing-with-a-baseline-prediction-by-hospital-service">Appendix: Comparing with a baseline prediction by hospital service</h2>
 <p>The service prediction model used above was trained on sequences of consults. A natural baseline is to give each patient the same probability of admission to each hospital service, based on past averages. To calculate past averages, I use the <code>inpatient_arrivals</code> dataset, which includes all arrivals with one row per visit.</p>

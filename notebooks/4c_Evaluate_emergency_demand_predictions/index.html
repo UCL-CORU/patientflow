@@ -740,6 +740,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d_i. Evaluate bed demand with patientflow.evaluate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1729,7 +1757,7 @@ Predicting bed counts for paediatric specialty, for all snapshots in the test se
 <li>Adjusted QQ plots</li>
 </ul>
 <p>See notebook 3b for more on these approaches.</p>
-<pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
+<pre><code class="language-python">from patientflow.evaluate.legacy_api import calc_mae_mpe
 from patientflow.viz.observed_against_expected import plot_deltas
 specialties=['medical', 'surgical', 'haem/onc', 'paediatric']
 

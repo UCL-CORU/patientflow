@@ -931,6 +931,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3d_i. Evaluate bed demand with patientflow.evaluate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1848,7 +1876,7 @@ Processing :(9, 30)
 <h2 id="evaluate-group-snapshots">Evaluate group snapshots</h2>
 <h3 id="comparing-observed-with-expected-values">Comparing observed with expected values</h3>
 <p>The mean difference between observed and expected values is reported below.</p>
-<pre><code class="language-python">from patientflow.evaluate import calc_mae_mpe
+<pre><code class="language-python">from patientflow.evaluate.legacy_api import calc_mae_mpe
 results = calc_mae_mpe(prob_dist_dict_all)
 
 print(&quot;\nTime    MAE    MPE&quot;)
