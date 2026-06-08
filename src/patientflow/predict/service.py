@@ -47,7 +47,7 @@ from patientflow.aggregate import (
     model_input_to_pred_proba,
     pred_proba_to_agg_predicted,
 )
-from patientflow.predict.distribution import Distribution
+from patientflow.predict.transfers import compute_transfer_arrivals
 from patientflow.calculate.admission_in_prediction_window import (
     calculate_probability,
     calculate_admission_probability_from_survival_curve,
@@ -1126,18 +1126,31 @@ def _finalise_service_data(
     transfer_model: Optional[TransferProbabilityEstimator],
     specialties: List[str],
     prediction_window,
+    inpatient_snapshots: Optional[pd.DataFrame] = None,
+    prob_departure_after_elective: Optional[pd.DataFrame] = None,
+    prob_departure_after_emergency: Optional[pd.DataFrame] = None,
 ) -> Dict[str, ServicePredictionInputs]:
     """Add transfers and create final ServicePredictionInputs objects.
+
+    Transfer arrivals use per-patient subgroup routing computed directly from
+    *inpatient_snapshots* and the per-patient departure probabilities (the same
+    ``p_depart_i`` used for inpatient departure outflows), rather than scalar
+    thinning of pre-aggregated departure PMFs. See
+    [compute_transfer_arrivals][patientflow.predict.transfers.compute_transfer_arrivals].
 
     Returns
     -------
     dict
         Dictionary mapping service_id to ServicePredictionInputs
     """
-    # Compute transfer arrivals using the departure PMFs from temporary data
+    # Compute transfer arrivals using per-patient subgroup routing.
     if transfer_model is not None:
         transfer_arrivals = compute_transfer_arrivals(
-            temp_service_data, transfer_model, specialties
+            inpatient_snapshots,
+            transfer_model,
+            specialties,
+            prob_departure_after_elective=prob_departure_after_elective,
+            prob_departure_after_emergency=prob_departure_after_emergency,
         )
     else:
         # If no transfer model, assume 0 transfers
@@ -1353,176 +1366,7 @@ def build_service_data(
         service_models.transfer_model,
         specialties,
         prediction_window,
+        inpatient_snapshots=base_probs["inpatient_snapshots"],
+        prob_departure_after_elective=base_probs["prob_departure_after_elective"],
+        prob_departure_after_emergency=base_probs["prob_departure_after_emergency"],
     )
-
-
-def compute_transfer_arrivals(
-    service_data: Union[Dict[str, Dict[str, Any]], Dict[str, ServicePredictionInputs]],
-    transfer_model: Any,
-    services: List[str],
-) -> Dict[str, Dict[str, np.ndarray]]:
-    """Compute arrival PMFs from internal transfers for each service.
-
-    This function uses departure PMFs from service_data and transfer
-    probabilities from transfer_model to calculate how many patients arrive
-    at each service from transfers within other services.
-
-    Parameters
-    ----------
-    service_data : dict
-        Either a dict of dicts with nested structure containing departure FlowInputs,
-        or a dict of ServicePredictionInputs objects. For dict format, expects:
-        {'service': {'outflows': {'departures': FlowInputs(...)}}}
-    transfer_model : TransferProbabilityEstimator
-        Trained transfer probability estimator with methods:
-        - get_transfer_prob(source) -> float
-        - get_destination_distribution(source) -> dict
-    services : list of str
-        List of all services in the system
-
-    Returns
-    -------
-    dict
-        Nested dictionary mapping admission_type to service_id to PMF of arrivals from transfers.
-        {
-            'elective': {
-                'service_name': numpy.ndarray (PMF of elective transfer arrivals)
-            },
-            'emergency': {
-                'service_name': numpy.ndarray (PMF of emergency transfer arrivals)
-            }
-        }
-
-    Raises
-    ------
-    KeyError
-        If service_data is missing required departure flow information
-    ValueError
-        If transfer_model has not been fitted
-
-    Examples
-    --------
-    >>> # After computing service_data with departure PMFs
-    >>> transfer_arrivals = compute_transfer_arrivals(
-    ...     service_data,
-    ...     transfer_model,
-    ...     services=['cardiology', 'surgery', 'medicine']
-    ... )
-    >>> # Access arrival PMF for a specific subspecialty and admission type
-    >>> cardiology_elective_arrivals = transfer_arrivals['elective']['cardiology']
-    >>> cardiology_emergency_arrivals = transfer_arrivals['emergency']['cardiology']
-
-    Notes
-    -----
-    Algorithm:
-
-    For each target service, the function:
-
-    1. Initializes with zero arrivals (PMF = [1.0, 0.0])
-    2. Iterates over each potential source service
-    3. Gets the departure PMF from the source
-    4. Gets transfer probabilities from the transfer model
-    5. If the source sends patients to the target:
-
-       - Calculates compound_prob = prob_transfer × prob_destination
-       - Scales the departure PMF by compound_prob using Distribution.thin()
-       - Convolves with the accumulating arrival PMF using Distribution.convolve()
-
-    6. Stores the final aggregated arrival PMF
-
-    Assumptions:
-
-    - Transfers from different source subspecialties are independent
-    - Transfer probabilities are constant across patients
-    - The departure PMF already accounts for the timing window
-    - Self-transfers (source == target) are excluded
-
-    The function handles zero probabilities naturally without requiring a threshold
-    parameter. Convolution operations are numerically stable even with small
-    probabilities.
-    """
-    predicted_arrivals: Dict[str, Dict[str, np.ndarray]] = {
-        "elective": {},
-        "emergency": {},
-    }
-
-    for admission_type in ["elective", "emergency"]:
-        for target_service in services:
-            # Initialize with zero arrivals: P(0 arrivals) = 1.0
-            arrival_dist = Distribution.from_pmf(np.array([1.0]))
-
-            for source_service in services:
-                # Skip self-transfers
-                if source_service == target_service:
-                    continue
-
-                # Get departure PMF for source (handle both dict and dataclass)
-                source_data = service_data[source_service]
-                if isinstance(source_data, ServicePredictionInputs):
-                    # Access through new structure: outflows dict -> "departures" -> distribution
-                    if f"{admission_type}_departures" not in source_data.outflows:
-                        raise KeyError(
-                            f"Missing '{admission_type}_departures' outflow for service '{source_service}'"
-                        )
-                    departure_pmf = source_data.outflows[
-                        f"{admission_type}_departures"
-                    ].distribution
-                elif isinstance(source_data, dict):
-                    # Temporary data structure during build (dict with "inflows" and "outflows" keys)
-                    if (
-                        "outflows" not in source_data
-                        or f"{admission_type}_departures" not in source_data["outflows"]
-                    ):
-                        raise KeyError(
-                            f"Missing '{admission_type}_departures' in 'outflows' for service '{source_service}'"
-                        )
-                    departure_pmf = source_data["outflows"][
-                        f"{admission_type}_departures"
-                    ].distribution
-                else:
-                    raise TypeError(
-                        f"service_data values must be dict or ServicePredictionInputs, "
-                        f"got {type(source_data)}"
-                    )
-
-                # Get transfer probabilities from model.
-                # get_transfer_prob returns 0.0 (with a warning) for unknown
-                # services, so we only need to handle cohort-not-found here.
-                try:
-                    prob_transfer = transfer_model.get_transfer_prob(
-                        source_service, admission_type
-                    )
-                    dest_dist = transfer_model.get_destination_distribution(
-                        source_service, admission_type
-                    )
-                except ValueError as e:
-                    if "not found in trained model" in str(e):
-                        continue
-                    raise
-
-                # Skip if no transfers from this source
-                if prob_transfer == 0:
-                    continue
-
-                # Check if this source sends to our target
-                if target_service not in dest_dist:
-                    continue
-
-                prob_this_dest = dest_dist[target_service]
-
-                # Calculate compound probability
-                compound_prob = prob_transfer * prob_this_dest
-
-                # Create Distribution from departure PMF and apply thinning
-                departure_dist = Distribution.from_pmf(departure_pmf)
-                scaled_dist = departure_dist.thin(compound_prob)
-
-                # Accumulate by convolving with existing arrival distribution
-                arrival_dist = arrival_dist.convolve(scaled_dist)
-
-            # Store the final arrival PMF for this target
-            predicted_arrivals[admission_type][target_service] = (
-                arrival_dist.probabilities
-            )
-
-    return predicted_arrivals

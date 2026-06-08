@@ -93,6 +93,16 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
 
         When ``cohort_col`` is None, a single cohort named ``"all"``
         is used.
+
+        The ``"subgroups"`` tables are the **production prediction path**:
+        live transfer routing in
+        [compute_transfer_arrivals][patientflow.predict.transfers.compute_transfer_arrivals]
+        resolves each departing patient to an age/sex subgroup and routes them
+        with that subgroup's table. The cohort-pooled ``"services"`` row is
+        retained for diagnostics (e.g.
+        [get_transition_matrix][patientflow.predictors.transfer_predictor.TransferProbabilityEstimator.get_transition_matrix])
+        and is **not** used for prediction; it mixes male- and female-only
+        movement histories, which can assign implausible destinations.
     services : set
         Set of all services in the system
     cohorts : set or None
@@ -787,6 +797,12 @@ class TransferProbabilityEstimator(BaseEstimator, TransformerMixin):
         that subspecialty. Other columns contain the probability of transferring
         to the target subspecialty (unconditional probabilities, not conditional
         on a transfer occurring).
+
+        This matrix is a **pooled** view of the cohort ``["services"]`` row and
+        is intended for diagnostics. Live prediction
+        ([compute_transfer_arrivals][patientflow.predict.transfers.compute_transfer_arrivals])
+        instead uses the patient-level ``["subgroups"]`` tables, so the routing
+        applied in production can differ from this pooled matrix.
         """
         self._check_fitted()
         assert self.transfer_probabilities is not None
