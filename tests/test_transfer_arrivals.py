@@ -173,17 +173,17 @@ class TestBuildPerPatientProbabilities(unittest.TestCase):
             self.model,
         )
 
-        self.assertEqual(result.P.shape, (3, len(self.destinations)))
-        np.testing.assert_allclose(result.P.sum(axis=1), 1.0)
+        self.assertEqual(result.routing_matrix.shape, (3, len(self.destinations)))
+        np.testing.assert_allclose(result.routing_matrix.sum(axis=1), 1.0)
 
         gynae_idx = self.destinations.index("gynae")
         surgery_idx = self.destinations.index("surgery")
         discharge_idx = self.destinations.index("Discharge")
 
         # Female -> gynae; male -> surgery; missing sex -> Discharge (no pooled fallback).
-        self.assertAlmostEqual(result.P[0, gynae_idx], 1.0)
-        self.assertAlmostEqual(result.P[1, surgery_idx], 1.0)
-        self.assertAlmostEqual(result.P[2, discharge_idx], 1.0)
+        self.assertAlmostEqual(result.routing_matrix[0, gynae_idx], 1.0)
+        self.assertAlmostEqual(result.routing_matrix[1, surgery_idx], 1.0)
+        self.assertAlmostEqual(result.routing_matrix[2, discharge_idx], 1.0)
         self.assertEqual(result.n_excluded_unmatched, 1)
         self.assertEqual(result.n_subgroups_used, 2)
 

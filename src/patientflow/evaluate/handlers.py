@@ -1361,7 +1361,7 @@ def evaluate_transition_matrix(
             estimator,
             discharge_label=discharge_label,
         )
-        expected = per_patient.P.sum(axis=0)
+        expected = per_patient.routing_matrix.sum(axis=0)
         expected_transfers = float(expected.sum() - expected[discharge_idx])
         total_excluded_unmatched += per_patient.n_excluded_unmatched
 
@@ -1384,7 +1384,7 @@ def evaluate_transition_matrix(
             discharge_label=discharge_label,
         )
         result = multinomial_gof_montecarlo(
-            per_patient.P,
+            per_patient.routing_matrix,
             n_obs,
             destinations,
             n_simulations=int(block.get("n_simulations") or 10_000),

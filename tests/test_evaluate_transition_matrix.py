@@ -102,7 +102,7 @@ def test_multinomial_gof_miscalibrated_source_low_p_value():
     n_obs[destinations.index("surgery")] = 100
 
     result = multinomial_gof_montecarlo(
-        pp.P, n_obs, destinations, n_simulations=2000, seed=7
+        pp.routing_matrix, n_obs, destinations, n_simulations=2000, seed=7
     )
     assert result.p_value < 0.05
 

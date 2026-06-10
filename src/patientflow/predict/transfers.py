@@ -89,7 +89,7 @@ class PerPatientProbabilities:
 
     Attributes
     ----------
-    P : numpy.ndarray
+    routing_matrix : numpy.ndarray
         Shape (n_events, n_destinations); row `i` is the departure distribution
         for event `i` and sums to 1.
     n_excluded_unmatched : int
@@ -99,7 +99,7 @@ class PerPatientProbabilities:
         Distinct resolved subgroups among non-excluded events from this source.
     """
 
-    P: np.ndarray
+    routing_matrix: np.ndarray
     n_excluded_unmatched: int
     n_subgroups_used: int
 
@@ -148,7 +148,8 @@ def build_per_patient_probabilities(
     Returns
     -------
     PerPatientProbabilities
-        `P` has shape (n_events, n_destinations) with rows summing to 1.
+        ``routing_matrix`` has shape (n_events, n_destinations) with rows
+        summing to 1.
 
     Notes
     -----
@@ -194,7 +195,7 @@ def build_per_patient_probabilities(
             p_matrix[row_idx, col_idx] = q_transfer * float(dest_dist.get(dest, 0.0))
 
     return PerPatientProbabilities(
-        P=p_matrix,
+        routing_matrix=p_matrix,
         n_excluded_unmatched=n_excluded,
         n_subgroups_used=len(resolved_subgroups),
     )
