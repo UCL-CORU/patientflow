@@ -27,6 +27,7 @@ from patientflow.evaluate.handlers import (
     evaluate_classifier_probability_quality,
     evaluate_distribution,
     evaluate_survival_curve,
+    evaluate_transition_matrix,
 )
 from patientflow.evaluate.inputs import EvaluationInputs
 from patientflow.evaluate.scalars import ScalarsCollector
@@ -229,6 +230,13 @@ def run_evaluation(
                     inputs,
                     target,
                     survival_dir=survival_dir,
+                    collector=collector,
+                )
+            case "transition_matrix":
+                evaluate_transition_matrix(
+                    inputs,
+                    target,
+                    transitions_dir=run_dir / "transitions",
                     collector=collector,
                 )
             case _:

@@ -47,6 +47,7 @@ EvaluationModeLiteral = Literal[
     "distribution",
     "arrival_deltas",
     "survival_curve",
+    "transition_matrix",
 ]
 
 EVALUATION_MODES: Tuple[str, ...] = (
@@ -55,6 +56,7 @@ EVALUATION_MODES: Tuple[str, ...] = (
     "distribution",
     "arrival_deltas",
     "survival_curve",
+    "transition_matrix",
 )
 
 EvalSplitLiteral = Literal["valid", "test"]
@@ -153,9 +155,10 @@ class EvaluationTarget:
     component : str
         Distinguishes chart or scalar families at the same
         `(flow_name, service, prediction_time)`.
-    observation_mode : str
+    observation_mode : str or None, optional
         One of the strings in `patientflow.evaluate.observations.OBSERVATION_MODES`;
-        used when distribution evaluation recomputes observed counts.
+        used when distribution evaluation recomputes observed counts. May be
+        omitted when `evaluation_mode` is "transition_matrix".
 
     Raises
     ------
@@ -167,18 +170,33 @@ class EvaluationTarget:
     flow_type: str
     evaluation_mode: EvaluationModeLiteral
     component: str
-    observation_mode: str
+    observation_mode: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if self.observation_mode not in OBSERVATION_MODES:
-            raise ValueError(
-                f"Unknown observation_mode {self.observation_mode!r}; "
-                f"expected one of {OBSERVATION_MODES}"
-            )
         if self.evaluation_mode not in EVALUATION_MODES:
             raise ValueError(
                 f"Unknown evaluation_mode {self.evaluation_mode!r}; "
                 f"expected one of {EVALUATION_MODES}"
+            )
+        if self.evaluation_mode == "transition_matrix":
+            if (
+                self.observation_mode is not None
+                and self.observation_mode not in OBSERVATION_MODES
+            ):
+                raise ValueError(
+                    f"Unknown observation_mode {self.observation_mode!r}; "
+                    f"expected one of {OBSERVATION_MODES}"
+                )
+            return
+        if self.observation_mode is None:
+            raise ValueError(
+                f"observation_mode is required when evaluation_mode is "
+                f"{self.evaluation_mode!r}"
+            )
+        if self.observation_mode not in OBSERVATION_MODES:
+            raise ValueError(
+                f"Unknown observation_mode {self.observation_mode!r}; "
+                f"expected one of {OBSERVATION_MODES}"
             )
 
 
@@ -220,6 +238,9 @@ class EvaluationInputs:
         predictors, optional filter keys).
     survival : dict or None
         When set, keys include `train_df`, `test_df`, column names, `labels`.
+    transition_matrix_by_flow : dict
+        `flow_name` → block with `estimator`, `departure_events`, cohort and
+        column metadata for transition-matrix evaluation.
     observation_contexts : dict
         `flow_name` → `service` → visit frames for observation counting.
     eval_split : str
@@ -236,6 +257,7 @@ class EvaluationInputs:
     distribution_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     arrival_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     survival: Optional[Dict[str, Any]] = None
+    transition_matrix_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     observation_contexts: Dict[str, Dict[str, Dict[str, Any]]] = field(
         default_factory=dict
     )
@@ -282,6 +304,7 @@ class EvaluationInputsBuilder:
         self._distribution_by_flow: Dict[str, Dict[str, Any]] = {}
         self._arrival_by_flow: Dict[str, Dict[str, Any]] = {}
         self._survival: Optional[Dict[str, Any]] = None
+        self._transition_matrix_by_flow: Dict[str, Dict[str, Any]] = {}
         self._observation_contexts: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     def set_flow_selection(
@@ -590,6 +613,91 @@ class EvaluationInputsBuilder:
         }
         return self
 
+    def add_transition_matrix(
+        self,
+        flow_name: str,
+        estimator: Any,
+        departure_events: pd.DataFrame,
+        *,
+        cohort: Optional[str] = None,
+        source_col: Optional[str] = None,
+        destination_col: Optional[str] = None,
+        discharge_label: str = "Discharge",
+        n_simulations: int = 10_000,
+        seed: Optional[int] = None,
+        model_name: str = "transfers",
+    ) -> EvaluationInputsBuilder:
+        """Register a fitted transfer estimator and departure events for evaluation.
+
+        Pairs a fitted `TransferProbabilityEstimator` with the observed departure
+        events the handler will score. Expected and observed destination counts,
+        per-patient routing vectors, and the Pearson test are derived inside
+        `evaluate_transition_matrix`; this method only registers inputs.
+
+        Parameters
+        ----------
+        flow_name : str
+            Must match `EvaluationTarget.flow_name` for transition-matrix targets.
+        estimator : TransferProbabilityEstimator
+            Fitted model with subgroup routing tables.
+        departure_events : pandas.DataFrame
+            One row per observed departure in the evaluation window.
+        cohort : str or None, optional
+            Cohort to evaluate; must be one of the estimator's cohorts when
+            `estimator.cohort_col` is set.
+        source_col : str or None, optional
+            Source subspecialty column (default `estimator.source_col`).
+        destination_col : str or None, optional
+            Destination column (default `estimator.destination_col`).
+        discharge_label : str, optional
+            Label for discharge in the transition matrix (default "Discharge").
+        n_simulations : int, optional
+            Monte Carlo draws per source (default 10_000).
+        seed : int or None, optional
+            Slice-level RNG seed; per-source offsets are derived deterministically.
+        model_name : str, optional
+            Base model name stored on scalar rows (default "transfers").
+
+        Returns
+        -------
+        EvaluationInputsBuilder
+            `self` for method chaining.
+
+        Notes
+        -----
+        The caller must pre-scope `departure_events` to the evaluation window;
+        the builder does not apply a date filter. When `estimator.cohort_col` is
+        set, the handler filters events to the registered `cohort` at evaluation
+        time.
+
+        `departure_events` must include the source and destination columns plus
+        the columns required by `estimator.subgroup_functions` (typically age
+        and sex) so each row can be routed like production. NaN/None in the
+        destination column denotes discharge.
+
+        Register one block per `(flow_name, cohort)` slice. When `cohort` is
+        set, stored scalar rows use `model_name="{base}_{cohort}"` (for example
+        `transfers_elective`) so multiple cohort slices in one run stay distinct.
+        """
+        self._require_basics()
+        resolved_source_col = source_col or estimator.source_col
+        resolved_destination_col = destination_col or estimator.destination_col
+        stored_model_name = (
+            f"{model_name}_{cohort}" if cohort is not None else model_name
+        )
+        self._transition_matrix_by_flow[flow_name] = {
+            "estimator": estimator,
+            "departure_events": departure_events,
+            "cohort": cohort,
+            "source_col": resolved_source_col,
+            "destination_col": resolved_destination_col,
+            "discharge_label": discharge_label,
+            "n_simulations": n_simulations,
+            "seed": seed,
+            "model_name": stored_model_name,
+        }
+        return self
+
     def add_survival_curve(
         self,
         train_df: pd.DataFrame,
@@ -652,6 +760,13 @@ class EvaluationInputsBuilder:
             raise ValueError("prediction_dict is required to build EvaluationInputs.")
         if not self._targets:
             self._targets = []
+        for target in self._targets:
+            if target.evaluation_mode == "transition_matrix":
+                if target.flow_name not in self._transition_matrix_by_flow:
+                    raise ValueError(
+                        f"transition_matrix target for flow {target.flow_name!r} "
+                        "requires add_transition_matrix() on the builder."
+                    )
         prediction_dict = dict(self._prediction_dict)
         return EvaluationInputs(
             flow_selection=self._flow_selection,
@@ -663,6 +778,7 @@ class EvaluationInputsBuilder:
             distribution_by_flow=dict(self._distribution_by_flow),
             arrival_by_flow=dict(self._arrival_by_flow),
             survival=self._survival,
+            transition_matrix_by_flow=dict(self._transition_matrix_by_flow),
             observation_contexts={
                 fn: {svc: dict(ctx) for svc, ctx in per.items()}
                 for fn, per in self._observation_contexts.items()

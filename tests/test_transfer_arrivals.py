@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from patientflow.predict.transfers import (
+    build_per_patient_probabilities,
     compute_transfer_arrivals,
     transfer_weight_to_target,
 )
@@ -123,6 +124,68 @@ class TestTransferWeightToTarget(unittest.TestCase):
             row, "cardiology", "gynae", "emergency", self.model
         )
         self.assertEqual(weight, 0.0)
+
+
+class TestBuildPerPatientProbabilities(unittest.TestCase):
+    """Per-event routing matrix for transition-matrix evaluation."""
+
+    def setUp(self):
+        self.services = ["cardiology", "surgery", "gynae", "medicine"]
+        females = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"] * 20,
+                "next_subspecialty": ["gynae"] * 20,
+                "admission_type": ["emergency"] * 20,
+                "age_on_arrival": [30] * 20,
+                "sex": ["F"] * 20,
+            }
+        )
+        males = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology"] * 20,
+                "next_subspecialty": ["surgery"] * 20,
+                "admission_type": ["emergency"] * 20,
+                "age_on_arrival": [30] * 20,
+                "sex": ["M"] * 20,
+            }
+        )
+        X = pd.concat([females, males], ignore_index=True)
+        self.model = TransferProbabilityEstimator(cohort_col="admission_type")
+        self.model.fit(X, set(self.services))
+        self.destinations = list(self.model.get_transition_matrix("emergency").columns)
+
+    def test_subgroup_routing_and_exclusion(self):
+        """Male and female rows get different p_i; unmatched adults are all-discharge."""
+        events = pd.DataFrame(
+            {
+                "current_subspecialty": ["cardiology", "cardiology", "cardiology"],
+                "next_subspecialty": ["gynae", "surgery", None],
+                "admission_type": ["emergency"] * 3,
+                "age_on_arrival": [30, 30, 40],
+                "sex": ["F", "M", None],
+            }
+        )
+        result = build_per_patient_probabilities(
+            events,
+            "cardiology",
+            "emergency",
+            self.destinations,
+            self.model,
+        )
+
+        self.assertEqual(result.P.shape, (3, len(self.destinations)))
+        np.testing.assert_allclose(result.P.sum(axis=1), 1.0)
+
+        gynae_idx = self.destinations.index("gynae")
+        surgery_idx = self.destinations.index("surgery")
+        discharge_idx = self.destinations.index("Discharge")
+
+        # Female -> gynae; male -> surgery; missing sex -> Discharge (no pooled fallback).
+        self.assertAlmostEqual(result.P[0, gynae_idx], 1.0)
+        self.assertAlmostEqual(result.P[1, surgery_idx], 1.0)
+        self.assertAlmostEqual(result.P[2, discharge_idx], 1.0)
+        self.assertEqual(result.n_excluded_unmatched, 1)
+        self.assertEqual(result.n_subgroups_used, 2)
 
 
 class TestComputeTransferArrivalsSubgroup(unittest.TestCase):

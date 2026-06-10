@@ -22,7 +22,8 @@ transfer routing rather than falling back to the pooled row; see
 """
 
 import warnings
-from typing import Dict, List, Optional, Union
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -80,6 +81,123 @@ def transfer_weight_to_target(
         source_service, cohort, subgroup=g
     )
     return float(q_transfer) * float(dest.get(target_service, 0.0))
+
+
+@dataclass(frozen=True)
+class PerPatientProbabilities:
+    """Per-event routing matrix aligned with production subgroup routing.
+
+    Attributes
+    ----------
+    P : numpy.ndarray
+        Shape (n_events, n_destinations); row `i` is the departure distribution
+        for event `i` and sums to 1.
+    n_excluded_unmatched : int
+        Events treated as all-discharge because subgroup resolution failed or
+        the subgroup is absent from the cohort's fitted tables.
+    n_subgroups_used : int
+        Distinct resolved subgroups among non-excluded events from this source.
+    """
+
+    P: np.ndarray
+    n_excluded_unmatched: int
+    n_subgroups_used: int
+
+
+def build_per_patient_probabilities(
+    events: pd.DataFrame,
+    source: str,
+    cohort: str | None,
+    destinations: Sequence[str],
+    transfer_model: TransferProbabilityEstimator,
+    *,
+    discharge_label: str = "Discharge",
+) -> PerPatientProbabilities:
+    """Return per-event departure routing probabilities for one source.
+
+    Batch counterpart to `transfer_weight_to_target` for evaluation: each
+    departing patient gets a full destination vector `p_i` over destinations
+    aligned with `get_transition_matrix(cohort)`, not a single target weight.
+    Summing rows gives patient-level expected counts `E_d = sum_i p_i(d)` when
+    subgroup mix varies across departures. Probabilities come from subgroup
+    tables only; evaluation does not use the pooled `get_transition_matrix` row
+    or a homogeneous `N * p` test (that matrix remains diagnostic).
+
+    For a resolved subgroup `g`, each row is built as
+    `p_i(T) = q_transfer * q_dest(T)` for transfer destinations `T`, and
+    `p_i(Discharge) = 1 - q_transfer`. Uses `assign_patient_subgroups` and the
+    same resolved / unmatched rules as `transfer_weight_to_target`. Unmatched
+    rows receive `p_i(Discharge)=1`; the pooled ["services"] row is not used as
+    a fallback.
+
+    Parameters
+    ----------
+    events : pandas.DataFrame
+        Departure events leaving `source`.
+    source : str
+        Source subspecialty.
+    cohort : str or None
+        Cohort key passed to the fitted estimator.
+    destinations : sequence of str
+        Destination columns (including `discharge_label`).
+    transfer_model : TransferProbabilityEstimator
+        Fitted transfer model with subgroup tables.
+    discharge_label : str, optional
+        Label for the discharge column (default "Discharge").
+
+    Returns
+    -------
+    PerPatientProbabilities
+        `P` has shape (n_events, n_destinations) with rows summing to 1.
+
+    Notes
+    -----
+    `n_excluded_unmatched` flags departures the production path would not route
+    (for example adults with missing sex). A high value on a flagged source can
+    mean case-mix outside the fitted subgroup tables rather than routing error
+    among routed patients. `n_subgroups_used` helps interpret whether a low
+    p-value may be driven by a single anomalous subgroup.
+    """
+    assert transfer_model.transfer_probabilities is not None
+    cohort_key = transfer_model._resolve_cohort(cohort)
+    cohort_subgroups = set(
+        transfer_model.transfer_probabilities[cohort_key]["subgroups"].keys()
+    )
+
+    dest_list = list(destinations)
+    discharge_idx = dest_list.index(discharge_label)
+    n_events = len(events)
+    n_dest = len(dest_list)
+    p_matrix = np.zeros((n_events, n_dest), dtype=float)
+
+    subgroups = assign_patient_subgroups(events, transfer_model.subgroup_functions)
+    n_excluded = 0
+    resolved_subgroups: set[str] = set()
+
+    for row_idx, subgroup in enumerate(subgroups):
+        if subgroup is None or subgroup not in cohort_subgroups:
+            p_matrix[row_idx, discharge_idx] = 1.0
+            n_excluded += 1
+            continue
+
+        resolved_subgroups.add(subgroup)
+        q_transfer = transfer_model.get_transfer_prob(
+            source, cohort_key, subgroup=subgroup
+        )
+        dest_dist = transfer_model.get_destination_distribution(
+            source, cohort_key, subgroup=subgroup
+        )
+        p_matrix[row_idx, discharge_idx] = 1.0 - q_transfer
+        for col_idx, dest in enumerate(dest_list):
+            if dest == discharge_label:
+                continue
+            p_matrix[row_idx, col_idx] = q_transfer * float(dest_dist.get(dest, 0.0))
+
+    return PerPatientProbabilities(
+        P=p_matrix,
+        n_excluded_unmatched=n_excluded,
+        n_subgroups_used=len(resolved_subgroups),
+    )
 
 
 def _as_pred_proba_frame(

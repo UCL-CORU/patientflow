@@ -24,6 +24,9 @@ from typing import Any, Dict, Iterable, List, Mapping, Tuple
 # Reliability: minimum positive cases on the evaluated split for classifier headline metrics.
 RELIABILITY_MIN_POSITIVE_CASES: int = 30
 
+# Reliability: minimum departures for transition-matrix row calibration.
+RELIABILITY_MIN_OBSERVATIONS_TRANSITION: int = 30
+
 SERVICE_SENTINEL_ALL: str = "_all_"
 
 

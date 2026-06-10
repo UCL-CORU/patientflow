@@ -35,10 +35,16 @@ from patientflow.evaluate.observations import (
     observation_context_frame_key,
 )
 from patientflow.evaluate.scalars import (
+    RELIABILITY_MIN_OBSERVATIONS_TRANSITION,
     SERVICE_SENTINEL_ALL,
     ScalarsCollector,
     classifier_reliable,
 )
+from patientflow.evaluate.goodness_of_fit import (
+    derive_seed_offset,
+    multinomial_gof_montecarlo,
+)
+from patientflow.predict.transfers import build_per_patient_probabilities
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier
 from patientflow.viz.epudd import plot_epudd
@@ -1190,4 +1196,230 @@ def evaluate_survival_curve(
             "charts_generated": True,
             "reliable": True,
         }
+    )
+
+
+def _observed_destination_counts(
+    events: pd.DataFrame,
+    destinations: Sequence[str],
+    *,
+    destination_col: str,
+    discharge_label: str = "Discharge",
+) -> np.ndarray:
+    """Aggregate observed destination counts for departure events."""
+    dest_list = list(destinations)
+    dest_to_idx = {dest: idx for idx, dest in enumerate(dest_list)}
+    counts = np.zeros(len(dest_list), dtype=int)
+
+    for dest_value in events[destination_col]:
+        if dest_value is None or (isinstance(dest_value, float) and pd.isna(dest_value)):
+            key = discharge_label
+        else:
+            key = str(dest_value)
+        idx = dest_to_idx.get(key)
+        if idx is not None:
+            counts[idx] += 1
+    return counts
+
+
+def _filter_transition_departure_events(
+    block: Mapping[str, Any],
+    estimator: Any,
+) -> pd.DataFrame:
+    """Return departure events, optionally filtered to the registered cohort."""
+    events = block["departure_events"]
+    cohort = block.get("cohort")
+    if estimator.cohort_col and cohort is not None:
+        return events.loc[events[estimator.cohort_col] == cohort].copy()
+    return events.copy()
+
+
+def _transition_row_base(
+    target: EvaluationTarget,
+    source: str,
+    block: Mapping[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "evaluation_mode": target.evaluation_mode,
+        "flow": target.flow_name,
+        "flow_type": target.flow_type,
+        "service": source,
+        "component": target.component,
+        "prediction_time": None,
+        "model_name": str(block.get("model_name") or "transfers"),
+        "cohort": block.get("cohort"),
+        "charts_generated": False,
+    }
+
+
+def evaluate_transition_matrix(
+    inputs: EvaluationInputs,
+    target: EvaluationTarget,
+    *,
+    transitions_dir: Path,
+    collector: ScalarsCollector,
+) -> None:
+    """Score row-wise calibration of subgroup routing tables per source subspecialty.
+
+    Each scalar row answers a conditional question: given that patients departed
+    from source `s` during the registered window, with the subgroup mix that
+    actually left, do their observed destinations match the routing the fitted
+    model would have applied patient-by-patient? The test uses subgroup tables
+    from `TransferProbabilityEstimator`, not the pooled diagnostic matrix from
+    `get_transition_matrix`.
+
+    For every source in the union of the estimator index and observed departure
+    sources, the handler filters departure events to that source, builds a
+    per-event routing matrix via `build_per_patient_probabilities`, aggregates
+    patient-level expected counts `E`, compares them to observed destination
+    counts, and runs a Monte Carlo Pearson goodness-of-fit test when the source
+    is active. Active rows store aligned `destinations`, `expected_counts`, and
+    `observed_counts`.
+
+    Parameters
+    ----------
+    inputs : EvaluationInputs
+        Must include `transition_matrix_by_flow[target.flow_name]`.
+    target : EvaluationTarget
+        `evaluation_mode` must be "transition_matrix".
+    transitions_dir : pathlib.Path
+        Run subdirectory for this evaluation mode.
+    collector : ScalarsCollector
+        Receives one row per source and a `_service_summary` slice fragment.
+
+    Notes
+    -----
+    Skips quietly when the flow block is absent. Uses the same subgroup
+    resolution contract as `transfer_weight_to_target` (unmatched patients are
+    treated as all-discharge, with no fallback to the pooled ["services"] row).
+
+    One row is emitted per estimator source even when `n_departures == 0`.
+    Skipped rows use `skip_reason`:
+
+    - `no_observed_departures` — no departures from `s` in the window.
+    - `all_discharge_expected` — departures exist but every event's routing is
+      all-discharge (`sum of non-Discharge E_d == 0`), so the Pearson test is
+      degenerate.
+
+    On active rows, `n_excluded_unmatched` counts departures excluded from
+    subgroup routing (typically adults with missing or invalid sex). Non-zero
+    values flag case-mix the model does not route. `reliable` is true when
+    `n_departures >= RELIABILITY_MIN_OBSERVATIONS_TRANSITION` (30).
+
+    This mode does not test departure volume from `s`, column-level inflow
+    calibration across sources, intra-window routing drift, or subgroup
+    classifier accuracy. See `transition_matrix_evaluation.md` for the full
+    algorithm and interpretation notes.
+    """
+    _ = transitions_dir
+    block = inputs.transition_matrix_by_flow.get(target.flow_name)
+    if not block:
+        return
+
+    estimator = block["estimator"]
+    events = _filter_transition_departure_events(block, estimator)
+    cohort = block.get("cohort")
+    matrix = estimator.get_transition_matrix(cohort)
+    destinations = list(matrix.columns)
+    source_col = str(block["source_col"])
+    destination_col = str(block["destination_col"])
+    discharge_label = str(block.get("discharge_label") or "Discharge")
+
+    discharge_idx = destinations.index(discharge_label)
+    skipped: Dict[str, int] = {
+        "no_observed_departures": 0,
+        "all_discharge_expected": 0,
+    }
+    active = 0
+    total_excluded_unmatched = 0
+
+    event_sources = set(events[source_col].dropna().astype(str).unique())
+    sources = sorted(set(matrix.index.astype(str)) | event_sources)
+
+    for source in sources:
+        source_events = events.loc[events[source_col].astype(str) == str(source)]
+        n_departures = len(source_events)
+        base_row = _transition_row_base(target, str(source), block)
+
+        if n_departures == 0:
+            skipped["no_observed_departures"] += 1
+            collector.add_row(
+                {
+                    **base_row,
+                    "skip_reason": "no_observed_departures",
+                    "n_departures": 0,
+                    "reliable": False,
+                }
+            )
+            continue
+
+        per_patient = build_per_patient_probabilities(
+            source_events,
+            str(source),
+            cohort,
+            destinations,
+            estimator,
+            discharge_label=discharge_label,
+        )
+        expected = per_patient.P.sum(axis=0)
+        expected_transfers = float(expected.sum() - expected[discharge_idx])
+        total_excluded_unmatched += per_patient.n_excluded_unmatched
+
+        if expected_transfers == 0.0:
+            skipped["all_discharge_expected"] += 1
+            collector.add_row(
+                {
+                    **base_row,
+                    "skip_reason": "all_discharge_expected",
+                    "n_departures": n_departures,
+                    "reliable": False,
+                }
+            )
+            continue
+
+        n_obs = _observed_destination_counts(
+            source_events,
+            destinations,
+            destination_col=destination_col,
+            discharge_label=discharge_label,
+        )
+        result = multinomial_gof_montecarlo(
+            per_patient.P,
+            n_obs,
+            destinations,
+            n_simulations=int(block.get("n_simulations") or 10_000),
+            seed=derive_seed_offset(block.get("seed"), str(source)),
+        )
+        active += 1
+        collector.add_row(
+            {
+                **base_row,
+                "reliable": n_departures >= RELIABILITY_MIN_OBSERVATIONS_TRANSITION,
+                "n_departures": n_departures,
+                "n_destinations": len(destinations),
+                "n_subgroups_used": per_patient.n_subgroups_used,
+                "n_excluded_unmatched": per_patient.n_excluded_unmatched,
+                "pearson_x2": result.pearson_x2,
+                "p_value": result.p_value,
+                "n_simulations": result.n_simulations,
+                "seed": block.get("seed"),
+                "n_structural_violations": result.n_structural_violations,
+                "destinations": result.destinations,
+                "expected_counts": result.expected_counts,
+                "observed_counts": result.observed_counts,
+            }
+        )
+
+    collector.merge_service_summary_slice(
+        f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
+        {
+            "mode": "transition_matrix",
+            "flow": target.flow_name,
+            "component": target.component,
+            "cohort": block.get("cohort"),
+            "n_active_sources": active,
+            "n_skipped_sources": sum(skipped.values()),
+            "skipped_by_reason": skipped,
+            "n_excluded_unmatched_departures": total_excluded_unmatched,
+        },
     )
