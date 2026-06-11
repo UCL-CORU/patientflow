@@ -489,16 +489,16 @@ print(ed_yta_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg
 
     ED current snapshots predicted distribution for surgical service on 2031-09-16:
           agg_proba
-    0  1.272621e-01
+    0  1.272620e-01
     1  2.217735e-01
     2  2.928779e-01
     3  2.256789e-01
     4  1.014280e-01
     5  2.655857e-02
     6  4.044790e-03
-    7  3.575431e-04
+    7  3.575432e-04
     8  1.830299e-05
-    9  5.413715e-07
+    9  5.413717e-07
     ... (44 total)
 
     ED current snapshots observed values for number admitted at some point to surgical service on 2031-09-16:
@@ -654,7 +654,7 @@ builder.add_classifier(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x117cb2b40>
 
 ### 3d. Add ED current bed demand evaluation task to the builder
 
@@ -679,7 +679,7 @@ builder.add_distribution_observations(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x117cb2b40>
 
 ### 3e. Add ED yet-to-arrive bed demand evaluation task to the builder.
 
@@ -709,7 +709,7 @@ builder.add_distribution_observations(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x117cb2b40>
 
 ### 3f. Add ED yet-to-arrive arrival deltas to the evaluation task
 
@@ -727,7 +727,7 @@ builder.add_arrival_deltas(
 
 ```
 
-    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0>
+    <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x117cb2b40>
 
 ### 3g. Build `EvaluationInputs`
 
@@ -777,31 +777,28 @@ out
 
 ```
 
-    /Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
-      from .autonotebook import tqdm as notebook_tqdm
+    Predicted classification (not admitted, admitted):  [662 399]
+
+
+    Predicted classification (not admitted, admitted):  [1039  505]
+
+
+    Predicted classification (not admitted, admitted):  [1751  809]
+
+
+    Predicted classification (not admitted, admitted):  [1918  944]
+
+
+    Predicted classification (not admitted, admitted):  [1549  839]
 
 
 
-    ---------------------------------------------------------------------------
-
-    KeyError                                  Traceback (most recent call last)
-
-    Cell In[18], line 11
-          3 from patientflow.evaluate.runner import run_evaluation
-          5 run_name = f"notebook4d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-          6 out = run_evaluation(
-          7     Path("eval-output"),
-          8     inputs,
-          9     run_name=run_name,
-         10     training_metadata={
-    ---> 11         "modelling_dates": params["modelling_dates"],
-         12         "yta_time_interval_minutes": int(yta_time_interval.total_seconds() // 60),
-         13     },
-         14 )
-         15 out
 
 
-    KeyError: 'modelling_dates'
+    {'run_dir': PosixPath('eval-output/notebook4d_20260610_151049'),
+     'scalars_path': PosixPath('eval-output/notebook4d_20260610_151049/scalars.json'),
+     'manifest_path': PosixPath('eval-output/notebook4d_20260610_151049/evaluation_run.yaml'),
+     'n_targets': 5}
 
 ## 5. Review outputs
 
@@ -849,8 +846,8 @@ display(scalars_df[base_cols].head(16))
 
 ```
 
-    Run directory: eval-output/notebook4d_20260519_121044
-    Scalars path: eval-output/notebook4d_20260519_121044/scalars.json
+    Run directory: eval-output/notebook4d_20260610_151049
+    Scalars path: eval-output/notebook4d_20260610_151049/scalars.json
 
     Directory structure (depth <= 2):
     arrivals/

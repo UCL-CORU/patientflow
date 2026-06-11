@@ -976,8 +976,6 @@ print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
 ```
 
     === FlowSelection.incoming_only() ===
-
-
       Expected arrivals:   25.4
       Expected departures: 0.0
       Expected net flow:   25.4

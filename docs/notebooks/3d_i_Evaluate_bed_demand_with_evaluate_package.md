@@ -373,9 +373,9 @@ print(f"Manifest path: {out['manifest_path']}")
 print(f"Targets evaluated: {out['n_targets']}")
 ```
 
-    Run directory: eval-output/notebook3g_20260527_211917
-    Scalars path: eval-output/notebook3g_20260527_211917/scalars.json
-    Manifest path: eval-output/notebook3g_20260527_211917/evaluation_run.yaml
+    Run directory: eval-output/notebook3g_20260610_150715
+    Scalars path: eval-output/notebook3g_20260610_150715/scalars.json
+    Manifest path: eval-output/notebook3g_20260610_150715/evaluation_run.yaml
     Targets evaluated: 1
 
 ## Summary

@@ -269,11 +269,11 @@ for prediction_time, values in results.items():
 
     Time    MAE    MPE
     ----------------------
-    06:00  1.54    33.61%
-    09:30  1.62    38.87%
-    12:00  2.18    31.43%
-    15:30  2.70    23.35%
-    22:00  3.14    23.94%
+    06:00  1.54    33.49%
+    09:30  1.62    38.62%
+    12:00  2.17    31.24%
+    15:30  2.69    23.28%
+    22:00  3.15    24.02%
 
 The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
 
@@ -283,8 +283,6 @@ We can plot the observed values against the expected, as shown below.
 from patientflow.viz.observed_against_expected import plot_deltas
 plot_deltas(results)
 ```
-
-![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png)
 
 From the plots above:
 
