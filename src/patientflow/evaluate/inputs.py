@@ -37,7 +37,11 @@ from typing import (
 
 import pandas as pd
 
-from patientflow.evaluate.observations import OBSERVATION_MODES
+from patientflow.evaluate.observations import (
+    DEFAULT_ADMISSION_LABEL_COL,
+    DEFAULT_DEPARTURE_OUTCOME_COLUMN,
+    OBSERVATION_MODES,
+)
 from patientflow.model_artifacts import TrainedClassifier
 from patientflow.predict.types import FlowSelection
 
@@ -243,6 +247,9 @@ class EvaluationInputs:
         column metadata for transition-matrix evaluation.
     observation_contexts : dict
         `flow_name` → `service` → visit frames for observation counting.
+    distribution_benchmark_cohorts : dict
+        Optional ``"admissions"`` / ``"departures"`` cohorts for global p̄
+        (see `add_distribution_benchmark_cohort`).
     eval_split : str
         Holdout assessed by this run: ``"valid"`` (default) or ``"test"``.
         Drives plot cohort labels; visit frames and snapshot dates must match.
@@ -259,6 +266,9 @@ class EvaluationInputs:
     survival: Optional[Dict[str, Any]] = None
     transition_matrix_by_flow: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     observation_contexts: Dict[str, Dict[str, Dict[str, Any]]] = field(
+        default_factory=dict
+    )
+    distribution_benchmark_cohorts: Dict[str, Dict[str, Any]] = field(
         default_factory=dict
     )
 
@@ -306,6 +316,7 @@ class EvaluationInputsBuilder:
         self._survival: Optional[Dict[str, Any]] = None
         self._transition_matrix_by_flow: Dict[str, Dict[str, Any]] = {}
         self._observation_contexts: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        self._distribution_benchmark_cohorts: Dict[str, Dict[str, Any]] = {}
 
     def set_flow_selection(
         self, flow_selection: FlowSelection
@@ -555,6 +566,53 @@ class EvaluationInputsBuilder:
         _register(inpatient_visits_by_service, "inpatient_visits")
         return self
 
+    def add_distribution_benchmark_cohort(
+        self,
+        *,
+        admissions_ed_visits: Optional[pd.DataFrame] = None,
+        admissions_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
+        departures_inpatient_visits: Optional[pd.DataFrame] = None,
+        departures_label_col: str = DEFAULT_DEPARTURE_OUTCOME_COLUMN,
+    ) -> EvaluationInputsBuilder:
+        """Register eval-split cohorts for global binomial-benchmark p̄.
+
+        The same label columns are used when distribution evaluation recomputes
+        ``agg_observed`` (via :func:`count_observed`) and for benchmark p̄.
+
+        Parameters
+        ----------
+        admissions_ed_visits : pandas.DataFrame, optional
+            Full eval-split ED visits with *admissions_label_col* and
+            ``prediction_time``. Used when ``observation_mode`` is
+            ``admitted_at_some_point`` or ``admitted_in_window``.
+        admissions_label_col : str, optional
+            Boolean admission label on *admissions_ed_visits*. Default
+            ``"is_admitted"``.
+        departures_inpatient_visits : pandas.DataFrame, optional
+            Full eval-split inpatient snapshots with *departures_label_col* and
+            ``prediction_time``. Used when ``observation_mode`` is
+            ``departed_in_window``.
+        departures_label_col : str, optional
+            Boolean departure label on *departures_inpatient_visits*. Default
+            ``"left_subspecialty_in_window"``.
+
+        Returns
+        -------
+        EvaluationInputsBuilder
+            ``self`` for method chaining.
+        """
+        if admissions_ed_visits is not None:
+            self._distribution_benchmark_cohorts["admissions"] = {
+                "visits_df": admissions_ed_visits,
+                "label_col": admissions_label_col,
+            }
+        if departures_inpatient_visits is not None:
+            self._distribution_benchmark_cohorts["departures"] = {
+                "visits_df": departures_inpatient_visits,
+                "label_col": departures_label_col,
+            }
+        return self
+
     def add_arrival_deltas(
         self,
         flow_name: str,
@@ -783,4 +841,5 @@ class EvaluationInputsBuilder:
                 fn: {svc: dict(ctx) for svc, ctx in per.items()}
                 for fn, per in self._observation_contexts.items()
             },
+            distribution_benchmark_cohorts=dict(self._distribution_benchmark_cohorts),
         )

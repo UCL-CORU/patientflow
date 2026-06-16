@@ -30,7 +30,7 @@ In this notebook I show the following:
 
 1. **Load data** — same pattern as notebook 4c: `prepare_prediction_inputs`, temporal splits, synthetic `departure_datetime` on evaluation ED visits and inpatient arrivals where extracts omit those timestamps.
 2. **Demonstrate pairing** of observed values with predicted distributions, under different values of `observation_mode`
-3. **Demonstrate the evaluate package** — `EvaluationInputsBuilder` with `flow_selection`, `prediction_times`, `eval_split`, and a custom `evaluation_targets` list whose `flow_name` keys match `add_classifier` / `add_distributions_*` / `add_arrival_deltas`. Distribution targets pair `add_distributions_from_service_dict` with `add_distribution_observations`. For arrival deltas with a multi-service predictor, pass `predictors_by_service` and `filter_keys_by_service` so the baseline matches each service.
+3. **Demonstrate the evaluate package** — `EvaluationInputsBuilder` with `flow_selection`, `prediction_times`, `eval_split`, and a custom `evaluation_targets` list whose `flow_name` keys match `add_classifier` / `add_distributions_*` / `add_arrival_deltas`. Distribution targets pair `add_distributions_from_service_dict` with `add_distribution_observations`, and **`add_distribution_benchmark_cohort`** for the Binomial-benchmark on admission-style modes. For arrival deltas with a multi-service predictor, pass `predictors_by_service` and `filter_keys_by_service` so the baseline matches each service.
 4. **Run evaluation** — `run_evaluation(output_root, inputs, run_name=...)`.
 5. **Inspect output** — load `evaluation_rows` from `scalars.json` (and optional `_service_summary`).
 
@@ -555,13 +555,13 @@ Pairing for distribution targets in this notebook: **ED current** uses **`admitt
 
 **`component` values in this notebook**:
 
-| `component`                                    | Charts / outputs                                                                                               |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `classifier_model_diagnostics`                 | Headline metrics, feature importances, SHAP                                                                    |
-| `classifier_discrimination_madcap_calibration` | Discrimination, MADCAP, MADCAP-by-age, calibration                                                             |
-| `bed_demand_ed_current`                        | Per-service distribution comparison plot (EPUDD): ED-current bed-demand PMF vs recomputed observed count       |
-| `bed_demand_ed_yta`                            | Per-service distribution comparison plot (EPUDD): ED yet-to-arrive bed-demand PMF vs recomputed observed count |
-| `arrival_delta_cumulative`                     | Cumulative arrival delta PNG per service and prediction time                                                   |
+| `component`                                    | Charts / outputs                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `classifier_model_diagnostics`                 | Headline metrics, feature importances, SHAP                                                             |
+| `classifier_discrimination_madcap_calibration` | Discrimination, MADCAP, MADCAP-by-age, calibration                                                      |
+| `bed_demand_ed_current`                        | EPUDD plot; rPIT+CvM summary scalars (`rpit_cvm_mean_w2`, …); Binomial benchmark when cohort registered |
+| `bed_demand_ed_yta`                            | EPUDD plot; rPIT+CvM summary scalars only (no binomial benchmark for `arrived_in_window`)               |
+| `arrival_delta_cumulative`                     | Cumulative arrival delta PNG per service and prediction time                                            |
 
 ```python
 from pathlib import Path
@@ -729,17 +729,19 @@ builder.add_arrival_deltas(
 
     <patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x117cb2b40>
 
-### 3g. Build `EvaluationInputs`
+### 3g. Register benchmark cohort for rPIT + CvM
 
-**`build()`** checks that **`flow_selection`** and **`prediction_times`** are set, then returns the immutable object consumed by **`run_evaluation`**. The printout lists each target for a quick sanity check before the (longer) evaluation run.
+Distribution evaluation now writes **randomised PIT + Cramér–von Mises** summary scalars on each active service × prediction-time row when there are at least two snapshots with observations (`rpit_cvm_mean_w2`, `rpit_cvm_std_w2`, `rpit_cvm_n_observations`, …). EPUDD plots use the same minimum-snapshot gate.
+
+For **`admitted_at_some_point`** targets (ED current in this notebook), you can register a **Binomial(n, p̄)** benchmark: global class balance **p̄** per `prediction_time` on the full eval-split cohort, with **n** inferred from each snapshot PMF. That adds `rpit_cvm_benchmark_mean_w2` and `rpit_cvm_w2_reduction` on the same scalar rows. **Yet-to-arrive** (`arrived_in_window`) still gets rPIT+CvM but no binomial benchmark.
+
+Call **`add_distribution_benchmark_cohort`** once before **`build()`**, passing the same eval-split visit frame used for observation counts (here **`eval_visits_df`**).
 
 ```python
-inputs = builder.build()
-
-print(f"Targets: {len(evaluation_targets)}")
-for t in evaluation_targets:
-    print(f"  {t.flow_name}/{t.component}: {t.evaluation_mode} (observation_mode={t.observation_mode})")
-print(f"Prediction times: {prediction_times}")
+builder.add_distribution_benchmark_cohort(
+    admissions_ed_visits=eval_visits_df,
+    admissions_label_col="is_admitted",  # optional; default is "is_admitted"
+)
 
 ```
 
@@ -750,6 +752,19 @@ print(f"Prediction times: {prediction_times}")
       ed_yta_beds/bed_demand_ed_yta: distribution (observation_mode=arrived_in_window)
       ed_yta_arrival_rates/arrival_delta_cumulative: arrival_deltas (observation_mode=arrived_in_window)
     Prediction times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
+
+### 3h. Build `EvaluationInputs`
+
+**`build()`** checks that **`flow_selection`** and **`prediction_times`** are set, then returns the immutable object consumed by **`run_evaluation`**. The printout lists each target for a quick sanity check before the (longer) evaluation run.
+
+```python
+inputs = builder.build()
+
+print(f"Targets: {len(evaluation_targets)}")
+for t in evaluation_targets:
+    print(f"  {t.flow_name}/{t.component}: {t.evaluation_mode} (observation_mode={t.observation_mode})")
+print(f"Prediction times: {prediction_times}")
+```
 
 ## 4. Run evaluation
 
@@ -802,7 +817,7 @@ out
 
 ## 5. Review outputs
 
-Scalar rows are stored under the `evaluation_rows` key (with optional `_service_summary` for inactive-service bookkeeping). Below we print the run layout and show the first rows of the scalar table.
+Scalar rows are stored under the `evaluation_rows` key (with optional `_service_summary` for inactive-service bookkeeping). Distribution rows include **`rpit_cvm_mean_w2`** when a service × clock has at least two observed snapshots; **`rpit_cvm_benchmark_mean_w2`** and **`rpit_cvm_w2_reduction`** appear for **`bed_demand_ed_current`** when the benchmark cohort was registered. Below we print the run layout and show key columns from the scalar table.
 
 ```python
 import json
@@ -839,6 +854,10 @@ base_cols = [
         "prediction_time",
         "charts_generated",
         "skip_reason",
+        "rpit_cvm_mean_w2",
+        "rpit_cvm_benchmark_mean_w2",
+        "rpit_cvm_w2_reduction",
+        "rpit_cvm_n_observations",
     ]
     if c in scalars_df.columns
 ]
@@ -1042,8 +1061,8 @@ display(scalars_df[base_cols].head(16))
 ## Summary
 
 1. Built **service-level prediction dicts** with a **per-clock** nested layout for EPUDD (`get_model_key` as the middle key).
-2. Declared **`EvaluationTarget` instances** and wired **`EvaluationInputsBuilder`** with one **`flow_selection`** and **`eval_split`**, matching `flow_name` keys on targets to builder registrations.
-3. Ran **`run_evaluation`** to emit plots and **`scalars.json`**.
+2. Declared **`EvaluationTarget` instances** and wired **`EvaluationInputsBuilder`** with one **`flow_selection`** and **`eval_split`**, matching `flow_name` keys on targets to builder registrations, including **`add_distribution_benchmark_cohort`** for ED admissions.
+3. Ran **`run_evaluation`** to emit plots and **`scalars.json`** (including rPIT+CvM summary scalars on distribution rows).
 4. Loaded **`evaluation_rows`** for a tabular overview.
 
 For a wider evaluation matrix (inpatient departures by route, non-ED yet-to-arrive, survival), add **`EvaluationTarget`** rows and matching builder registrations—use distinct **`flow_name`** values per departures route (e.g. `departures_elective`) with **`component="departures_elective"`** (must match **`DEPARTURES_DISTRIBUTION_ADMISSION_TYPE`**), **`inpatient_visits_by_service`** on the shared snapshot frame, and route-specific PMFs.
