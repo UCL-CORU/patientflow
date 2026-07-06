@@ -23,9 +23,7 @@ def test_synthesise_departure_times_ed_visits():
 def test_synthesise_departure_times_inpatient_arrivals():
     df = pd.DataFrame(
         {
-            "arrival_datetime": pd.to_datetime(
-                ["2024-01-01 08:00:00"], utc=True
-            ),
+            "arrival_datetime": pd.to_datetime(["2024-01-01 08:00:00"], utc=True),
         }
     )
     out = synthesise_departure_times(df, kind="inpatient_arrivals", seed=0)

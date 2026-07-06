@@ -66,7 +66,10 @@ def synthesise_departure_times(
         return out
 
     if kind == "ed_visits":
-        if "departure_datetime" in out.columns and out["departure_datetime"].notna().any():
+        if (
+            "departure_datetime" in out.columns
+            and out["departure_datetime"].notna().any()
+        ):
             return out
         leave_delay_hours = rng.gamma(shape=3.0, scale=2.0, size=len(out))
         leave_delay_hours = leave_delay_hours.clip(min=0.25)
@@ -82,9 +85,7 @@ def synthesise_departure_times(
             out.loc[~out["is_admitted"].astype(bool), "departure_datetime"] = pd.NaT
         return out
 
-    raise ValueError(
-        f"kind must be 'ed_visits' or 'inpatient_arrivals', got {kind!r}"
-    )
+    raise ValueError(f"kind must be 'ed_visits' or 'inpatient_arrivals', got {kind!r}")
 
 
 def create_fake_finished_visits(

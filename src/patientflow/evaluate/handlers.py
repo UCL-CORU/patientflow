@@ -1314,7 +1314,9 @@ def _observed_destination_counts(
     counts = np.zeros(len(dest_list), dtype=int)
 
     for dest_value in events[destination_col]:
-        if dest_value is None or (isinstance(dest_value, float) and pd.isna(dest_value)):
+        if dest_value is None or (
+            isinstance(dest_value, float) and pd.isna(dest_value)
+        ):
             key = discharge_label
         else:
             key = str(dest_value)
