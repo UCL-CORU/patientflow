@@ -11,6 +11,7 @@ Submodules should be imported explicitly, for example::
         EvaluationInputsBuilder,
         EvaluationTarget,
         eval_split_label,
+        standard_ed_targets,
     )
 
 See Also
@@ -204,6 +205,96 @@ class EvaluationTarget:
             )
 
 
+def standard_ed_targets(
+    *,
+    include_classifier_diagnostics: bool = True,
+    include_classifier_probability_quality: bool = True,
+    include_ed_current_distribution: bool = True,
+    include_ed_yta_distribution: bool = False,
+    include_ed_yta_arrival_deltas: bool = True,
+    ed_current_observation_mode: str = "admitted_at_some_point",
+    ed_yta_observation_mode: str = "arrived_in_window",
+) -> List[EvaluationTarget]:
+    """Return the common ED evaluation target list used in notebook 4d.
+
+    Parameters
+    ----------
+    include_classifier_diagnostics : bool, optional
+        Add model-level classifier diagnostics (SHAP, headline metrics).
+    include_classifier_probability_quality : bool, optional
+        Add discrimination, MADCAP, and calibration on the full visit frame.
+    include_ed_current_distribution : bool, optional
+        Add ED-current bed-demand distribution evaluation.
+    include_ed_yta_distribution : bool, optional
+        Add ED yet-to-arrive bed-demand distribution evaluation (requires
+        meaningful ward-admission timestamps for most sites).
+    include_ed_yta_arrival_deltas : bool, optional
+        Add cumulative arrival-rate delta plots per service.
+    ed_current_observation_mode : str, optional
+        Observation strategy for ED-current distribution targets.
+    ed_yta_observation_mode : str, optional
+        Observation strategy for yet-to-arrive distribution targets.
+
+    Returns
+    -------
+    list of EvaluationTarget
+        Targets whose ``flow_name`` values match the usual ``add_*`` registrations
+        in notebook 4d.
+    """
+    targets: List[EvaluationTarget] = []
+    if include_classifier_diagnostics:
+        targets.append(
+            EvaluationTarget(
+                flow_name="ed_admissions_cls",
+                flow_type="admissions",
+                evaluation_mode="classifier_model_diagnostics",
+                component="classifier_model_diagnostics",
+                observation_mode=ed_current_observation_mode,
+            )
+        )
+    if include_classifier_probability_quality:
+        targets.append(
+            EvaluationTarget(
+                flow_name="ed_admissions_cls",
+                flow_type="admissions",
+                evaluation_mode="classifier_probability_quality",
+                component="classifier_discrimination_madcap_calibration",
+                observation_mode=ed_current_observation_mode,
+            )
+        )
+    if include_ed_current_distribution:
+        targets.append(
+            EvaluationTarget(
+                flow_name="ed_current_beds",
+                flow_type="admissions",
+                evaluation_mode="distribution",
+                component="bed_demand_ed_current",
+                observation_mode=ed_current_observation_mode,
+            )
+        )
+    if include_ed_yta_distribution:
+        targets.append(
+            EvaluationTarget(
+                flow_name="ed_yta_beds",
+                flow_type="admissions",
+                evaluation_mode="distribution",
+                component="bed_demand_ed_yta",
+                observation_mode=ed_yta_observation_mode,
+            )
+        )
+    if include_ed_yta_arrival_deltas:
+        targets.append(
+            EvaluationTarget(
+                flow_name="ed_yta_arrival_rates",
+                flow_type="admissions",
+                evaluation_mode="arrival_deltas",
+                component="arrival_delta_cumulative",
+                observation_mode=ed_yta_observation_mode,
+            )
+        )
+    return targets
+
+
 def _normalize_trained_models(
     trained_models: Union[
         Sequence[TrainedClassifier],
@@ -250,6 +341,10 @@ class EvaluationInputs:
     distribution_benchmark_cohorts : dict
         Optional ``"admissions"`` / ``"departures"`` cohorts for global p̄
         (see `add_distribution_benchmark_cohort`).
+    distribution_benchmark_pmfs : dict
+        Optional ``flow_name`` → ``benchmark_kind`` → specialty PMF dicts for
+        alternative-distribution benchmarks (see
+        `add_distribution_benchmark_from_service_dict`).
     eval_split : str
         Holdout assessed by this run: ``"valid"`` (default) or ``"test"``.
         Drives plot cohort labels; visit frames and snapshot dates must match.
@@ -271,6 +366,7 @@ class EvaluationInputs:
     distribution_benchmark_cohorts: Dict[str, Dict[str, Any]] = field(
         default_factory=dict
     )
+    distribution_benchmark_pmfs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.prediction_times:
@@ -317,6 +413,7 @@ class EvaluationInputsBuilder:
         self._transition_matrix_by_flow: Dict[str, Dict[str, Any]] = {}
         self._observation_contexts: Dict[str, Dict[str, Dict[str, Any]]] = {}
         self._distribution_benchmark_cohorts: Dict[str, Dict[str, Any]] = {}
+        self._distribution_benchmark_pmfs: Dict[str, Dict[str, Any]] = {}
 
     def set_flow_selection(
         self, flow_selection: FlowSelection
@@ -613,6 +710,43 @@ class EvaluationInputsBuilder:
             }
         return self
 
+    def add_distribution_benchmark_from_service_dict(
+        self,
+        flow_name: str,
+        prob_dist_by_service: Mapping[str, Any],
+        *,
+        benchmark_kind: str = "specialty_proportions",
+    ) -> EvaluationInputsBuilder:
+        """Register alternative PMFs for distribution benchmark comparison.
+
+        Use this for admission-scoped baselines that require a full re-prediction
+        pass (for example average specialty proportions instead of a sequence
+        predictor). The handler emits ``rpit_cvm_{benchmark_kind}_*`` scalars and
+        ``rpit_cvm_{benchmark_kind}_w2_reduction`` when at least two snapshots
+        have observations.
+
+        Parameters
+        ----------
+        flow_name : str
+            Must match the ``flow_name`` on the primary distribution target and
+            ``add_distributions_from_service_dict``.
+        prob_dist_by_service : mapping
+            Same nested layout as the primary PMF dict:
+            ``service`` → ``model_key`` → ``snapshot`` → leaf.
+        benchmark_kind : str, optional
+            Short label used as the scalar key prefix. Default
+            ``"specialty_proportions"``.
+
+        Returns
+        -------
+        EvaluationInputsBuilder
+            ``self`` for method chaining.
+        """
+        self._require_basics()
+        per_flow = self._distribution_benchmark_pmfs.setdefault(flow_name, {})
+        per_flow[str(benchmark_kind)] = dict(prob_dist_by_service)
+        return self
+
     def add_arrival_deltas(
         self,
         flow_name: str,
@@ -842,4 +976,8 @@ class EvaluationInputsBuilder:
                 for fn, per in self._observation_contexts.items()
             },
             distribution_benchmark_cohorts=dict(self._distribution_benchmark_cohorts),
+            distribution_benchmark_pmfs={
+                fn: {kind: dict(pmfs) for kind, pmfs in per.items()}
+                for fn, per in self._distribution_benchmark_pmfs.items()
+            },
         )

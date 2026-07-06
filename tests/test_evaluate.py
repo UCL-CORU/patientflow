@@ -24,6 +24,7 @@ from patientflow.evaluate.inputs import (
     EvaluationTarget,
     eval_split_label,
     normalize_prediction_dict,
+    standard_ed_targets,
 )
 from patientflow.evaluate.runner import (
     evaluation_targets_for_manifest,
@@ -985,3 +986,85 @@ def test_evaluate_distribution_yta_has_no_benchmark_fields(tmp_path: Path):
     assert row["observation_mode"] == "arrived_in_window"
     assert "rpit_cvm_mean_w2" in row
     assert "rpit_cvm_benchmark_mean_w2" not in row
+
+
+def test_standard_ed_targets_default_four_targets():
+    targets = standard_ed_targets()
+    assert len(targets) == 4
+    assert {t.flow_name for t in targets} == {
+        "ed_admissions_cls",
+        "ed_current_beds",
+        "ed_yta_arrival_rates",
+    }
+
+
+def test_evaluate_distribution_specialty_proportions_benchmark(tmp_path: Path):
+    prediction_time = (10, 0)
+    model_name = "beds"
+    leaf_a = _distribution_leaf(1)
+    leaf_b = _distribution_leaf(0)
+    alt_a = _distribution_leaf(0)
+    alt_b = _distribution_leaf(1)
+    ed_visits = pd.DataFrame(
+        [
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": prediction_time,
+                "is_admitted": 1,
+                "specialty": "medical",
+            },
+            {
+                "snapshot_date": date(2024, 1, 2),
+                "prediction_time": prediction_time,
+                "is_admitted": 0,
+                "specialty": "medical",
+            },
+        ]
+    )
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _two_snapshot_model_key_dist(
+                    model_name, prediction_time, (leaf_a, leaf_b)
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={"medical": ed_visits},
+        )
+        .add_distribution_benchmark_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _two_snapshot_model_key_dist(
+                    model_name, prediction_time, (alt_a, alt_b)
+                ),
+            },
+            benchmark_kind="specialty_proportions",
+        )
+        .build()
+    )
+    collector = ScalarsCollector()
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=collector,
+    )
+    row = collector.as_list()[0]
+    assert "rpit_cvm_specialty_proportions_mean_w2" in row
+    assert "rpit_cvm_specialty_proportions_w2_reduction" in row

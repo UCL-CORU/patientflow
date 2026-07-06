@@ -1089,6 +1089,32 @@ def evaluate_distribution(
                             }
                         )
 
+            alt_by_kind = inputs.distribution_benchmark_pmfs.get(target.flow_name, {})
+            for benchmark_kind, alt_prob_by_svc in alt_by_kind.items():
+                alt_per_date = alt_prob_by_svc.get(str(service))
+                if not isinstance(alt_per_date, Mapping):
+                    continue
+                alt_prob_all = _build_prob_dist_dict_all_for_service(
+                    alt_per_date, model_name, inputs.prediction_times
+                )
+                alt_series_dict = alt_prob_all.get(mk) or {}
+                alt_result = rpit_cvm_calibration_score(alt_series_dict)
+                if alt_result is None or pf_result is None:
+                    continue
+                prefix = f"rpit_cvm_{benchmark_kind}"
+                row.update(
+                    rpit_cvm_result_to_scalar_fields(
+                        alt_result, prefix=prefix, seed=None
+                    )
+                )
+                row.update(
+                    {
+                        f"{prefix}_w2_reduction": (
+                            alt_result.mean_w2 - pf_result.mean_w2
+                        ),
+                    }
+                )
+
             collector.add_row(row)
 
     collector.merge_service_summary_slice(
