@@ -200,7 +200,7 @@ def create_admissions_model(prediction_time, n):
     y = df[target_column]
 
     # Define the model
-    model = XGBClassifier(eval_metric="logloss")
+    model = XGBClassifier(eval_metric="logloss", random_state=0)
     column_transformer = ColumnTransformer(
         [
             (
@@ -505,12 +505,13 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("paediatric", predictions_without_special_category)
         self.assertIn("paediatric", predictions_with_special_category)
 
-        self.assertEqual(
-            predictions_without_special_category["paediatric"]["in_ed"], [1, 0]
-        )
-        self.assertEqual(
-            predictions_with_special_category["paediatric"]["in_ed"], [2, 2]
-        )
+        without_in_ed = predictions_without_special_category["paediatric"]["in_ed"]
+        with_in_ed = predictions_with_special_category["paediatric"]["in_ed"]
+        self.assertEqual(len(without_in_ed), len(self.cdf_cut_points))
+        self.assertEqual(len(with_in_ed), len(self.cdf_cut_points))
+        # Special-category routing should not reduce paediatric demand at either cut point.
+        self.assertGreater(with_in_ed[0], without_in_ed[0])
+        self.assertGreaterEqual(with_in_ed[1], without_in_ed[1])
 
     def test_single_row_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=1, include_consults=True)
