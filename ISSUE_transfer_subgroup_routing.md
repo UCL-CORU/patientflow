@@ -102,11 +102,11 @@ Prediction snapshots are **not** required to guarantee `sex ∈ {M, F}` for adul
 
 When a row matches **no** subgroup (typically an adult with missing, null, or non-`M`/`F` sex):
 
-| Flow | Behaviour |
-|------|-----------|
-| Transfer routing | `weight_i(T) = 0` for all targets — row contributes **no** transfer arrivals |
+| Flow                 | Behaviour                                                                    |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Transfer routing     | `weight_i(T) = 0` for all targets — row contributes **no** transfer arrivals |
 | ED specialty routing | Row excluded from subgroup specialty masks (no `specialty_prob` for routing) |
-| Inpatient departures | Unchanged — `p_depart_i` still applies via the departure classifier |
+| Inpatient departures | Unchanged — `p_depart_i` still applies via the departure classifier          |
 
 Emit **one summary warning per predict call** (not per row), e.g. counts of excluded ED and inpatient rows. Optionally note breakdown by `sex` value where helpful.
 
@@ -126,11 +126,11 @@ At implementation time, `predict_dataframe` already leaves unmatched adults as `
 
 ### Other edge cases
 
-| Case | Behaviour |
-|------|-----------|
+| Case                                                                     | Behaviour                                                                   |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
 | Resolved `g(i)` not in `["subgroups"]` for cohort (empty training slice) | Exclude from transfer routing (`weight_i(T) = 0`); warn in the same summary |
-| Subgroup row has no `source_service` | Same as today: `get_transfer_prob` warns and returns `0.0` |
-| Sparse subgroup at fit time | No minimum-count threshold at prediction; use the fitted subgroup row as-is |
+| Subgroup row has no `source_service`                                     | Same as today: `get_transfer_prob` warns and returns `0.0`                  |
+| Sparse subgroup at fit time                                              | No minimum-count threshold at prediction; use the fitted subgroup row as-is |
 
 ## What this does and does not guarantee
 
@@ -220,18 +220,18 @@ Precompute subgroup masks once per snapshot frame. Nested loops over admission t
 
 ## Decisions
 
-| # | Topic | Decision |
-|---|--------|----------|
-| D1 | Primary mechanism | Patient-level `weight_i(T) = p_depart_i × q_i(T)` + `pred_proba_to_agg_predicted`, not five subgroup PMFs per source |
-| D2 | Subgroup resolution | Shared `resolve_patient_subgroup` using `transfer_model.subgroup_functions`; raise on overlapping masks |
-| D3 | Unmatched adults | Exclude from transfer and ED specialty routing (`weight_i(T) = 0`); one summary warning per predict call; no pooled `["services"]` fallback |
-| D4 | Cohort | Keep `elective` / `emergency` split as today (`admission_type` in loop) |
-| D5 | API surface | Subgroup routing only — no `use_subgroup_routing` flag |
-| D6 | Departure probabilities | Pass `inpatient_snapshots` + `prob_departure_after_*` from `build_service_data`; single source of truth with inpatient outflows |
-| D7 | Sparse training | No minimum-count threshold at prediction |
-| D8 | Performance | Vectorize masks once; nested loops OK for v1 |
-| D9 | Evaluation | Out of scope here; align transition-matrix evaluation (attached spec) to the same exclude rules for unmatched rows |
-| D10 | Module layout | New `patientflow.predict.transfers`; move `compute_transfer_arrivals` out of `service.py`; re-export from `service.py` for backward compatibility |
+| #   | Topic                   | Decision                                                                                                                                          |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Primary mechanism       | Patient-level `weight_i(T) = p_depart_i × q_i(T)` + `pred_proba_to_agg_predicted`, not five subgroup PMFs per source                              |
+| D2  | Subgroup resolution     | Shared `resolve_patient_subgroup` using `transfer_model.subgroup_functions`; raise on overlapping masks                                           |
+| D3  | Unmatched adults        | Exclude from transfer and ED specialty routing (`weight_i(T) = 0`); one summary warning per predict call; no pooled `["services"]` fallback       |
+| D4  | Cohort                  | Keep `elective` / `emergency` split as today (`admission_type` in loop)                                                                           |
+| D5  | API surface             | Subgroup routing only — no `use_subgroup_routing` flag                                                                                            |
+| D6  | Departure probabilities | Pass `inpatient_snapshots` + `prob_departure_after_*` from `build_service_data`; single source of truth with inpatient outflows                   |
+| D7  | Sparse training         | No minimum-count threshold at prediction                                                                                                          |
+| D8  | Performance             | Vectorize masks once; nested loops OK for v1                                                                                                      |
+| D9  | Evaluation              | Out of scope here; align transition-matrix evaluation (attached spec) to the same exclude rules for unmatched rows                                |
+| D10 | Module layout           | New `patientflow.predict.transfers`; move `compute_transfer_arrivals` out of `service.py`; re-export from `service.py` for backward compatibility |
 
 ## Out of scope
 

@@ -72,9 +72,7 @@ def pearson_x2(observed: np.ndarray, expected: np.ndarray) -> float:
     return float(np.sum(diff**2 / expected[mask]))
 
 
-def count_structural_violations(
-    observed: np.ndarray, expected: np.ndarray
-) -> int:
+def count_structural_violations(observed: np.ndarray, expected: np.ndarray) -> int:
     """Count destinations with zero expectation but positive observation."""
     return int(np.sum((expected == 0) & (observed > 0)))
 

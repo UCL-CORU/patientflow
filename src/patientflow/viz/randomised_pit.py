@@ -2,54 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
+from patientflow.evaluate.distributions import prob_to_cdf as _prob_to_cdf
 from patientflow.load import get_model_key
-
-
-def _prob_to_cdf(prob_dist):
-    """Convert probability distribution to CDF function"""
-    import pandas as pd
-
-    if isinstance(prob_dist, pd.DataFrame):
-        # Handle DataFrame: assume columns are values, data contains probabilities
-        # Take the first row if it's a DataFrame with multiple rows
-        if len(prob_dist) > 0:
-            prob_series = prob_dist.iloc[0]  # Take first row
-        else:
-            raise ValueError("Empty DataFrame provided")
-        values = list(prob_series.index)
-        probs = list(prob_series.values)
-    elif isinstance(prob_dist, pd.Series):
-        # Handle Series: index is values, values are probabilities
-        values = list(prob_dist.index)
-        probs = list(prob_dist.values)
-    elif isinstance(prob_dist, dict):
-        # Sort by keys (values) to ensure proper cumulative calculation
-        sorted_items = sorted(prob_dist.items())
-        values = [item[0] for item in sorted_items]
-        probs = [item[1] for item in sorted_items]
-    else:
-        # Array format: index = value, array[index] = probability
-        values = list(range(len(prob_dist)))
-        probs = prob_dist
-
-    # Ensure values are sorted
-    sorted_pairs = sorted(zip(values, probs))
-    values = [pair[0] for pair in sorted_pairs]
-    probs = [pair[1] for pair in sorted_pairs]
-
-    # Calculate cumulative probabilities
-    cum_probs = np.cumsum(probs)
-
-    def cdf_function(x):
-        # Return P(X <= x)
-        if x < values[0]:
-            return 0.0
-        for i, val in enumerate(values):
-            if x <= val:
-                return cum_probs[i]
-        return 1.0  # x is larger than all values
-
-    return cdf_function
 
 
 def plot_randomised_pit(

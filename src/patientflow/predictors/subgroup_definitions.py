@@ -44,9 +44,9 @@ def _is_adult_female_senior(row):
     return age >= 65 and row.get("sex") == "F"
 
 
-def create_paediatric_adult_subgroup_functions() -> Dict[
-    str, Callable[[Union[pd.Series, dict]], bool]
-]:
+def create_paediatric_adult_subgroup_functions() -> (
+    Dict[str, Callable[[Union[pd.Series, dict]], bool]]
+):
     """Create a simple paediatric/adult subgroup split.
 
     Uses [get_age][patientflow.predictors.legacy_compatibility.get_age] so

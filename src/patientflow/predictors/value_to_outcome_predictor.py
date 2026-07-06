@@ -8,6 +8,8 @@ Classes
 -------
 ValueToOutcomePredictor : sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
     A model that predicts the probability of ending in different outcome categories based on a single input value.
+ConstantSpecialtyProbs : ValueToOutcomePredictor
+    Baseline specialty router that returns the same outcome distribution for every patient.
 
 Notes
 -----
@@ -297,3 +299,25 @@ class ValueToOutcomePredictor(BaseEstimator, TransformerMixin):
 
         # If no relevant data is found, return null probabilities
         return self.weights.get(None, {})
+
+
+class ConstantSpecialtyProbs(ValueToOutcomePredictor):
+    """Historical specialty-mix baseline; ignores patient features.
+
+    Use when evaluating against a constant routing model (for example
+    training-set specialty proportions) that satisfies the ``spec_model``
+    contract in :func:`patientflow.predict.flow_selection_checks.assert_model_types_for_flow`.
+    """
+
+    def __init__(self, probs: Dict[str, float]):
+        super().__init__(
+            input_var="consultation_sequence",
+            grouping_var="consultation_sequence",
+            outcome_var="specialty",
+            apply_special_category_filtering=False,
+        )
+        self.weights = {"": probs}
+        self._constant_probs = probs
+
+    def predict_dataframe(self, df: pd.DataFrame) -> pd.Series:
+        return pd.Series([self._constant_probs] * len(df), index=df.index)

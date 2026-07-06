@@ -10,13 +10,82 @@ Functions
 create_fake_finished_visits(start_date, end_date, mean_patients_per_day)
     Generate synthetic patient visits, triage observations, and lab orders.
 
+synthesise_departure_times(df, kind='ed_visits', seed=42)
+    Add synthetic departure timestamps when real extracts omit them.
+
 create_fake_snapshots(prediction_times, start_date, end_date, df, observations_df, lab_orders_df, mean_patients_per_day)
     Create patient-level snapshots at specific times with visit, triage, and lab features.
 """
 
+from __future__ import annotations
+
+from typing import Literal
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, time
+
+DepartureTimeKind = Literal["ed_visits", "inpatient_arrivals"]
+
+
+def synthesise_departure_times(
+    df: pd.DataFrame,
+    *,
+    kind: DepartureTimeKind = "ed_visits",
+    seed: int = 42,
+) -> pd.DataFrame:
+    """Add synthetic ``departure_datetime`` values for notebook demonstrations.
+
+    Skip this helper when your extract already includes real departure times.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        ED visit or inpatient arrival rows to augment in place (a copy is returned).
+    kind : {'ed_visits', 'inpatient_arrivals'}, optional
+        ``'ed_visits'`` sets leave-ED times from snapshot moment plus a gamma delay
+        (non-admitted rows get ``NaT``). ``'inpatient_arrivals'`` sets ward-admission
+        times from ``arrival_datetime`` plus a gamma delay.
+    seed : int, optional
+        NumPy RNG seed for reproducibility.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Copy of *df* with a ``departure_datetime`` column.
+    """
+    out = df.copy()
+    rng = np.random.default_rng(seed)
+
+    if kind == "inpatient_arrivals":
+        ward_delay_hours = rng.gamma(shape=4.0, scale=1.5, size=len(out))
+        ward_delay_hours = ward_delay_hours.clip(min=0.25)
+        out["departure_datetime"] = pd.to_datetime(
+            out["arrival_datetime"], utc=True
+        ) + pd.to_timedelta(ward_delay_hours, unit="h")
+        return out
+
+    if kind == "ed_visits":
+        if (
+            "departure_datetime" in out.columns
+            and out["departure_datetime"].notna().any()
+        ):
+            return out
+        leave_delay_hours = rng.gamma(shape=3.0, scale=2.0, size=len(out))
+        leave_delay_hours = leave_delay_hours.clip(min=0.25)
+        snapshot_moment = pd.to_datetime(
+            out["snapshot_date"].astype(str)
+            + " "
+            + out["prediction_time"].map(lambda t: f"{t[0]:02d}:{t[1]:02d}:00")
+        )
+        out["departure_datetime"] = (
+            snapshot_moment + pd.to_timedelta(leave_delay_hours, unit="h")
+        ).dt.tz_localize("UTC")
+        if "is_admitted" in out.columns:
+            out.loc[~out["is_admitted"].astype(bool), "departure_datetime"] = pd.NaT
+        return out
+
+    raise ValueError(f"kind must be 'ed_visits' or 'inpatient_arrivals', got {kind!r}")
 
 
 def create_fake_finished_visits(
