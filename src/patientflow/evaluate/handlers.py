@@ -463,19 +463,29 @@ def _coerce_snapshot_date(snap: Any) -> date:
     )
 
 
+def _require_observation_mode(target: EvaluationTarget) -> str:
+    """Return ``observation_mode`` for handlers that count observed admissions."""
+    if target.observation_mode is None:
+        raise ValueError(
+            f"evaluation_mode={target.evaluation_mode!r} requires observation_mode"
+        )
+    return target.observation_mode
+
+
 def _observation_frame_for_distribution(
     inputs: EvaluationInputs,
     target: EvaluationTarget,
     service: str,
 ) -> pd.DataFrame:
     """Return the observation dataframe for *target* and *service*."""
-    frame_key = observation_context_frame_key(target.observation_mode)
+    observation_mode = _require_observation_mode(target)
+    frame_key = observation_context_frame_key(observation_mode)
     flow_ctx = inputs.observation_contexts.get(target.flow_name) or {}
     svc_ctx = flow_ctx.get(str(service))
     if svc_ctx is None:
         raise ValueError(
             f"Distribution evaluation for flow {target.flow_name!r}, service "
-            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"{service!r}, observation_mode={observation_mode!r} requires "
             f"observation context {frame_key!r}; register "
             f"add_distribution_observations on this flow with "
             f"{frame_key}_by_service=..."
@@ -484,7 +494,7 @@ def _observation_frame_for_distribution(
     if frame is None:
         raise ValueError(
             f"Distribution evaluation for flow {target.flow_name!r}, service "
-            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"{service!r}, observation_mode={observation_mode!r} requires "
             f"observation context {frame_key!r}; register "
             f"add_distribution_observations with {frame_key}_by_service=..."
         )
@@ -503,14 +513,15 @@ def _recompute_leaf_agg_observed(
     benchmark_cohorts: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Recompute and set `agg_observed` on one distribution leaf."""
-    frame_key = observation_context_frame_key(target.observation_mode)
+    observation_mode = _require_observation_mode(target)
+    frame_key = observation_context_frame_key(observation_mode)
     count_kwargs: Dict[str, Any] = {
         "snapshot_date": snapshot_date,
         "prediction_time": prediction_time,
         "prediction_window": prediction_window,
-        **count_observed_label_kwargs(target.observation_mode, benchmark_cohorts),
+        **count_observed_label_kwargs(observation_mode, benchmark_cohorts),
     }
-    if count_observed_applies_specialty_filter(target.observation_mode):
+    if count_observed_applies_specialty_filter(observation_mode):
         count_kwargs["specialty"] = str(service)
     if frame_key == "ed_visits":
         count_kwargs["ed_visits"] = observation_frame
@@ -522,7 +533,7 @@ def _recompute_leaf_agg_observed(
         if route is not None:
             count_kwargs["admission_type"] = route
 
-    recomputed = count_observed(target.observation_mode, **count_kwargs)
+    recomputed = count_observed(observation_mode, **count_kwargs)
     prior = leaf.get("agg_observed")
     if prior is not None and int(prior) != int(recomputed):
         raise AssertionError(
@@ -888,7 +899,9 @@ def _benchmark_p_bar_by_prediction_time(
     target: EvaluationTarget,
 ) -> Optional[Dict[Tuple[int, int], float]]:
     """Global p̄ per clock when observation mode supports a binomial benchmark."""
-    cohort_key = benchmark_cohort_key_for_observation_mode(target.observation_mode)
+    cohort_key = benchmark_cohort_key_for_observation_mode(
+        _require_observation_mode(target)
+    )
     if cohort_key is None:
         return None
     spec = inputs.distribution_benchmark_cohorts.get(cohort_key)
