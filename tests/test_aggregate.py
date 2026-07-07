@@ -582,6 +582,88 @@ class TestGetProbDistByService(unittest.TestCase):
             flow_selection=FlowSelection.default(),
         )
 
+    @staticmethod
+    def _ed_yta_only_flow() -> FlowSelection:
+        return FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=True,
+            include_non_ed_yta=False,
+            include_elective_yta=False,
+            include_transfers_in=False,
+            include_departures=False,
+        )
+
+    def test_admitted_in_window_requires_ed_visits(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                None,
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                self._ed_only_flow(),
+                observation_mode="admitted_in_window",
+            )
+        self.assertIn("ed_visits", str(ctx.exception))
+
+    def test_arrived_in_window_requires_inpatient_arrivals(self):
+        with self.assertRaises(ValueError) as ctx:
+            get_prob_dist_by_service(
+                None,
+                [date(2024, 1, 1)],
+                (10, 0),
+                (None,) * 7,
+                ["medical"],
+                timedelta(hours=2),
+                self._ed_yta_only_flow(),
+                observation_mode="arrived_in_window",
+            )
+        self.assertIn("inpatient_arrivals", str(ctx.exception))
+
+    @patch("patientflow.predict.service.build_service_data")
+    @patch("patientflow.predict.demand.DemandPredictor")
+    def test_arrived_in_window_yta_without_ed_visits(
+        self, mock_predictor_cls, mock_build_service_data
+    ):
+        mock_build_service_data.return_value = {"medical": MagicMock()}
+        mock_predictor_cls.return_value.predict_service.return_value = (
+            self._mock_prediction_bundle()
+        )
+        moment = datetime(2024, 1, 1, 10, 0, 0)
+        inpatient_arrivals = pd.DataFrame(
+            [
+                {
+                    "arrival_datetime": moment + timedelta(hours=2),
+                    "specialty": "medical",
+                },
+                {
+                    "arrival_datetime": moment + timedelta(hours=10),
+                    "specialty": "medical",
+                },
+                {
+                    "arrival_datetime": moment + timedelta(hours=2),
+                    "specialty": "surgical",
+                },
+            ]
+        )
+        result = get_prob_dist_by_service(
+            None,
+            [date(2024, 1, 1)],
+            (10, 0),
+            (None,) * 7,
+            ["medical"],
+            timedelta(hours=8),
+            self._ed_yta_only_flow(),
+            observation_mode="arrived_in_window",
+            inpatient_arrivals=inpatient_arrivals,
+            component="arrivals",
+            services=["medical"],
+        )
+        leaf = result["medical"][date(2024, 1, 1)]
+        self.assertEqual(leaf["agg_observed"], 1)
+        self.assertIn("agg_proba", leaf["agg_predicted"].columns)
+
     def test_missing_ed_visits_raises_when_ed_current_included(self):
         with self.assertRaises(ValueError) as ctx:
             get_prob_dist_by_service(
