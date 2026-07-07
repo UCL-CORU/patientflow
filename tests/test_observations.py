@@ -346,6 +346,10 @@ def test_departed_in_window_filters_admission_type():
 
 def test_validate_observation_mode_for_component():
     validate_observation_mode_for_component("arrivals", "admitted_in_window")
+    validate_observation_mode_for_component("arrivals", "arrived_in_window")
+    validate_observation_mode_for_component(
+        "arrivals", "arrived_and_admitted_in_window"
+    )
     validate_observation_mode_for_component("departures", "departed_in_window")
     with pytest.raises(ValueError, match="arrivals"):
         validate_observation_mode_for_component("arrivals", "departed_in_window")

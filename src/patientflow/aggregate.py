@@ -715,6 +715,7 @@ def get_prob_dist_by_service(
     y2: Optional[float] = None,
     services: Optional[List[str]] = None,
     inpatient_visits: Optional[pd.DataFrame] = None,
+    inpatient_arrivals: Optional[pd.DataFrame] = None,
     component: str = "arrivals",
     use_admission_in_window_prob: Optional[bool] = None,
     outcome_column: str = "left_subspecialty_in_window",
@@ -772,6 +773,11 @@ def get_prob_dist_by_service(
         for `observation_mode='departed_in_window'` (must include
         *outcome_column*). If provided for prediction, must contain columns
         `snapshot_date`, `prediction_time`, and `elapsed_los` (as `timedelta`).
+    inpatient_arrivals : pandas.DataFrame, optional
+        Full inpatient arrivals dataframe. Required for
+        `observation_mode='arrived_in_window'` or
+        `observation_mode='arrived_and_admitted_in_window'` (must include
+        `arrival_datetime`; the latter also needs `departure_datetime`).
     component : {'arrivals', 'departures', 'net_flow'}, optional
         Which `PredictionBundle` attribute to extract. Default is `arrivals`.
         Distribution evaluation for `net_flow` is not supported.
@@ -860,6 +866,12 @@ def get_prob_dist_by_service(
             raise ValueError(
                 f"ed_visits is required for observation_mode={observation_mode!r}"
             )
+    if observation_mode in ("arrived_in_window", "arrived_and_admitted_in_window"):
+        if inpatient_arrivals is None:
+            raise ValueError(
+                f"inpatient_arrivals is required for "
+                f"observation_mode={observation_mode!r}"
+            )
     if observation_mode == "departed_in_window" and inpatient_visits is None:
         raise ValueError(
             "inpatient_visits is required for observation_mode='departed_in_window'"
@@ -905,6 +917,7 @@ def get_prob_dist_by_service(
             prediction_window=prediction_window,
             ed_visits=ed_visits,
             inpatient_visits=inpatient_visits,
+            inpatient_arrivals=inpatient_arrivals,
             specialty=svc,
             outcome_column=outcome_column,
         )

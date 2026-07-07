@@ -77,7 +77,17 @@ DEPARTURES_DISTRIBUTION_ADMISSION_TYPE: dict[str, str] = {
     "departures_emergency": "emergency",
 }
 
-_ARRIVAL_OBSERVATION_MODES = frozenset({"admitted_at_some_point", "admitted_in_window"})
+_ARRIVAL_OBSERVATION_MODES = frozenset(
+    {
+        "admitted_at_some_point",
+        "admitted_in_window",
+        "arrived_in_window",
+        "arrived_and_admitted_in_window",
+    }
+)
+_ED_CURRENT_ARRIVAL_OBSERVATION_MODES = frozenset(
+    {"admitted_at_some_point", "admitted_in_window"}
+)
 _DEPARTURE_OBSERVATION_MODES = frozenset({"departed_in_window"})
 
 
@@ -263,7 +273,7 @@ def count_observed_applies_specialty_filter(observation_mode: str) -> bool:
     snapshot modes use per-service frames from ``add_distribution_observations``
     (for example YTA ``is_child`` for paediatric); those cohorts are already scoped.
     """
-    return observation_mode in _ARRIVAL_OBSERVATION_MODES
+    return observation_mode in _ED_CURRENT_ARRIVAL_OBSERVATION_MODES
 
 
 def admission_type_filter_for_distribution_component(
