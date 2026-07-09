@@ -232,7 +232,7 @@ Below I'm using `train_classifier()`, which is a wrapper on standard scikit-lear
 - `use_balanced_training`: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class.
 - `calibrate_probabilities`: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will use a sigmoid function to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.
 - `calibration_method`: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.
-- `evaluate_on_test`: by default, this is set to False so the function will only return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance
+- `evaluate_on_test`: by default, this is set to False so the function will not return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance
 
 By default, the function will use an XGBoost classifier, initialised with the hyperparameter grid provided, with log loss as the evaluation metric. Chronological cross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values.
 
@@ -283,7 +283,7 @@ model.training_results
 
 
 
-    TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.23452358103155707), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401687873552), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304380613956), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622070024668), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291733590328), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921767090972), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders', 'num_troponin_orders', 'num_bmp_orders', 'num_cbc_orders', 'num_d-dimer_orders'], 'importances': [0.07901820540428162, 0.50030118227005, 0.10778335481882095, 0.06226950138807297, 0.08132454752922058, 0.049338143318891525, 0.11996506154537201], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}}}, calibration_info={'method': 'sigmoid'}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
+    TrainingResults(prediction_time=(9, 30), training_info={'cv_trials': [HyperParameterTrial(parameters={'n_estimators': 20}, cv_results={'train_auc': np.float64(0.9863488774220018), 'train_logloss': np.float64(0.23452358103155707), 'train_auprc': np.float64(0.9839960012755344), 'valid_auc': np.float64(0.7404647983595354), 'valid_logloss': np.float64(0.6777401687873552), 'valid_auprc': np.float64(0.732305765806727)}), HyperParameterTrial(parameters={'n_estimators': 30}, cv_results={'train_auc': np.float64(0.9934036840041577), 'train_logloss': np.float64(0.19339304380613956), 'train_auprc': np.float64(0.992275317414658), 'valid_auc': np.float64(0.7414445203918889), 'valid_logloss': np.float64(0.7224622070024668), 'valid_auprc': np.float64(0.739694204530856)}), HyperParameterTrial(parameters={'n_estimators': 40}, cv_results={'train_auc': np.float64(0.9966901551317282), 'train_logloss': np.float64(0.16839291733590328), 'train_auprc': np.float64(0.9957460357414476), 'valid_auc': np.float64(0.7385623148781044), 'valid_logloss': np.float64(0.7471921767090972), 'valid_auprc': np.float64(0.7319157690354547)})], 'features': {'names': ['age', 'latest_triage_score', 'num_urinalysis_orders', 'num_troponin_orders', 'num_bmp_orders', 'num_cbc_orders', 'num_d-dimer_orders'], 'importances': [0.07901820540428162, 0.50030118227005, 0.10778335481882095, 0.06226950138807297, 0.08132454752922058, 0.049338143318891525, 0.11996506154537201], 'has_importance_values': True}, 'dataset_info': {'train_valid_test_set_no': {'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}, 'train_valid_test_class_balance': {'y_train_class_balance': {1: 0.29854368932038833, 0: 0.7014563106796117}, 'y_valid_class_balance': {0: 0.7021276595744681, 1: 0.2978723404255319}, 'y_test_class_balance': None}, 'train_valid_test_positive_cases': {'train_positive_cases': 123, 'valid_positive_cases': 42, 'test_positive_cases': None}}, 'dataset_preparation': {'single_snapshot_per_visit': {'legacy': True, 'train': True, 'valid': True, 'test': True}}}, calibration_info={'method': 'sigmoid', 'source': {'dataset': 'validation', 'single_snapshot_per_visit': False, 'deployment_like_validation': True, 'n_samples': 141, 'positive_rate': 0.2978723404255319}}, test_results=None, balance_info={'is_balanced': True, 'original_size': 412, 'balanced_size': 246, 'original_positive_rate': np.float64(0.29854368932038833), 'balanced_positive_rate': np.float64(0.5), 'majority_to_minority_ratio': 1.0})
 
 To get a better view of what is included within the results, here is a list of the fields returned:
 
@@ -329,7 +329,7 @@ def print_class_balance(d):
 print_class_balance(results['dataset_info']['train_valid_test_class_balance'])
 ```
 
-    The training_info object contains the following keys: dict_keys(['cv_trials', 'features', 'dataset_info'])
+    The training_info object contains the following keys: dict_keys(['cv_trials', 'features', 'dataset_info', 'dataset_preparation'])
 
     Number in each set{'train_set_no': 412, 'valid_set_no': 141, 'test_set_no': None}
     train: 70.1% neg, 29.9% pos
@@ -355,7 +355,12 @@ And the type of calibration done on balanced samples is saved in training_result
 model.training_results.calibration_info
 ```
 
-    {'method': 'sigmoid'}
+    {'method': 'sigmoid',
+     'source': {'dataset': 'validation',
+      'single_snapshot_per_visit': False,
+      'deployment_like_validation': True,
+      'n_samples': 141,
+      'positive_rate': 0.2978723404255319}}
 
 Results of hyperparameter tuning are saved in a HyperParameterTrial object
 
@@ -395,7 +400,7 @@ Note that each record in the snapshots dataframe is indexed by a unique snapshot
 
 The following function enables you to plot the results of hyperparameter trials, which have been saved with the trained model. The input to the plot is a list of `HyperParameterTrial` instances containing validation set results and hyperparameter settings. Each trial's `cv_results` dictionary contains 'valid_auc' and 'valid_logloss' metrics, which have been computed for each hyperparameter configuration using the validation set.
 
-As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
+As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you iterate towards an optimal set of hyperparameters.
 
 ```python
 from patientflow.viz.trial_results import plot_trial_results

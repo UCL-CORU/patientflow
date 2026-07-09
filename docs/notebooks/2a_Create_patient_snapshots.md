@@ -5,7 +5,7 @@
 `patientflow` is organised around the following concepts:
 
 - Prediction time: A moment in the day at which predictions are to be made, for example 09:30.
-- Patient snapshot: A summary of data from the EHR capturing is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
+- Patient snapshot: A summary of data from the EHR capturing what is known about a single patient at the prediction time. Each patient snapshot has a date and a prediction time associated with it.
 - Group snapshot: A set of patient snapshots. Each group snapshot has a date and a prediction time associated with it.
 - Prediction window: A period of hours that begins at the prediction time.
 
@@ -20,7 +20,7 @@ In this notebook I suggest how you might prepare your data, starting from data o
 
 The snapshot creation shown here is designed to work with fake data generated below. You would need to create your own version of this process, to handle the data you have.
 
-In practice, determining from data _whether a patient was admitted after the ED visit_, and _when they were ready to be admitted_, can be tricky. How do you account for the fact that the patient may wait in the ED for a bed, due to lack of available beds? Likewise, if you are trying to predict discharge at the end of a hospital visit, should that that be the time they were ready to leave, or the time they actually left? Discharge delays are common, due to waiting for medication or transport, or waiting for onward care provision to become available.
+In practice, determining from data _whether a patient was admitted after the ED visit_, and _when they were ready to be admitted_, can be tricky. How do you account for the fact that the patient may wait in the ED for a bed, due to lack of available beds? Likewise, if you are trying to predict discharge at the end of a hospital visit, should that be the time they were ready to leave, or the time they actually left? Discharge delays are common, due to waiting for medication or transport, or waiting for onward care provision to become available.
 
 The outcome that you are aiming for will depend on your setting, and the information needs of the bed managers you are looking to support. You may have to infer when a patient was ready from available data. Suffice to say, think carefully about what it is you are trying to predict, and how you will identify that outcome in data.
 

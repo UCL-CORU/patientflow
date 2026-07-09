@@ -46,7 +46,7 @@ departed_in_window
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 
 import pandas as pd
 
@@ -57,6 +57,9 @@ OBSERVATION_MODES: tuple[str, ...] = (
     "arrived_in_window",
     "arrived_and_admitted_in_window",
 )  #: Allowed observation_mode strings accepted by count_observed.
+
+DEFAULT_ADMISSION_LABEL_COL = "is_admitted"
+DEFAULT_DEPARTURE_OUTCOME_COLUMN = "left_subspecialty_in_window"
 
 # Context keys on ``EvaluationInputs.observation_contexts[flow][service]``.
 OBSERVATION_CONTEXT_FRAME_KEYS: dict[str, str] = {
@@ -74,8 +77,41 @@ DEPARTURES_DISTRIBUTION_ADMISSION_TYPE: dict[str, str] = {
     "departures_emergency": "emergency",
 }
 
-_ARRIVAL_OBSERVATION_MODES = frozenset({"admitted_at_some_point", "admitted_in_window"})
+_ARRIVAL_OBSERVATION_MODES = frozenset(
+    {
+        "admitted_at_some_point",
+        "admitted_in_window",
+        "arrived_in_window",
+        "arrived_and_admitted_in_window",
+    }
+)
+_ED_CURRENT_ARRIVAL_OBSERVATION_MODES = frozenset(
+    {"admitted_at_some_point", "admitted_in_window"}
+)
 _DEPARTURE_OBSERVATION_MODES = frozenset({"departed_in_window"})
+
+
+def count_observed_label_kwargs(
+    observation_mode: str,
+    benchmark_cohorts: Mapping[str, Mapping[str, Any]],
+) -> dict[str, str]:
+    """Return ``admission_label_col`` / ``outcome_column`` for ``count_observed``.
+
+    Uses ``benchmark_cohorts`` from ``EvaluationInputs.distribution_benchmark_cohorts``
+    when registered via ``add_distribution_benchmark_cohort``; otherwise defaults.
+    """
+    kwargs: dict[str, str] = {}
+    if observation_mode in ("admitted_at_some_point", "admitted_in_window"):
+        spec = benchmark_cohorts.get("admissions") or {}
+        kwargs["admission_label_col"] = str(
+            spec.get("label_col", DEFAULT_ADMISSION_LABEL_COL)
+        )
+    elif observation_mode == "departed_in_window":
+        spec = benchmark_cohorts.get("departures") or {}
+        kwargs["outcome_column"] = str(
+            spec.get("label_col", DEFAULT_DEPARTURE_OUTCOME_COLUMN)
+        )
+    return kwargs
 
 
 def _prediction_moment(
@@ -99,8 +135,9 @@ def count_observed_admitted_at_some_point(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
 ) -> int:
-    """Count ED snapshot rows with `is_admitted` for the prediction moment.
+    """Count ED snapshot rows with a true admission label for the prediction moment.
 
     The prediction window is accepted for API compatibility with other
     strategies but does not affect the count: the cohort is the snapshot at
@@ -110,7 +147,9 @@ def count_observed_admitted_at_some_point(
     ----------
     ed_visits : pandas.DataFrame
         ED visits with columns *snapshot_date*, *prediction_time*,
-        *is_admitted*, and *specialty* when *specialty* is not None.
+        *admission_label_col*, and *specialty* when *specialty* is not None.
+    admission_label_col : str, optional
+        Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.
     snapshot_date : datetime.date
         Snapshot calendar date.
     prediction_time : tuple of (int, int)
@@ -126,10 +165,14 @@ def count_observed_admitted_at_some_point(
         Number of matching admitted rows.
     """
     del prediction_window  # retained for signature compatibility
+    if admission_label_col not in ed_visits.columns:
+        raise ValueError(
+            f"admitted_at_some_point requires column {admission_label_col!r} on ed_visits"
+        )
     mask = (
         (ed_visits["snapshot_date"] == snapshot_date)
         & (ed_visits["prediction_time"] == prediction_time)
-        & (ed_visits["is_admitted"].astype(bool))
+        & (ed_visits[admission_label_col].astype(bool))
     )
     if specialty is not None:
         mask = mask & (ed_visits["specialty"] == specialty)
@@ -143,6 +186,7 @@ def count_observed_admitted_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
     departure_datetime_col: str = "departure_datetime",
 ) -> int:
     """Count snapshot-cohort ED rows admitted with leave-ED time in the window.
@@ -161,7 +205,9 @@ def count_observed_admitted_in_window(
     ----------
     ed_visits : pandas.DataFrame
         Must include *departure_datetime_col*, *snapshot_date*, *prediction_time*,
-        *is_admitted*, and *specialty* if *specialty* is set.
+        *admission_label_col*, and *specialty* if *specialty* is set.
+    admission_label_col : str, optional
+        Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.
     snapshot_date : datetime.date
         Snapshot calendar date.
     prediction_time : tuple of (int, int)
@@ -189,13 +235,17 @@ def count_observed_admitted_in_window(
         raise ValueError(
             f"admitted_in_window requires column {departure_datetime_col!r} on ed_visits"
         )
+    if admission_label_col not in ed_visits.columns:
+        raise ValueError(
+            f"admitted_in_window requires column {admission_label_col!r} on ed_visits"
+        )
     moment = _prediction_moment(snapshot_date, prediction_time)
     col = ed_visits[departure_datetime_col]
     moment = _align_tz(moment, col)
     mask = (
         (ed_visits["snapshot_date"] == snapshot_date)
         & (ed_visits["prediction_time"] == prediction_time)
-        & (ed_visits["is_admitted"].astype(bool))
+        & (ed_visits[admission_label_col].astype(bool))
         & (col > moment)
         & (col <= moment + prediction_window)
     )
@@ -223,7 +273,7 @@ def count_observed_applies_specialty_filter(observation_mode: str) -> bool:
     snapshot modes use per-service frames from ``add_distribution_observations``
     (for example YTA ``is_child`` for paediatric); those cohorts are already scoped.
     """
-    return observation_mode in _ARRIVAL_OBSERVATION_MODES
+    return observation_mode in _ED_CURRENT_ARRIVAL_OBSERVATION_MODES
 
 
 def admission_type_filter_for_distribution_component(
@@ -243,7 +293,7 @@ def count_observed_departed_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
-    outcome_column: str = "left_subspecialty_in_window",
+    outcome_column: str = DEFAULT_DEPARTURE_OUTCOME_COLUMN,
     admission_type: Optional[str] = None,
 ) -> int:
     """Count inpatients with a true departure label on the snapshot cohort.
@@ -486,7 +536,8 @@ def count_observed(
     inpatient_visits: Optional[pd.DataFrame] = None,
     inpatient_arrivals: Optional[pd.DataFrame] = None,
     specialty: Optional[str] = None,
-    outcome_column: str = "left_subspecialty_in_window",
+    admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
+    outcome_column: str = DEFAULT_DEPARTURE_OUTCOME_COLUMN,
     admission_type: Optional[str] = None,
     arrival_datetime_col: str = "arrival_datetime",
     departure_datetime_col: str = "departure_datetime",
@@ -517,9 +568,12 @@ def count_observed(
         Passed to `count_observed_admitted_in_window` and
         `count_observed_arrived_and_admitted_in_window`.
         Default is `departure_datetime`.
+    admission_label_col : str, optional
+        Passed to `count_observed_admitted_in_window`.
+        Default is ``DEFAULT_ADMISSION_LABEL_COL``.
     outcome_column : str, optional
         Passed to `count_observed_departed_in_window`.
-        Default is `left_subspecialty_in_window`.
+        Default is ``DEFAULT_DEPARTURE_OUTCOME_COLUMN``.
     admission_type : str, optional
         Passed to `count_observed_departed_in_window` for route-specific
         departures targets (e.g. ``"elective"``). Default is None.
@@ -566,6 +620,7 @@ def count_observed(
             prediction_time,
             prediction_window,
             specialty=specialty,
+            admission_label_col=admission_label_col,
         )
     if observation_mode == "admitted_in_window":
         if ed_visits is None:
@@ -576,6 +631,7 @@ def count_observed(
             prediction_time,
             prediction_window,
             specialty=specialty,
+            admission_label_col=admission_label_col,
             departure_datetime_col=departure_datetime_col,
         )
     if observation_mode == "departed_in_window":

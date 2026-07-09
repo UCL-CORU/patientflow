@@ -646,6 +646,20 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         )
         self.assertEqual(fig._suptitle.get_text(), "Medical service")
 
+    def test_plot_with_alternate_arrival_datetime_col(self):
+        """arrival_datetime_col selects a non-default timestamp column."""
+        df = self.df.rename(columns={"arrival_datetime": "arrived_at"})
+        fig = plot_arrival_deltas(
+            df,
+            prediction_time=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            arrival_datetime_col="arrived_at",
+            return_figure=True,
+        )
+        self.assertIsInstance(fig, Figure)
+
 
 if __name__ == "__main__":
     unittest.main()

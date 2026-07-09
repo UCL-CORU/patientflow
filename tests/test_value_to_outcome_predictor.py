@@ -2,7 +2,12 @@ import unittest
 import pandas as pd
 import numpy as np
 
-from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
+from patientflow.predict.flow_selection_checks import assert_model_types_for_flow
+from patientflow.predict.types import FlowSelection
+from patientflow.predictors.value_to_outcome_predictor import (
+    ConstantSpecialtyProbs,
+    ValueToOutcomePredictor,
+)
 
 
 class TestValueToOutcomePredictor(unittest.TestCase):
@@ -296,6 +301,36 @@ class TestValueToOutcomePredictor(unittest.TestCase):
                 # Check that probabilities sum to 1.0
                 prob_sum = row.drop("probability_of_input_value").sum()
                 self.assertAlmostEqual(prob_sum, 1.0, places=10)
+
+
+class TestConstantSpecialtyProbs(unittest.TestCase):
+    """Test cases for ConstantSpecialtyProbs baseline specialty router."""
+
+    def test_predict_dataframe_returns_constant_distribution(self):
+        probs = {"medical": 0.6, "surgical": 0.4}
+        model = ConstantSpecialtyProbs(probs)
+        df = pd.DataFrame({"consultation_sequence": ["a", "b", "c"]})
+
+        predictions = model.predict_dataframe(df)
+
+        self.assertEqual(len(predictions), 3)
+        for value in predictions:
+            self.assertEqual(value, probs)
+
+    def test_passes_spec_model_type_checks(self):
+        model = ConstantSpecialtyProbs({"medical": 1.0})
+        flow = FlowSelection.custom(include_ed_current=True)
+
+        assert_model_types_for_flow(
+            flow,
+            ed_classifier=None,
+            inpatient_classifier=None,
+            spec_model=model,
+            yet_to_arrive_model=None,
+            non_ed_yta_model=None,
+            elective_yta_model=None,
+            transfer_model=None,
+        )
 
 
 if __name__ == "__main__":

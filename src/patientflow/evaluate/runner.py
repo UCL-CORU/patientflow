@@ -27,6 +27,7 @@ from patientflow.evaluate.handlers import (
     evaluate_classifier_probability_quality,
     evaluate_distribution,
     evaluate_survival_curve,
+    evaluate_transition_matrix,
 )
 from patientflow.evaluate.inputs import EvaluationInputs
 from patientflow.evaluate.scalars import ScalarsCollector
@@ -48,6 +49,22 @@ def _patientflow_version() -> str:
         return package_version("patientflow")
     except Exception:
         return "unknown"
+
+
+def evaluation_targets_for_manifest(
+    inputs: EvaluationInputs,
+) -> list[Dict[str, Any]]:
+    """Serialise ``EvaluationTarget`` rows for ``evaluation_run.yaml``."""
+    return [
+        {
+            "flow_name": t.flow_name,
+            "flow_type": t.flow_type,
+            "evaluation_mode": t.evaluation_mode,
+            "component": t.component,
+            "observation_mode": t.observation_mode,
+        }
+        for t in inputs.evaluation_targets
+    ]
 
 
 def prediction_dict_for_manifest(
@@ -104,6 +121,7 @@ def write_evaluation_run_manifest(
             "eval_split": inputs.eval_split,
             "flow_selection": asdict(inputs.flow_selection),
             "n_targets": len(inputs.evaluation_targets),
+            "evaluation_targets": evaluation_targets_for_manifest(inputs),
             "prediction_dict": prediction_dict_for_manifest(inputs.prediction_dict),
             "patientflow_version": _patientflow_version(),
         },
@@ -130,8 +148,8 @@ def run_evaluation(
     Creates a timestamped subdirectory under `output_root` containing:
 
     - `evaluation_run.yaml` — run settings under ``evaluation:`` (including
-      ``prediction_dict`` and ``eval_split``), plus optional caller
-      ``training_metadata``.
+      ``evaluation_targets`` with ``observation_mode``, ``prediction_dict``,
+      and ``eval_split``), plus optional caller ``training_metadata``.
     - `scalars.json` — `evaluation_rows` plus optional `_service_summary`
       fragments merged by handlers (distribution and arrival modes attach
       per-slice service coverage).
@@ -229,6 +247,13 @@ def run_evaluation(
                     inputs,
                     target,
                     survival_dir=survival_dir,
+                    collector=collector,
+                )
+            case "transition_matrix":
+                evaluate_transition_matrix(
+                    inputs,
+                    target,
+                    transitions_dir=run_dir / "transitions",
                     collector=collector,
                 )
             case _:

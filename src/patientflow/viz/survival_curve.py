@@ -42,6 +42,7 @@ def plot_admission_time_survival_curve(
     file_name=None,
     return_figure=False,
     return_df=False,
+    figsize=(10, 6),
 ):
     """Create a survival curve for time-to-event analysis.
 
@@ -82,6 +83,8 @@ def plot_admission_time_survival_curve(
     return_df : bool, default=False
         If True, returns a DataFrame containing the survival curve data.
         For multiple curves, returns a list of DataFrames.
+    figsize : tuple of (float, float), default=(10, 6)
+        Figure size in inches as ``(width, height)``.
 
     Returns
     -------
@@ -124,7 +127,7 @@ def plot_admission_time_survival_curve(
         raise ValueError("Number of dataframes must match number of labels")
 
     # Create the plot
-    fig = plt.figure(figsize=(10, 6))
+    fig = plt.figure(figsize=figsize)
 
     # Define colors for multiple curves
     colors = plt.cm.Set1(np.linspace(0, 1, len(dataframes)))

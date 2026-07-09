@@ -180,7 +180,12 @@ def plot_deltas(
 
 
 def _prepare_arrival_data(
-    df, prediction_time, snapshot_date, prediction_window, yta_time_interval
+    df,
+    prediction_time,
+    snapshot_date,
+    prediction_window,
+    yta_time_interval,
+    arrival_datetime_col: str = "arrival_datetime",
 ):
     """Helper function to prepare arrival data for plotting."""
     prediction_time_obj = time(hour=prediction_time[0], minute=prediction_time[1])
@@ -194,11 +199,26 @@ def _prepare_arrival_data(
     )
 
     df_copy = df.copy()
-    if "arrival_datetime" in df_copy.columns:
-        df_copy.set_index("arrival_datetime", inplace=True)
-        # Ensure the index is timezone-aware to match snapshot_datetime
-        if df_copy.index.tz is None:
-            df_copy.index = df_copy.index.tz_localize("UTC")
+    if arrival_datetime_col in df_copy.columns:
+        df_copy = df_copy.set_index(arrival_datetime_col)
+    elif isinstance(df_copy.index, pd.DatetimeIndex):
+        if (
+            df_copy.index.name is not None
+            and df_copy.index.name != arrival_datetime_col
+        ):
+            raise ValueError(
+                f"Arrival data index is named {df_copy.index.name!r}; "
+                f"expected {arrival_datetime_col!r}."
+            )
+    else:
+        raise ValueError(
+            f"Arrival data must include column {arrival_datetime_col!r} "
+            "or a DatetimeIndex."
+        )
+
+    # Ensure the index is timezone-aware to match snapshot_datetime
+    if df_copy.index.tz is None:
+        df_copy.index = df_copy.index.tz_localize("UTC")
 
     return df_copy, snapshot_datetime, default_datetime, prediction_time_obj
 
@@ -316,6 +336,7 @@ def plot_arrival_delta_single_instance(
     return_figure=False,
     fig_size=(10, 4),
     *,
+    arrival_datetime_col: str = "arrival_datetime",
     show: bool = False,
 ):
     """Plot comparison between observed arrivals and expected arrival rates.
@@ -344,6 +365,8 @@ def plot_arrival_delta_single_instance(
         If True, returns the figure instead of displaying it
     fig_size : tuple, default=(10, 4)
         Figure size as (width, height) in inches
+    arrival_datetime_col : str, default="arrival_datetime"
+        Column name for arrival timestamps, or the name of a ``DatetimeIndex``.
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
@@ -355,7 +378,12 @@ def plot_arrival_delta_single_instance(
     # Prepare data
     df_copy, snapshot_datetime, default_datetime, prediction_time_obj = (
         _prepare_arrival_data(
-            df, prediction_time, snapshot_date, prediction_window, yta_time_interval
+            df,
+            prediction_time,
+            snapshot_date,
+            prediction_window,
+            yta_time_interval,
+            arrival_datetime_col=arrival_datetime_col,
         )
     )
 
@@ -366,7 +394,7 @@ def plot_arrival_delta_single_instance(
     ]
 
     # Sort arrivals by time and create cumulative count
-    arrivals = arrivals.sort_values("arrival_datetime")
+    arrivals = arrivals.sort_index()
     arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
     # Calculate arrival rates and prepare time points
@@ -575,6 +603,7 @@ def plot_arrival_deltas(
     filter_key: Optional[str] = None,
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
+    arrival_datetime_col: str = "arrival_datetime",
     show: bool = False,
 ):
     """Plot delta charts for multiple snapshot dates on the same figure.
@@ -624,6 +653,8 @@ def plot_arrival_deltas(
     suptitle : str, optional
         Figure-level title. Typically the entity (service / specialty)
         being analysed. Rendered above the per-axis titles.
+    arrival_datetime_col : str, default="arrival_datetime"
+        Column name for arrival timestamps, or the name of a ``DatetimeIndex``.
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
@@ -692,7 +723,12 @@ def plot_arrival_deltas(
     for snapshot_date in snapshot_dates:
         # Prepare data for this date
         df_copy, snapshot_datetime, _, _ = _prepare_arrival_data(
-            df, prediction_time, snapshot_date, prediction_window, yta_time_interval
+            df,
+            prediction_time,
+            snapshot_date,
+            prediction_window,
+            yta_time_interval,
+            arrival_datetime_col=arrival_datetime_col,
         )
 
         # Get arrivals within the prediction window
@@ -705,7 +741,7 @@ def plot_arrival_deltas(
             continue
 
         # Sort arrivals by time and create cumulative count
-        arrivals = arrivals.sort_values("arrival_datetime")
+        arrivals = arrivals.sort_index()
         arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
 
         # Calculate arrival rates and prepare time points

@@ -1,685 +1,244 @@
 # 3f. Evaluate demand predictions for patients yet to arrive
 
-In notebook 3e, I showed how to predict demand from patients yet to arrive, using models that learn arrival rates from past data. In this notebook, I evaluate those arrival rate predictions against observed arrivals in the test set.
+In notebook 3e I predicted yet-to-arrive demand from historical arrival rates and admission-in-window probabilities. Here I evaluate two parts of that pipeline:
 
-Predictions for patients yet to arrive are made up of two components:
+1. **Arrival rates** — do learned front-door arrival rates match observed arrivals in the test set?
+2. **Survival-curve bed demand** — of patients who arrive, how many get a ward bed within the prediction window? I fit `EmpiricalIncomingAdmissionPredictor` and check the resulting PMFs with EPUDD on the same `inpatient_arrivals` extract.
 
-- Arrival rates calculated from past data, prepared for a series of time intervals within a prediction window after the moment of prediction
-- A probability of admission for any patient arriving within one of these time intervals being admitted within the prediction window. The probability of admission is generated using either an empirical survival curve, or an aspirational approach.
+### Data requirements
 
-We can evaluate these two components separately. First I evaluate the arrival rates, by comparing the arrival rates learned from the training set against observed arrival rates during the test set (using `plot_arrival_deltas(..., arrival_rate_model=...)` so the expected baseline matches the fitted yet-to-arrive model, including per-weekday profiles when present). Then I evaluate a survival-curve-based model, comparing its predicted bed count distributions against observed admissions.
+| Column / dataset                                                                                              | Used for                                    |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `inpatient_arrivals.arrival_datetime`                                                                         | Arrival-rate delta plots (section 1)        |
+| `arrival_datetime` plus ward-admission time (`admitted_to_ward_datetime`, or `departure_datetime` as a proxy) | Survival-curve bed-demand EPUDD (section 2) |
 
-### About the data used in this notebook
+The public UCLH extract on [Zenodo](https://zenodo.org/records/14866057) includes arrivals but not ward-admission times, so section 1 runs on real data while section 2 needs a workaround. Section 2 still runs on that extract: it adds a synthetic `departure_datetime` with `synthesise_departure_times` so you can see the workflow end-to-end. **Treat EPUDD output on public data as illustration only** — the ward times are fabricated and are not paired with real admission delays.
 
-You can request the UCLH datasets on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'`.
+If your own extract includes ward-admission times, set `WARD_ADMISSION_COL` in section 2 to that column name.
 
-This notebook uses plotting helpers from `patientflow.viz` only — not the typed `patientflow.evaluate` package in the 4x\_ series (see notebook 4d).
+If you do not have the public data, set `data_folder_name` to `'data-synthetic'`.
+
+For systematic evaluation with `patientflow.evaluate` (`EvaluationInputsBuilder` and `run_evaluation`), see notebook **4d**.
 
 ```python
 # Reload functions every time
 %load_ext autoreload
 %autoreload 2
+
 ```
 
 ## Load data and train models
 
-The data loading and model training steps were demonstrated in detail in previous notebooks. Here I use `prepare_prediction_inputs`, a convenience function that performs all of these steps in a single call.
-
 ```python
+from datetime import timedelta
+
+from patientflow.prepare import create_temporal_splits
 from patientflow.train.emergency_demand import prepare_prediction_inputs
 
-data_folder_name = 'data-public'
-prediction_inputs = prepare_prediction_inputs(data_folder_name)
+data_folder_name = "data-public"
+prediction_inputs = prepare_prediction_inputs(data_folder_name, verbose=False)
 
-# Unpack the results
-ed_visits = prediction_inputs['ed_visits']
-inpatient_arrivals = prediction_inputs['inpatient_arrivals']
-yta_model = prediction_inputs['yta_model']
-params = prediction_inputs['config']
+ed_visits = prediction_inputs["ed_visits"]
+inpatient_arrivals = prediction_inputs["inpatient_arrivals"]
+yta_model = prediction_inputs["yta_model"]
+params = prediction_inputs["config"]
+
+start_training_set = params["start_training_set"]
+start_validation_set = params["start_validation_set"]
+start_test_set = params["start_test_set"]
+end_test_set = params["end_test_set"]
+prediction_window = timedelta(minutes=params["prediction_window"])
+yta_time_interval = timedelta(minutes=params["yta_time_interval"])
+
+inpatient_arrivals = inpatient_arrivals.copy()
+inpatient_arrivals["arrival_datetime"] = __import__("pandas").to_datetime(
+    inpatient_arrivals["arrival_datetime"], utc=True
+)
+_, _, test_inpatient_arrivals_df = create_temporal_splits(
+    inpatient_arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name="arrival_datetime",
+    verbose=False,
+)
+
+test_snapshot_dates = [
+    d.date()
+    for d in __import__("pandas").date_range(
+        start_test_set, end_test_set, freq="D", inclusive="left"
+    )
+]
+
 ```
 
-    Split sizes: [62071, 10415, 29134]
-    Split sizes: [7716, 1285, 3898]
+## 1. Evaluate arrival rates
 
-    Processing: (6, 0)
+Here I compare arrival rates learned from the training set against observed arrivals during the test set. The delta plots below compare observed cumulative arrivals within each prediction window against the curve implied by the fitted `yta_model` — one figure per hospital service, across snapshot dates in the test period. I use a single prediction time (22:00) here to keep the number of figures manageable; the same call works for any time of day.
 
+```python
+from patientflow.viz.observed_against_expected import (
+    plot_arrival_delta_single_instance,
+    plot_arrival_deltas,
+)
 
+plot_arrival_delta_single_instance(
+    test_inpatient_arrivals_df,
+    prediction_time=(22, 0),
+    snapshot_date=start_test_set,
+    show_delta=True,
+    prediction_window=prediction_window,
+    yta_time_interval=yta_time_interval,
+    fig_size=(9, 3),
+    show=True,
+)
 
-    Processing: (9, 30)
+```
 
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_0.png)
 
+```python
+prediction_time = (22, 0)
 
-    Processing: (12, 0)
+for specialty in sorted(yta_model.weights.keys()):
+    spec_test_df = test_inpatient_arrivals_df[
+        test_inpatient_arrivals_df["specialty"] == specialty
+    ]
+    plot_arrival_deltas(
+        spec_test_df,
+        prediction_time,
+        test_snapshot_dates,
+        prediction_window=prediction_window,
+        yta_time_interval=yta_time_interval,
+        arrival_rate_model=yta_model,
+        filter_key=specialty,
+        suptitle=specialty,
+        show=True,
+    )
 
+```
 
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_0.png)
 
-    Processing: (15, 30)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_1.png)
 
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_2.png)
 
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_3.png)
 
-    Processing: (22, 0)
+## 2. Evaluate survival-curve bed demand
 
-Below I use the training, validation and test set dates set in `config.yaml` to retrieve the portions of the data needed for evaluation.
+Here I fit `EmpiricalIncomingAdmissionPredictor` on the time from arrival to ward admission, build bed-count PMFs with `get_prob_dist_using_survival_curve`, and compare them to observed counts with EPUDD — all on the same `inpatient_arrivals` table loaded above.
+
+On the public Zenodo extract, `WARD_ADMISSION_COL` is not present, so the next cell synthesises `departure_datetime` for illustration. If your extract already has ward-admission times, set `WARD_ADMISSION_COL` to that column instead.
 
 ```python
 import pandas as pd
-from datetime import timedelta
-from patientflow.prepare import create_temporal_splits
-
-# Extract config parameters
-start_training_set = params['start_training_set']
-start_validation_set = params['start_validation_set']
-start_test_set = params['start_test_set']
-end_test_set = params['end_test_set']
-
-# Create temporal splits for inpatient arrivals
-inpatient_arrivals['arrival_datetime'] = pd.to_datetime(
-    inpatient_arrivals['arrival_datetime'], utc=True
+from patientflow.aggregate import get_prob_dist_using_survival_curve
+from patientflow.generate import synthesise_departure_times
+from patientflow.load import get_model_key
+from patientflow.predictors.incoming_admission_predictors import (
+    EmpiricalIncomingAdmissionPredictor,
 )
-_, _, test_inpatient_arrivals_df = create_temporal_splits(
-    inpatient_arrivals, start_training_set, start_validation_set,
-    start_test_set, end_test_set, col_name='arrival_datetime',
+from patientflow.viz.epudd import plot_epudd
+from patientflow.viz.survival_curve import plot_admission_time_survival_curve
+
+# Set to your ward-admission column when the extract includes real timestamps.
+WARD_ADMISSION_COL = "admitted_to_ward_datetime"
+
+arrivals = inpatient_arrivals.copy()
+using_synthetic_ward_times = WARD_ADMISSION_COL not in arrivals.columns
+if using_synthetic_ward_times:
+    arrivals = synthesise_departure_times(
+        arrivals, kind="inpatient_arrivals", seed=42
+    )
+    WARD_ADMISSION_COL = "departure_datetime"
+    print(
+        "Public extract: added synthetic departure_datetime for illustration only."
+    )
+
+illustration_suffix = " (illustrative only)" if using_synthetic_ward_times else ""
+
+arrivals["arrival_datetime"] = pd.to_datetime(arrivals["arrival_datetime"], utc=True)
+arrivals[WARD_ADMISSION_COL] = pd.to_datetime(arrivals[WARD_ADMISSION_COL], utc=True)
+
+train_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
+    arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name="arrival_datetime",
+    verbose=False,
 )
-```
 
-    Split sizes: [7716, 1285, 3898]
+train_indexed = train_arrivals.copy()
+train_indexed.set_index("arrival_datetime", inplace=True)
 
-## Evaluating arrival rates
+yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
+_ = yta_model_empirical.fit(
+    train_indexed,
+    yta_time_interval=yta_time_interval,
+    num_days=(start_validation_set - start_training_set).days,
+    start_time_col="arrival_datetime",
+    end_time_col=WARD_ADMISSION_COL,
+    stratify_by_weekday=True,
+)
 
-We can compare the arrival rates learned from the training set against observed arrival rates at the front door of the ED during the test set.
+plot_admission_time_survival_curve(
+    [train_arrivals, valid_arrivals, test_arrivals],
+    labels=["train", "valid", "test"],
+    start_time_col="arrival_datetime",
+    end_time_col=WARD_ADMISSION_COL,
+    title=f"Survival curves by set{illustration_suffix}",
+    ylabel="Proportion of patients not yet admitted",
+    xlabel="Elapsed time since arrival",
+    figsize=(7, 3),
+    return_df=False,
+)
 
-The multi-date charts below pass `arrival_rate_model=yta_model` (from `prepare_prediction_inputs`) into `plot_arrival_deltas`, with a `filter_key` for each hospital service (the model is fit per specialty). That uses the model's stored arrival rates as the expected baseline — the same source as production predictions — rather than re-deriving pooled rates from the test-set dataframe alone.
-
-To illustrate, I start by plotting the cumulative arrivals of patients later admitted within a prediction window on one date. In the upper chart, the blue line shows the cumulative number of arrivals. The orange line shows the cumulative mean arrival rate.
-
-The lower chart shows the delta between the two lines.
-
-```python
-from patientflow.viz.observed_against_expected import plot_arrival_delta_single_instance
-from datetime import timedelta
-
-plot_arrival_delta_single_instance(test_inpatient_arrivals_df,
-                        prediction_time=(22,0),
-                        snapshot_date=start_test_set,
-                        show_delta=True,
-                        prediction_window=timedelta(minutes=params["prediction_window"]),
-                        yta_time_interval = timedelta(minutes=params["yta_time_interval"]),
-                        fig_size=(9, 3)
-                        )
-```
-
-The chart below shows multiple versions of the delta for each date in the test set, for each prediction time, with the average delta shown in red.
-
-```python
-from patientflow.viz.observed_against_expected import plot_arrival_deltas
-from datetime import timedelta
-
-
-start_date = start_test_set
-end_date = end_test_set
-snapshot_dates = []
-
-current_date = start_date
-while current_date < end_date:
-    snapshot_dates.append(current_date)
-    current_date += timedelta(days=1)
-
-# Sort prediction times by converting to minutes since midnight
 prediction_times_sorted = sorted(
     ed_visits.prediction_time.unique(),
     key=lambda x: x[0] * 60 + x[1],
 )
-
+prob_dist_dict_all = {}
 for prediction_time in prediction_times_sorted:
-    for specialty in sorted(yta_model.weights.keys()):
-        spec_test_df = test_inpatient_arrivals_df[
-            test_inpatient_arrivals_df["specialty"] == specialty
-        ]
-        plot_arrival_deltas(
-            spec_test_df,
-            prediction_time,
-            snapshot_dates,
-            prediction_window=timedelta(minutes=params["prediction_window"]),
-            yta_time_interval=timedelta(minutes=params["yta_time_interval"]),
-            arrival_rate_model=yta_model,
-            filter_key=specialty,
-            suptitle=specialty,
-        )
-```
-
-## Evaluate predictions using survival curves
-
-In notebook 3e, I demonstrated an `EmpiricalIncomingAdmissionPredictor` that uses a survival curve to estimate how long patients take to be admitted after arriving at the ED. To evaluate that model, I need data with both arrival and admission-to-ward times — which is not available in the public dataset used above. Instead, I use the same fake data as in notebook 3e.
-
-First I generate the fake data and train the model.
-
-```python
-import pandas as pd
-from datetime import date, timedelta
-from patientflow.generate import create_fake_finished_visits
-from patientflow.prepare import create_temporal_splits
-from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
-
-# Generate fake data with both arrival and admission-to-ward times
-visits_df, _, _ = create_fake_finished_visits('2023-01-01', '2023-04-01', mean_patients_per_day=50, admitted_only=True)
-inpatient_arrivals_fake = visits_df.rename(columns={'departure_datetime': 'admitted_to_ward_datetime'}).drop(columns='is_admitted')
-inpatient_arrivals_fake['arrival_datetime'] = pd.to_datetime(inpatient_arrivals_fake['arrival_datetime'])
-
-# Temporal splits
-start_training_set_fake = date(2023, 1, 1)
-start_validation_set_fake = date(2023, 2, 15)
-start_test_set_fake = date(2023, 3, 1)
-end_test_set_fake = date(2023, 4, 1)
-
-train_visits, valid_visits, test_visits = create_temporal_splits(
-    inpatient_arrivals_fake,
-    start_training_set_fake,
-    start_validation_set_fake,
-    start_test_set_fake,
-    end_test_set_fake,
-    col_name="arrival_datetime",
-    verbose=False
-)
-
-# Train the EmpiricalIncomingAdmissionPredictor
-prediction_times = [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
-num_days = (start_validation_set_fake - start_training_set_fake).days
-
-train_visits_copy = train_visits.copy(deep=True)
-if 'arrival_datetime' in train_visits_copy.columns:
-    train_visits_copy.set_index('arrival_datetime', inplace=True)
-
-yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
-yta_model_empirical.fit(
-    train_visits_copy,
-    yta_time_interval=timedelta(minutes=15),
-    num_days=num_days,
-    start_time_col='arrival_datetime',
-    end_time_col='admitted_to_ward_datetime',
-    stratify_by_weekday=True
-)
-```
-
-<style>#sk-container-id-1 {
-  /* Definition of color scheme common for light and dark mode */
-  --sklearn-color-text: black;
-  --sklearn-color-line: gray;
-  /* Definition of color scheme for unfitted estimators */
-  --sklearn-color-unfitted-level-0: #fff5e6;
-  --sklearn-color-unfitted-level-1: #f6e4d2;
-  --sklearn-color-unfitted-level-2: #ffe0b3;
-  --sklearn-color-unfitted-level-3: chocolate;
-  /* Definition of color scheme for fitted estimators */
-  --sklearn-color-fitted-level-0: #f0f8ff;
-  --sklearn-color-fitted-level-1: #d4ebff;
-  --sklearn-color-fitted-level-2: #b3dbfd;
-  --sklearn-color-fitted-level-3: cornflowerblue;
-
-  /* Specific color for light theme */
-  --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
-  --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, white)));
-  --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, black)));
-  --sklearn-color-icon: #696969;
-
-  @media (prefers-color-scheme: dark) {
-    /* Redefinition of color scheme for dark theme */
-    --sklearn-color-text-on-default-background: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
-    --sklearn-color-background: var(--sg-background-color, var(--theme-background, var(--jp-layout-color0, #111)));
-    --sklearn-color-border-box: var(--sg-text-color, var(--theme-code-foreground, var(--jp-content-font-color1, white)));
-    --sklearn-color-icon: #878787;
-  }
-}
-
-#sk-container-id-1 {
-  color: var(--sklearn-color-text);
-}
-
-#sk-container-id-1 pre {
-  padding: 0;
-}
-
-#sk-container-id-1 input.sk-hidden--visually {
-  border: 0;
-  clip: rect(1px 1px 1px 1px);
-  clip: rect(1px, 1px, 1px, 1px);
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  padding: 0;
-  position: absolute;
-  width: 1px;
-}
-
-#sk-container-id-1 div.sk-dashed-wrapped {
-  border: 1px dashed var(--sklearn-color-line);
-  margin: 0 0.4em 0.5em 0.4em;
-  box-sizing: border-box;
-  padding-bottom: 0.4em;
-  background-color: var(--sklearn-color-background);
-}
-
-#sk-container-id-1 div.sk-container {
-  /* jupyter's `normalize.less` sets `[hidden] { display: none; }`
-     but bootstrap.min.css set `[hidden] { display: none !important; }`
-     so we also need the `!important` here to be able to override the
-     default hidden behavior on the sphinx rendered scikit-learn.org.
-     See: https://github.com/scikit-learn/scikit-learn/issues/21755 */
-  display: inline-block !important;
-  position: relative;
-}
-
-#sk-container-id-1 div.sk-text-repr-fallback {
-  display: none;
-}
-
-div.sk-parallel-item,
-div.sk-serial,
-div.sk-item {
-  /* draw centered vertical line to link estimators */
-  background-image: linear-gradient(var(--sklearn-color-text-on-default-background), var(--sklearn-color-text-on-default-background));
-  background-size: 2px 100%;
-  background-repeat: no-repeat;
-  background-position: center center;
-}
-
-/* Parallel-specific style estimator block */
-
-#sk-container-id-1 div.sk-parallel-item::after {
-  content: "";
-  width: 100%;
-  border-bottom: 2px solid var(--sklearn-color-text-on-default-background);
-  flex-grow: 1;
-}
-
-#sk-container-id-1 div.sk-parallel {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  background-color: var(--sklearn-color-background);
-  position: relative;
-}
-
-#sk-container-id-1 div.sk-parallel-item {
-  display: flex;
-  flex-direction: column;
-}
-
-#sk-container-id-1 div.sk-parallel-item:first-child::after {
-  align-self: flex-end;
-  width: 50%;
-}
-
-#sk-container-id-1 div.sk-parallel-item:last-child::after {
-  align-self: flex-start;
-  width: 50%;
-}
-
-#sk-container-id-1 div.sk-parallel-item:only-child::after {
-  width: 0;
-}
-
-/* Serial-specific style estimator block */
-
-#sk-container-id-1 div.sk-serial {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: var(--sklearn-color-background);
-  padding-right: 1em;
-  padding-left: 1em;
-}
-
-
-/* Toggleable style: style used for estimator/Pipeline/ColumnTransformer box that is
-clickable and can be expanded/collapsed.
-- Pipeline and ColumnTransformer use this feature and define the default style
-- Estimators will overwrite some part of the style using the `sk-estimator` class
-*/
-
-/* Pipeline and ColumnTransformer style (default) */
-
-#sk-container-id-1 div.sk-toggleable {
-  /* Default theme specific background. It is overwritten whether we have a
-  specific estimator or a Pipeline/ColumnTransformer */
-  background-color: var(--sklearn-color-background);
-}
-
-/* Toggleable label */
-#sk-container-id-1 label.sk-toggleable__label {
-  cursor: pointer;
-  display: block;
-  width: 100%;
-  margin-bottom: 0;
-  padding: 0.5em;
-  box-sizing: border-box;
-  text-align: center;
-}
-
-#sk-container-id-1 label.sk-toggleable__label-arrow:before {
-  /* Arrow on the left of the label */
-  content: "▸";
-  float: left;
-  margin-right: 0.25em;
-  color: var(--sklearn-color-icon);
-}
-
-#sk-container-id-1 label.sk-toggleable__label-arrow:hover:before {
-  color: var(--sklearn-color-text);
-}
-
-/* Toggleable content - dropdown */
-
-#sk-container-id-1 div.sk-toggleable__content {
-  max-height: 0;
-  max-width: 0;
-  overflow: hidden;
-  text-align: left;
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-0);
-}
-
-#sk-container-id-1 div.sk-toggleable__content.fitted {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-0);
-}
-
-#sk-container-id-1 div.sk-toggleable__content pre {
-  margin: 0.2em;
-  border-radius: 0.25em;
-  color: var(--sklearn-color-text);
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-0);
-}
-
-#sk-container-id-1 div.sk-toggleable__content.fitted pre {
-  /* unfitted */
-  background-color: var(--sklearn-color-fitted-level-0);
-}
-
-#sk-container-id-1 input.sk-toggleable__control:checked~div.sk-toggleable__content {
-  /* Expand drop-down */
-  max-height: 200px;
-  max-width: 100%;
-  overflow: auto;
-}
-
-#sk-container-id-1 input.sk-toggleable__control:checked~label.sk-toggleable__label-arrow:before {
-  content: "▾";
-}
-
-/* Pipeline/ColumnTransformer-specific style */
-
-#sk-container-id-1 div.sk-label input.sk-toggleable__control:checked~label.sk-toggleable__label {
-  color: var(--sklearn-color-text);
-  background-color: var(--sklearn-color-unfitted-level-2);
-}
-
-#sk-container-id-1 div.sk-label.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
-  background-color: var(--sklearn-color-fitted-level-2);
-}
-
-/* Estimator-specific style */
-
-/* Colorize estimator box */
-#sk-container-id-1 div.sk-estimator input.sk-toggleable__control:checked~label.sk-toggleable__label {
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-2);
-}
-
-#sk-container-id-1 div.sk-estimator.fitted input.sk-toggleable__control:checked~label.sk-toggleable__label {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-2);
-}
-
-#sk-container-id-1 div.sk-label label.sk-toggleable__label,
-#sk-container-id-1 div.sk-label label {
-  /* The background is the default theme color */
-  color: var(--sklearn-color-text-on-default-background);
-}
-
-/* On hover, darken the color of the background */
-#sk-container-id-1 div.sk-label:hover label.sk-toggleable__label {
-  color: var(--sklearn-color-text);
-  background-color: var(--sklearn-color-unfitted-level-2);
-}
-
-/* Label box, darken color on hover, fitted */
-#sk-container-id-1 div.sk-label.fitted:hover label.sk-toggleable__label.fitted {
-  color: var(--sklearn-color-text);
-  background-color: var(--sklearn-color-fitted-level-2);
-}
-
-/* Estimator label */
-
-#sk-container-id-1 div.sk-label label {
-  font-family: monospace;
-  font-weight: bold;
-  display: inline-block;
-  line-height: 1.2em;
-}
-
-#sk-container-id-1 div.sk-label-container {
-  text-align: center;
-}
-
-/* Estimator-specific */
-#sk-container-id-1 div.sk-estimator {
-  font-family: monospace;
-  border: 1px dotted var(--sklearn-color-border-box);
-  border-radius: 0.25em;
-  box-sizing: border-box;
-  margin-bottom: 0.5em;
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-0);
-}
-
-#sk-container-id-1 div.sk-estimator.fitted {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-0);
-}
-
-/* on hover */
-#sk-container-id-1 div.sk-estimator:hover {
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-2);
-}
-
-#sk-container-id-1 div.sk-estimator.fitted:hover {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-2);
-}
-
-/* Specification for estimator info (e.g. "i" and "?") */
-
-/* Common style for "i" and "?" */
-
-.sk-estimator-doc-link,
-a:link.sk-estimator-doc-link,
-a:visited.sk-estimator-doc-link {
-  float: right;
-  font-size: smaller;
-  line-height: 1em;
-  font-family: monospace;
-  background-color: var(--sklearn-color-background);
-  border-radius: 1em;
-  height: 1em;
-  width: 1em;
-  text-decoration: none !important;
-  margin-left: 1ex;
-  /* unfitted */
-  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
-  color: var(--sklearn-color-unfitted-level-1);
-}
-
-.sk-estimator-doc-link.fitted,
-a:link.sk-estimator-doc-link.fitted,
-a:visited.sk-estimator-doc-link.fitted {
-  /* fitted */
-  border: var(--sklearn-color-fitted-level-1) 1pt solid;
-  color: var(--sklearn-color-fitted-level-1);
-}
-
-/* On hover */
-div.sk-estimator:hover .sk-estimator-doc-link:hover,
-.sk-estimator-doc-link:hover,
-div.sk-label-container:hover .sk-estimator-doc-link:hover,
-.sk-estimator-doc-link:hover {
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-3);
-  color: var(--sklearn-color-background);
-  text-decoration: none;
-}
-
-div.sk-estimator.fitted:hover .sk-estimator-doc-link.fitted:hover,
-.sk-estimator-doc-link.fitted:hover,
-div.sk-label-container:hover .sk-estimator-doc-link.fitted:hover,
-.sk-estimator-doc-link.fitted:hover {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-3);
-  color: var(--sklearn-color-background);
-  text-decoration: none;
-}
-
-/* Span, style for the box shown on hovering the info icon */
-.sk-estimator-doc-link span {
-  display: none;
-  z-index: 9999;
-  position: relative;
-  font-weight: normal;
-  right: .2ex;
-  padding: .5ex;
-  margin: .5ex;
-  width: min-content;
-  min-width: 20ex;
-  max-width: 50ex;
-  color: var(--sklearn-color-text);
-  box-shadow: 2pt 2pt 4pt #999;
-  /* unfitted */
-  background: var(--sklearn-color-unfitted-level-0);
-  border: .5pt solid var(--sklearn-color-unfitted-level-3);
-}
-
-.sk-estimator-doc-link.fitted span {
-  /* fitted */
-  background: var(--sklearn-color-fitted-level-0);
-  border: var(--sklearn-color-fitted-level-3);
-}
-
-.sk-estimator-doc-link:hover span {
-  display: block;
-}
-
-/* "?"-specific style due to the `<a>` HTML tag */
-
-#sk-container-id-1 a.estimator_doc_link {
-  float: right;
-  font-size: 1rem;
-  line-height: 1em;
-  font-family: monospace;
-  background-color: var(--sklearn-color-background);
-  border-radius: 1rem;
-  height: 1rem;
-  width: 1rem;
-  text-decoration: none;
-  /* unfitted */
-  color: var(--sklearn-color-unfitted-level-1);
-  border: var(--sklearn-color-unfitted-level-1) 1pt solid;
-}
-
-#sk-container-id-1 a.estimator_doc_link.fitted {
-  /* fitted */
-  border: var(--sklearn-color-fitted-level-1) 1pt solid;
-  color: var(--sklearn-color-fitted-level-1);
-}
-
-/* On hover */
-#sk-container-id-1 a.estimator_doc_link:hover {
-  /* unfitted */
-  background-color: var(--sklearn-color-unfitted-level-3);
-  color: var(--sklearn-color-background);
-  text-decoration: none;
-}
-
-#sk-container-id-1 a.estimator_doc_link.fitted:hover {
-  /* fitted */
-  background-color: var(--sklearn-color-fitted-level-3);
-}
-</style><div id="sk-container-id-1" class="sk-top-container"><div class="sk-text-repr-fallback"><pre>EmpiricalIncomingAdmissionPredictor(filters={})</pre><b>In a Jupyter environment, please rerun this cell to show the HTML representation or trust the notebook. <br />On GitHub, the HTML representation is unable to render, please try loading this page with nbviewer.org.</b></div><div class="sk-container" hidden><div class="sk-item"><div class="sk-estimator  sk-toggleable"><input class="sk-toggleable__control sk-hidden--visually" id="sk-estimator-id-1" type="checkbox" checked><label for="sk-estimator-id-1" class="sk-toggleable__label  sk-toggleable__label-arrow ">&nbsp;EmpiricalIncomingAdmissionPredictor<span class="sk-estimator-doc-link ">i<span>Not fitted</span></span></label><div class="sk-toggleable__content "><pre>EmpiricalIncomingAdmissionPredictor(filters={})</pre></div> </div></div></div></div>
-
-### Compare survival curves across train, validation and test sets
-
-The survival curve plot function can be used with multiple datasets. This may be useful to check whether the ED has become slower to process patients over time — such a difference would show up as a gap between the curves. We encountered this issue in our own work, and showed how to mitigate it using a sliding window approach for the survival curve in our [Nature Digital Medicine paper](https://www.nature.com/articles/s41746-022-00649-y). The problem does not show up below because these curves are based on synthetic data, but it might in your dataset.
-
-```python
-from patientflow.viz.survival_curve import plot_admission_time_survival_curve
-
-title = 'Compare survival curves for train, valid and test sets'
-plot_admission_time_survival_curve(
-    [train_visits, valid_visits, test_visits],
-    labels=['train', 'valid', 'test'],
-    start_time_col="arrival_datetime",
-    end_time_col="admitted_to_ward_datetime",
-    title=title,
-    ylabel='Proportion of patients not yet admitted',
-    xlabel='Elapsed time since arrival',
-    return_df=False
-)
-```
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_13_0.png)
-
-### Compare predicted with observed bed counts
-
-The function below compares the predicted bed count distributions from the `EmpiricalIncomingAdmissionPredictor` with the observed counts of patients who arrived and were admitted within the prediction window, for each date in the test set.
-
-```python
-from patientflow.aggregate import get_prob_dist_using_survival_curve
-from patientflow.load import get_model_key
-
-snapshot_dates_fake = []
-current_date = start_test_set_fake
-while current_date < end_test_set_fake:
-    snapshot_dates_fake.append(current_date)
-    current_date += timedelta(days=1)
-
-prob_dist_dict_all_fake = {}
-
-for prediction_time in prediction_times:
-    model_key = get_model_key('yet_to_arrive', prediction_time)
-    prob_dist_dict_all_fake[model_key] = get_prob_dist_using_survival_curve(
-        snapshot_dates=snapshot_dates_fake,
-        test_visits=test_visits,
-        category='unfiltered',
+    model_key = get_model_key("yet_to_arrive", prediction_time)
+    prob_dist_dict_all[model_key] = get_prob_dist_using_survival_curve(
+        snapshot_dates=test_snapshot_dates,
+        test_visits=test_arrivals,
+        category="unfiltered",
         prediction_time=prediction_time,
-        prediction_window=timedelta(minutes=8*60),
-        start_time_col='arrival_datetime',
-        end_time_col='admitted_to_ward_datetime',
+        prediction_window=prediction_window,
+        start_time_col="arrival_datetime",
+        end_time_col=WARD_ADMISSION_COL,
         model=yta_model_empirical,
         verbose=False,
     )
+
+plot_epudd(
+    prediction_times_sorted,
+    prob_dist_dict_all,
+    model_name="yet_to_arrive",
+    suptitle=f"EPUDD: empirical survival-curve YTA bed demand{illustration_suffix}",
+    plot_all_bounds=False,
+)
+
 ```
 
-The result can be plotted using EPUDD plots to allow for the evaluation of the model. (But note that this is showing the results of using fake data.)
+    Public extract: added synthetic departure_datetime for illustration only.
 
-```python
-from patientflow.viz.epudd import plot_epudd
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_1.png)
 
-plot_epudd(prediction_times,
-           prob_dist_dict_all_fake,
-           model_name='yet_to_arrive',
-           suptitle="EPUDD plots for yet-to-arrive patients for each prediction time",
-           plot_all_bounds=False)
-```
-
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_17_0.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_2.png)
 
 ## Summary
 
-In this notebook I have shown two approaches to evaluating predictions for patients yet to arrive:
+In this notebook I have shown how to evaluate yet-to-arrive demand predictions from notebook 3e. I first checked whether front-door arrival rates learned on the training set still match observed arrivals in the test set, using delta plots by hospital service.
 
-- Comparing the mean arrival rates learned from the training set against observed arrivals during the test set, to assess whether the arrival rate model is well calibrated.
-- Comparing predicted bed count distributions from a survival-curve-based model against observed admissions, using EPUDD plots.
+I then ran the survival-curve bed-demand workflow on the same `inpatient_arrivals` extract: fit `EmpiricalIncomingAdmissionPredictor`, build PMFs with `get_prob_dist_using_survival_curve`, and check them with EPUDD. On the public Zenodo extract, ward-admission times are synthesised so the code path is visible; those EPUDD plots are for illustration only.
 
-The survival curve evaluation used fake data because the public dataset does not include admission-to-ward times. If your data includes these times, you can apply the same approach to your real data. Comparing survival curves across training and test periods is a useful diagnostic for detecting whether ED performance has changed over time.
+For systematic multi-component evaluation with `patientflow.evaluate` (`EvaluationInputsBuilder` and `run_evaluation`), see notebook **4d**.
 
-In the notebooks that follow, I demonstrate a fully worked example of how these functions are used at University College London Hospital to predict emergency demand.
+In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.

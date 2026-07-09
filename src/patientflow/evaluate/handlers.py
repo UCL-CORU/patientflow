@@ -22,6 +22,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from patientflow.evaluate.calibration import (
+    MIN_DISTRIBUTION_SNAPSHOTS,
+    benchmark_cohort_key_for_observation_mode,
+    build_benchmark_prob_dist_dict,
+    global_p_bar_by_prediction_time,
+    rpit_cvm_calibration_score,
+    rpit_cvm_result_to_scalar_fields,
+)
 from patientflow.evaluate.inputs import (
     EvaluationInputs,
     EvaluationTarget,
@@ -32,13 +40,21 @@ from patientflow.evaluate.observations import (
     admission_type_filter_for_distribution_component,
     count_observed,
     count_observed_applies_specialty_filter,
+    count_observed_label_kwargs,
     observation_context_frame_key,
 )
 from patientflow.evaluate.scalars import (
+    RELIABILITY_MIN_OBSERVATIONS_TRANSITION,
     SERVICE_SENTINEL_ALL,
     ScalarsCollector,
     classifier_reliable,
+    scalar_target_fields,
 )
+from patientflow.evaluate.goodness_of_fit import (
+    derive_seed_offset,
+    multinomial_gof_montecarlo,
+)
+from patientflow.predict.transfers import build_per_patient_probabilities
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier
 from patientflow.viz.epudd import plot_epudd
@@ -295,9 +311,7 @@ def _classifier_diagnostics_scalar_row(
     reliable = classifier_reliable(metrics, pos_cases)
     hour, minute = pt
     return {
-        "evaluation_mode": target.evaluation_mode,
-        "flow": target.flow_name,
-        "flow_type": target.flow_type,
+        **scalar_target_fields(target),
         "service": SERVICE_SENTINEL_ALL,
         "component": target.component,
         "prediction_time": [hour, minute],
@@ -449,19 +463,29 @@ def _coerce_snapshot_date(snap: Any) -> date:
     )
 
 
+def _require_observation_mode(target: EvaluationTarget) -> str:
+    """Return ``observation_mode`` for handlers that count observed admissions."""
+    if target.observation_mode is None:
+        raise ValueError(
+            f"evaluation_mode={target.evaluation_mode!r} requires observation_mode"
+        )
+    return target.observation_mode
+
+
 def _observation_frame_for_distribution(
     inputs: EvaluationInputs,
     target: EvaluationTarget,
     service: str,
 ) -> pd.DataFrame:
     """Return the observation dataframe for *target* and *service*."""
-    frame_key = observation_context_frame_key(target.observation_mode)
+    observation_mode = _require_observation_mode(target)
+    frame_key = observation_context_frame_key(observation_mode)
     flow_ctx = inputs.observation_contexts.get(target.flow_name) or {}
     svc_ctx = flow_ctx.get(str(service))
     if svc_ctx is None:
         raise ValueError(
             f"Distribution evaluation for flow {target.flow_name!r}, service "
-            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"{service!r}, observation_mode={observation_mode!r} requires "
             f"observation context {frame_key!r}; register "
             f"add_distribution_observations on this flow with "
             f"{frame_key}_by_service=..."
@@ -470,7 +494,7 @@ def _observation_frame_for_distribution(
     if frame is None:
         raise ValueError(
             f"Distribution evaluation for flow {target.flow_name!r}, service "
-            f"{service!r}, observation_mode={target.observation_mode!r} requires "
+            f"{service!r}, observation_mode={observation_mode!r} requires "
             f"observation context {frame_key!r}; register "
             f"add_distribution_observations with {frame_key}_by_service=..."
         )
@@ -486,15 +510,18 @@ def _recompute_leaf_agg_observed(
     prediction_time: Tuple[int, int],
     prediction_window: timedelta,
     observation_frame: pd.DataFrame,
+    benchmark_cohorts: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Recompute and set `agg_observed` on one distribution leaf."""
-    frame_key = observation_context_frame_key(target.observation_mode)
+    observation_mode = _require_observation_mode(target)
+    frame_key = observation_context_frame_key(observation_mode)
     count_kwargs: Dict[str, Any] = {
         "snapshot_date": snapshot_date,
         "prediction_time": prediction_time,
         "prediction_window": prediction_window,
+        **count_observed_label_kwargs(observation_mode, benchmark_cohorts),
     }
-    if count_observed_applies_specialty_filter(target.observation_mode):
+    if count_observed_applies_specialty_filter(observation_mode):
         count_kwargs["specialty"] = str(service)
     if frame_key == "ed_visits":
         count_kwargs["ed_visits"] = observation_frame
@@ -506,7 +533,7 @@ def _recompute_leaf_agg_observed(
         if route is not None:
             count_kwargs["admission_type"] = route
 
-    recomputed = count_observed(target.observation_mode, **count_kwargs)
+    recomputed = count_observed(observation_mode, **count_kwargs)
     prior = leaf.get("agg_observed")
     if prior is not None and int(prior) != int(recomputed):
         raise AssertionError(
@@ -526,6 +553,7 @@ def _recompute_distribution_observed_counts(
     model_name: str,
     prediction_dict: Mapping[Tuple[int, int], timedelta],
     observation_frame: pd.DataFrame,
+    benchmark_cohorts: Mapping[str, Mapping[str, Any]],
 ) -> None:
     """Update `agg_observed` on every leaf in a per-service distribution tree."""
     prediction_times = prediction_times_from_dict(prediction_dict)
@@ -548,6 +576,7 @@ def _recompute_distribution_observed_counts(
                     prediction_time=pt,
                     prediction_window=prediction_dict[pt],
                     observation_frame=observation_frame,
+                    benchmark_cohorts=benchmark_cohorts,
                 )
         return
 
@@ -567,6 +596,7 @@ def _recompute_distribution_observed_counts(
                 prediction_time=pt,
                 prediction_window=prediction_dict[pt],
                 observation_frame=observation_frame,
+                benchmark_cohorts=benchmark_cohorts,
             )
 
 
@@ -854,15 +884,37 @@ def evaluate_classifier_probability_quality(
 
     collector.add_row(
         {
-            "evaluation_mode": target.evaluation_mode,
-            "flow": target.flow_name,
-            "flow_type": target.flow_type,
+            **scalar_target_fields(target),
             "service": SERVICE_SENTINEL_ALL,
             "component": target.component,
             "prediction_time": None,
             "model_name": "",
             "charts_generated": True,
         }
+    )
+
+
+def _benchmark_p_bar_by_prediction_time(
+    inputs: EvaluationInputs,
+    target: EvaluationTarget,
+) -> Optional[Dict[Tuple[int, int], float]]:
+    """Global p̄ per clock when observation mode supports a binomial benchmark."""
+    cohort_key = benchmark_cohort_key_for_observation_mode(
+        _require_observation_mode(target)
+    )
+    if cohort_key is None:
+        return None
+    spec = inputs.distribution_benchmark_cohorts.get(cohort_key)
+    if not spec:
+        return None
+    visits_df = spec.get("visits_df")
+    label_col = spec.get("label_col")
+    if visits_df is None or label_col is None:
+        return None
+    return global_p_bar_by_prediction_time(
+        visits_df,
+        inputs.prediction_times,
+        label_col=str(label_col),
     )
 
 
@@ -873,7 +925,7 @@ def evaluate_distribution(
     distributions_dir: Path,
     collector: ScalarsCollector,
 ) -> None:
-    """Plot EPUDD per active service and record per-time snapshot counts.
+    """Plot EPUDD and rPIT+CvM calibration per active service and prediction time.
 
     Parameters
     ----------
@@ -889,11 +941,13 @@ def evaluate_distribution(
 
     Notes
     -----
-    Inactive services (no observed mass and negligible predicted mass) skip charts
-    and emit `skip_reason: inactive_service` rows. Recomputes `agg_observed` on
-    each leaf from `observation_contexts` and `target.observation_mode` before
-    plotting (asserts if a pre-set `agg_observed` disagrees). Uses
-    `patientflow.viz.epudd.plot_epudd`.
+    Inactive services skip evaluation (`skip_reason: inactive_service`).
+    Active services with fewer than ``MIN_DISTRIBUTION_SNAPSHOTS`` snapshot
+    leaves per clock skip EPUDD and calibration
+    (`skip_reason: insufficient_observations`). Binomial benchmark scalars are
+    emitted only when ``observation_mode`` supports a benchmark cohort and
+    ``add_distribution_benchmark_cohort`` registered the matching eval-split
+    frame (not for yet-to-arrive ``arrived_in_window`` modes).
     """
     block = inputs.distribution_by_flow.get(target.flow_name)
     if not block:
@@ -901,6 +955,7 @@ def evaluate_distribution(
     prob_by_svc: Mapping[str, Any] = block.get("prob_dist_by_service") or {}
     model_name: str = str(block.get("model_name") or "admissions")
     prediction_dict = inputs.prediction_dict
+    p_bar_by_pt = _benchmark_p_bar_by_prediction_time(inputs, target)
     if not prob_by_svc:
         collector.merge_service_summary_slice(
             f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -908,6 +963,7 @@ def evaluate_distribution(
                 "mode": "distribution",
                 "flow": target.flow_name,
                 "component": target.component,
+                "observation_mode": target.observation_mode,
                 "n_active_services": 0,
                 "n_inactive_services": 0,
                 "inactive_service_names": [],
@@ -932,6 +988,7 @@ def evaluate_distribution(
             model_name=model_name,
             prediction_dict=prediction_dict,
             observation_frame=observation_frame,
+            benchmark_cohorts=inputs.distribution_benchmark_cohorts,
         )
         inactive = _service_is_inactive_distribution(
             per_date,
@@ -948,9 +1005,7 @@ def evaluate_distribution(
                 h, mi = pt
                 collector.add_row(
                     {
-                        "evaluation_mode": target.evaluation_mode,
-                        "flow": target.flow_name,
-                        "flow_type": target.flow_type,
+                        **scalar_target_fields(target),
                         "service": str(service),
                         "component": target.component,
                         "prediction_time": [h, mi],
@@ -967,43 +1022,113 @@ def evaluate_distribution(
         prob_all = _build_prob_dist_dict_all_for_service(
             per_date, model_name, inputs.prediction_times
         )
+        epudd_times = [
+            pt
+            for pt in inputs.prediction_times
+            if len(prob_all.get(get_model_key(model_name, pt)) or {})
+            >= MIN_DISTRIBUTION_SNAPSHOTS
+        ]
         svc_dir = distributions_dir / target.flow_name / _safe_fs_segment(str(service))
         svc_dir.mkdir(parents=True, exist_ok=True)
-        fig = plot_epudd(
-            list(inputs.prediction_times),
-            prob_all,
-            model_name=model_name,
-            return_figure=True,
-            media_file_path=svc_dir,
-            file_name=f"{target.component}.png",
-            suptitle=_distribution_comparison_suptitle(
-                target, str(service), eval_split=inputs.eval_split
-            ),
-        )
-        if fig is not None:
-            plt.close(fig)
-        else:
-            plt.close("all")
+        if epudd_times:
+            fig = plot_epudd(
+                epudd_times,
+                prob_all,
+                model_name=model_name,
+                return_figure=True,
+                media_file_path=svc_dir,
+                file_name=f"{target.component}.png",
+                suptitle=_distribution_comparison_suptitle(
+                    target, str(service), eval_split=inputs.eval_split
+                ),
+            )
+            if fig is not None:
+                plt.close(fig)
+            else:
+                plt.close("all")
 
         for pt in inputs.prediction_times:
             h, mi = pt
             mk = get_model_key(model_name, pt)
             series_dict = prob_all.get(mk) or {}
             n_snap = len(series_dict)
-            collector.add_row(
-                {
-                    "evaluation_mode": target.evaluation_mode,
-                    "flow": target.flow_name,
-                    "flow_type": target.flow_type,
-                    "service": str(service),
-                    "component": target.component,
-                    "prediction_time": [h, mi],
-                    "model_name": model_name,
-                    "charts_generated": True,
-                    "n_snapshots": n_snap,
-                    "reliable": n_snap > 0,
-                }
-            )
+            base_row: Dict[str, Any] = {
+                **scalar_target_fields(target),
+                "service": str(service),
+                "component": target.component,
+                "prediction_time": [h, mi],
+                "model_name": model_name,
+                "n_snapshots": n_snap,
+            }
+            if n_snap < MIN_DISTRIBUTION_SNAPSHOTS:
+                collector.add_row(
+                    {
+                        **base_row,
+                        "charts_generated": False,
+                        "skip_reason": "insufficient_observations",
+                        "reliable": False,
+                    }
+                )
+                continue
+
+            pf_result = rpit_cvm_calibration_score(series_dict)
+            row: Dict[str, Any] = {
+                **base_row,
+                "charts_generated": True,
+                "reliable": True,
+            }
+            if pf_result is not None:
+                row.update(rpit_cvm_result_to_scalar_fields(pf_result, seed=None))
+
+            if p_bar_by_pt is not None:
+                p_bar = p_bar_by_pt.get(pt)
+                if p_bar is not None:
+                    bench_dict = build_benchmark_prob_dist_dict(
+                        series_dict, p_bar=p_bar
+                    )
+                    bm_result = rpit_cvm_calibration_score(bench_dict)
+                    if bm_result is not None and pf_result is not None:
+                        row.update(
+                            rpit_cvm_result_to_scalar_fields(
+                                bm_result, prefix="rpit_cvm_benchmark", seed=None
+                            )
+                        )
+                        row.update(
+                            {
+                                "rpit_cvm_w2_reduction": (
+                                    bm_result.mean_w2 - pf_result.mean_w2
+                                ),
+                                "rpit_cvm_benchmark_p_bar": p_bar,
+                            }
+                        )
+
+            alt_by_kind = inputs.distribution_benchmark_pmfs.get(target.flow_name, {})
+            for benchmark_kind, alt_prob_by_svc in alt_by_kind.items():
+                alt_per_date = alt_prob_by_svc.get(str(service))
+                if not isinstance(alt_per_date, Mapping):
+                    continue
+                alt_prob_all = _build_prob_dist_dict_all_for_service(
+                    alt_per_date, model_name, inputs.prediction_times
+                )
+                alt_series_dict = alt_prob_all.get(mk) or {}
+                alt_result = rpit_cvm_calibration_score(alt_series_dict)
+                if alt_result is None or pf_result is None:
+                    continue
+                prefix = f"rpit_cvm_{benchmark_kind}"
+                row.update(
+                    rpit_cvm_result_to_scalar_fields(
+                        alt_result, prefix=prefix, seed=None
+                    )
+                )
+                row.update(
+                    {
+                        f"{prefix}_w2_reduction": (
+                            alt_result.mean_w2 - pf_result.mean_w2
+                        ),
+                    }
+                )
+
+            collector.add_row(row)
 
     collector.merge_service_summary_slice(
         f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
@@ -1011,6 +1136,7 @@ def evaluate_distribution(
             "mode": "distribution",
             "flow": target.flow_name,
             "component": target.component,
+            "observation_mode": target.observation_mode,
             "n_active_services": active_count,
             "n_inactive_services": len(inactive_names),
             "inactive_service_names": inactive_names,
@@ -1066,9 +1192,7 @@ def evaluate_arrival_deltas(
                 h, mi = pt
                 collector.add_row(
                     {
-                        "evaluation_mode": target.evaluation_mode,
-                        "flow": target.flow_name,
-                        "flow_type": target.flow_type,
+                        **scalar_target_fields(target),
                         "service": str(svc),
                         "component": target.component,
                         "prediction_time": [h, mi],
@@ -1111,9 +1235,7 @@ def evaluate_arrival_deltas(
             plt.close("all")
             collector.add_row(
                 {
-                    "evaluation_mode": target.evaluation_mode,
-                    "flow": target.flow_name,
-                    "flow_type": target.flow_type,
+                    **scalar_target_fields(target),
                     "service": str(svc),
                     "component": target.component,
                     "prediction_time": [h, mi],
@@ -1129,6 +1251,7 @@ def evaluate_arrival_deltas(
             "mode": "arrival_deltas",
             "flow": target.flow_name,
             "component": target.component,
+            "observation_mode": target.observation_mode,
             "n_active_services": active,
             "n_inactive_services": len(inactive_names),
             "inactive_service_names": inactive_names,
@@ -1180,9 +1303,7 @@ def evaluate_survival_curve(
     plt.close("all")
     collector.add_row(
         {
-            "evaluation_mode": target.evaluation_mode,
-            "flow": target.flow_name,
-            "flow_type": target.flow_type,
+            **scalar_target_fields(target),
             "service": SERVICE_SENTINEL_ALL,
             "component": target.component,
             "prediction_time": None,
@@ -1190,4 +1311,232 @@ def evaluate_survival_curve(
             "charts_generated": True,
             "reliable": True,
         }
+    )
+
+
+def _observed_destination_counts(
+    events: pd.DataFrame,
+    destinations: Sequence[str],
+    *,
+    destination_col: str,
+    discharge_label: str = "Discharge",
+) -> np.ndarray:
+    """Aggregate observed destination counts for departure events."""
+    dest_list = list(destinations)
+    dest_to_idx = {dest: idx for idx, dest in enumerate(dest_list)}
+    counts = np.zeros(len(dest_list), dtype=int)
+
+    for dest_value in events[destination_col]:
+        if dest_value is None or (
+            isinstance(dest_value, float) and pd.isna(dest_value)
+        ):
+            key = discharge_label
+        else:
+            key = str(dest_value)
+        idx = dest_to_idx.get(key)
+        if idx is not None:
+            counts[idx] += 1
+    return counts
+
+
+def _filter_transition_departure_events(
+    block: Mapping[str, Any],
+    estimator: Any,
+) -> pd.DataFrame:
+    """Return departure events, optionally filtered to the registered cohort."""
+    events = block["departure_events"]
+    cohort = block.get("cohort")
+    if estimator.cohort_col and cohort is not None:
+        return events.loc[events[estimator.cohort_col] == cohort].copy()
+    return events.copy()
+
+
+def _transition_row_base(
+    target: EvaluationTarget,
+    source: str,
+    block: Mapping[str, Any],
+) -> Dict[str, Any]:
+    return {
+        "evaluation_mode": target.evaluation_mode,
+        "flow": target.flow_name,
+        "flow_type": target.flow_type,
+        "service": source,
+        "component": target.component,
+        "prediction_time": None,
+        "model_name": str(block.get("model_name") or "transfers"),
+        "cohort": block.get("cohort"),
+        "charts_generated": False,
+    }
+
+
+def evaluate_transition_matrix(
+    inputs: EvaluationInputs,
+    target: EvaluationTarget,
+    *,
+    transitions_dir: Path,
+    collector: ScalarsCollector,
+) -> None:
+    """Score row-wise calibration of subgroup routing tables per source subspecialty.
+
+    Each scalar row answers a conditional question: given that patients departed
+    from source `s` during the registered window, with the subgroup mix that
+    actually left, do their observed destinations match the routing the fitted
+    model would have applied patient-by-patient? The test uses subgroup tables
+    from `TransferProbabilityEstimator`, not the pooled diagnostic matrix from
+    `get_transition_matrix`.
+
+    For every source in the union of the estimator index and observed departure
+    sources, the handler filters departure events to that source, builds a
+    per-event routing matrix via `build_per_patient_probabilities`, aggregates
+    patient-level expected counts `E`, compares them to observed destination
+    counts, and runs a Monte Carlo Pearson goodness-of-fit test when the source
+    is active. Active rows store aligned `destinations`, `expected_counts`, and
+    `observed_counts`.
+
+    Parameters
+    ----------
+    inputs : EvaluationInputs
+        Must include `transition_matrix_by_flow[target.flow_name]`.
+    target : EvaluationTarget
+        `evaluation_mode` must be "transition_matrix".
+    transitions_dir : pathlib.Path
+        Run subdirectory for this evaluation mode.
+    collector : ScalarsCollector
+        Receives one row per source and a `_service_summary` slice fragment.
+
+    Notes
+    -----
+    Skips quietly when the flow block is absent. Uses the same subgroup
+    resolution contract as `transfer_weight_to_target` (unmatched patients are
+    treated as all-discharge, with no fallback to the pooled ["services"] row).
+
+    One row is emitted per estimator source even when `n_departures == 0`.
+    Skipped rows use `skip_reason`:
+
+    - `no_observed_departures` — no departures from `s` in the window.
+    - `all_discharge_expected` — departures exist but every event's routing is
+      all-discharge (`sum of non-Discharge E_d == 0`), so the Pearson test is
+      degenerate.
+
+    On active rows, `n_excluded_unmatched` counts departures excluded from
+    subgroup routing (typically adults with missing or invalid sex). Non-zero
+    values flag case-mix the model does not route. `reliable` is true when
+    `n_departures >= RELIABILITY_MIN_OBSERVATIONS_TRANSITION` (30).
+
+    This mode does not test departure volume from `s`, column-level inflow
+    calibration across sources, intra-window routing drift, or subgroup
+    classifier accuracy. See `transition_matrix_evaluation.md` for the full
+    algorithm and interpretation notes.
+    """
+    _ = transitions_dir
+    block = inputs.transition_matrix_by_flow.get(target.flow_name)
+    if not block:
+        return
+
+    estimator = block["estimator"]
+    events = _filter_transition_departure_events(block, estimator)
+    cohort = block.get("cohort")
+    matrix = estimator.get_transition_matrix(cohort)
+    destinations = list(matrix.columns)
+    source_col = str(block["source_col"])
+    destination_col = str(block["destination_col"])
+    discharge_label = str(block.get("discharge_label") or "Discharge")
+
+    discharge_idx = destinations.index(discharge_label)
+    skipped: Dict[str, int] = {
+        "no_observed_departures": 0,
+        "all_discharge_expected": 0,
+    }
+    active = 0
+    total_excluded_unmatched = 0
+
+    event_sources = set(events[source_col].dropna().astype(str).unique())
+    sources = sorted(set(matrix.index.astype(str)) | event_sources)
+
+    for source in sources:
+        source_events = events.loc[events[source_col].astype(str) == str(source)]
+        n_departures = len(source_events)
+        base_row = _transition_row_base(target, str(source), block)
+
+        if n_departures == 0:
+            skipped["no_observed_departures"] += 1
+            collector.add_row(
+                {
+                    **base_row,
+                    "skip_reason": "no_observed_departures",
+                    "n_departures": 0,
+                    "reliable": False,
+                }
+            )
+            continue
+
+        per_patient = build_per_patient_probabilities(
+            source_events,
+            str(source),
+            cohort,
+            destinations,
+            estimator,
+            discharge_label=discharge_label,
+        )
+        expected = per_patient.routing_matrix.sum(axis=0)
+        expected_transfers = float(expected.sum() - expected[discharge_idx])
+        total_excluded_unmatched += per_patient.n_excluded_unmatched
+
+        if expected_transfers == 0.0:
+            skipped["all_discharge_expected"] += 1
+            collector.add_row(
+                {
+                    **base_row,
+                    "skip_reason": "all_discharge_expected",
+                    "n_departures": n_departures,
+                    "reliable": False,
+                }
+            )
+            continue
+
+        n_obs = _observed_destination_counts(
+            source_events,
+            destinations,
+            destination_col=destination_col,
+            discharge_label=discharge_label,
+        )
+        result = multinomial_gof_montecarlo(
+            per_patient.routing_matrix,
+            n_obs,
+            destinations,
+            n_simulations=int(block.get("n_simulations") or 10_000),
+            seed=derive_seed_offset(block.get("seed"), str(source)),
+        )
+        active += 1
+        collector.add_row(
+            {
+                **base_row,
+                "reliable": n_departures >= RELIABILITY_MIN_OBSERVATIONS_TRANSITION,
+                "n_departures": n_departures,
+                "n_destinations": len(destinations),
+                "n_subgroups_used": per_patient.n_subgroups_used,
+                "n_excluded_unmatched": per_patient.n_excluded_unmatched,
+                "pearson_x2": result.pearson_x2,
+                "p_value": result.p_value,
+                "n_simulations": result.n_simulations,
+                "seed": block.get("seed"),
+                "n_structural_violations": result.n_structural_violations,
+                "destinations": result.destinations,
+                "expected_counts": result.expected_counts,
+                "observed_counts": result.observed_counts,
+            }
+        )
+
+    collector.merge_service_summary_slice(
+        f"{target.evaluation_mode}/{target.flow_name}/{target.component}",
+        {
+            "mode": "transition_matrix",
+            "flow": target.flow_name,
+            "component": target.component,
+            "cohort": block.get("cohort"),
+            "n_active_sources": active,
+            "n_skipped_sources": sum(skipped.values()),
+            "skipped_by_reason": skipped,
+            "n_excluded_unmatched_departures": total_excluded_unmatched,
+        },
     )

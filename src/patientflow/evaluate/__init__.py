@@ -2,23 +2,18 @@
 
 Typical use is to build `EvaluationInputs` with `EvaluationInputsBuilder`,
 then call `run_evaluation` to write a timestamped run directory (charts plus
-`scalars.json`).
+`scalars.json`). Evaluation modes include classifier diagnostics, distribution
+comparison, arrival deltas, survival curves, and transition-matrix row
+calibration.
 
-Legacy scalar helpers from the former ``evaluate`` module are re-exported at
-package scope for 1.6.2-style imports::
+Legacy scalar helpers from the former `evaluate` module are re-exported at
+package scope for backward-compatible imports, for example
+`from patientflow.evaluate import calc_mae_mpe, calculate_results`.
 
-    from patientflow.evaluate import calc_mae_mpe, calculate_results
-
-New evaluation API symbols live in submodules, for example::
-
-    from patientflow.evaluate.runner import run_evaluation
-
-See Also
---------
-patientflow.evaluate.inputs : Builder and input datatypes.
-patientflow.evaluate.runner : Orchestration and artefact layout.
-patientflow.evaluate.legacy_api : Legacy MAE/MPE helpers.
-patientflow.evaluate.observations : Observation counting for distribution targets.
+New evaluation API symbols live in submodules, for example
+`from patientflow.evaluate.runner import run_evaluation`. See
+`patientflow.evaluate.inputs`, `patientflow.evaluate.runner`,
+`patientflow.evaluate.legacy_api`, and `patientflow.evaluate.observations`.
 """
 
 from patientflow.evaluate.legacy_api import calc_mae_mpe, calculate_results

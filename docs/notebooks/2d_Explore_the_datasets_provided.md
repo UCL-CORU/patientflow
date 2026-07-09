@@ -21,7 +21,7 @@ See the [data dictionaries](https://github.com/UCL-CORU/patientflow/tree/main/da
 
 ## Learn more about the data
 
-I recorded a webinar to demonstrate how we converted data from the UCLH Electronic Health Record in a form suitable for this modelling. If you click on the image below, the video will open at the point where I provide detail about the datasets
+I recorded a webinar to demonstrate how we converted data from the UCLH Electronic Health Record into a form suitable for this modelling. If you click on the image below, the video will open at the point where I provide detail about the datasets
 
 <a href="https://www.youtube.com/watch?v=ha_zckz3_rU&t=262s" target="_blank">
     <img src="img/thumbnail_NHSR_webinar.jpg" alt="Link to webinar on how to turn your EHR data into predictions of demand for emergency beds" width="600"/>

@@ -33,7 +33,7 @@ except Exception as e:
    print(f"❌ Error: {e}")
 ```
 
-    ✓ patientflow 1.2.1.dev12 imported successfully
+    ✓ patientflow 1.7.1.dev13 imported successfully
 
 ## Set `project_root` variable
 
@@ -64,7 +64,7 @@ else:
     print("Synthetic data not found - check repository structure")
 ```
 
-    patientflow version: 1.2.1.dev12
+    patientflow version: 1.7.1.dev13
     Repository root: /Users/zellaking/Repos/patientflow
     ✓ Synthetic data found
 
