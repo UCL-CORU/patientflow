@@ -864,34 +864,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3d_i. Evaluate bed demand with patientflow.evaluate
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1236,6 +1208,34 @@
     
   
     4e. Generate predictions using a customisable hospital hierarchy.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Evaluate_transfer_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4f. Evaluate transfer predictions
   
 
     
@@ -2184,7 +2184,7 @@ plot_prob_dist(prob_dist_data, title,
 </code></pre>
 <p><img alt="png" src="../3a_Prepare_group_snapshots_files/3a_Prepare_group_snapshots_19_0.png" /></p>
 <h2 id="example-of-making-a-prediction-for-a-group-snapshot-with-varying-probabilities-for-each-patient">Example of making a prediction for a group snapshot with varying probabilities for each patient</h2>
-<p>In the cell below, I'm using <code>create_temporal_splits()</code> to create a training, validation and test set and <code>train_classifier()</code> to prepare a XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See notebook 2b for more on the functions shown here.</p>
+<p>In the cell below, I'm using <code>create_temporal_splits()</code> to create a training, validation and test set and <code>train_classifier()</code> to prepare an XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See notebook 2b for more on the functions shown here.</p>
 <pre><code class="language-python">from datetime import date
 from patientflow.prepare import create_temporal_splits
 from patientflow.train.classifiers import train_classifier

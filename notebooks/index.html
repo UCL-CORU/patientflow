@@ -881,34 +881,6 @@
   
   
     <li class="md-nav__item">
-      <a href="3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3d_i. Evaluate bed demand with patientflow.evaluate
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1266,6 +1238,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="4f_Evaluate_transfer_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4f. Evaluate transfer predictions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1577,12 +1577,11 @@
 <p>Next is a series of notebooks on preparing group snapshots, generating predictions for group snapshots, and evaluating the predictions.</p>
 <ul>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3a_Prepare_group_snapshots.md">3a_Prepare_group_snapshots</a>:</strong> Shows how to create group snapshots from patient snapshots.</li>
-<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.md">3b_Evaluate_group_snapshots</a>:</strong> Shows how to evaluate predicted bed count distribution generated from group snapshots.</li>
+<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3b_Evaluate_group_snapshots.md">3b_Evaluate_group_snapshots</a>:</strong> Shows how to evaluate predicted bed count distributions generated from group snapshots.</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3c_Predict_bed_demand_by_hospital_service.md">3c_Predict_bed_demand_by_hospital_service</a>:</strong> Shows how to disaggregate bed count distributions by hospital service, such as medical or paediatric beds.</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Evaluate_bed_demand_by_hospital_service.md">3d_Evaluate_bed_demand_by_hospital_service</a>:</strong> Evaluate bed demand predictions by hospital service, and compare with a baseline.</li>
-<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_i_Evaluate_bed_demand_with_evaluate_package.md">3d_i_Evaluate_bed_demand_with_evaluate_package</a>:</strong> Optional follow-on to <strong>3d</strong>: evaluate the same bed demand predictions with <code>patientflow.evaluate</code> (<code>EvaluationInputsBuilder</code> and <code>run_evaluation</code>).</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.md">3e_Predict_demand_from_patients_yet_to_arrive</a>:</strong> Shows how to predict demand, using historical data, when patient snapshots are not appropriate.</li>
-<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.md">3f_Evaluate_demand_predictions_for_patients_yet_to_arrive</a>:</strong> Evaluate arrival rate predictions for patients yet to arrive against observed arrivals in the test set.</li>
+<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.md">3f_Evaluate_demand_predictions_for_patients_yet_to_arrive</a>:</strong> Evaluate arrival rates and survival-curve yet-to-arrive bed demand against observed outcomes.</li>
 </ul>
 <p>A set of notebooks follow, that show how we assembled the building blocks from the 3x_ notebooks into a production system at UCLH to predict demand for beds.</p>
 <ul>
@@ -1590,8 +1589,9 @@
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Organise_predictions_for_a_production_pipeline.md">4a_Organise_predictions_for_a_production_pipeline</a>:</strong> Introduces the structured data classes (<code>FlowInputs</code>, <code>ServicePredictionInputs</code>, <code>DemandPredictor</code>, <code>FlowSelection</code>, <code>PredictionBundle</code>, <code>ServiceModels</code>) that organise predictions for production use.</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4b_Stratify_predictions_by_patient_subgroups.md">4b_Stratify_predictions_by_patient_subgroups</a>:</strong> Shows how to stratify predictions by observable patient characteristics (e.g. children vs adults vs older adults, men vs women) using <code>MultiSubgroupPredictor</code>.</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4c_Predict_demand.md">4c_Predict_demand</a>:</strong> Shows the full prediction pipeline, combining patients currently in the ED with those yet to arrive, to predict demand at UCLH.</li>
-<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Evaluate_demand_predictions.md">4d_Evaluate_demand_predictions</a>:</strong> Evaluates all production model components systematically across the test set, using the evaluation methods introduced in the 3x_ notebooks.</li>
+<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Evaluate_demand_predictions.md">4d_Evaluate_demand_predictions</a>:</strong> Shows how to evaluate all production model components systematically across the test set with <code>run_evaluation</code>, benchmarks, and scalar summaries.</li>
 <li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4e_Generate_predictions_using_hierarchy.md">4e_Generate_predictions_using_hierarchy</a>:</strong> Shows the use of a hierarchical approach to generate demand predictions at different levels of a hospital's reporting hierarchy.</li>
+<li><strong><a href="https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4f_Evaluate_transfer_predictions.md">4f_Evaluate_transfer_predictions</a>:</strong> Shows how to evaluate inpatient transfer routing with the <code>transition_matrix</code> evaluation mode and Monte Carlo Pearson goodness-of-fit tests.</li>
 </ul>
 <h2 id="data-used-in-the-notebooks">Data used in the notebooks</h2>
 <p>The early notebooks (2a<em>, 2b</em>, 3a<em>, 3e</em>) generate fake data on-the-fly so you can run them immediately without any external files. From notebook 2c<em> onwards, most notebooks use real data from University College London Hospital (UCLH), available on <a href="https://zenodo.org/records/14866057">Zenodo</a>. If you don't have the public data, change <code>data_folder_name</code> from <code>'data-public'</code> to <code>'data-synthetic'</code> to use the bundled synthetic dataset instead. Notebook 4a</em> also generates fake data on-the-fly, to introduce the production data classes without requiring external data.</p>
@@ -1600,7 +1600,7 @@
 <p>You can install the <code>patientflow</code> package directly from PyPI:</p>
 <pre><code class="language-bash">pip install patientflow
 </code></pre>
-<p>For development purposes or to run these notebooks with the latest code, you may still want to use the Github repository directly. In that case, the <code>PATH_TO_PATIENTFLOW</code> environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:</p>
+<p>For development purposes or to run these notebooks with the latest code, you may still want to use the GitHub repository directly. In that case, the <code>PATH_TO_PATIENTFLOW</code> environment variable needs to be set so notebooks know where the patientflow repository resides on your computer. You have various options:</p>
 <ul>
 <li>use a virtual environment and set PATH_TO_PATIENTFLOW up within that</li>
 <li>set PATH_TO_PATIENTFLOW globally on your computer</li>
@@ -1620,7 +1620,7 @@ echo 'set PATH_TO_PATIENTFLOW=/path/to/patientflow' &gt;&gt; venv/Scripts/activa
 <p>The environment variable will be set whenever you activate the virtual environment and unset when you deactivate it.
 Replace /path/to/patientflow with your repository path.</p>
 <h3 id="to-set-the-project_root-environment-variable-from-within-each-notebook">To set the project_root environment variable from within each notebook</h3>
-<p>A function called <code>set_project_root()</code> can be run in each notebook. If you include the name of a environment variable as shown below, the function will look in your global environment for a variable of this name.</p>
+<p>A function called <code>set_project_root()</code> can be run in each notebook. If you include the name of an environment variable as shown below, the function will look in your global environment for a variable of this name.</p>
 <p>Alternatively, if you call the function without any arguments, the function will try to infer the location of the patientflow repo from your currently active path.</p>
 <pre><code class="language-python"># to specify an environment variable that has been set elsewhere
 project_root = set_project_root(env_var =&quot;PATH_TO_PATIENTFLOW&quot;)

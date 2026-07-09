@@ -740,34 +740,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3d_i. Evaluate bed demand with patientflow.evaluate
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1309,6 +1281,34 @@
     
   
     4e. Generate predictions using a customisable hospital hierarchy.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Evaluate_transfer_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4f. Evaluate transfer predictions
   
 
     
@@ -1961,7 +1961,7 @@ prediction_window = timedelta(minutes=params[&quot;prediction_window&quot;])
 yta_time_interval = timedelta(minutes=params[&quot;yta_time_interval&quot;])
 </code></pre>
 <p>In the cell below I first calculate <code>prob_admission_in_window</code>, the probability of being admitted within the prediction window, given the elapsed time since each patient arrived, and the specified ED targets.</p>
-<p>Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the probability of admission to specialty if admitted, by applying the specialty model trained earlier.</p>
+<p>Then, for each patient snapshot, I calculate <code>prob_admission_to_specialty</code>, the probability of admission to specialty if admitted, by applying the specialty model trained earlier.</p>
 <p>These two probabilities for each patient snapshot are multiplied and the result passed to <code>get_prob_dist</code> function as weights.</p>
 <pre><code class="language-python">import matplotlib.pyplot as plt
 from patientflow.viz.probability_distribution import plot_prob_dist

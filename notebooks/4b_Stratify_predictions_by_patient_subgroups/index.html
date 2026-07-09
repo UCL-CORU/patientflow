@@ -740,34 +740,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3d_i. Evaluate bed demand with patientflow.evaluate
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1205,6 +1177,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Evaluate_transfer_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4f. Evaluate transfer predictions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1529,7 +1529,7 @@ spec_model = MultiSubgroupPredictor(
 )
 spec_model = spec_model.fit(train_visits_df)
 </code></pre>
-<p>By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because <code>infer_specialty_to_subgroups</code> function includes any subgroup that appears <strong>at least once</strong> for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy), both subgroups will be included.</p>
+<p>By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because the <code>infer_specialty_to_subgroups</code> function includes any subgroup that appears <strong>at least once</strong> for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.</p>
 <pre><code class="language-python">spec_model.specialty_to_subgroups
 </code></pre>
 <pre><code>{'medical': ['paediatric', 'adult'],

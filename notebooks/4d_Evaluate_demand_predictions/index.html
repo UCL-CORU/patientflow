@@ -740,34 +740,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../3d_i_Evaluate_bed_demand_with_evaluate_package/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3d_i. Evaluate bed demand with patientflow.evaluate
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../3e_Predict_demand_from_patients_yet_to_arrive/" class="md-nav__link">
         
   
@@ -1080,10 +1052,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-the-evaluate-package-is-designed" class="md-nav__link">
+  <a href="#data-requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the evaluate package is designed
+        Data requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluate-package-in-brief" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluate package in brief
       
     </span>
   </a>
@@ -1113,143 +1096,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-pairing-predicted-distributions-with-their-observed-values" class="md-nav__link">
+  <a href="#2-observation-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Pairing predicted distributions with their observed values
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Pairing predicted distributions with their observed values">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#2a-observation-modes-and-their-use-in-evaluation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2a. Observation modes and their use in evaluation.
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2b-prepare-dictionaries-of-predicted-distributions-plus-their-observed-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2b. Prepare dictionaries of predicted distributions, plus their observed values.
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-prepare-evaluation-inputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Prepare evaluation inputs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Prepare evaluation inputs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#3a-declare-evaluationtarget-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3a. Declare EvaluationTarget rows
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3b-initialise-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3b. Initialise the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3c-add-admission-classifier-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3c. Add admission classifier evaluation task to the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3d-add-ed-current-bed-demand-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3d. Add ED current bed demand evaluation task to the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3e-add-ed-yet-to-arrive-bed-demand-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3e. Add ED yet-to-arrive bed demand evaluation task to the builder.
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3f-add-ed-yet-to-arrive-arrival-deltas-to-the-evaluation-task" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3f. Add ED yet-to-arrive arrival deltas to the evaluation task
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3g-build-evaluationinputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3g. Build EvaluationInputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-run-evaluation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Run evaluation
+        2. Observation modes
       
     </span>
   </a>
@@ -1257,10 +1107,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-review-outputs" class="md-nav__link">
+  <a href="#3-build-ed-current-pmf-dicts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Review outputs
+        3. Build ED-current PMF dicts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-assemble-evaluation-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Assemble evaluation inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-review-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Review outputs
       
     </span>
   </a>
@@ -1358,6 +1241,34 @@
     
   
     4e. Generate predictions using a customisable hospital hierarchy.
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4f_Evaluate_transfer_predictions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4f. Evaluate transfer predictions
   
 
     
@@ -1542,10 +1453,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-the-evaluate-package-is-designed" class="md-nav__link">
+  <a href="#data-requirements" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How the evaluate package is designed
+        Data requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluate-package-in-brief" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluate package in brief
       
     </span>
   </a>
@@ -1575,143 +1497,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-pairing-predicted-distributions-with-their-observed-values" class="md-nav__link">
+  <a href="#2-observation-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Pairing predicted distributions with their observed values
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Pairing predicted distributions with their observed values">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#2a-observation-modes-and-their-use-in-evaluation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2a. Observation modes and their use in evaluation.
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2b-prepare-dictionaries-of-predicted-distributions-plus-their-observed-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2b. Prepare dictionaries of predicted distributions, plus their observed values.
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-prepare-evaluation-inputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Prepare evaluation inputs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Prepare evaluation inputs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#3a-declare-evaluationtarget-rows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3a. Declare EvaluationTarget rows
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3b-initialise-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3b. Initialise the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3c-add-admission-classifier-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3c. Add admission classifier evaluation task to the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3d-add-ed-current-bed-demand-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3d. Add ED current bed demand evaluation task to the builder
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3e-add-ed-yet-to-arrive-bed-demand-evaluation-task-to-the-builder" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3e. Add ED yet-to-arrive bed demand evaluation task to the builder.
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3f-add-ed-yet-to-arrive-arrival-deltas-to-the-evaluation-task" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3f. Add ED yet-to-arrive arrival deltas to the evaluation task
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3g-build-evaluationinputs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3g. Build EvaluationInputs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-run-evaluation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Run evaluation
+        2. Observation modes
       
     </span>
   </a>
@@ -1719,10 +1508,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-review-outputs" class="md-nav__link">
+  <a href="#3-build-ed-current-pmf-dicts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Review outputs
+        3. Build ED-current PMF dicts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-assemble-evaluation-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Assemble evaluation inputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-run-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Run evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-review-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Review outputs
       
     </span>
   </a>
@@ -1766,55 +1588,56 @@
 
 
 <h1 id="4d-evaluate-demand-predictions">4d. Evaluate demand predictions</h1>
-<p>In the 3x_ notebooks, I evaluated individual model components in isolation (group snapshots in 3b, bed demand by service in 3d, yet-to-arrive demand in 3f). This notebook shows the <code>patientflow.evaluate</code>. At UCLH we use it to describe what to measure with <code>EvaluationTarget</code> rows, assemble data with <code>EvaluationInputsBuilder</code> (including a single <code>FlowSelection</code> for the run), then call <code>run_evaluation</code> to write charts plus <code>scalars.json</code> under a timestamped directory.</p>
-<p>A runner dispatches evaluation activity in five <code>evaluation_mode</code> scenarios. Classifier evaluation is split into <strong>model-level diagnostics</strong> (<code>classifier_model_diagnostics</code>, A) and <strong>flow-level probability quality</strong> (<code>classifier_probability_quality</code>, B: discrimination, MADCAP, and calibration on all visits in the run cohort). Bed-demand PMF quality uses <strong><code>distribution</code></strong> (C). Yet-to-arrive rate diagnostics use <strong><code>arrival_deltas</code></strong>. A single global <strong><code>survival_curve</code></strong> target is optional (not shown here).</p>
-<p>Set <strong><code>eval_split</code></strong> on <code>EvaluationInputsBuilder</code> to <code>"valid"</code> (default) or <code>"test"</code>. Register visit frames and snapshot dates for that holdout only; plot titles and <code>evaluation_run.yaml</code> record the same cohort. Train-time <code>selected_eval_metrics</code> on saved classifiers stay on validation unless you retrained with <code>evaluate_on_test=True</code>.</p>
-<h3 id="how-the-evaluate-package-is-designed">How the <code>evaluate</code> package is designed</h3>
-<p>Three objects carry the design:</p>
-<ul>
-<li><strong><code>EvaluationTarget</code></strong> — One row for each thing to be evaluated: it names which <strong>runner branch</strong> to use (<code>evaluation_mode</code>), how outputs should be <strong>grouped and labelled</strong> (<code>flow_name</code>, <code>flow_type</code>, <code>component</code>), and which <strong>observation strategy</strong> pairs with predicted distributions (<code>observation_mode</code>). See the table below for more detail.</li>
-<li><strong><code>EvaluationInputsBuilder</code> → <code>EvaluationInputs</code></strong> — The builder is a <strong>mutable staging area</strong>: you set <code>flow_selection</code>, <code>prediction_times</code>, <strong><code>eval_split</code></strong>, and <code>evaluation_targets</code>, then call <code>add_classifier</code>, <code>add_distributions_*</code>, <code>add_arrival_deltas</code>, and so on. <strong><code>build()</code></strong> returns an <strong><code>EvaluationInputs</code></strong> instance: an <strong>immutable</strong> bundle of all registered tables and dicts the runner reads (classifier blocks, distribution blocks, arrival blocks, observation contexts, optional survival).</li>
-<li><strong><code>run_evaluation</code></strong> — Takes an output root plus <strong><code>EvaluationInputs</code></strong>, walks through the <strong><code>inputs.evaluation_targets</code></strong>, and <strong>dispatches each target by <code>evaluation_mode</code></strong> to the right handler (plots under <code>classifiers/</code>, <code>distributions/</code>, <code>arrivals/</code>, … and scalar rows in <code>scalars.json</code>).</li>
-</ul>
-<p>The components of an EvaluationTarget are shown below.</p>
+<p>After evaluating individual model components in the 3x notebooks (group snapshots in 3b, bed demand in <strong>3d</strong>, yet-to-arrive in <strong>3f</strong>), this notebook shows how we run a <strong>systematic evaluation</strong> with <code>patientflow.evaluate</code>: declare targets, assemble inputs, call <code>run_evaluation</code>, and read scalars from <code>scalars.json</code>.</p>
+<p>For manual EPUDD and baseline comparison by service, see <strong>3d</strong>. For arrival deltas and survival curves, see <strong>3f</strong>.</p>
+<h3 id="data-requirements">Data requirements</h3>
 <table>
 <thead>
 <tr>
-<th><code>EvaluationTarget</code> field</th>
-<th>Role</th>
+<th>Cohort / target</th>
+<th>Data frame</th>
+<th>Required columns</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>flow_name</code></td>
-<td>Must match the <code>flow_name</code> passed to the corresponding <strong><code>add_*</code></strong> call so the target receives the right data block.</td>
+<td>ED admissions classifier</td>
+<td><code>ed_visits</code></td>
+<td><code>is_admitted</code>, <code>prediction_time</code>, <code>snapshot_date</code></td>
 </tr>
 <tr>
-<td><code>flow_type</code></td>
-<td>Logical pathway label for scalars and reporting (for example admissions vs departures).</td>
+<td>ED-current bed demand</td>
+<td><code>ed_visits</code></td>
+<td>same + <code>specialty</code></td>
 </tr>
 <tr>
-<td><code>evaluation_mode</code></td>
-<td>Selects the <strong>handler</strong>: <code>classifier_model_diagnostics</code>, <code>classifier_probability_quality</code>, <code>distribution</code>, <code>arrival_deltas</code>, or <code>survival_curve</code>.</td>
+<td>YTA arrival deltas</td>
+<td><code>inpatient_arrivals</code></td>
+<td><code>arrival_datetime</code> (filtered per service via YTA model)</td>
 </tr>
 <tr>
-<td><code>component</code></td>
-<td>Names the <strong>chart/output family</strong> for this target (<code>scalars.json</code>; for distribution mode, the PNG basename <code>{component}.png</code>). Unlike <code>evaluation_mode</code>, several targets can share a mode but differ by <code>component</code> (e.g. ED-current vs YTA bed demand).</td>
-</tr>
-<tr>
-<td><code>observation_mode</code></td>
-<td>Names the <code>count_observed</code> strategy in <code>patientflow.evaluate.observations</code>; used when distribution evaluation recomputes observed counts from builder frames.</td>
+<td>Window-based ED admission (UCLH)</td>
+<td><code>ed_visits</code></td>
+<td>+ <code>departure_datetime</code></td>
 </tr>
 </tbody>
 </table>
+<p>Public extracts omit <code>departure_datetime</code>. Set <code>RUN_FABRICATED_TIME_DEMOS=True</code> to call <code>synthesise_departure_times</code> for local demos of window-based evaluation.</p>
+<h3 id="evaluate-package-in-brief">Evaluate package in brief</h3>
+<ul>
+<li><strong><code>EvaluationTarget</code></strong> — one row per evaluation task (<code>evaluation_mode</code>, <code>flow_name</code>, <code>component</code>, and <code>observation_mode</code> for distribution targets).</li>
+<li><strong><code>EvaluationInputsBuilder</code></strong> — register classifiers, PMF dicts, observation frames, and benchmarks; <strong><code>build()</code></strong> returns immutable <strong><code>EvaluationInputs</code></strong>.</li>
+<li><strong><code>run_evaluation</code></strong> — dispatches each target to a handler; writes plots and <strong><code>scalars.json</code></strong>.</li>
+</ul>
+<p><strong>This notebook evaluates:</strong> admission classifier diagnostics and probability quality; ED-current bed demand (with binomial and specialty-proportions benchmarks); and yet-to-arrive arrival-rate deltas. Set <strong><code>eval_split</code></strong> to <code>"valid"</code> or <code>"test"</code> on the builder to choose the holdout cohort.</p>
 <h2 id="approach">Approach</h2>
-<p>In this notebook I show the following:</p>
 <ol>
-<li><strong>Load data</strong> — same pattern as notebook 4c: <code>prepare_prediction_inputs</code>, temporal splits, synthetic <code>departure_datetime</code> on evaluation ED visits and inpatient arrivals where extracts omit those timestamps.</li>
-<li><strong>Demonstrate pairing</strong> of observed values with predicted distributions, under different values of <code>observation_mode</code></li>
-<li><strong>Demonstrate the evaluate package</strong> — <code>EvaluationInputsBuilder</code> with <code>flow_selection</code>, <code>prediction_times</code>, <code>eval_split</code>, and a custom <code>evaluation_targets</code> list whose <code>flow_name</code> keys match <code>add_classifier</code> / <code>add_distributions_*</code> / <code>add_arrival_deltas</code>. Distribution targets pair <code>add_distributions_from_service_dict</code> with <code>add_distribution_observations</code>. For arrival deltas with a multi-service predictor, pass <code>predictors_by_service</code> and <code>filter_keys_by_service</code> so the baseline matches each service.</li>
-<li><strong>Run evaluation</strong> — <code>run_evaluation(output_root, inputs, run_name=...)</code>.</li>
-<li><strong>Inspect output</strong> — load <code>evaluation_rows</code> from <code>scalars.json</code> (and optional <code>_service_summary</code>).</li>
+<li><strong>Load data</strong> — <code>prepare_prediction_inputs</code> and temporal splits (section 1; same pattern as 4c).</li>
+<li><strong>Observation modes</strong> — which patients count toward each observed value (section 2).</li>
+<li><strong>Build PMF dicts</strong> — <code>get_prob_dist_by_service</code> for ED-current bed demand (section 3).</li>
+<li><strong>Assemble evaluation inputs</strong> — <code>EvaluationInputsBuilder</code>, targets, and benchmarks (section 4).</li>
+<li><strong>Run evaluation</strong> — <code>run_evaluation</code> (section 5).</li>
+<li><strong>Inspect output</strong> — <code>evaluation_rows</code> in <code>scalars.json</code> (section 6).</li>
 </ol>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload
@@ -1823,16 +1646,14 @@
 </code></pre>
 <h2 id="1-load-data-and-train-models">1. Load data and train models</h2>
 <p>The data loading and configuration steps match notebook 4c. Here <code>prepare_prediction_inputs</code> performs training and assembly in one call.</p>
-<p>Public ED extracts omit <code>departure_datetime</code>; this notebook synthesises leave-ED times on the evaluation visit frame (and ward admission times on inpatient arrivals) for demonstration purposes.</p>
 <p>You can request the UCLH datasets on <a href="https://zenodo.org/records/14866057">Zenodo</a>. If you do not have the public data, set <code>data_folder_name</code> to <code>'data-synthetic'</code>.</p>
 <pre><code class="language-python">from typing import Any
-
 
 from patientflow.train.emergency_demand import prepare_prediction_inputs
 from patientflow.prepare import create_temporal_splits
 from patientflow.load import get_model_key
-from datetime import timedelta, datetime, time, timezone
-import numpy as np
+from patientflow.generate import synthesise_departure_times
+from datetime import timedelta
 import pandas as pd
 
 data_folder_name = &quot;data-public&quot;
@@ -1860,7 +1681,6 @@ end_test_set = params[&quot;end_test_set&quot;]
 # Routine development: &quot;valid&quot;. Final holdout report: &quot;test&quot; (same saved models).
 eval_split = &quot;valid&quot;
 
-# Generate the valid and test visits datasets
 _, valid_visits_df, test_visits_df = create_temporal_splits(
     ed_visits,
     start_training_set,
@@ -1872,7 +1692,6 @@ _, valid_visits_df, test_visits_df = create_temporal_splits(
     verbose=False,
 )
 
-# Filter the visits dataframe to the valid or test split according to the value of eval_split
 if eval_split == &quot;valid&quot;:
     eval_visits_df = valid_visits_df
     eval_snapshot_start = start_validation_set
@@ -1884,7 +1703,6 @@ elif eval_split == &quot;test&quot;:
 else:
     raise ValueError(f&quot;eval_split must be 'valid' or 'test', got {eval_split!r}&quot;)
 
-# Prepare an array of snapshot dates for the evaluation cohort
 eval_snapshot_dates = [
     d.date()
     for d in pd.date_range(
@@ -1914,468 +1732,230 @@ eval_inpatient_arrivals_df = (
     valid_inpatient_arrivals_df if eval_split == &quot;valid&quot; else test_inpatient_arrivals_df
 )
 
-# Synthetic ward-admission timestamps for notebook demonstrations (see 4c).
-np_rng = np.random.default_rng(42)
-ward_delay_hours = np_rng.gamma(
-    shape=4.0, scale=1.5, size=len(eval_inpatient_arrivals_df)
-)
-ward_delay_hours = ward_delay_hours.clip(min=0.25)
+# Skip when your extract already includes departure_datetime.
+RUN_FABRICATED_TIME_DEMOS = False
 
-eval_inpatient_arrivals_df = eval_inpatient_arrivals_df.copy()
-eval_inpatient_arrivals_df[&quot;departure_datetime&quot;] = (
-    eval_inpatient_arrivals_df[&quot;arrival_datetime&quot;]
-    + pd.to_timedelta(ward_delay_hours, unit=&quot;h&quot;)
-)
-
-# Create fake ED departure times for demonstration purposes
-eval_visits_df = eval_visits_df.copy()
-if &quot;departure_datetime&quot; not in eval_visits_df.columns:
-    np_rng_ed = np.random.default_rng(43)
-    leave_delay_hours = np_rng_ed.gamma(shape=3.0, scale=2.0, size=len(eval_visits_df))
-    leave_delay_hours = leave_delay_hours.clip(min=0.25)
-    snapshot_moment = pd.to_datetime(
-        eval_visits_df[&quot;snapshot_date&quot;].astype(str)
-        + &quot; &quot;
-        + eval_visits_df[&quot;prediction_time&quot;].map(lambda t: f&quot;{t[0]:02d}:{t[1]:02d}:00&quot;)
+if RUN_FABRICATED_TIME_DEMOS:
+    eval_inpatient_arrivals_df = synthesise_departure_times(
+        eval_inpatient_arrivals_df, kind=&quot;inpatient_arrivals&quot;, seed=42
     )
-    eval_visits_df[&quot;departure_datetime&quot;] = (
-        snapshot_moment + pd.to_timedelta(leave_delay_hours, unit=&quot;h&quot;)
-    ).dt.tz_localize(&quot;UTC&quot;)
-    eval_visits_df.loc[
-        ~eval_visits_df[&quot;is_admitted&quot;].astype(bool), &quot;departure_datetime&quot;
-    ] = pd.NaT
+    eval_visits_df = synthesise_departure_times(eval_visits_df, kind=&quot;ed_visits&quot;, seed=43)
+else:
+    print(
+        &quot;Skipping synthesise_departure_times &quot;
+        &quot;(RUN_FABRICATED_TIME_DEMOS=False).&quot;
+    )
 
 specialties = [&quot;medical&quot;, &quot;surgical&quot;, &quot;haem/onc&quot;, &quot;paediatric&quot;]
 
-
 </code></pre>
 <pre><code>valid cohort: 30 snapshot dates (2031-09-01 to 2031-10-01, exclusive end)
+Skipping synthesise_departure_times (RUN_FABRICATED_TIME_DEMOS=False).
 </code></pre>
-<h2 id="2-pairing-predicted-distributions-with-their-observed-values">2. Pairing predicted distributions with their observed values</h2>
-<p>Evaluation is organised around pairings of predicted distributions for a given moment in time and patient cohort, with the observed values associated with each snapshot - ie what actually happened to the visits in that cohort.</p>
-<p>In this section we first explain how the observed values are counted, and then show how the predicted distributions are prepared.</p>
-<h3 id="2a-observation-modes-and-their-use-in-evaluation">2a. Observation modes and their use in evaluation.</h3>
-<p><code>OBSERVATION_MODES</code> control what is counted within the observed value. The various observation modes available in patientflow are:</p>
-<ul>
-<li><strong><code>admitted_at_some_point</code></strong> — Patients <strong>already in ED</strong> at the prediction moment who are marked admitted (uses <strong><code>ed_visits</code></strong> dataframe and defaults to <code>is_admitted</code> column). The observation mode tells the code to count eventual admissions from among the snapshot, without reference to the time they were admitted.</li>
-<li><strong><code>admitted_in_window</code></strong> — Patients <strong>in that ED snapshot</strong> who are admitted and <strong>leave ED for a ward</strong> before the window ends (uses <strong><code>ed_visits</code></strong> dataframe and the <strong><code>departure_datetime</code></strong> column). The observation mode tells the code to count only visits that ended in admission, and for which the departure_datetime (leaving the ED) was within the prediction window.</li>
-<li><strong><code>arrived_in_window</code></strong> — <strong>Yet-to-arrive</strong> visits whose <strong><code>arrival_datetime</code></strong> falls in the prediction window. Uses the <code>inpatient_arrivals</code> dataset and the <code>arrival_datetime</code> column.</li>
-<li><strong><code>arrived_and_admitted_in_window</code></strong> (not used in this notebook, but used at UCLH) — Arrivals who <strong>are admitted directly (not via ED)</strong> within the window, using the <code>inpatient_arrivals</code> dataset. (Where more than one arrivals cohort is included in the <code>inpatient_arrivals</code> dataset, the calling function pre-filters the dataset before calling the observation counting functions.)</li>
-<li><strong><code>departed_in_window</code></strong> — <strong>Current inpatients</strong> on a snapshot who <strong>leave their subspecialty</strong> within the window (not used in this notebook, but used at UCLH) - Uses an inpatient snapshots dataframe with a label indicating the patient left the subspecialty within a prediction window.</li>
-</ul>
-<pre><code class="language-python">from patientflow.evaluate.observations import OBSERVATION_MODES, count_observed
-print(&quot;Modes:&quot;, &quot;, &quot;.join(OBSERVATION_MODES))
-
-</code></pre>
-<pre><code>Modes: admitted_at_some_point, admitted_in_window, departed_in_window, arrived_in_window, arrived_and_admitted_in_window
-</code></pre>
-<p>Below we'll pick a random snapshot date to demonstrate the use of observation modes. We'll show both the use of the <code>count_observed</code> function with a specified <code>observation_mode</code>, and for comparison a cross-check against the relevant dataframe to confirm the observed values concur.</p>
-<pre><code class="language-python">demo_snapshot_date = eval_snapshot_dates[len(eval_snapshot_dates) // 2]
-demo_prediction_time = prediction_times[0]
-demo_prediction_moment = datetime.combine(
-    demo_snapshot_date, time(*demo_prediction_time), tzinfo=timezone.utc
-)
-demo_window_end = demo_prediction_moment + prediction_window
-
-demo_specialty = &quot;surgical&quot;
-demo_arrivals = eval_inpatient_arrivals_df
-if demo_specialty in yta_model_by_spec.filters:
-    demo_arrivals = yta_model_by_spec.filter_dataframe(
-        eval_inpatient_arrivals_df, yta_model_by_spec.filters[demo_specialty]
-    )
-
-print(
-    f&quot;Demonstrating using the {eval_split!r} dataset:\n&quot;
-    f&quot;  snapshot={demo_snapshot_date}\n&quot;
-    f&quot;  time={demo_prediction_time}\n&quot;
-    f&quot;  specialty={demo_specialty!r}&quot;
-)
-
-</code></pre>
-<pre><code>Demonstrating using the 'valid' dataset:
-  snapshot=2031-09-16
-  time=(6, 0)
-  specialty='surgical'
-</code></pre>
-<pre><code class="language-python"># Counting the number of ed_visits that ended in admission at some point
-n = count_observed(
-    &quot;admitted_at_some_point&quot;,
-    snapshot_date=demo_snapshot_date,
-    prediction_time=demo_prediction_time,
-    prediction_window=prediction_window,
-    ed_visits=eval_visits_df,
-    specialty=demo_specialty,
-)
-print(f'Observed value using &quot;admitted_at_some_point&quot; observation mode: {n}')
-
-# Checking against the original data source
-print(f'Observed value using dataframe filtering: {len(eval_visits_df[(eval_visits_df.specialty == demo_specialty) &amp;
-    (eval_visits_df.is_admitted) &amp;
-    (eval_visits_df.snapshot_date == demo_snapshot_date) &amp;
-    (eval_visits_df.prediction_time == demo_prediction_time)])}')
-
-</code></pre>
-<pre><code>Observed value using "admitted_at_some_point" observation mode: 1
-Observed value using dataframe filtering: 1
-</code></pre>
-<pre><code class="language-python"># Counting the number of ed_visits that ended in admission within the prediction window
-n = count_observed(
-    &quot;admitted_in_window&quot;,
-    snapshot_date=demo_snapshot_date,
-    prediction_time=demo_prediction_time,
-    prediction_window=prediction_window,
-    ed_visits=eval_visits_df,
-    specialty=demo_specialty,
-)
-print(f'Observed value using &quot;admitted_in_window&quot; observation mode: {n}')
-
-
-# Checking against the original data source
-print(f'Observed value using dataframe filtering: {len(eval_visits_df[(eval_visits_df.specialty == demo_specialty) &amp;
-    (eval_visits_df[&quot;snapshot_date&quot;] == demo_snapshot_date)
-    &amp; (eval_visits_df[&quot;prediction_time&quot;] == demo_prediction_time)
-    &amp; (eval_visits_df[&quot;is_admitted&quot;].astype(bool))
-    &amp; (eval_visits_df[&quot;departure_datetime&quot;] &gt; demo_prediction_moment)
-    &amp; (eval_visits_df[&quot;departure_datetime&quot;] &lt;= demo_prediction_moment + prediction_window)
-
-    ])}')
-
-
-</code></pre>
-<pre><code>Observed value using "admitted_in_window" observation mode: 1
-Observed value using dataframe filtering: 1
-</code></pre>
-<pre><code class="language-python"># Counting inpatient arrivals within the prediction window (yet-to-arrive cohort)
-n = count_observed(
-    &quot;arrived_in_window&quot;,
-    snapshot_date=demo_snapshot_date,
-    prediction_time=demo_prediction_time,
-    prediction_window=prediction_window,
-    inpatient_arrivals=demo_arrivals,
-)
-print(f'Observed value using &quot;arrived_in_window&quot; observation mode: {n}')
-
-print(
-    &quot;Observed value using dataframe filtering:&quot;,
-    len(
-        demo_arrivals[
-            (demo_arrivals.arrival_datetime &gt; demo_prediction_moment)
-            &amp; (demo_arrivals.arrival_datetime &lt;= demo_window_end)
-        ]
-    ),
-)
-
-</code></pre>
-<pre><code>Observed value using "arrived_in_window" observation mode: 3
-Observed value using dataframe filtering: 3
-</code></pre>
-<pre><code class="language-python"># Counting inpatient arrivals admitted within the prediction window
-n = count_observed(
-    &quot;arrived_and_admitted_in_window&quot;,
-    snapshot_date=demo_snapshot_date,
-    prediction_time=demo_prediction_time,
-    prediction_window=prediction_window,
-    inpatient_arrivals=demo_arrivals,
-)
-print(f'Observed value using &quot;arrived_and_admitted_in_window&quot; observation mode: {n}')
-
-print(
-    &quot;Observed value using dataframe filtering:&quot;,
-    len(
-        demo_arrivals[
-            (demo_arrivals.arrival_datetime &gt; demo_prediction_moment)
-            &amp; (demo_arrivals.arrival_datetime &lt;= demo_window_end)
-            &amp; (demo_arrivals.departure_datetime &gt; demo_prediction_moment)
-            &amp; (demo_arrivals.departure_datetime &lt;= demo_window_end)
-        ]
-    ),
-)
-
-</code></pre>
-<pre><code>Observed value using "arrived_and_admitted_in_window" observation mode: 0
-Observed value using dataframe filtering: 0
-</code></pre>
-<h3 id="2b-prepare-dictionaries-of-predicted-distributions-plus-their-observed-values">2b. Prepare dictionaries of predicted distributions, plus their observed values.</h3>
-<p><code>get_prob_dist_by_service</code> returns, for each service, a snapshot date mapped to a 'leaf' that contains <code>agg_predicted</code> (a distinct PMF for each prediction time and snapshot date) and an <code>agg_observed</code> integer count for one <code>prediction_time</code> and one <code>flow_selection</code>.</p>
-<p>For ED current patients, the code loops <code>snapshot_date</code> over the evaluation calendar (<code>eval_snapshot_dates</code>, driven by <code>eval_split</code>), finds the patients in ED at that prediction moment, and generates a prediction of the number of beds needed.</p>
-<p>For ED yet-to-arrive PMFs, the code loops <code>snapshot_date</code> over the evaluation calendar (<code>eval_snapshot_dates</code>, driven by <code>eval_split</code>) and calls <code>yta_model_by_spec.predict(..., prediction_date=snapshot_date)</code>, matching weekday-stratified arrival profiles to that day.</p>
-<p>When calling <code>get_prob_dist_by_service</code>, certain parameters need to be specified:</p>
-<ul>
-<li>the prediction time</li>
-<li>the prediction window</li>
-<li>the trained classifiers and models used for prediction; these are stored in the ServiceModels object</li>
-<li>a flow selection; ED current and ED yet-to-arrive use different <code>FlowSelection</code> flags</li>
-<li>the dataset containing snapshots to be used for prediction (if relevant to the requested flow selection)</li>
-<li>the aspirational curve parameters, (x1, y1, x2, y2) if relevant</li>
-<li>the observation mode against which the distribution will be evaluated. As the implementation at UCLH is aspirational (ie they assume four-hour targets are met), we don't evaluate whether visits ended in admission <strong>within the prediction window</strong>. We simply evaluate the number who were admitted eventually. We use the <code>observation_mode</code> "admitted_at_some_point" below</li>
-</ul>
+<h2 id="2-observation-modes">2. Observation modes</h2>
+<p>Bed-demand evaluation compares a <strong>predicted distribution</strong> (how many admissions we expect) with an <strong>observed count</strong> (how many actually happened). For each snapshot date and prediction time, something has to define <em>which patients count</em> toward that observed value.</p>
+<p><strong><code>observation_mode</code></strong> names that counting rule. For example, <code>admitted_at_some_point</code> counts patients in the ED snapshot who are eventually admitted, while <code>admitted_in_window</code> counts only those who leave for a ward before the prediction window ends. You declare the mode on each evaluation task; patientflow applies the same rule whenever it counts observed admissions from your data. Choose a mode your extract supports — <code>admitted_in_window</code> needs <code>departure_datetime</code>, which the public dataset omits (see the data-requirements table above).</p>
+<table>
+<thead>
+<tr>
+<th><code>observation_mode</code></th>
+<th>Cohort</th>
+<th>What is counted</th>
+<th>Data frame / columns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admitted_at_some_point</code></td>
+<td>Patients already in ED at the prediction moment</td>
+<td>Eventually admitted (any time)</td>
+<td><code>ed_visits</code>, <code>is_admitted</code></td>
+</tr>
+<tr>
+<td><code>admitted_in_window</code></td>
+<td>Patients in the ED snapshot</td>
+<td>Admitted and <strong>leave ED for a ward</strong> before the window ends</td>
+<td><code>ed_visits</code>, <code>is_admitted</code>, <code>departure_datetime</code></td>
+</tr>
+<tr>
+<td><code>arrived_in_window</code></td>
+<td>Yet-to-arrive</td>
+<td><strong><code>arrival_datetime</code></strong> falls in the prediction window</td>
+<td><code>inpatient_arrivals</code></td>
+</tr>
+<tr>
+<td><code>arrived_and_admitted_in_window</code></td>
+<td>Yet-to-arrive (direct admission)</td>
+<td>Arrive and are admitted within the window (not via ED)</td>
+<td><code>inpatient_arrivals</code> (often pre-filtered)</td>
+</tr>
+</tbody>
+</table>
+<p>This notebook uses <code>admitted_at_some_point</code> for ED-current bed demand and classifiers. YTA arrival deltas (section 4) compare observed and expected arrival timing; they use filtered <code>inpatient_arrivals</code> frames rather than <code>count_observed</code>, though the target still carries an <code>observation_mode</code> label for scalar rows. Window-based bed-demand modes are common at UCLH; see notebook 3f for survival-curve evaluation with real ward timestamps. After <code>builder.build()</code> in section 4, the printed target list shows which mode each task declares.</p>
+<h2 id="3-build-ed-current-pmf-dicts">3. Build ED-current PMF dicts</h2>
+<p>The evaluate package does not build predictions for you. You assemble PMF dicts first, then register them on the builder with <code>add_distributions_from_service_dict</code>.</p>
+<p><code>get_prob_dist_by_service</code> returns nested dicts: <code>service → model_key → snapshot_date → leaf</code>, where each <strong>leaf</strong> is a small dict holding <code>agg_predicted</code> (the PMF) and <code>agg_observed</code> (the count on that snapshot). Pass the same <code>observation_mode</code> here as on the bed-demand <code>EvaluationTarget</code> in section 4 (<code>admitted_at_some_point</code> in this run).</p>
+<p>We build sequence-predictor PMFs for evaluation and a specialty-proportions baseline (training-set average routing) for benchmark comparison — the same baseline as notebook 3d. When building PMFs we use a narrow <code>FlowSelection</code> (ED-current patients only).</p>
 <pre><code class="language-python">from patientflow.aggregate import get_prob_dist_by_service
 from patientflow.model_artifacts import ServiceModels
 from patientflow.predict.demand import FlowSelection
+from patientflow.predictors.value_to_outcome_predictor import ConstantSpecialtyProbs
 
+# Narrow FlowSelection for PMF building: ED-current patients only.
 flow_sel_ed_current = FlowSelection.custom(
     include_ed_current=True,
-    include_ed_yta=False,
+    include_ed_yta=False,  # yet-to-arrive ED admissions
     include_non_ed_yta=False,
     include_elective_yta=False,
     include_transfers_in=False,
     include_departures=False,
 )
 
-# Per service: model_key -&gt; snapshot_date -&gt; leaf (distinct PMF per prediction_time)
-ed_current_by_service = {svc: {} for svc in specialties}
-ed_yta_by_service = {svc: {} for svc in specialties}
 
-for prediction_time, prediction_window in prediction_dict.items():
-    model_key = get_model_key(model_name, prediction_time)
-    admission_model = admissions_models[model_key]
-    service_models = ServiceModels(
-        prediction_time=prediction_time,
-        prediction_window=prediction_window,
-        ed_classifier=admission_model,
-        inpatient_classifier=None,
-        spec_model=spec_model,
-        ed_yta_model=yta_model_by_spec,
-        non_ed_yta_model=None,
-        elective_yta_model=None,
-        transfer_model=None,
-    )
+def build_ed_current_by_service(spec_predictor) -&gt; dict:
+    by_service = {svc: {} for svc in specialties}
+    for prediction_time, pw in prediction_dict.items():
+        model_key = get_model_key(model_name, prediction_time)
 
-    ed_current_probability_distributions_by_specialty = get_prob_dist_by_service(
-        eval_visits_df,
-        eval_snapshot_dates,
-        prediction_time,
-        service_models,
-        specialties,
-        prediction_window,
-        flow_selection=flow_sel_ed_current,
-        x1=x1,
-        y1=y1,
-        x2=x2,
-        y2=y2,
-        component=&quot;arrivals&quot;,
-        observation_mode=&quot;admitted_at_some_point&quot;,
-        verbose=False,
-    )
-    for specialty in specialties:
-        ed_current_by_service[specialty][model_key] = (
-            ed_current_probability_distributions_by_specialty[specialty]
+        # ServiceModels: admission classifier + specialty router for this prediction time.
+        service_models = ServiceModels(
+            prediction_time=prediction_time,
+            prediction_window=pw,
+            ed_classifier=admissions_models[model_key],
+            spec_model=spec_predictor,
         )
 
-    for specialty in specialties:
-        yet_to_arrive_leaf_by_snapshot_date = {}
-        for snapshot_date in eval_snapshot_dates:
-            if specialty in yta_model_by_spec.filters:
-                yet_to_arrive_prediction_frame = yta_model_by_spec.predict(
-                    prediction_time=prediction_time,
-                    prediction_window=prediction_window,
-                    filter_keys=specialty,
-                    prediction_date=snapshot_date,
-                    x1=x1,
-                    y1=y1,
-                    x2=x2,
-                    y2=y2,
-                )[specialty]
-                predicted_probability_mass = yet_to_arrive_prediction_frame[
-                    &quot;agg_proba&quot;
-                ].copy(deep=True)
-                filtered_arrivals = yta_model_by_spec.filter_dataframe(
-                    eval_inpatient_arrivals_df,
-                    yta_model_by_spec.filters[specialty],
-                )
-                agg_observed = count_observed(
-                    &quot;arrived_in_window&quot;,
-                    snapshot_date=snapshot_date,
-                    prediction_time=prediction_time,
-                    prediction_window=prediction_window,
-                    inpatient_arrivals=filtered_arrivals,
-                )
-            else:
-                predicted_probability_mass = pd.Series(
-                    [1.0], index=[0], name=&quot;agg_proba&quot;
-                )
-                agg_observed = 0
-            yet_to_arrive_leaf_by_snapshot_date[snapshot_date] = {
-                &quot;agg_predicted&quot;: predicted_probability_mass,
-                &quot;agg_observed&quot;: agg_observed,
-            }
-        ed_yta_by_service[specialty][model_key] = yet_to_arrive_leaf_by_snapshot_date
+        # Returns {specialty: {snapshot_date: {agg_predicted, agg_observed}}}.
+        by_specialty = get_prob_dist_by_service(
+            eval_visits_df,
+            eval_snapshot_dates,
+            prediction_time,
+            service_models,
+            specialties,
+            pw,
+            flow_selection=flow_sel_ed_current,
+            component=&quot;arrivals&quot;,
+            observation_mode=&quot;admitted_at_some_point&quot;,
+            use_admission_in_window_prob=False,
+            verbose=False,
+        )
+        for specialty in specialties:
+            by_service[specialty][model_key] = by_specialty[specialty]
+    return by_service
 
-number_of_prediction_times = len(prediction_times)
-number_of_specialties = len(specialties)
+
+ed_current_by_service = build_ed_current_by_service(spec_model)
+
+train_inpatient_arrivals_df, _, _ = create_temporal_splits(
+    inpatient_arrivals,
+    start_training_set,
+    start_validation_set,
+    start_test_set,
+    end_test_set,
+    col_name=&quot;arrival_datetime&quot;,
+    verbose=False,
+)
+baseline_probs = (
+    train_inpatient_arrivals_df[&quot;specialty&quot;].value_counts(normalize=True).to_dict()
+)
+baseline_spec_model = ConstantSpecialtyProbs(baseline_probs)
+ed_current_baseline_by_service = build_ed_current_by_service(baseline_spec_model)
+
 print(
-    &quot;Built nested distribution dictionaries:\n&quot;
-    f&quot;  • {number_of_prediction_times} prediction times (one model_key per time-of-day).\n&quot;
-    f&quot;  • {number_of_specialties} specialties.\n&quot;
+    f&quot;Built ED-current PMFs: {len(prediction_times)} prediction times × &quot;
+    f&quot;{len(specialties)} specialties&quot;
 )
 
 </code></pre>
-<pre><code>Built nested distribution dictionaries:
-  • 5 prediction times (one model_key per time-of-day).
-  • 4 specialties.
+<pre><code>Built ED-current PMFs: 5 prediction times × 4 specialties
 </code></pre>
-<p>Examining the output from this process, we can see a predicted distribution with observed values for each of the ED current and ED yet-to-arrive elements.</p>
-<pre><code class="language-python">demo_model_key = get_model_key(model_name, demo_prediction_time)
-
-print(f'ED current snapshots predicted distribution for {demo_specialty} service on {demo_snapshot_date}:')
-agg_pred_curr = ed_current_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg_predicted']
-print(agg_pred_curr.head(10))  # Print only the first 10 values
-if len(agg_pred_curr) &gt; 10:
-    print(f&quot;... ({len(agg_pred_curr)} total)&quot;)
-
-print(f'\nED current snapshots observed values for number admitted at some point to {demo_specialty} service on {demo_snapshot_date}:')
-print(ed_current_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg_observed'])
-
-print(f'\nED yet-to-arrive predicted distribution for {demo_specialty} service on {demo_snapshot_date}:')
-agg_pred_yta = ed_yta_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg_predicted']
-print(agg_pred_yta.head(10))  # Print only the first 10 values
-if len(agg_pred_yta) &gt; 10:
-    print(f&quot;... ({len(agg_pred_yta)} total)&quot;)
-
-print(f'\nED yet-to-arrive observed values for {demo_specialty} service on {demo_snapshot_date}:')
-print(ed_yta_by_service[demo_specialty][demo_model_key][demo_snapshot_date]['agg_observed'])
-</code></pre>
-<pre><code>ED current snapshots predicted distribution for surgical service on 2031-09-16:
-      agg_proba
-0  1.272621e-01
-1  2.217735e-01
-2  2.928779e-01
-3  2.256789e-01
-4  1.014280e-01
-5  2.655857e-02
-6  4.044790e-03
-7  3.575431e-04
-8  1.830299e-05
-9  5.413715e-07
-... (44 total)
-
-ED current snapshots observed values for number admitted at some point to surgical service on 2031-09-16:
-1
-
-ED yet-to-arrive predicted distribution for surgical service on 2031-09-16:
-sum
-0    0.143060
-1    0.278179
-2    0.270458
-3    0.175301
-4    0.085218
-5    0.033141
-6    0.010740
-7    0.002984
-8    0.000725
-9    0.000157
-Name: agg_proba, dtype: float64
-... (20 total)
-
-ED yet-to-arrive observed values for surgical service on 2031-09-16:
-3
-</code></pre>
-<h2 id="3-prepare-evaluation-inputs">3. Prepare evaluation inputs</h2>
-<p>The cells below step through the same workflow, but this time using the evaluate package. The benefits of the package is that is does the pairing of aggregate distributions shown above, and generates evaluation outputs for all services in a single run, and saves them to a directory that can later be used for a systematic review.</p>
-<p>The steps are to prepare per-service tables the arrival handler needs, declare <strong><code>EvaluationTarget</code></strong> rows (each names an <code>evaluation_mode</code> and links to builder data via <strong><code>flow_name</code></strong>), then call the builder’s <strong><code>add_*</code></strong> methods to add evaluations we wish to test. Finally <strong><code>build()</code></strong> returns immutable <strong><code>EvaluationInputs</code></strong> for <strong><code>run_evaluation</code></strong>.</p>
-<p>The <strong>evaluation run</strong> carries one combined <code>FlowSelection</code> on <code>EvaluationInputs</code> (here: current + ED yet-to-arrive only). <code>evaluation_run.yaml</code> takes a copy of project <code>config.yaml</code> (to record training dates, etc.) plus evaluation-only settings for this run.</p>
-<p>with <strong><code>flow_name</code></strong> keys that match each <strong><code>add_*</code></strong> call—e.g. <code>ed_current_beds</code>, <code>ed_yta_beds</code>—so outputs and <strong><code>scalars.json</code></strong> stay separated.</p>
-<h3 id="3a-declare-evaluationtarget-rows">3a. Declare <code>EvaluationTarget</code> rows</h3>
-<p>Each target picks a runner branch via <strong><code>evaluation_mode</code></strong>. Options are:</p>
-<ul>
-<li>model-level classifier diagnostics (<strong>A</strong>)</li>
-<li>flow-level probability quality (<strong>B</strong>: discrimination, MADCAP, and calibration)</li>
-<li>bed-demand <strong>distribution</strong> (<strong>C</strong>)</li>
-<li><strong>arrival_deltas</strong>.</li>
-</ul>
-<p>If the evaluation target is a predicted distribution, <strong><code>observation_mode</code></strong> names the <strong><code>count_observed</code></strong> strategy paired with that target. (Note that the <strong><code>evaluate_distribution</code></strong> function recomputes <strong><code>agg_observed</code></strong> on each leaf and raises an error if a pre-built leaf disagrees with the recomputed count.)</p>
-<p><strong><code>flow_name</code></strong> is a key that links the evaluation target to the data that will be used: the same key must be passed to <strong><code>add_classifier</code></strong>, <strong><code>add_distributions_from_service_dict</code></strong>, <strong><code>add_distribution_observations</code></strong>, or <strong><code>add_arrival_deltas</code></strong>. This is not the same as <strong><code>FlowSelection</code></strong>. Several targets may share one <code>flow_name</code> when they use the same registered tables (below, both classifier targets use <strong><code>ed_admissions_cls</code></strong>).</p>
-<p><strong><code>flow_type</code></strong> is a label for reporting (for example <code>"admissions"</code> or <code>"departures"</code>); used in plot titles and <strong><code>scalars.json</code></strong>, not for handler dispatch or builder wiring.</p>
-<ul>
-<li><strong><code>component</code></strong> names the chart and scalar family for this target. It does not select the handler (<strong><code>evaluation_mode</code></strong> does). It distinguishes outputs when several targets share the same mode or <code>flow_name</code> (for example <strong><code>bed_demand_ed_current</code></strong> vs <strong><code>bed_demand_ed_yta</code></strong>, both <code>evaluation_mode="distribution"</code>). For distribution targets, the <code>component</code> string names which PMF–observed pairing is evaluated, not the chart type. It also sets the PNG basename under each service folder (<code>distributions/&lt;flow_name&gt;/&lt;service&gt;/{component}.png</code>).</li>
-</ul>
-<p>For <strong>inpatient departures</strong> (not run in this notebook), <code>component</code> additionally selects the <strong>admission route</strong> when recomputing observed counts: the handler maps <code>target.component</code> through <strong><code>DEPARTURES_DISTRIBUTION_ADMISSION_TYPE</code></strong> (for example <code>departures_elective</code> → <code>"elective"</code>). The value must match a dict key <strong>exactly</strong>; otherwise no route filter is applied and observed counts can mix elective and emergency patients on the same <strong><code>inpatient_visits</code></strong> frame—misaligned with a route-specific PMF. Use separate <strong><code>flow_name</code></strong> values per route, the same <strong><code>inpatient_visits_by_service</code></strong> snapshot per service, and <strong><code>observation_mode="departed_in_window"</code></strong>.</p>
-<p>Pairing for distribution targets in this notebook: <strong>ED current</strong> uses <strong><code>admitted_at_some_point</code></strong> with <strong><code>ed_visits_by_service</code></strong>; <strong>ED yet-to-arrive</strong> uses <strong><code>arrived_in_window</code></strong> with <strong><code>inpatient_arrivals_by_service</code></strong>.</p>
-<p><strong><code>component</code> values in this notebook</strong>:</p>
+<h2 id="4-assemble-evaluation-inputs">4. Assemble evaluation inputs</h2>
+<p>With PMF dicts ready from section 3, the next step is to tell <code>patientflow.evaluate</code> <strong>what to score and which data to use</strong>. Each measurement is one <code>EvaluationTarget</code> row: it names the handler (<code>evaluation_mode</code>), the data block (<code>flow_name</code>), the output family (<code>component</code>), and—for distribution targets—the counting rule (<code>observation_mode</code>).</p>
+<p>Rather than constructing those rows by hand, I call <code>standard_ed_targets()</code> from <code>patientflow.evaluate.inputs</code>. It returns a standard ED admissions target list whose <code>flow_name</code> values match the <code>add_*</code> registrations below. In this notebook I keep four targets and omit yet-to-arrive bed-demand EPUDD (<code>include_ed_yta_distribution=False</code>), which needs ward-admission timestamps that are not included in the public data:</p>
 <table>
 <thead>
 <tr>
-<th><code>component</code></th>
-<th>Charts / outputs</th>
+<th>Target</th>
+<th><code>flow_name</code></th>
+<th><code>evaluation_mode</code></th>
+<th>What it produces</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td>Classifier diagnostics</td>
+<td><code>ed_admissions_cls</code></td>
 <td><code>classifier_model_diagnostics</code></td>
-<td>Headline metrics, feature importances, SHAP</td>
+<td>Headline metrics and SHAP plots per prediction time</td>
 </tr>
 <tr>
-<td><code>classifier_discrimination_madcap_calibration</code></td>
-<td>Discrimination, MADCAP, MADCAP-by-age, calibration</td>
+<td>Classifier probability quality</td>
+<td><code>ed_admissions_cls</code></td>
+<td><code>classifier_probability_quality</code></td>
+<td>Discrimination, MADCAP, and calibration on the visit frame</td>
 </tr>
 <tr>
-<td><code>bed_demand_ed_current</code></td>
-<td>Per-service distribution comparison plot (EPUDD): ED-current bed-demand PMF vs recomputed observed count</td>
+<td>ED-current bed demand</td>
+<td><code>ed_current_beds</code></td>
+<td><code>distribution</code></td>
+<td>EPUDD plots and rPIT+CvM scalars (with benchmarks)</td>
 </tr>
 <tr>
-<td><code>bed_demand_ed_yta</code></td>
-<td>Per-service distribution comparison plot (EPUDD): ED yet-to-arrive bed-demand PMF vs recomputed observed count</td>
-</tr>
-<tr>
-<td><code>arrival_delta_cumulative</code></td>
-<td>Cumulative arrival delta PNG per service and prediction time</td>
+<td>YTA arrival deltas</td>
+<td><code>ed_yta_arrival_rates</code></td>
+<td><code>arrival_deltas</code></td>
+<td>Cumulative arrival-timing plots per service</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Wiring pattern:</strong></p>
+<ol>
+<li>Get the target list.</li>
+<li>Create an <code>EvaluationInputsBuilder</code> with <code>flow_selection</code>, <code>prediction_dict</code>, and <code>eval_split</code>.</li>
+<li>For each target, call the matching <code>add_*</code> method using the same <code>flow_name</code>.</li>
+<li>Call <code>build()</code> and then <code>run_evaluation</code> (section 5).</li>
+</ol>
+<p>Register visit frames, snapshot dates, and PMF dicts for the same holdout as <code>eval_split</code> (here the validation cohort from section 1). On the builder, set <code>include_ed_yta=True</code> in <code>flow_selection</code> so the yet-to-arrive arrival-delta target is in scope.</p>
+<table>
+<thead>
+<tr>
+<th><code>flow_name</code></th>
+<th><code>add_*</code> registration</th>
+<th>What you pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ed_admissions_cls</code></td>
+<td><code>add_classifier</code></td>
+<td>trained models + <code>eval_visits_df</code></td>
+</tr>
+<tr>
+<td><code>ed_current_beds</code></td>
+<td><code>add_distributions_from_service_dict</code>, <code>add_distribution_observations</code>, benchmark helpers</td>
+<td>PMF dicts from section 3 + <code>ed_visits</code> per service</td>
+</tr>
+<tr>
+<td><code>ed_yta_arrival_rates</code></td>
+<td><code>add_arrival_deltas</code></td>
+<td>filtered <code>inpatient_arrivals</code> per service, snapshot dates, YTA predictor</td>
+</tr>
+</tbody>
+</table>
+<p>For ED-current bed demand we also register two benchmarks: binomial class-balance (<code>add_distribution_benchmark_cohort</code>) and the specialty-proportions PMF dict from section 3 (<code>add_distribution_benchmark_from_service_dict</code>) — a naive router that gives every patient the same training-set average specialty mix, rather than using consult sequences (the same baseline as notebook <strong>3d</strong>). When enough snapshots have observations, distribution rows include <code>rpit_cvm_w2_reduction</code> against the binomial benchmark (see section 6).</p>
 <pre><code class="language-python">from pathlib import Path
-from patientflow.evaluate.inputs import EvaluationInputsBuilder, EvaluationTarget
 
-evaluation_targets = [
-    # (A) Model-level classifier diagnostics: headline metrics and plots for each trained
-    # admissions model (not repeated per hospital service).
-    EvaluationTarget(
-        flow_name=&quot;ed_admissions_cls&quot;,
-        flow_type=&quot;admissions&quot;,
-        evaluation_mode=&quot;classifier_model_diagnostics&quot;,
-        component=&quot;classifier_model_diagnostics&quot;,
-        observation_mode=&quot;admitted_at_some_point&quot;,
-    ),
-    # (B) Discrimination, MADCAP, and calibration on the full evaluation visit frame (same classifiers as A).
-    EvaluationTarget(
-        flow_name=&quot;ed_admissions_cls&quot;,
-        flow_type=&quot;admissions&quot;,
-        evaluation_mode=&quot;classifier_probability_quality&quot;,
-        component=&quot;classifier_discrimination_madcap_calibration&quot;,
-        observation_mode=&quot;admitted_at_some_point&quot;,
-    ),
-    # (C) ED-current bed-demand PMF vs observed count (EPUDD chart; component names the pairing).
-    EvaluationTarget(
-        flow_name=&quot;ed_current_beds&quot;,
-        flow_type=&quot;admissions&quot;,
-        evaluation_mode=&quot;distribution&quot;,
-        component=&quot;bed_demand_ed_current&quot;,
-        observation_mode=&quot;admitted_at_some_point&quot;,
-    ),
-    # (C) ED yet-to-arrive bed-demand PMF vs observed count (EPUDD; inpatient_arrivals_by_service).
-    EvaluationTarget(
-        flow_name=&quot;ed_yta_beds&quot;,
-        flow_type=&quot;admissions&quot;,
-        evaluation_mode=&quot;distribution&quot;,
-        component=&quot;bed_demand_ed_yta&quot;,
-        observation_mode=&quot;arrived_in_window&quot;,
-    ),
-    # Cumulative arrival-time diagnostics: observed vs expected admission timing in the window,
-    # one PNG per (service, prediction_time); uses the arrival-deltas handler (not count_observed).
-    EvaluationTarget(
-        flow_name=&quot;ed_yta_arrival_rates&quot;,
-        flow_type=&quot;admissions&quot;,
-        evaluation_mode=&quot;arrival_deltas&quot;,
-        component=&quot;arrival_delta_cumulative&quot;,
-        observation_mode=&quot;arrived_in_window&quot;,
-    ),
-]
+from patientflow.evaluate.inputs import EvaluationInputsBuilder, standard_ed_targets
+from patientflow.predict.demand import FlowSelection
 
-</code></pre>
-<h3 id="3b-initialise-the-builder">3b. Initialise the builder</h3>
-<p><strong>EvaluationInputsBuilder</strong> is a mutable (ie changeable) object used to register everything an evaluation run needs: flow_selection, prediction_times, evaluation_targets, trained classifiers, distribution PMFs, dataframes. Once all of these have been define, build() returns a single immutable <strong>EvaluationInputs</strong> snapshot for running the evaluation.</p>
-<p><strong><code>EvaluationInputs</code></strong> carries exactly <strong>one</strong> <strong><code>FlowSelection</code></strong> for the run (written to <strong><code>evaluation_run.yaml</code></strong>). It should reflect the broad scenario you want to evaluate, even when individual prediction dicts were built with narrower selections in section 1. Here we enable ED current and ED yet-to-arrive only.</p>
-<p>The builder also needs the global <strong><code>prediction_times</code></strong> list before any <strong><code>add_*</code></strong> call. We attach the target list with <strong><code>with_evaluation_targets</code></strong>.</p>
-<pre><code class="language-python">eval_flow_selection = FlowSelection.custom(
+# EvaluationTarget rows: flow_name must match add_* registrations below.
+evaluation_targets = standard_ed_targets(
+    # Omit YTA bed-demand EPUDD (needs ward-admission times not in public data).
+    include_ed_yta_distribution=False,
+)
+
+# FlowSelection on the builder: include yet-to-arrive for the arrival-delta target.
+eval_flow_selection = FlowSelection.custom(
     include_ed_current=True,
     include_ed_yta=True,
     include_non_ed_yta=False,
@@ -2384,56 +1964,40 @@ evaluation_targets = [
     include_departures=False,
 )
 
-builder = EvaluationInputsBuilder(
-    flow_selection=eval_flow_selection,
-    prediction_dict=prediction_dict,
-    eval_split=eval_split,
-).with_evaluation_targets(evaluation_targets)
-
-</code></pre>
-<h3 id="3c-add-admission-classifier-evaluation-task-to-the-builder">3c. Add admission classifier evaluation task to the builder</h3>
-<p><strong><code>add_classifier</code></strong> registers the trained models per prediction time and the ED visits for the run cohort (<code>eval_visits_df</code>). When add_classifier is called, discrimination, MADCAP, calibration, and SHAP plots will be generated. The <strong><code>flow_name</code></strong> argument must match the classifier targets’ <strong><code>flow_name</code></strong> (<code>ed_admissions_cls</code>).</p>
-<pre><code class="language-python">builder.add_classifier(
-    flow_name=&quot;ed_admissions_cls&quot;, # note the use of the same flow_name used in the classifer EvaluationTarget above
-    trained_models=admissions_models,
-    visits_df=eval_visits_df,
-    label_col=&quot;is_admitted&quot;,
+builder = (
+    EvaluationInputsBuilder(
+        flow_selection=eval_flow_selection,
+        prediction_dict=prediction_dict,
+        eval_split=eval_split,
+    )
+    .with_evaluation_targets(evaluation_targets)
+    # ed_admissions_cls — classifier_model_diagnostics + classifier_probability_quality
+    .add_classifier(
+        flow_name=&quot;ed_admissions_cls&quot;,
+        trained_models=admissions_models,
+        visits_df=eval_visits_df,
+        label_col=&quot;is_admitted&quot;,
+    )
+    # ed_current_beds — distribution (PMFs from section 3)
+    .add_distributions_from_service_dict(
+        flow_name=&quot;ed_current_beds&quot;,
+        prob_dist_by_service=ed_current_by_service,
+        model_name=model_name,
+    )
+    .add_distribution_observations(
+        flow_name=&quot;ed_current_beds&quot;,
+        ed_visits_by_service={s: eval_visits_df for s in specialties},
+    )
+    # Benchmarks for ed_current_beds: binomial class-balance + specialty proportions
+    .add_distribution_benchmark_cohort(admissions_ed_visits=eval_visits_df)
+    .add_distribution_benchmark_from_service_dict(
+        &quot;ed_current_beds&quot;,
+        ed_current_baseline_by_service,
+        benchmark_kind=&quot;specialty_proportions&quot;,
+    )
 )
 
-</code></pre>
-<pre><code>&lt;patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0&gt;
-</code></pre>
-<h3 id="3d-add-ed-current-bed-demand-evaluation-task-to-the-builder">3d. Add ED current bed demand evaluation task to the builder</h3>
-<p>Below we add nested PMFs from section 1, then attach <strong>observation</strong> frames: one ED visits dataframe per service (here the same <strong><code>eval_visits_df</code></strong> for each) via <strong><code>ed_visits_by_service</code></strong>. Distribution evaluation recomputes <strong><code>agg_observed</code></strong> for <strong><code>observation_mode="admitted_at_some_point"</code></strong> from those frames and generates EPUDD plots.</p>
-<pre><code class="language-python"># add the predicted distribution to the builder
-builder.add_distributions_from_service_dict(
-    flow_name=&quot;ed_current_beds&quot;,
-    prob_dist_by_service=ed_current_by_service,
-    model_name=model_name,
-)
-
-# select the data that will be used to compute the observed values
-obs_ed_current_by_service = {service: eval_visits_df for service in specialties}
-
-# add the observed values to the builder
-builder.add_distribution_observations(
-    flow_name=&quot;ed_current_beds&quot;,
-    ed_visits_by_service=obs_ed_current_by_service,
-)
-
-</code></pre>
-<pre><code>&lt;patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0&gt;
-</code></pre>
-<h3 id="3e-add-ed-yet-to-arrive-bed-demand-evaluation-task-to-the-builder">3e. Add ED yet-to-arrive bed demand evaluation task to the builder.</h3>
-<p>Same pattern for <strong><code>ed_yta_beds</code></strong>: predicted PMFs from section 1, then <strong><code>inpatient_arrivals_by_service</code></strong> with one inpatient arrivals dataframe per specialty. Note the use of flow_name specified in Section 3a for the yet-to-arrive evaluation task. This evaluation will use the <strong><code>observation_mode="arrived_in_window"</code></strong>. Charts are saved as <strong><code>bed_demand_ed_yta.png</code></strong> per service (EPUDD).</p>
-<pre><code class="language-python"># add the predicted distribution to the builder
-builder.add_distributions_from_service_dict(
-    flow_name=&quot;ed_yta_beds&quot;,
-    prob_dist_by_service=ed_yta_by_service,
-    model_name=model_name,
-)
-
-# select the data that will be used to compute the observed values
+# ed_yta_arrival_rates — one arrivals frame per service (YTA model filter)
 obs_ed_yta_by_service = {
     s: yta_model_by_spec.filter_dataframe(
         eval_inpatient_arrivals_df, yta_model_by_spec.filters[s]
@@ -2441,18 +2005,7 @@ obs_ed_yta_by_service = {
     for s in specialties
 }
 
-# add the observed values to the builder
-builder.add_distribution_observations(
-    &quot;ed_yta_beds&quot;,
-    inpatient_arrivals_by_service=obs_ed_yta_by_service,
-)
-
-</code></pre>
-<pre><code>&lt;patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0&gt;
-</code></pre>
-<h3 id="3f-add-ed-yet-to-arrive-arrival-deltas-to-the-evaluation-task">3f. Add ED yet-to-arrive arrival deltas to the evaluation task</h3>
-<p><strong><code>add_arrival_deltas</code></strong> takes snapshot dates, the prediction window, and optional <strong>fitted predictors</strong>. Because <strong><code>yta_model_by_spec</code></strong> has one weight entry per service, pass <strong><code>filter_keys_by_service</code></strong> so each service’s baseline matches the correct fitted profile.</p>
-<pre><code class="language-python">builder.add_arrival_deltas(
+builder.add_arrival_deltas(
     flow_name=&quot;ed_yta_arrival_rates&quot;,
     arrivals_by_service=obs_ed_yta_by_service,
     snapshot_dates=eval_snapshot_dates,
@@ -2461,29 +2014,21 @@ builder.add_distribution_observations(
     filter_keys_by_service={s: s for s in specialties},
 )
 
-</code></pre>
-<pre><code>&lt;patientflow.evaluate.inputs.EvaluationInputsBuilder at 0x315c382f0&gt;
-</code></pre>
-<h3 id="3g-build-evaluationinputs">3g. Build <code>EvaluationInputs</code></h3>
-<p><strong><code>build()</code></strong> checks that <strong><code>flow_selection</code></strong> and <strong><code>prediction_times</code></strong> are set, then returns the immutable object consumed by <strong><code>run_evaluation</code></strong>. The printout lists each target for a quick sanity check before the (longer) evaluation run.</p>
-<pre><code class="language-python">inputs = builder.build()
+inputs = builder.build()
 
 print(f&quot;Targets: {len(evaluation_targets)}&quot;)
 for t in evaluation_targets:
     print(f&quot;  {t.flow_name}/{t.component}: {t.evaluation_mode} (observation_mode={t.observation_mode})&quot;)
-print(f&quot;Prediction times: {prediction_times}&quot;)
 
 </code></pre>
-<pre><code>Targets: 5
+<pre><code>Targets: 4
   ed_admissions_cls/classifier_model_diagnostics: classifier_model_diagnostics (observation_mode=admitted_at_some_point)
   ed_admissions_cls/classifier_discrimination_madcap_calibration: classifier_probability_quality (observation_mode=admitted_at_some_point)
   ed_current_beds/bed_demand_ed_current: distribution (observation_mode=admitted_at_some_point)
-  ed_yta_beds/bed_demand_ed_yta: distribution (observation_mode=arrived_in_window)
   ed_yta_arrival_rates/arrival_delta_cumulative: arrival_deltas (observation_mode=arrived_in_window)
-Prediction times: [(6, 0), (9, 30), (12, 0), (15, 30), (22, 0)]
 </code></pre>
-<h2 id="4-run-evaluation">4. Run evaluation</h2>
-<p><code>run_evaluation</code> creates <code>run_dir / evaluation_run.yaml</code>, <code>run_dir / scalars.json</code>, and subfolders (<code>classifiers/</code>, <code>distributions/</code>, <code>arrivals/</code>, …) when those modes produce output. It returns <code>run_dir</code>, <code>scalars_path</code>, <code>manifest_path</code>, and <code>n_targets</code>.</p>
+<h2 id="5-run-evaluation">5. Run evaluation</h2>
+<p><code>run_evaluation</code> writes <code>evaluation_run.yaml</code>, plot directories, and <code>scalars.json</code> under a timestamped folder.</p>
 <pre><code class="language-python">from datetime import datetime
 
 from patientflow.evaluate.runner import run_evaluation
@@ -2504,34 +2049,39 @@ out = run_evaluation(
 out
 
 </code></pre>
-<pre><code>/Users/zellaking/miniconda3/envs/patientflow/lib/python3.13/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
-  from .autonotebook import tqdm as notebook_tqdm
+<pre><code>Predicted classification (not admitted, admitted):  [662 399]
+
+
+Predicted classification (not admitted, admitted):  [1039  505]
+
+
+Predicted classification (not admitted, admitted):  [1751  809]
+
+
+Predicted classification (not admitted, admitted):  [1918  944]
+
+
+Predicted classification (not admitted, admitted):  [1549  839]
 
 
 
----------------------------------------------------------------------------
-
-KeyError                                  Traceback (most recent call last)
-
-Cell In[18], line 11
-      3 from patientflow.evaluate.runner import run_evaluation
-      5 run_name = f"notebook4d_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-      6 out = run_evaluation(
-      7     Path("eval-output"),
-      8     inputs,
-      9     run_name=run_name,
-     10     training_metadata={
----&gt; 11         "modelling_dates": params["modelling_dates"],
-     12         "yta_time_interval_minutes": int(yta_time_interval.total_seconds() // 60),
-     13     },
-     14 )
-     15 out
 
 
-KeyError: 'modelling_dates'
+{'run_dir': PosixPath('eval-output/notebook4d_20260708_222020'),
+ 'scalars_path': PosixPath('eval-output/notebook4d_20260708_222020/scalars.json'),
+ 'manifest_path': PosixPath('eval-output/notebook4d_20260708_222020/evaluation_run.yaml'),
+ 'n_targets': 4}
 </code></pre>
-<h2 id="5-review-outputs">5. Review outputs</h2>
-<p>Scalar rows are stored under the <code>evaluation_rows</code> key (with optional <code>_service_summary</code> for inactive-service bookkeeping). Below we print the run layout and show the first rows of the scalar table.</p>
+<h2 id="6-review-outputs">6. Review outputs</h2>
+<p>Scalar rows are stored under the <code>evaluation_rows</code> key (with optional <code>_service_summary</code>). On bed-demand distribution rows, look for:</p>
+<p>For the idea behind randomised PIT histograms, see notebook <strong>3b</strong>; here the same principle is combined with Cramér–von Mises as a scalar calibration score.</p>
+<p>For each snapshot with both an observed bed count and a predicted PMF, the handler draws a randomised PIT value uniformly in ([F(k-1), F(k)]), where (k) is the observed count and (F) is the predicted CDF. It then runs a one-sample Cramér–von Mises test of those draws against Uniform(0,1) and records (W^2). That randomisation step is repeated several times; <code>rpit_cvm_mean_w2</code> is the mean (W^2) across repetitions (per service and prediction time, when at least two snapshots qualify).</p>
+<ul>
+<li><code>rpit_cvm_mean_w2</code> — rPIT+CvM (W^2) for the evaluated model. For a well-calibrated model, the transformed values should look like draws from a flat Uniform(0,1) distribution, giving a small (W^2).</li>
+<li><code>rpit_cvm_benchmark_mean_w2</code> and <code>rpit_cvm_w2_reduction</code> — the same statistic and reduction for the <strong>binomial</strong> class-balance benchmark (positive reduction means the model improves on that baseline).</li>
+<li><code>rpit_cvm_specialty_proportions_mean_w2</code> and <code>rpit_cvm_specialty_proportions_w2_reduction</code> — the same for the <strong>specialty-proportions</strong> benchmark from section 4 (training-set average specialty mix, as in notebook <strong>3d</strong>).</li>
+</ul>
+<p>Use these scalars to triage where to look (services / prediction times with poor or negative reductions); then open the corresponding EPUDD and arrival-delta plots to diagnose what is wrong.</p>
 <pre><code class="language-python">import json
 
 from IPython.display import display
@@ -2542,52 +2092,34 @@ scalars_path = out[&quot;scalars_path&quot;]
 print(&quot;Run directory:&quot;, run_dir)
 print(&quot;Scalars path:&quot;, scalars_path)
 
-print(&quot;\nDirectory structure (depth &lt;= 2):&quot;)
-for p in sorted(run_dir.rglob(&quot;*&quot;)):
-    depth = len(p.relative_to(run_dir).parts)
-    if depth &lt;= 2:
-        indent = &quot;  &quot; * (depth - 1)
-        print(f&quot;{indent}{p.name}{'/' if p.is_dir() else ''}&quot;)
-
 payload = json.loads(scalars_path.read_text(encoding=&quot;utf-8&quot;))
 rows = payload.get(&quot;evaluation_rows&quot;) or []
 scalars_df = pd.DataFrame(rows)
-print(f&quot;\nScalar rows: {len(scalars_df)}&quot;)
-if &quot;_service_summary&quot; in payload:
-    print(&quot;_service_summary keys:&quot;, list(payload[&quot;_service_summary&quot;].keys()))
+print(f&quot;Scalar rows: {len(scalars_df)}&quot;)
 
+# Bed-demand distribution rows: compare model calibration to the binomial baseline.
+bed_demand_rows = scalars_df[
+    (scalars_df[&quot;evaluation_mode&quot;] == &quot;distribution&quot;)
+    &amp; (scalars_df[&quot;flow&quot;] != &quot;ed_admissions_cls&quot;)
+]
 base_cols = [
     c
     for c in [
-        &quot;evaluation_mode&quot;,
         &quot;flow&quot;,
         &quot;service&quot;,
-        &quot;component&quot;,
         &quot;prediction_time&quot;,
-        &quot;charts_generated&quot;,
-        &quot;skip_reason&quot;,
+        &quot;rpit_cvm_mean_w2&quot;,
+        &quot;rpit_cvm_benchmark_mean_w2&quot;,
+        &quot;rpit_cvm_w2_reduction&quot;,
     ]
-    if c in scalars_df.columns
+    if c in bed_demand_rows.columns
 ]
-display(scalars_df[base_cols].head(16))
+display(bed_demand_rows[base_cols].head(20))
 
 </code></pre>
-<pre><code>Run directory: eval-output/notebook4d_20260519_121044
-Scalars path: eval-output/notebook4d_20260519_121044/scalars.json
-
-Directory structure (depth &lt;= 2):
-arrivals/
-  ed_yta_arrival_rates/
-classifiers/
-  ed_admissions_cls/
-distributions/
-  ed_current_beds/
-  ed_yta_beds/
-evaluation_run.yaml
-scalars.json
-
-Scalar rows: 66
-_service_summary keys: ['by_slice']
+<pre><code>Run directory: eval-output/notebook4d_20260708_222020
+Scalars path: eval-output/notebook4d_20260708_222020/scalars.json
+Scalar rows: 46
 </code></pre>
 <div>
 <style scoped>
@@ -2608,171 +2140,203 @@ _service_summary keys: ['by_slice']
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>evaluation_mode</th>
       <th>flow</th>
       <th>service</th>
-      <th>component</th>
       <th>prediction_time</th>
-      <th>charts_generated</th>
+      <th>rpit_cvm_mean_w2</th>
+      <th>rpit_cvm_benchmark_mean_w2</th>
+      <th>rpit_cvm_w2_reduction</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <th>0</th>
-      <td>classifier_model_diagnostics</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_model_diagnostics</td>
-      <td>[6, 0]</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>classifier_model_diagnostics</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_model_diagnostics</td>
-      <td>[9, 30]</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>classifier_model_diagnostics</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_model_diagnostics</td>
-      <td>[12, 0]</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>classifier_model_diagnostics</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_model_diagnostics</td>
-      <td>[15, 30]</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>classifier_model_diagnostics</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_model_diagnostics</td>
-      <td>[22, 0]</td>
-      <td>True</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>classifier_probability_quality</td>
-      <td>ed_admissions_cls</td>
-      <td>_all_</td>
-      <td>classifier_discrimination_madcap_calibration</td>
-      <td>None</td>
-      <td>True</td>
-    </tr>
-    <tr>
       <th>6</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>medical</td>
-      <td>bed_demand_ed_current</td>
       <td>[6, 0]</td>
-      <td>True</td>
+      <td>0.776652</td>
+      <td>2.487952</td>
+      <td>1.711300</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>medical</td>
-      <td>bed_demand_ed_current</td>
       <td>[9, 30]</td>
-      <td>True</td>
+      <td>1.129268</td>
+      <td>3.677946</td>
+      <td>2.548677</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>medical</td>
-      <td>bed_demand_ed_current</td>
       <td>[12, 0]</td>
-      <td>True</td>
+      <td>1.775317</td>
+      <td>5.695391</td>
+      <td>3.920074</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>medical</td>
-      <td>bed_demand_ed_current</td>
       <td>[15, 30]</td>
-      <td>True</td>
+      <td>1.861432</td>
+      <td>6.045136</td>
+      <td>4.183704</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>medical</td>
-      <td>bed_demand_ed_current</td>
       <td>[22, 0]</td>
-      <td>True</td>
+      <td>2.600147</td>
+      <td>5.681506</td>
+      <td>3.081358</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>surgical</td>
-      <td>bed_demand_ed_current</td>
       <td>[6, 0]</td>
-      <td>True</td>
+      <td>0.049345</td>
+      <td>8.930970</td>
+      <td>8.881625</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>surgical</td>
-      <td>bed_demand_ed_current</td>
       <td>[9, 30]</td>
-      <td>True</td>
+      <td>0.207216</td>
+      <td>8.009635</td>
+      <td>7.802419</td>
     </tr>
     <tr>
       <th>13</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>surgical</td>
-      <td>bed_demand_ed_current</td>
       <td>[12, 0]</td>
-      <td>True</td>
+      <td>0.407019</td>
+      <td>9.246605</td>
+      <td>8.839586</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>surgical</td>
-      <td>bed_demand_ed_current</td>
       <td>[15, 30]</td>
-      <td>True</td>
+      <td>0.684871</td>
+      <td>9.758832</td>
+      <td>9.073961</td>
     </tr>
     <tr>
       <th>15</th>
-      <td>distribution</td>
       <td>ed_current_beds</td>
       <td>surgical</td>
-      <td>bed_demand_ed_current</td>
       <td>[22, 0]</td>
-      <td>True</td>
+      <td>0.580010</td>
+      <td>9.712045</td>
+      <td>9.132035</td>
+    </tr>
+    <tr>
+      <th>16</th>
+      <td>ed_current_beds</td>
+      <td>haem/onc</td>
+      <td>[6, 0]</td>
+      <td>0.246221</td>
+      <td>9.433354</td>
+      <td>9.187133</td>
+    </tr>
+    <tr>
+      <th>17</th>
+      <td>ed_current_beds</td>
+      <td>haem/onc</td>
+      <td>[9, 30]</td>
+      <td>0.150397</td>
+      <td>9.587675</td>
+      <td>9.437277</td>
+    </tr>
+    <tr>
+      <th>18</th>
+      <td>ed_current_beds</td>
+      <td>haem/onc</td>
+      <td>[12, 0]</td>
+      <td>0.105349</td>
+      <td>9.831935</td>
+      <td>9.726585</td>
+    </tr>
+    <tr>
+      <th>19</th>
+      <td>ed_current_beds</td>
+      <td>haem/onc</td>
+      <td>[15, 30]</td>
+      <td>0.174725</td>
+      <td>9.985522</td>
+      <td>9.810797</td>
+    </tr>
+    <tr>
+      <th>20</th>
+      <td>ed_current_beds</td>
+      <td>haem/onc</td>
+      <td>[22, 0]</td>
+      <td>0.087599</td>
+      <td>9.726889</td>
+      <td>9.639290</td>
+    </tr>
+    <tr>
+      <th>21</th>
+      <td>ed_current_beds</td>
+      <td>paediatric</td>
+      <td>[6, 0]</td>
+      <td>0.120602</td>
+      <td>9.665625</td>
+      <td>9.545023</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>ed_current_beds</td>
+      <td>paediatric</td>
+      <td>[9, 30]</td>
+      <td>0.166976</td>
+      <td>9.856163</td>
+      <td>9.689187</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>ed_current_beds</td>
+      <td>paediatric</td>
+      <td>[12, 0]</td>
+      <td>0.989540</td>
+      <td>9.855995</td>
+      <td>8.866456</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>ed_current_beds</td>
+      <td>paediatric</td>
+      <td>[15, 30]</td>
+      <td>1.151243</td>
+      <td>9.994330</td>
+      <td>8.843088</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>ed_current_beds</td>
+      <td>paediatric</td>
+      <td>[22, 0]</td>
+      <td>0.288980</td>
+      <td>9.951598</td>
+      <td>9.662617</td>
     </tr>
   </tbody>
 </table>
 </div>
 
+<p>Across all services and prediction times, <code>rpit_cvm_w2_reduction</code> is positive and often large, meaning the ED-current bed-demand model is consistently better calibrated than the binomial baseline. The biggest gains are in surgical, haem/onc, and paediatric beds (baseline W² very high, model W² close to zero), while medical beds still show clear improvement but with higher residual W² — a good candidate for closer inspection with EPUDD plots.</p>
 <h2 id="summary">Summary</h2>
-<ol>
-<li>Built <strong>service-level prediction dicts</strong> with a <strong>per-clock</strong> nested layout for EPUDD (<code>get_model_key</code> as the middle key).</li>
-<li>Declared <strong><code>EvaluationTarget</code> instances</strong> and wired <strong><code>EvaluationInputsBuilder</code></strong> with one <strong><code>flow_selection</code></strong> and <strong><code>eval_split</code></strong>, matching <code>flow_name</code> keys on targets to builder registrations.</li>
-<li>Ran <strong><code>run_evaluation</code></strong> to emit plots and <strong><code>scalars.json</code></strong>.</li>
-<li>Loaded <strong><code>evaluation_rows</code></strong> for a tabular overview.</li>
-</ol>
-<p>For a wider evaluation matrix (inpatient departures by route, non-ED yet-to-arrive, survival), add <strong><code>EvaluationTarget</code></strong> rows and matching builder registrations—use distinct <strong><code>flow_name</code></strong> values per departures route (e.g. <code>departures_elective</code>) with <strong><code>component="departures_elective"</code></strong> (must match <strong><code>DEPARTURES_DISTRIBUTION_ADMISSION_TYPE</code></strong>), <strong><code>inpatient_visits_by_service</code></strong> on the shared snapshot frame, and route-specific PMFs.</p>
+<p>In this notebook I have shown how to run a systematic evaluation with <code>patientflow.evaluate</code>. I built ED-current PMF dicts with <code>get_prob_dist_by_service</code>, registered them on <code>EvaluationInputsBuilder</code> together with admission classifiers, YTA arrival deltas, and two distribution benchmarks (binomial class-balance and the specialty-proportions baseline from notebook <strong>3d</strong>). I declared the evaluation tasks with <code>standard_ed_targets()</code>, ran <code>run_evaluation</code>, and read <code>evaluation_rows</code> from <code>scalars.json</code> — use those scalars to triage where to look; a next step might be to open the EPUDD plots to diagnose what is wrong.</p>
+<p>Notebook 3d covered the same ED-current PMFs manually (EPUDD plots and scalar MAE against the specialty-proportions baseline). Notebook 3f covered yet-to-arrive arrival deltas and survival-curve bed demand in more detail. To include those components in this evaluation (YTA bed-demand EPUDD based on survival curve, for example), add the corresponding EvaluationTarget rows (or enable the extra flags on standard<em>ed_targets()) and wire them with matching add</em>* calls and distinct flow_name values in section 4.</p>
 
 
 
