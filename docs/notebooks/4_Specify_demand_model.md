@@ -15,6 +15,7 @@ In this series of notebooks, I show how we assembled these building blocks into 
 - **4c**: The full prediction pipeline, combining patients currently in the ED with those yet to arrive
 - **4d**: Evaluating the production model components
 - **4e**: Extending to hierarchical reporting at multiple organisational levels (e.g. specialty, division, hospital)
+- **4f**: Evaluating inpatient transfer routing with `patientflow.evaluate` (`transition_matrix` mode)
 
 First, a brief recap on the requirements of our models.
 

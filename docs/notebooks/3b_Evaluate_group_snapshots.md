@@ -1,6 +1,6 @@
 # 3b. Evaluate group snapshots
 
-In the last notebook, I showed how to prepare group snapshots using `patientflow`. Now, let's think about how to evaluate those models. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts at each prediction time over the period of the test set.
+In the last notebook, I showed how to prepare group snapshots using `patientflow`. Now, let's think about how to evaluate those predictions. The goal is to evaluate how well a predicted bed count distribution compares with the observed bed counts at each prediction time over the period of the test set.
 
 There are various approaches. Here I demonstrate two approaches.
 
@@ -275,14 +275,16 @@ for prediction_time, values in results.items():
     15:30  2.69    23.28%
     22:00  3.15    24.02%
 
-The 06:00 and 09:00 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
+The 06:00 and 09:30 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.
 
 We can plot the observed values against the expected, as shown below.
 
 ```python
 from patientflow.viz.observed_against_expected import plot_deltas
-plot_deltas(results)
+plot_deltas(results, show=True)
 ```
+
+![png](3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png)
 
 From the plots above:
 
@@ -302,7 +304,7 @@ For continuous variables, there's an elegant solution called the Probability Int
 For a discrete random variable, instead of a single point, each observation corresponds to a range on the CDF. We identify the range of the cdf Fi(x) associated with the observation oi. For discrete integer variables, this has a lower limit, upper limit and mid-points given by
 li = Fi(oi-1), ui = Fi(oi) and mi = 𝑙𝑖+𝑢𝑖2.
 
-The randomized PIT histogram is obtained by allotting to each observation oi a PIT value sampled at random from the range [li,ui] and then forming a histogram of these (with one convention being to have 10 bins of width 0.1). A well performing model will give a uniform histogram (subject to randomisation and binning).
+The randomised PIT histogram is obtained by allotting to each observation oi a PIT value sampled at random from the range [li,ui] and then forming a histogram of these (with one convention being to have 10 bins of width 0.1). A well performing model will give a uniform histogram (subject to randomisation and binning).
 
 ```python
 from patientflow.viz.randomised_pit import plot_randomised_pit

@@ -76,11 +76,14 @@ test_snapshot_dates = [
 
 ## Generate predicted distributions by hospital service
 
-Notebook **3c** called `get_prob_dist` for **one** group snapshot at a time, weighting admission probabilities by the specialty model. Here I use **`get_prob_dist_by_service`** to build the same specialty-weighted PMFs for **every** prediction time and snapshot date in the test set, and store results as `{model_key: {specialty: {snapshot_date: leaf}}}`.
+Notebook **3c** called `get_prob_dist` for **one** group snapshot at a time, weighting admission probabilities by the specialty model. Here I use **`get_prob_dist_by_service`** to build the same specialty-weighted PMFs for **every** prediction time and snapshot date in the test set, and store the results as `{model_key: {specialty: {snapshot_date: leaf}}}` where each **leaf** is a small dict holding `agg_predicted` (the PMF) and `agg_observed` (the count on that snapshot).
 
-This is also the first use in the 3x notebooks of **`FlowSelection`** (which flows to include) and **`ServiceModels`** (bundling the admission classifier and specialty router for each prediction time). Both are explained for production use in notebook **4a**.
+This is also the first use in the 3x notebooks of two production helpers that notebook **4a** explains in full:
 
-Each **leaf** holds `agg_predicted` (the PMF) and `agg_observed` (the count on that snapshot). The plotting helpers used in the next sections read that structure:
+- **`FlowSelection`** — a small config object saying which patient flows to include. Here I use `FlowSelection.custom(...)` with only `include_ed_current=True`, because this notebook evaluates bed demand from patients already in the ED.
+- **`ServiceModels`** — bundles the trained models for one prediction time. Here that is the admission classifier and specialty router.
+
+The plotting helpers in the next sections read that nested structure:
 
 - **`calc_mae_mpe`** — mean absolute error and mean percentage error across snapshot dates (scalar summary per prediction time).
 - **`plot_deltas`** — histograms of observed minus expected values from those scalars.
@@ -90,11 +93,12 @@ Each **leaf** holds `agg_predicted` (the PMF) and `agg_observed` (the count on t
 from patientflow.aggregate import get_prob_dist_by_service
 from patientflow.predictors.value_to_outcome_predictor import ConstantSpecialtyProbs
 
-# ED current patients only (no yet-to-arrive, transfers, or departures).
+# FlowSelection: which patient flows to include in the prediction.
+# This notebook evaluates ED-current bed demand only.
 flow_sel_ed_current = FlowSelection.custom(
     include_ed_current=True,
-    include_ed_yta=False,
-    include_non_ed_yta=False,
+    include_ed_yta=False,  # yet-to-arrive ED admissions
+    include_non_ed_yta=False,  # yet-to-arrive non-ED emergency admissions
     include_elective_yta=False,
     include_transfers_in=False,
     include_departures=False,
@@ -106,17 +110,16 @@ def build_ed_current_distributions(spec_predictor) -> dict:
     by_model_key: dict = {}
     for prediction_time in prediction_times:
         model_key = get_model_key(model_name, prediction_time)
+
+        # ServiceModels: bundle the models needed for this prediction time.
         service_models = ServiceModels(
             prediction_time=prediction_time,
             prediction_window=prediction_window,
             ed_classifier=admissions_models[model_key],
-            inpatient_classifier=None,
             spec_model=spec_predictor,
-            ed_yta_model=None,
-            non_ed_yta_model=None,
-            elective_yta_model=None,
-            transfer_model=None,
         )
+
+        # Returns {specialty: {snapshot_date: {agg_predicted, agg_observed}}}.
         by_specialty = get_prob_dist_by_service(
             test_visits_df,
             test_snapshot_dates,
@@ -140,7 +143,7 @@ prob_dist_dict_all = build_ed_current_distributions(spec_model)
 
 ## Evaluate predictions by hospital service
 
-Use `calc_mae_mpe` for scalar summaries across snapshot dates, and EPUDD plots to inspect distribution shape. I show histograms for one service and EPUDD for all services.
+Use `calc_mae_mpe` and `plot_deltas` for scalar summaries and delta histograms across snapshot dates, and `plot_epudd` to inspect distribution shape.
 
 ```python
 from patientflow.evaluate import calc_mae_mpe
@@ -155,9 +158,18 @@ for specialty in specialties:
     plot_deltas(
         results,
         suptitle=f"Histograms of observed - expected values for {specialty} service",
+        show=True,
     )
 
 ```
+
+![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_7_0.png)
+
+![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_7_1.png)
+
+![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_7_2.png)
+
+![png](3d_Evaluate_bed_demand_by_hospital_service_files/3d_Evaluate_bed_demand_by_hospital_service_7_3.png)
 
 ```python
 from patientflow.viz.epudd import plot_epudd
@@ -280,8 +292,8 @@ display(comparison_df)
       <th>1</th>
       <td>surgical</td>
       <td>admissions_0930</td>
-      <td>0.833684</td>
-      <td>0.860290</td>
+      <td>0.833683</td>
+      <td>0.860289</td>
       <td>0.026606</td>
     </tr>
     <tr>
@@ -320,9 +332,9 @@ display(comparison_df)
       <th>6</th>
       <td>haem/onc</td>
       <td>admissions_0930</td>
-      <td>0.448767</td>
-      <td>0.539597</td>
-      <td>0.090830</td>
+      <td>0.448768</td>
+      <td>0.539599</td>
+      <td>0.090831</td>
     </tr>
     <tr>
       <th>7</th>
@@ -360,8 +372,8 @@ display(comparison_df)
       <th>11</th>
       <td>medical</td>
       <td>admissions_0930</td>
-      <td>1.359773</td>
-      <td>1.492533</td>
+      <td>1.359765</td>
+      <td>1.492526</td>
       <td>0.132760</td>
     </tr>
     <tr>
@@ -401,8 +413,8 @@ display(comparison_df)
       <td>paediatric</td>
       <td>admissions_0930</td>
       <td>0.319004</td>
-      <td>0.482169</td>
-      <td>0.163165</td>
+      <td>0.482170</td>
+      <td>0.163166</td>
     </tr>
     <tr>
       <th>17</th>

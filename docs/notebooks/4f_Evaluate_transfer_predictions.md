@@ -108,7 +108,7 @@ Within the trained instance of `TransferProbabilityEstimator`, the method `build
 
 For each event `i`, the vector `p_i` is built as `p_i(T) = q_transfer_i × q_dest_i(T)` for transfer destinations `T`, and `p_i(Discharge) = 1 − q_transfer_i`.
 
-To demonstrate, the `build_per_patient_probabilities` method, we create two example events.
+To demonstrate the `build_per_patient_probabilities` method, we create two example events.
 
 ```python
 from patientflow.predict.transfers import build_per_patient_probabilities
@@ -198,7 +198,7 @@ display(pp_df.round(3))
 
 ## 3. Evaluation departure events
 
-Now we will run an evaluation assuming we have a test set recording 30 departure events that occurred during an evaluation window. We register one row per **observed departure** . (Note that the caller must pre-filter to the window; the builder does not apply a date filter.)
+Now we will run an evaluation assuming we have a test set recording 30 departure events that occurred during an evaluation window. We register one row per **observed departure**. (Note that the caller must pre-filter to the window; the builder does not apply a date filter.)
 
 We include:
 

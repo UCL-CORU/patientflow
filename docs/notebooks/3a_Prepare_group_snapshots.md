@@ -701,7 +701,7 @@ plot_prob_dist(prob_dist_data, title,
 
 ## Example of making a prediction for a group snapshot with varying probabilities for each patient
 
-In the cell below, I'm using `create_temporal_splits()` to create a training, validation and test set and `train_classifier()` to prepare a XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See notebook 2b for more on the functions shown here.
+In the cell below, I'm using `create_temporal_splits()` to create a training, validation and test set and `train_classifier()` to prepare an XGBoost classifier. This classifier will be used to generate a predicted probability of admission for each patient. See notebook 2b for more on the functions shown here.
 
 ```python
 from datetime import date

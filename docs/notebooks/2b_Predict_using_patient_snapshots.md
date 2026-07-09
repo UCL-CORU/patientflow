@@ -232,7 +232,7 @@ Below I'm using `train_classifier()`, which is a wrapper on standard scikit-lear
 - `use_balanced_training`: in healthcare contexts, there are often fewer observations in the positive class. Set this to True for imbalanced samples (common for ED visits, when most patients are discharged, and for predicting inpatient discharge from hospital when most patients remain). It will downsample the negative class.
 - `calibrate_probabilities`: when you downsample the negative class, it is a good idea to calibrate the probabilities to account for this class imbalance. Setting this to True will use a sigmoid function to calibrate the predicted probabilities, ensuring they better reflect the probabilities in the original data distribution.
 - `calibration_method`: options are sigmoid or isotonic; I have found that sigmoid (the default) works better.
-- `evaluate_on_test`: by default, this is set to False so the function will only return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance
+- `evaluate_on_test`: by default, this is set to False so the function will not return performance metrics for the test set; it is good practice to evaluate on the test set only when happy with validation set performance
 
 By default, the function will use an XGBoost classifier, initialised with the hyperparameter grid provided, with log loss as the evaluation metric. Chronological cross-validation is used, with the best hyperparameters selected based on minimising log loss in the validation set. We chose XGBoost because it is quick to train, generally performs well, and handles missing values.
 
@@ -400,7 +400,7 @@ Note that each record in the snapshots dataframe is indexed by a unique snapshot
 
 The following function enables you to plot the results of hyperparameter trials, which have been saved with the trained model. The input to the plot is a list of `HyperParameterTrial` instances containing validation set results and hyperparameter settings. Each trial's `cv_results` dictionary contains 'valid_auc' and 'valid_logloss' metrics, which have been computed for each hyperparameter configuration using the validation set.
 
-As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you can iterate towards an optimal set of hyperparameters.
+As I am only including one hyperparameter in my grid, and the data is made up, the plots are not that informative. With real data and a full hyperparameter grid, figures like these can help you iterate towards an optimal set of hyperparameters.
 
 ```python
 from patientflow.viz.trial_results import plot_trial_results

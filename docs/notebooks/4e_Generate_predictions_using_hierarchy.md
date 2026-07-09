@@ -462,7 +462,7 @@ We can skip manually creating and populating the Hierarchy object by using the `
 
 - Loading/creating the hierarchy structure (default or from config)
 - Populating it with a DataFrame
-- Initializing the `DemandPredictor` engine
+- Initialising the `DemandPredictor` engine
 
 ```python
 from patientflow.predict.hierarchy import create_hierarchical_predictor

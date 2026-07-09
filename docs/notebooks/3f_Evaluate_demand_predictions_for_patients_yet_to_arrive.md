@@ -2,17 +2,17 @@
 
 In notebook 3e I predicted yet-to-arrive demand from historical arrival rates and admission-in-window probabilities. Here I evaluate two parts of that pipeline:
 
-1. **Arrival rates** — do learned front-door arrival rates match observed arrivals in the test set? (delta plots; always runnable on public data.)
-2. **Survival-curve bed demand** — of patients who arrive, how many get a ward bed within the prediction window? Uses `EmpiricalIncomingAdmissionPredictor` and EPUDD on the same `inpatient_arrivals` extract.
+1. **Arrival rates** — do learned front-door arrival rates match observed arrivals in the test set?
+2. **Survival-curve bed demand** — of patients who arrive, how many get a ward bed within the prediction window? I fit `EmpiricalIncomingAdmissionPredictor` and check the resulting PMFs with EPUDD on the same `inpatient_arrivals` extract.
 
 ### Data requirements
 
-| Column / dataset                                                                                              | Used for                        |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `inpatient_arrivals.arrival_datetime`                                                                         | Arrival-rate delta plots        |
-| `arrival_datetime` plus ward-admission time (`admitted_to_ward_datetime`, or `departure_datetime` as a proxy) | Survival-curve bed-demand EPUDD |
+| Column / dataset                                                                                              | Used for                                    |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `inpatient_arrivals.arrival_datetime`                                                                         | Arrival-rate delta plots (section 1)        |
+| `arrival_datetime` plus ward-admission time (`admitted_to_ward_datetime`, or `departure_datetime` as a proxy) | Survival-curve bed-demand EPUDD (section 2) |
 
-The public UCLH extract on [Zenodo](https://zenodo.org/records/14866057) includes arrivals but not ward-admission times. Section 2 still runs on that data: it adds a synthetic `departure_datetime` with `synthesise_departure_times` so you can see the workflow end-to-end. **Treat EPUDD output on public data as illustration only** — the ward times are fabricated and are not paired with real admission delays.
+The public UCLH extract on [Zenodo](https://zenodo.org/records/14866057) includes arrivals but not ward-admission times, so section 1 runs on real data while section 2 needs a workaround. Section 2 still runs on that extract: it adds a synthetic `departure_datetime` with `synthesise_departure_times` so you can see the workflow end-to-end. **Treat EPUDD output on public data as illustration only** — the ward times are fabricated and are not paired with real admission delays.
 
 If your own extract includes ward-admission times, set `WARD_ADMISSION_COL` in section 2 to that column name.
 
@@ -25,13 +25,7 @@ For systematic evaluation with `patientflow.evaluate` (`EvaluationInputsBuilder`
 %load_ext autoreload
 %autoreload 2
 
-import sklearn
-sklearn.set_config(display="text")
-
 ```
-
-    The autoreload extension is already loaded. To reload it, use:
-      %reload_ext autoreload
 
 ## Load data and train models
 
@@ -183,7 +177,7 @@ train_indexed = train_arrivals.copy()
 train_indexed.set_index("arrival_datetime", inplace=True)
 
 yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
-yta_model_empirical.fit(
+_ = yta_model_empirical.fit(
     train_indexed,
     yta_time_interval=yta_time_interval,
     num_days=(start_validation_set - start_training_set).days,

@@ -113,7 +113,7 @@ spec_model = MultiSubgroupPredictor(
 spec_model = spec_model.fit(train_visits_df)
 ```
 
-By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because `infer_specialty_to_subgroups` function includes any subgroup that appears **at least once** for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy), both subgroups will be included.
+By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because the `infer_specialty_to_subgroups` function includes any subgroup that appears **at least once** for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.
 
 ```python
 spec_model.specialty_to_subgroups

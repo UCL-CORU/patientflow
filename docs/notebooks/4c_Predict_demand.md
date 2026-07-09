@@ -337,7 +337,7 @@ yta_time_interval = timedelta(minutes=params["yta_time_interval"])
 
 In the cell below I first calculate `prob_admission_in_window`, the probability of being admitted within the prediction window, given the elapsed time since each patient arrived, and the specified ED targets.
 
-Then, for each patient snapshot, I calculate 'prob_admission_to_specialty`, the probability of admission to specialty if admitted, by applying the specialty model trained earlier.
+Then, for each patient snapshot, I calculate `prob_admission_to_specialty`, the probability of admission to specialty if admitted, by applying the specialty model trained earlier.
 
 These two probabilities for each patient snapshot are multiplied and the result passed to `get_prob_dist` function as weights.
 

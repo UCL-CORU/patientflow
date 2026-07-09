@@ -181,7 +181,7 @@ ordinal_mappings = {
 
 In the real data, there are some columns that will be used for predicting admission to specialty, if admitted. I exclude them here.
 
-This list will be saved with the model, so that any calling function using the model for inference can pass the original dataset with needing to specify which columns to exclude.
+This list will be saved with the model, so that any calling function using the model for inference can pass the original dataset without needing to specify which columns to exclude.
 
 ```python
 exclude_from_training_data = [ 'snapshot_date', 'prediction_time','visit_number', 'consultation_sequence', 'specialty', 'final_sequence', ]
