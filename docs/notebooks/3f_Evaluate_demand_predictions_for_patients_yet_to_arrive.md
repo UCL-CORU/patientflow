@@ -75,11 +75,14 @@ test_snapshot_dates = [
 
 ## 1. Evaluate arrival rates
 
-Here I compare arrival rates learned from the training set against observed arrivals during the test set. The delta plots below compare observed cumulative arrivals within each prediction window against the curve implied by the fitted `yta_model` — one figure per hospital service, across snapshot dates in the test period. I use a single prediction time (22:00) here to keep the number of figures manageable; the same call works for any time of day.
+Here I compare arrival rates learned from the training set against observed arrivals during the test set.
+
+First I show a single-date arrival comparison, then a multi-date delta **timeline with an embedded histogram** for one specialty and prediction time.
 
 ```python
 from patientflow.viz.observed_against_expected import (
     plot_arrival_delta_single_instance,
+    plot_arrival_delta_timelines,
     plot_arrival_deltas,
 )
 
@@ -94,12 +97,34 @@ plot_arrival_delta_single_instance(
     show=True,
 )
 
+example_specialty = sorted(yta_model.weights.keys())[0]
+plot_arrival_delta_timelines(
+    test_inpatient_arrivals_df[
+        test_inpatient_arrivals_df["specialty"] == example_specialty
+    ],
+    prediction_time=(22, 0),
+    snapshot_dates=test_snapshot_dates,
+    prediction_window=prediction_window,
+    yta_time_interval=yta_time_interval,
+    arrival_rate_model=yta_model,
+    filter_key=example_specialty,
+    suptitle=example_specialty,
+    show=True,
+)
+
 ```
 
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_0.png)
 
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_1.png)
+
+The following charst show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.
+
 ```python
-prediction_time = (22, 0)
+prediction_times = sorted(
+    ed_visits.prediction_time.unique(),
+    key=lambda x: x[0] * 60 + x[1],
+)
 
 for specialty in sorted(yta_model.weights.keys()):
     spec_test_df = test_inpatient_arrivals_df[
@@ -107,7 +132,7 @@ for specialty in sorted(yta_model.weights.keys()):
     ]
     plot_arrival_deltas(
         spec_test_df,
-        prediction_time,
+        prediction_times,
         test_snapshot_dates,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
@@ -119,13 +144,13 @@ for specialty in sorted(yta_model.weights.keys()):
 
 ```
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_0.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_0.png)
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_1.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_1.png)
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_2.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_2.png)
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_3.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_3.png)
 
 ## 2. Evaluate survival-curve bed demand
 
@@ -229,9 +254,9 @@ plot_epudd(
 
     Public extract: added synthetic departure_datetime for illustration only.
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_1.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_1.png)
 
-![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_2.png)
+![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_2.png)
 
 ## Summary
 
