@@ -36,6 +36,7 @@ from patientflow.viz.data_distribution import plot_data_distribution
 from patientflow.viz.observed_against_expected import (
     plot_deltas,
     plot_arrival_deltas,
+    _final_arrival_deltas_for_clock,
     _predictor_rates_for_window,
 )
 from patientflow.viz.arrival_rates import (
@@ -525,7 +526,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         predictor = self._make_predictor()
         fig = plot_arrival_deltas(
             self.df,
-            prediction_time=(8, 0),
+            prediction_times=(8, 0),
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
@@ -541,7 +542,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         predictor = self._make_predictor()
         fig = plot_arrival_deltas(
             self.df,
-            prediction_time=(8, 0),
+            prediction_times=(8, 0),
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
@@ -559,7 +560,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             plot_arrival_deltas(
                 self.df,
-                prediction_time=(8, 0),
+                prediction_times=(8, 0),
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
@@ -573,7 +574,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         """Default path falls back to pooled rates derived from the dataframe."""
         fig = plot_arrival_deltas(
             self.df,
-            prediction_time=(8, 0),
+            prediction_times=(8, 0),
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
@@ -589,7 +590,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             plot_arrival_deltas(
                 self.df,
-                prediction_time=(8, 0),
+                prediction_times=(8, 0),
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=timedelta(minutes=30),
@@ -605,7 +606,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             warnings.simplefilter("ignore", UserWarning)
             fig = plot_arrival_deltas(
                 self.df,
-                prediction_time=(8, 0),
+                prediction_times=(8, 0),
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
@@ -622,7 +623,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         with self.assertRaises(ValueError):
             plot_arrival_deltas(
                 self.df,
-                prediction_time=(8, 0),
+                prediction_times=(8, 0),
                 snapshot_dates=self.snapshot_dates,
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
@@ -636,7 +637,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         predictor = self._make_predictor()
         fig = plot_arrival_deltas(
             self.df,
-            prediction_time=(8, 0),
+            prediction_times=(8, 0),
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
@@ -651,7 +652,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         df = self.df.rename(columns={"arrival_datetime": "arrived_at"})
         fig = plot_arrival_deltas(
             df,
-            prediction_time=(8, 0),
+            prediction_times=(8, 0),
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
@@ -659,6 +660,78 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             return_figure=True,
         )
         self.assertIsInstance(fig, Figure)
+
+    def test_quiet_day_included_with_positive_expected(self):
+        """Zero-arrival days still contribute when expected mass is non-zero."""
+        predictor = self._make_predictor()
+        # 2024-01-03 is a Wednesday with arrivals in the synthetic set, but none
+        # in the 08:00–12:00 prediction window if we use an empty day outside the
+        # construction range. Use a date with no rows at all.
+        quiet_date = date(2024, 3, 1)
+        busy_date = date(2024, 1, 1)  # Monday with many arrivals
+        snapshot_dates = [busy_date, quiet_date]
+
+        deltas = _final_arrival_deltas_for_clock(
+            self.df,
+            (8, 0),
+            snapshot_dates,
+            self.prediction_window,
+            self.yta_time_interval,
+            arrival_rate_model=predictor,
+        )
+        self.assertEqual(len(deltas), 2)
+        rates_quiet = _predictor_rates_for_window(
+            predictor,
+            "unfiltered",
+            (8, 0),
+            self.prediction_window,
+            quiet_date,
+        )
+        expected_quiet = sum(rates_quiet.values())
+        self.assertGreater(expected_quiet, 0)
+        self.assertAlmostEqual(deltas[1], 0.0 - expected_quiet)
+
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_times=(8, 0),
+            snapshot_dates=snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            arrival_rate_model=predictor,
+            return_figure=True,
+        )
+        # Histogram bar heights should sum to the number of snapshot dates.
+        heights = [patch.get_height() for patch in fig.axes[0].patches]
+        self.assertEqual(sum(heights), len(snapshot_dates))
+
+    def test_plot_panels_one_axis_per_clock(self):
+        """Multiple clocks produce one histogram panel each."""
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_times=[(8, 0), (12, 0), (16, 0)],
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            return_figure=True,
+        )
+        self.assertEqual(len(fig.axes), 3)
+
+    def test_plot_panels_share_x_limits(self):
+        """Panels use a shared x-axis range like plot_deltas."""
+        fig = plot_arrival_deltas(
+            self.df,
+            prediction_times=[(8, 0), (12, 0), (16, 0)],
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            return_figure=True,
+        )
+        xlims = [ax.get_xlim() for ax in fig.axes]
+        self.assertTrue(all(xlim == xlims[0] for xlim in xlims))
+        # Symmetric about zero, matching plot_deltas.
+        left, right = xlims[0]
+        self.assertAlmostEqual(left + right, 0.0, places=6)
+        self.assertEqual(fig.axes[0].get_ylabel(), "Frequency")
 
 
 if __name__ == "__main__":

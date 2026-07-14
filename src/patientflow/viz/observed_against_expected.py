@@ -10,19 +10,25 @@ plot_deltas : function
     Plot histograms of observed minus expected values
 plot_arrival_delta_single_instance : function
     Plot comparison between observed arrivals and expected arrival rates
+plot_arrival_delta_timelines : function
+    Plot per-day delta timelines with an embedded final-delta histogram
 plot_arrival_deltas : function
-    Plot delta charts for multiple snapshot dates on the same figure
+    Plot histograms of final arrival deltas, one panel per prediction clock
 """
 
 from collections import OrderedDict
 from datetime import date as _date, timedelta, datetime, time
-from typing import Optional
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 from patientflow.calculate.arrival_rates import time_varying_arrival_rates
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import math
 from patientflow.viz.utils import format_prediction_time, pyplot_show_if
+
+
+PredictionTime = Tuple[int, int]
+PredictionWindowSpec = Union[timedelta, Mapping[PredictionTime, timedelta]]
 
 
 def plot_deltas(
@@ -307,7 +313,7 @@ def _plot_arrival_delta_chart(
     ax.set_ylabel("Difference (Actual - Expected)")
     ax.set_title(
         f"Difference Between Actual and Expected Arrivals in the "
-        f"{int(prediction_window.total_seconds()/3600)} hours after "
+        f"{int(prediction_window.total_seconds() / 3600)} hours after "
         f"{format_prediction_time(prediction_time)} on {snapshot_date}"
     )
     ax.legend()
@@ -481,7 +487,7 @@ def plot_arrival_delta_single_instance(
 
         ax.set_xlabel("Time")
         ax.set_title(
-            f"Cumulative Arrivals in the {int(prediction_window.total_seconds()/3600)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
+            f"Cumulative Arrivals in the {int(prediction_window.total_seconds() / 3600)} hours after {format_prediction_time(prediction_time)} on {snapshot_date}"
         )
         ax.legend()
 
@@ -587,9 +593,182 @@ def _predictor_rates_for_window(
     return rates
 
 
-def plot_arrival_deltas(
+def _normalize_prediction_times(
+    prediction_times: Union[PredictionTime, Sequence[PredictionTime]],
+) -> List[PredictionTime]:
+    """Return prediction clocks as a list of ``(hour, minute)`` tuples."""
+    if (
+        isinstance(prediction_times, tuple)
+        and len(prediction_times) == 2
+        and isinstance(prediction_times[0], (int, np.integer))
+        and isinstance(prediction_times[1], (int, np.integer))
+    ):
+        return [(int(prediction_times[0]), int(prediction_times[1]))]
+    return [(int(h), int(m)) for h, m in prediction_times]
+
+
+def _window_for_prediction_time(
+    prediction_window: PredictionWindowSpec, prediction_time: PredictionTime
+) -> timedelta:
+    """Resolve the prediction window for a single clock."""
+    if isinstance(prediction_window, timedelta):
+        return prediction_window
+    if prediction_time in prediction_window:
+        return prediction_window[prediction_time]
+    raise KeyError(
+        f"No prediction window for prediction_time={prediction_time!r}. "
+        f"Available keys: {sorted(prediction_window.keys())}."
+    )
+
+
+def _final_arrival_deltas_for_clock(
     df,
-    prediction_time,
+    prediction_time: PredictionTime,
+    snapshot_dates,
+    prediction_window: timedelta,
+    yta_time_interval: timedelta,
+    *,
+    arrival_rate_model=None,
+    filter_key: Optional[str] = None,
+    strict_prediction_date: bool = False,
+    arrival_datetime_col: str = "arrival_datetime",
+) -> List[float]:
+    """Return final (observed − expected) arrival deltas for every snapshot date.
+
+    Quiet days with no arrivals still contribute ``0 − expected_total``. Dates
+    are only omitted when they cannot be prepared for the cohort.
+    """
+    if arrival_rate_model is not None:
+        resolved_filter_key = _resolve_predictor_filter_key(
+            arrival_rate_model, filter_key
+        )
+    else:
+        resolved_filter_key = None
+
+    prediction_time_obj, _ = _prepare_common_values(prediction_time)
+    final_deltas: List[float] = []
+
+    for snapshot_date in snapshot_dates:
+        df_copy, snapshot_datetime, _, _ = _prepare_arrival_data(
+            df,
+            prediction_time,
+            snapshot_date,
+            prediction_window,
+            yta_time_interval,
+            arrival_datetime_col=arrival_datetime_col,
+        )
+
+        arrivals = df_copy[
+            (df_copy.index > snapshot_datetime)
+            & (df_copy.index <= snapshot_datetime + pd.Timedelta(prediction_window))
+        ]
+        actual_total = float(len(arrivals))
+
+        if arrival_rate_model is not None:
+            mean_arrival_rates = _predictor_rates_for_window(
+                arrival_rate_model,
+                resolved_filter_key,
+                prediction_time,
+                prediction_window,
+                snapshot_date,
+                strict_prediction_date=strict_prediction_date,
+            )
+        else:
+            mean_arrival_rates = _calculate_arrival_rates(
+                df_copy, prediction_time_obj, prediction_window, yta_time_interval
+            )
+
+        expected_total = float(sum(mean_arrival_rates.values()))
+        final_deltas.append(actual_total - expected_total)
+
+    return final_deltas
+
+
+def _symmetric_integer_delta_limits(
+    all_deltas: Sequence[float],
+) -> Tuple[int, int]:
+    """Return ``(global_min, global_max)`` as a symmetric integer range about zero."""
+    if not all_deltas:
+        return 0, 0
+    abs_max = max(abs(min(all_deltas)), abs(max(all_deltas)))
+    limit = int(math.ceil(abs_max))
+    return -limit, limit
+
+
+def _plot_final_delta_histogram(
+    ax,
+    final_deltas: Sequence[float],
+    *,
+    title: str,
+    global_min: int,
+    global_max: int,
+    show_ylabel: bool = True,
+) -> None:
+    """Draw an integer-centred histogram of final arrival deltas on ``ax``.
+
+    Uses the same styling as ``plot_deltas``: shared integer bins centred on
+    whole numbers, black edges, and a red dashed line at zero.
+    """
+    ax.set_title(title)
+    if not final_deltas:
+        ax.set_xlim(global_min - 0.5, global_max + 0.5)
+        return
+
+    bins = np.arange(global_min, global_max + 2) - 0.5
+    ax.hist(final_deltas, bins=bins, edgecolor="black", alpha=0.7)
+    ax.axvline(x=0, color="r", linestyle="--", linewidth=1)
+    ax.set_xlabel("Final Difference (Actual - Expected)")
+    if show_ylabel:
+        ax.set_ylabel("Frequency")
+    ax.set_xlim(global_min - 0.5, global_max + 0.5)
+
+
+def _resolve_arrival_rate_baseline(
+    arrival_rate_model,
+    predictor,
+    yta_time_interval: timedelta,
+    filter_key: Optional[str],
+    *,
+    caller_name: str,
+):
+    """Validate model args and return ``(model, filter_key, baseline_source)``."""
+    if predictor is not None and arrival_rate_model is not None:
+        raise ValueError(
+            "Pass only one of arrival_rate_model= or predictor=, not both."
+        )
+    if predictor is not None:
+        arrival_rate_model = predictor
+
+    if arrival_rate_model is None:
+        return None, None, "pooled rates (from dataframe)"
+
+    model_interval = getattr(arrival_rate_model, "yta_time_interval", None)
+    if model_interval is None:
+        raise ValueError(
+            "arrival_rate_model.yta_time_interval is not set; has the model been fit?"
+        )
+    if model_interval != yta_time_interval:
+        raise ValueError(
+            f"yta_time_interval mismatch: {caller_name} was called with "
+            f"{yta_time_interval!r} but arrival_rate_model.yta_time_interval is "
+            f"{model_interval!r}. Pass yta_time_interval=arrival_rate_model."
+            "yta_time_interval to silence this error."
+        )
+    resolved_filter_key = _resolve_predictor_filter_key(arrival_rate_model, filter_key)
+    baseline_source = (
+        "weekday-specific rates (from fitted model)"
+        if arrival_rate_model.weights[resolved_filter_key].get(
+            "arrival_rates_by_weekday"
+        )
+        is not None
+        else "pooled rates (from fitted model)"
+    )
+    return arrival_rate_model, resolved_filter_key, baseline_source
+
+
+def plot_arrival_delta_timelines(
+    df,
+    prediction_time: PredictionTime,
     snapshot_dates,
     prediction_window: timedelta,
     yta_time_interval: timedelta = timedelta(minutes=15),
@@ -606,7 +785,11 @@ def plot_arrival_deltas(
     arrival_datetime_col: str = "arrival_datetime",
     show: bool = False,
 ):
-    """Plot delta charts for multiple snapshot dates on the same figure.
+    """Plot per-day arrival-delta timelines with an embedded final-delta histogram.
+
+    Left panel: step series of cumulative (actual − expected) over the prediction
+    window for each snapshot date (average in red). Right panel: histogram of
+    final differences. Quiet days with zero arrivals are included.
 
     Parameters
     ----------
@@ -620,6 +803,245 @@ def plot_arrival_deltas(
         Prediction window length.
     yta_time_interval : timedelta, default=timedelta(minutes=15)
         Time-interval grid for arrival rates. When ``arrival_rate_model`` is
+        supplied, this must equal ``arrival_rate_model.yta_time_interval``.
+    media_file_path : Path, optional
+        Path to save the plot.
+    file_name : str, optional
+        Custom filename when saving. Defaults to ``"arrival_delta_timelines.png"``.
+    return_figure : bool, default=False
+        If True, returns the figure instead of displaying it.
+    fig_size : tuple, default=(15, 6)
+        Figure size as ``(width, height)`` in inches.
+    arrival_rate_model : IncomingAdmissionPredictor, optional
+        Fitted model whose stored arrival rates are the expected baseline.
+    predictor : IncomingAdmissionPredictor, optional
+        Deprecated alias for ``arrival_rate_model``.
+    filter_key : str, optional
+        ``weights`` key when the model has more than one fitted key.
+    strict_prediction_date : bool, default=False
+        Raise if the model lacks per-weekday rates instead of pooling.
+    suptitle : str, optional
+        Figure-level title.
+    arrival_datetime_col : str, default="arrival_datetime"
+        Column name for arrival timestamps, or a ``DatetimeIndex`` name.
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure object if return_figure is True, otherwise None.
+    """
+    arrival_rate_model, resolved_filter_key, baseline_source = (
+        _resolve_arrival_rate_baseline(
+            arrival_rate_model,
+            predictor,
+            yta_time_interval,
+            filter_key,
+            caller_name="plot_arrival_delta_timelines",
+        )
+    )
+
+    fig = plt.figure(figsize=fig_size)
+    gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
+    ax1 = plt.subplot(gs[0])
+    ax2 = plt.subplot(gs[1])
+
+    all_deltas = []
+    all_times_list = []
+    final_deltas: List[float] = []
+
+    prediction_time_obj, default_datetime = _prepare_common_values(prediction_time)
+
+    for snapshot_date in snapshot_dates:
+        df_copy, snapshot_datetime, _, _ = _prepare_arrival_data(
+            df,
+            prediction_time,
+            snapshot_date,
+            prediction_window,
+            yta_time_interval,
+            arrival_datetime_col=arrival_datetime_col,
+        )
+
+        arrivals = df_copy[
+            (df_copy.index > snapshot_datetime)
+            & (df_copy.index <= snapshot_datetime + pd.Timedelta(prediction_window))
+        ]
+        arrivals = arrivals.sort_index()
+        if len(arrivals) > 0:
+            arrivals = arrivals.copy()
+            arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
+
+        if arrival_rate_model is not None:
+            mean_arrival_rates = _predictor_rates_for_window(
+                arrival_rate_model,
+                resolved_filter_key,
+                prediction_time,
+                prediction_window,
+                snapshot_date,
+                strict_prediction_date=strict_prediction_date,
+            )
+        else:
+            mean_arrival_rates = _calculate_arrival_rates(
+                df_copy, prediction_time_obj, prediction_window, yta_time_interval
+            )
+
+        arrival_times_piecewise = _prepare_arrival_times(
+            mean_arrival_rates, prediction_time_obj, default_date=datetime(2024, 1, 1)
+        )
+        cumulative_rates = _calculate_cumulative_rates(
+            arrival_times_piecewise, mean_arrival_rates
+        )
+
+        arrival_times_plot = [
+            default_datetime + (t - snapshot_datetime) for t in arrivals.index
+        ]
+        all_times = _create_combined_timeline(
+            default_datetime,
+            arrival_times_plot,
+            prediction_window,
+            arrival_times_piecewise,
+        )
+
+        actual_end = (
+            float(arrivals["cumulative_count"].iloc[-1]) if len(arrivals) > 0 else 0.0
+        )
+        actual_counts = np.interp(
+            [t.timestamp() for t in all_times],
+            [
+                t.timestamp()
+                for t in [default_datetime]
+                + arrival_times_plot
+                + [default_datetime + pd.Timedelta(prediction_window)]
+            ],
+            [0]
+            + list(arrivals["cumulative_count"] if len(arrivals) > 0 else [])
+            + [actual_end],
+        )
+
+        expected_counts = np.interp(
+            [t.timestamp() for t in all_times],
+            [t.timestamp() for t in arrival_times_piecewise],
+            cumulative_rates,
+        )
+
+        delta = actual_counts - expected_counts
+        delta[0] = 0
+
+        all_deltas.append(delta)
+        all_times_list.append(all_times)
+        final_deltas.append(float(delta[-1]))
+        ax1.step(all_times, delta, where="post", color="grey", alpha=0.5)
+
+    common_times = []
+    if all_deltas:
+        common_times = sorted(set().union(*[set(times) for times in all_times_list]))
+
+        interpolated_deltas = []
+        for times, delta in zip(all_times_list, all_deltas):
+            min_time = min(times)
+            max_time = max(times)
+            valid_times = [t for t in common_times if min_time <= t <= max_time]
+
+            if valid_times:
+                interpolated = np.interp(
+                    [t.timestamp() for t in valid_times],
+                    [t.timestamp() for t in times],
+                    delta,
+                )
+                padded = np.full(len(common_times), np.nan)
+                valid_indices = [
+                    i for i, t in enumerate(common_times) if t in valid_times
+                ]
+                padded[valid_indices] = interpolated
+                interpolated_deltas.append(padded)
+
+        avg_delta = np.nanmean(interpolated_deltas, axis=0)
+        valid_mask = ~np.isnan(avg_delta)
+        if np.any(valid_mask):
+            ax1.step(
+                [t for t, m in zip(common_times, valid_mask) if m],
+                avg_delta[valid_mask],
+                where="post",
+                color="red",
+                linewidth=2,
+            )
+
+    ax1.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
+    ax1.set_xlabel("Time")
+    ax1.set_ylabel("Difference (Actual - Expected)")
+    ax1.set_title(
+        f"Difference Between Actual and Expected Arrivals in the "
+        f"{(int(prediction_window.total_seconds() / 3600))} hours after "
+        f"{format_prediction_time(prediction_time)} on all dates\n"
+        f"Expected baseline: {baseline_source}"
+    )
+
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=14)
+
+    if common_times:
+        _format_time_axis(ax1, common_times)
+
+    global_min, global_max = _symmetric_integer_delta_limits(final_deltas)
+    _plot_final_delta_histogram(
+        ax2,
+        final_deltas,
+        title="Distribution of Final Differences",
+        global_min=global_min,
+        global_max=global_max,
+    )
+
+    plt.tight_layout()
+
+    if media_file_path:
+        filename = file_name if file_name else "arrival_delta_timelines.png"
+        plt.savefig(media_file_path / filename, dpi=300)
+
+    if return_figure:
+        return fig
+    else:
+        pyplot_show_if(show)
+        plt.close()
+
+
+def plot_arrival_deltas(
+    df,
+    prediction_times: Union[PredictionTime, Sequence[PredictionTime]],
+    snapshot_dates,
+    prediction_window: PredictionWindowSpec,
+    yta_time_interval: timedelta = timedelta(minutes=15),
+    media_file_path=None,
+    file_name=None,
+    return_figure=False,
+    fig_size=None,
+    *,
+    arrival_rate_model=None,
+    predictor=None,
+    filter_key: Optional[str] = None,
+    strict_prediction_date: bool = False,
+    suptitle: Optional[str] = None,
+    arrival_datetime_col: str = "arrival_datetime",
+    show: bool = False,
+):
+    """Plot histograms of final (observed − expected) arrival deltas by clock.
+
+    One panel per prediction clock. Every snapshot date contributes a final
+    delta, including quiet days with zero arrivals (``0 − expected_total``).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing arrival data.
+    prediction_times : tuple or sequence of tuple
+        One ``(hour, minute)`` clock, or several clocks to panel side by side.
+    snapshot_dates : list
+        List of ``datetime.date`` objects to analyse.
+    prediction_window : timedelta or mapping
+        Prediction window length shared by all clocks, or a mapping from
+        ``(hour, minute)`` to window length.
+    yta_time_interval : timedelta, default=timedelta(minutes=15)
+        Time-interval grid for arrival rates. When ``arrival_rate_model`` is
         supplied, this must equal ``arrival_rate_model.yta_time_interval``;
         otherwise a ``ValueError`` is raised.
     media_file_path : Path, optional
@@ -629,8 +1051,9 @@ def plot_arrival_deltas(
         to ``"multiple_deltas.png"``.
     return_figure : bool, default=False
         If True, returns the figure instead of displaying it.
-    fig_size : tuple, default=(15, 6)
-        Figure size as ``(width, height)`` in inches.
+    fig_size : tuple, optional
+        Figure size as ``(width, height)`` in inches. Defaults to
+        ``(5 * n_clocks, 4)``.
     arrival_rate_model : IncomingAdmissionPredictor, optional
         Fitted incoming-admission model whose stored arrival rates will be used
         as the expected baseline. When the model's ``weights`` contain an
@@ -671,234 +1094,63 @@ def plot_arrival_deltas(
         match ``arrival_rate_model.yta_time_interval``, or if the model is
         unfitted / the requested ``filter_key`` is unknown.
     """
-    if predictor is not None and arrival_rate_model is not None:
-        raise ValueError(
-            "Pass only one of arrival_rate_model= or predictor=, not both."
-        )
-    if predictor is not None:
-        arrival_rate_model = predictor
+    clocks = _normalize_prediction_times(prediction_times)
+    if not clocks:
+        raise ValueError("prediction_times must contain at least one clock.")
 
-    if arrival_rate_model is not None:
-        model_interval = getattr(arrival_rate_model, "yta_time_interval", None)
-        if model_interval is None:
-            raise ValueError(
-                "arrival_rate_model.yta_time_interval is not set; has the model "
-                "been fit?"
-            )
-        if model_interval != yta_time_interval:
-            raise ValueError(
-                "yta_time_interval mismatch: plot_arrival_deltas was called with "
-                f"{yta_time_interval!r} but arrival_rate_model.yta_time_interval is "
-                f"{model_interval!r}. Pass yta_time_interval=arrival_rate_model."
-                "yta_time_interval to silence this error."
-            )
-        resolved_filter_key = _resolve_predictor_filter_key(
-            arrival_rate_model, filter_key
-        )
-        baseline_source = (
-            "weekday-specific rates (from fitted model)"
-            if arrival_rate_model.weights[resolved_filter_key].get(
-                "arrival_rates_by_weekday"
-            )
-            is not None
-            else "pooled rates (from fitted model)"
-        )
-    else:
-        resolved_filter_key = None
-        baseline_source = "pooled rates (from dataframe)"
+    arrival_rate_model, _, baseline_source = _resolve_arrival_rate_baseline(
+        arrival_rate_model,
+        predictor,
+        yta_time_interval,
+        filter_key,
+        caller_name="plot_arrival_deltas",
+    )
 
-    fig = plt.figure(figsize=fig_size)
-    gs = plt.GridSpec(1, 2, width_ratios=[2, 1])
-    ax1 = plt.subplot(gs[0])
-    ax2 = plt.subplot(gs[1])
+    clocks_sorted = sorted(clocks, key=lambda x: x[0] * 60 + x[1])
+    num_plots = len(clocks_sorted)
+    fig_size = fig_size or (max(5 * num_plots, 5), 4)
 
-    # Store all deltas for averaging
-    all_deltas = []
-    all_times_list = []
-    final_deltas = []  # Store final delta values for histogram
-
-    # Calculate common values once
-    prediction_time_obj, default_datetime = _prepare_common_values(prediction_time)
-
-    for snapshot_date in snapshot_dates:
-        # Prepare data for this date
-        df_copy, snapshot_datetime, _, _ = _prepare_arrival_data(
+    deltas_by_clock: List[List[float]] = []
+    titles: List[str] = []
+    for prediction_time in clocks_sorted:
+        window = _window_for_prediction_time(prediction_window, prediction_time)
+        final_deltas = _final_arrival_deltas_for_clock(
             df,
             prediction_time,
-            snapshot_date,
-            prediction_window,
+            snapshot_dates,
+            window,
             yta_time_interval,
+            arrival_rate_model=arrival_rate_model,
+            filter_key=filter_key,
+            strict_prediction_date=strict_prediction_date,
             arrival_datetime_col=arrival_datetime_col,
         )
-
-        # Get arrivals within the prediction window
-        arrivals = df_copy[
-            (df_copy.index > snapshot_datetime)
-            & (df_copy.index <= snapshot_datetime + pd.Timedelta(prediction_window))
-        ]
-
-        if len(arrivals) == 0:
-            continue
-
-        # Sort arrivals by time and create cumulative count
-        arrivals = arrivals.sort_index()
-        arrivals["cumulative_count"] = range(1, len(arrivals) + 1)
-
-        # Calculate arrival rates and prepare time points
-        if arrival_rate_model is not None:
-            mean_arrival_rates = _predictor_rates_for_window(
-                arrival_rate_model,
-                resolved_filter_key,
-                prediction_time,
-                prediction_window,
-                snapshot_date,
-                strict_prediction_date=strict_prediction_date,
-            )
-        else:
-            mean_arrival_rates = _calculate_arrival_rates(
-                df_copy, prediction_time_obj, prediction_window, yta_time_interval
-            )
-
-        # Prepare arrival times
-        arrival_times_piecewise = _prepare_arrival_times(
-            mean_arrival_rates, prediction_time_obj, default_date=datetime(2024, 1, 1)
+        hours = int(window.total_seconds() / 3600)
+        titles.append(
+            f"{format_prediction_time(prediction_time)} "
+            f"({hours}h window)\nExpected baseline: {baseline_source}"
         )
+        deltas_by_clock.append(final_deltas)
 
-        # Calculate cumulative rates
-        cumulative_rates = _calculate_cumulative_rates(
-            arrival_times_piecewise, mean_arrival_rates
+    all_deltas = [delta for deltas in deltas_by_clock for delta in deltas]
+    global_min, global_max = _symmetric_integer_delta_limits(all_deltas)
+
+    fig, axs = plt.subplots(1, num_plots, figsize=fig_size)
+    if num_plots == 1:
+        axs = [axs]
+
+    for i, (final_deltas, title) in enumerate(zip(deltas_by_clock, titles)):
+        _plot_final_delta_histogram(
+            axs[i],
+            final_deltas,
+            title=title,
+            global_min=global_min,
+            global_max=global_max,
+            show_ylabel=(i == 0),
         )
-
-        # Convert arrival times to use default date for plotting
-        arrival_times_plot = [
-            default_datetime + (t - snapshot_datetime) for t in arrivals.index
-        ]
-
-        # Create combined timeline
-        all_times = _create_combined_timeline(
-            default_datetime,
-            arrival_times_plot,
-            prediction_window,
-            arrival_times_piecewise,
-        )
-
-        # Interpolate both actual and expected to the combined timeline
-        actual_counts = np.interp(
-            [t.timestamp() for t in all_times],
-            [
-                t.timestamp()
-                for t in [default_datetime]
-                + arrival_times_plot
-                + [default_datetime + pd.Timedelta(prediction_window)]
-            ],
-            [0]
-            + list(arrivals["cumulative_count"])
-            + [arrivals["cumulative_count"].iloc[-1]],
-        )
-
-        expected_counts = np.interp(
-            [t.timestamp() for t in all_times],
-            [t.timestamp() for t in arrival_times_piecewise],
-            cumulative_rates,
-        )
-
-        # Calculate delta
-        delta = actual_counts - expected_counts
-        delta[0] = 0  # Ensure delta starts at 0
-
-        # Store for averaging
-        all_deltas.append(delta)
-        all_times_list.append(all_times)
-
-        # Store final delta value for histogram
-        final_deltas.append(delta[-1])
-
-        # Plot delta for this snapshot date
-        ax1.step(all_times, delta, where="post", color="grey", alpha=0.5)
-
-    # Calculate and plot average delta
-    if all_deltas:
-        # Find the common time points across all dates
-        common_times = sorted(set().union(*[set(times) for times in all_times_list]))
-
-        # Interpolate all deltas to common time points
-        interpolated_deltas = []
-        for times, delta in zip(all_times_list, all_deltas):
-            # Only interpolate within the actual time range for each date
-            min_time = min(times)
-            max_time = max(times)
-            valid_times = [t for t in common_times if min_time <= t <= max_time]
-
-            if valid_times:
-                interpolated = np.interp(
-                    [t.timestamp() for t in valid_times],
-                    [t.timestamp() for t in times],
-                    delta,
-                )
-                # Pad with NaN for times outside the valid range
-                padded = np.full(len(common_times), np.nan)
-                valid_indices = [
-                    i for i, t in enumerate(common_times) if t in valid_times
-                ]
-                padded[valid_indices] = interpolated
-                interpolated_deltas.append(padded)
-
-        # Calculate average delta, ignoring NaN values
-        avg_delta = np.nanmean(interpolated_deltas, axis=0)
-
-        # Plot average delta as a solid line
-        # Only plot where we have valid data (not NaN)
-        valid_mask = ~np.isnan(avg_delta)
-        if np.any(valid_mask):
-            ax1.step(
-                [t for t, m in zip(common_times, valid_mask) if m],
-                avg_delta[valid_mask],
-                where="post",
-                color="red",
-                linewidth=2,
-            )
-
-    # Add horizontal line at y=0
-    ax1.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
-
-    # Format the main plot
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("Difference (Actual - Expected)")
-    ax1.set_title(
-        f"Difference Between Actual and Expected Arrivals in the "
-        f"{(int(prediction_window.total_seconds()/3600))} hours after "
-        f"{format_prediction_time(prediction_time)} on all dates\n"
-        f"Expected baseline: {baseline_source}"
-    )
 
     if suptitle:
         fig.suptitle(suptitle, fontsize=14)
-
-    # Format time axis
-    _format_time_axis(ax1, common_times)
-
-    # Create histogram of final delta values
-    if final_deltas:
-        # Round values to nearest integer for binning
-        rounded_deltas = np.round(final_deltas)
-        unique_values = np.unique(rounded_deltas)
-
-        # Create bins centered on integer values
-        bin_edges = np.arange(unique_values.min() - 0.5, unique_values.max() + 1.5, 1)
-
-        # Convert numpy array of bin edges to a plain Python list for type clarity
-        ax2.hist(final_deltas, bins=list(bin_edges), color="grey", alpha=0.7)
-        ax2.axvline(x=0, color="gray", linestyle="--", alpha=0.5)
-        ax2.set_xlabel("Final Difference (Actual - Expected)")
-        ax2.set_ylabel("Count")
-        ax2.set_title("Distribution of Final Differences")
-
-        # Set x-axis ticks to integer values with appropriate spacing
-        value_range = unique_values.max() - unique_values.min()
-        step_size = max(1, int(value_range / 10))  # Aim for about 10 ticks
-        ax2.set_xticks(
-            np.arange(unique_values.min(), unique_values.max() + 1, step_size)
-        )
 
     plt.tight_layout()
 

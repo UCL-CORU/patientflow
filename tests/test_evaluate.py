@@ -247,13 +247,13 @@ def test_arrival_delta_suptitle_uses_eval_split():
         flow_name="ed_yta_arrival_rates",
         flow_type="admissions",
         evaluation_mode="arrival_deltas",
-        component="cumulative_arrival_delta",
+        component="arrival_delta",
         observation_mode="arrived_in_window",
     )
-    title = _arrival_delta_suptitle(target, "medical", (9, 30), eval_split="valid")
+    title = _arrival_delta_suptitle(target, "medical", eval_split="valid")
     assert "(validation set)" in title
     assert "medical" in title
-    assert "09:30" in title
+    assert "09:30" not in title
 
 
 # --- distribution: observation contexts and recompute ---

@@ -229,7 +229,7 @@ def standard_ed_targets(
         Add ED yet-to-arrive bed-demand distribution evaluation (requires
         meaningful ward-admission timestamps for most sites).
     include_ed_yta_arrival_deltas : bool, optional
-        Add cumulative arrival-rate delta plots per service.
+        Add arrival-rate delta plots per service.
     ed_current_observation_mode : str, optional
         Observation strategy for ED-current distribution targets.
     ed_yta_observation_mode : str, optional
@@ -288,7 +288,7 @@ def standard_ed_targets(
                 flow_name="ed_yta_arrival_rates",
                 flow_type="admissions",
                 evaluation_mode="arrival_deltas",
-                component="arrival_delta_cumulative",
+                component="arrival_delta",
                 observation_mode=ed_yta_observation_mode,
             )
         )

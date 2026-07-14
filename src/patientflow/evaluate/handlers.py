@@ -162,11 +162,10 @@ def _classifier_quality_suptitle(
 def _arrival_delta_suptitle(
     target: EvaluationTarget,
     service: str,
-    prediction_time: Tuple[int, int],
     *,
     eval_split: Optional[str],
 ) -> str:
-    """Return a figure suptitle for cumulative arrival-delta charts.
+    """Return a figure suptitle for arrival-delta charts.
 
     Parameters
     ----------
@@ -174,23 +173,20 @@ def _arrival_delta_suptitle(
         Arrival-deltas evaluation target.
     service : str
         Hospital service name.
-    prediction_time : tuple of int
-        ``(hour, minute)`` for the prediction clock.
     eval_split : str or None
         Run-level holdout from `EvaluationInputs.eval_split`.
 
     Returns
     -------
     str
-        Title including service, clock, and cohort label.
+        Title including service and cohort label. Clocks appear as panel titles.
     """
     subject = _ARRIVAL_FLOW_LABELS.get(
         target.flow_name,
         target.flow_name.replace("_", " ").title(),
     )
-    hour, minute = prediction_time
     cohort = eval_split_label(eval_split)
-    return f"{subject}: {service} at {hour:02d}:{minute:02d} ({cohort})"
+    return f"{subject}: {service} ({cohort})"
 
 
 def _distribution_comparison_suptitle(
@@ -1151,7 +1147,7 @@ def evaluate_arrival_deltas(
     arrivals_dir: Path,
     collector: ScalarsCollector,
 ) -> None:
-    """Plot observed-vs-expected arrival deltas per service and prediction time.
+    """Plot observed-vs-expected arrival deltas per service (clocks as panels).
 
     Parameters
     ----------
@@ -1168,7 +1164,8 @@ def evaluate_arrival_deltas(
     Notes
     -----
     Optional per-service predictors and filter keys are taken from the arrival
-    block. Inactive services (no arrivals on snapshot dates) skip plots. Uses
+    block. Inactive services (no arrivals on snapshot dates) skip plots. Writes
+    one PNG per active service with a histogram panel per clock. Uses
     `patientflow.viz.observed_against_expected.plot_arrival_deltas`.
     """
     block = inputs.arrival_by_flow.get(target.flow_name)
@@ -1208,31 +1205,29 @@ def evaluate_arrival_deltas(
         pred = predictors.get(svc)
         fk = filter_keys.get(svc)
         strict = bool(strict_map.get(svc, False))
+        out_dir = arrivals_dir / target.flow_name / _safe_fs_segment(str(svc))
+        out_dir.mkdir(parents=True, exist_ok=True)
+        plot_arrival_deltas(
+            df,
+            list(inputs.prediction_times),
+            list(snap_dates),
+            prediction_dict,
+            yta_time_interval=yta_iv,
+            media_file_path=out_dir,
+            file_name=f"{target.component}.png",
+            return_figure=False,
+            arrival_rate_model=pred,
+            filter_key=fk,
+            strict_prediction_date=strict,
+            suptitle=_arrival_delta_suptitle(
+                target,
+                str(svc),
+                eval_split=inputs.eval_split,
+            ),
+        )
+        plt.close("all")
         for pt in inputs.prediction_times:
             h, mi = pt
-            out_dir = arrivals_dir / target.flow_name / _safe_fs_segment(str(svc))
-            out_dir.mkdir(parents=True, exist_ok=True)
-            fname = f"{target.component}_{h:02d}{mi:02d}.png"
-            plot_arrival_deltas(
-                df,
-                pt,
-                list(snap_dates),
-                prediction_dict[pt],
-                yta_time_interval=yta_iv,
-                media_file_path=out_dir,
-                file_name=fname,
-                return_figure=False,
-                arrival_rate_model=pred,
-                filter_key=fk,
-                strict_prediction_date=strict,
-                suptitle=_arrival_delta_suptitle(
-                    target,
-                    str(svc),
-                    (h, mi),
-                    eval_split=inputs.eval_split,
-                ),
-            )
-            plt.close("all")
             collector.add_row(
                 {
                     **scalar_target_fields(target),
