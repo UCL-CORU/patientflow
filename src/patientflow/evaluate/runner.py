@@ -21,6 +21,11 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 
 import yaml
 
+from patientflow.evaluate.chart_policy import (
+    DEFAULT_CHART_MODE,
+    ChartMode,
+    normalize_chart_mode,
+)
 from patientflow.evaluate.handlers import (
     evaluate_arrival_deltas,
     evaluate_classifier_model_diagnostics,
@@ -88,6 +93,7 @@ def write_evaluation_run_manifest(
     run_name: str,
     inputs: EvaluationInputs,
     training_metadata: Optional[Mapping[str, Any]] = None,
+    charts: ChartMode = DEFAULT_CHART_MODE,
 ) -> Path:
     """Write ``evaluation_run.yaml`` describing this evaluation run.
 
@@ -108,6 +114,8 @@ def write_evaluation_run_manifest(
         Built evaluation inputs.
     training_metadata : mapping, optional
         Caller-supplied YAML-serialisable training context (not auto-discovered).
+    charts : ChartMode, optional
+        Chart emission mode recorded under ``evaluation.charts``.
 
     Returns
     -------
@@ -119,6 +127,7 @@ def write_evaluation_run_manifest(
             "output_root": str(output_root),
             "run_name": run_name,
             "eval_split": inputs.eval_split,
+            "charts": charts,
             "flow_selection": asdict(inputs.flow_selection),
             "n_targets": len(inputs.evaluation_targets),
             "evaluation_targets": evaluation_targets_for_manifest(inputs),
@@ -142,6 +151,7 @@ def run_evaluation(
     *,
     run_name: Optional[str] = None,
     training_metadata: Optional[Mapping[str, Any]] = None,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> Dict[str, Any]:
     """Execute every `EvaluationTarget` in `inputs` and write artefacts.
 
@@ -149,7 +159,7 @@ def run_evaluation(
 
     - `evaluation_run.yaml` — run settings under ``evaluation:`` (including
       ``evaluation_targets`` with ``observation_mode``, ``prediction_dict``,
-      and ``eval_split``), plus optional caller ``training_metadata``.
+      ``eval_split``, and ``charts``), plus optional caller ``training_metadata``.
     - `scalars.json` — `evaluation_rows` plus optional `_service_summary`
       fragments merged by handlers (distribution and arrival modes attach
       per-slice service coverage).
@@ -160,6 +170,9 @@ def run_evaluation(
     Classifier diagnostics, probability-quality, and distribution rows use
     distinct `evaluation_mode` / `model_name` combinations so keys do not clash.
     Survival rows use `prediction_time: null` and `service: _all_`.
+
+    Chart PNGs follow ``charts`` (default ``flagged``): scalars always emit;
+    see ``patientflow.evaluate.chart_policy``.
 
     Dispatch uses `match` / `case` on `target.evaluation_mode` (no handler
     registry).
@@ -175,6 +188,8 @@ def run_evaluation(
     training_metadata : mapping, optional
         Optional training context written under ``training_metadata`` in the
         manifest (caller-defined; not loaded from patientflow ``config.yaml``).
+    charts : {``none``, ``flagged``, ``all``}, optional
+        Chart emission mode. Default ``flagged`` for large multi-service runs.
 
     Returns
     -------
@@ -182,6 +197,7 @@ def run_evaluation(
         Keys `run_dir`, `scalars_path`, `manifest_path` (each a `pathlib.Path`),
         and `n_targets` (`int`).
     """
+    chart_mode = normalize_chart_mode(charts)
     output_root = Path(output_root)
     stamp = run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = output_root / stamp
@@ -198,6 +214,7 @@ def run_evaluation(
         run_name=stamp,
         inputs=inputs,
         training_metadata=training_metadata,
+        charts=chart_mode,
     )
 
     classifiers_dir = run_dir / "classifiers"
@@ -216,6 +233,7 @@ def run_evaluation(
                     target,
                     classifiers_dir=classifiers_dir / target.flow_name,
                     collector=collector,
+                    charts=chart_mode,
                 )
             case "classifier_probability_quality":
                 if inputs.classifier_by_flow.get(target.flow_name):
@@ -226,6 +244,7 @@ def run_evaluation(
                     target,
                     classifiers_dir=classifiers_dir / target.flow_name,
                     collector=collector,
+                    charts=chart_mode,
                 )
             case "distribution":
                 evaluate_distribution(
@@ -233,6 +252,7 @@ def run_evaluation(
                     target,
                     distributions_dir=distributions_dir,
                     collector=collector,
+                    charts=chart_mode,
                 )
             case "arrival_deltas":
                 evaluate_arrival_deltas(
@@ -240,6 +260,7 @@ def run_evaluation(
                     target,
                     arrivals_dir=arrivals_dir,
                     collector=collector,
+                    charts=chart_mode,
                 )
             case "survival_curve":
                 survival_dir.mkdir(parents=True, exist_ok=True)
@@ -248,6 +269,7 @@ def run_evaluation(
                     target,
                     survival_dir=survival_dir,
                     collector=collector,
+                    charts=chart_mode,
                 )
             case "transition_matrix":
                 evaluate_transition_matrix(

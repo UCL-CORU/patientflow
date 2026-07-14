@@ -724,6 +724,38 @@ def _two_snapshot_model_key_dist(
     return {mk: {snap1: leaves[0], snap2: leaves[1]}}
 
 
+def _n_snapshot_model_key_dist(
+    model_name: str,
+    prediction_time: tuple[int, int],
+    n: int,
+) -> dict:
+    """Build ``n`` snapshot leaves under one model key (observed filled at eval)."""
+    mk = get_model_key(model_name, prediction_time)
+    series = {
+        date(2024, 1, 1) + timedelta(days=i): _distribution_leaf() for i in range(n)
+    }
+    return {mk: series}
+
+
+def _ed_visits_for_snapshots(
+    prediction_time: tuple[int, int],
+    n: int,
+    *,
+    specialty: str = "medical",
+) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "snapshot_date": date(2024, 1, 1) + timedelta(days=i),
+                "prediction_time": prediction_time,
+                "is_admitted": 1 if i % 2 == 0 else 0,
+                "specialty": specialty,
+            }
+            for i in range(n)
+        ]
+    )
+
+
 def test_evaluate_distribution_insufficient_observations_skips_epudd(
     tmp_path: Path,
 ):
@@ -854,24 +886,70 @@ def test_evaluate_distribution_custom_admissions_label_col(tmp_path: Path):
 def test_evaluate_distribution_rpit_cvm_and_benchmark_scalars(tmp_path: Path):
     prediction_time = (10, 0)
     model_name = "beds"
+    n_snap = 30
+    ed_visits = _ed_visits_for_snapshots(prediction_time, n_snap)
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist(
+                    model_name, prediction_time, n_snap
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={"medical": ed_visits},
+        )
+        .add_distribution_benchmark_cohort(admissions_ed_visits=ed_visits)
+        .build()
+    )
+    collector = ScalarsCollector()
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=collector,
+        charts="all",
+    )
+    row = collector.as_list()[0]
+    assert row["observation_mode"] == "admitted_at_some_point"
+    assert row["charts_generated"] is True
+    assert row["reliable"] is True
+    assert "rpit_cvm_mean_w2" in row
+    assert "rpit_cvm_w2" not in row
+    assert "rpit_cvm_benchmark_mean_w2" in row
+    assert "rpit_cvm_benchmark_w2" not in row
+    assert "rpit_cvm_w2_reduction" in row
+    assert (
+        tmp_path
+        / "distributions"
+        / "ed_current_beds"
+        / "medical"
+        / "bed_demand_ed_current.png"
+    ).exists()
+
+
+def test_evaluate_distribution_gate_a_keeps_rpit_without_chart(tmp_path: Path):
+    """n_snap in [MIN_DISTRIBUTION_SNAPSHOTS, Gate A) still scores rPIT; no PNG."""
+    prediction_time = (10, 0)
+    model_name = "beds"
     leaf_a = _distribution_leaf(1)
     leaf_b = _distribution_leaf(0)
-    ed_visits = pd.DataFrame(
-        [
-            {
-                "snapshot_date": date(2024, 1, 1),
-                "prediction_time": prediction_time,
-                "is_admitted": 1,
-                "specialty": "medical",
-            },
-            {
-                "snapshot_date": date(2024, 1, 2),
-                "prediction_time": prediction_time,
-                "is_admitted": 0,
-                "specialty": "medical",
-            },
-        ]
-    )
+    ed_visits = _ed_visits_for_snapshots(prediction_time, 2)
     target = EvaluationTarget(
         flow_name="ed_current_beds",
         flow_type="admissions",
@@ -907,16 +985,187 @@ def test_evaluate_distribution_rpit_cvm_and_benchmark_scalars(tmp_path: Path):
         target,
         distributions_dir=tmp_path / "distributions",
         collector=collector,
+        charts="all",
     )
     row = collector.as_list()[0]
-    assert row["observation_mode"] == "admitted_at_some_point"
-    assert row["charts_generated"] is True
-    assert row["reliable"] is True
+    assert row["n_snapshots"] == 2
     assert "rpit_cvm_mean_w2" in row
-    assert "rpit_cvm_w2" not in row
-    assert "rpit_cvm_benchmark_mean_w2" in row
-    assert "rpit_cvm_benchmark_w2" not in row
-    assert "rpit_cvm_w2_reduction" in row
+    assert row["reliable"] is False
+    assert row["charts_generated"] is False
+    assert row["skip_reason"] == "insufficient_observations"
+    assert not (
+        tmp_path
+        / "distributions"
+        / "ed_current_beds"
+        / "medical"
+        / "bed_demand_ed_current.png"
+    ).exists()
+
+
+def test_evaluate_distribution_flagged_skips_unflagged_service(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    prediction_time = (10, 0)
+    model_name = "beds"
+    n_snap = 30
+    ed_visits = _ed_visits_for_snapshots(prediction_time, n_snap)
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist(
+                    model_name, prediction_time, n_snap
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={"medical": ed_visits},
+        )
+        .build()
+    )
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.distribution_chart_flagged",
+        lambda row: False,
+    )
+    collector = ScalarsCollector()
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=collector,
+        charts="flagged",
+    )
+    row = collector.as_list()[0]
+    assert row["chart_flagged"] is False
+    assert row["charts_generated"] is False
+    assert row["skip_reason"] == "not_flagged"
+    assert not (
+        tmp_path
+        / "distributions"
+        / "ed_current_beds"
+        / "medical"
+        / "bed_demand_ed_current.png"
+    ).exists()
+
+
+def test_evaluate_distribution_charts_none(tmp_path: Path):
+    prediction_time = (10, 0)
+    model_name = "beds"
+    n_snap = 30
+    ed_visits = _ed_visits_for_snapshots(prediction_time, n_snap)
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist(
+                    model_name, prediction_time, n_snap
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={"medical": ed_visits},
+        )
+        .build()
+    )
+    collector = ScalarsCollector()
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=collector,
+        charts="none",
+    )
+    row = collector.as_list()[0]
+    assert "rpit_cvm_mean_w2" in row
+    assert row["charts_generated"] is False
+    assert row["skip_reason"] == "charts_disabled"
+    assert not (
+        tmp_path
+        / "distributions"
+        / "ed_current_beds"
+        / "medical"
+        / "bed_demand_ed_current.png"
+    ).exists()
+
+
+def test_evaluate_distribution_flagged_writes_when_flagged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    prediction_time = (10, 0)
+    model_name = "beds"
+    n_snap = 30
+    ed_visits = _ed_visits_for_snapshots(prediction_time, n_snap)
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([prediction_time]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist(
+                    model_name, prediction_time, n_snap
+                ),
+            },
+            model_name=model_name,
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={"medical": ed_visits},
+        )
+        .build()
+    )
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.distribution_chart_flagged",
+        lambda row: True,
+    )
+    collector = ScalarsCollector()
+    evaluate_distribution(
+        inputs,
+        target,
+        distributions_dir=tmp_path / "distributions",
+        collector=collector,
+        charts="flagged",
+    )
+    row = collector.as_list()[0]
+    assert row["chart_flagged"] is True
+    assert row["charts_generated"] is True
     assert (
         tmp_path
         / "distributions"
@@ -924,6 +1173,42 @@ def test_evaluate_distribution_rpit_cvm_and_benchmark_scalars(tmp_path: Path):
         / "medical"
         / "bed_demand_ed_current.png"
     ).exists()
+
+
+def test_manifest_records_charts_mode(tmp_path: Path):
+    from patientflow.evaluate.runner import run_evaluation
+
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(10, 0)]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist("beds", (10, 0), 2),
+            },
+            model_name="beds",
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={
+                "medical": _ed_visits_for_snapshots((10, 0), 2),
+            },
+        )
+        .build()
+    )
+    result = run_evaluation(tmp_path, inputs, run_name="charts_mode", charts="none")
+    loaded = yaml.safe_load(result["manifest_path"].read_text())
+    assert loaded["evaluation"]["charts"] == "none"
 
 
 def test_evaluate_distribution_yta_has_no_benchmark_fields(tmp_path: Path):
