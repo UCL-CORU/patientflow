@@ -30,6 +30,17 @@ from patientflow.evaluate.calibration import (
     rpit_cvm_calibration_score,
     rpit_cvm_result_to_scalar_fields,
 )
+from patientflow.evaluate.chart_policy import (
+    DEFAULT_CHART_MODE,
+    ChartMode,
+    SKIP_CHARTS_DISABLED,
+    SKIP_INACTIVE_SERVICE,
+    decide_panelled_figure,
+    distribution_chart_flagged,
+    normalize_chart_mode,
+    panelled_clock_chart_fields,
+    sample_ok_for_chart,
+)
 from patientflow.evaluate.inputs import (
     EvaluationInputs,
     EvaluationTarget,
@@ -162,11 +173,10 @@ def _classifier_quality_suptitle(
 def _arrival_delta_suptitle(
     target: EvaluationTarget,
     service: str,
-    prediction_time: Tuple[int, int],
     *,
     eval_split: Optional[str],
 ) -> str:
-    """Return a figure suptitle for cumulative arrival-delta charts.
+    """Return a figure suptitle for arrival-delta charts.
 
     Parameters
     ----------
@@ -174,23 +184,20 @@ def _arrival_delta_suptitle(
         Arrival-deltas evaluation target.
     service : str
         Hospital service name.
-    prediction_time : tuple of int
-        ``(hour, minute)`` for the prediction clock.
     eval_split : str or None
         Run-level holdout from `EvaluationInputs.eval_split`.
 
     Returns
     -------
     str
-        Title including service, clock, and cohort label.
+        Title including service and cohort label. Clocks appear as panel titles.
     """
     subject = _ARRIVAL_FLOW_LABELS.get(
         target.flow_name,
         target.flow_name.replace("_", " ").title(),
     )
-    hour, minute = prediction_time
     cohort = eval_split_label(eval_split)
-    return f"{subject}: {service} at {hour:02d}:{minute:02d} ({cohort})"
+    return f"{subject}: {service} ({cohort})"
 
 
 def _distribution_comparison_suptitle(
@@ -699,6 +706,7 @@ def evaluate_classifier_model_diagnostics(
     *,
     classifiers_dir: Path,
     collector: ScalarsCollector,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> None:
     """Plot global feature importance and optional SHAP; emit model-level scalar rows.
 
@@ -718,7 +726,9 @@ def evaluate_classifier_model_diagnostics(
     Skips quietly when no classifier block is registered for the flow. Uses
     `patientflow.viz.features.plot_features` and, when available,
     `patientflow.viz.shap.plot_shap`. Closes matplotlib figures after each plot.
+    Charts are skipped when ``charts="none"``; scalar rows still emit.
     """
+    chart_mode = normalize_chart_mode(charts)
     block = inputs.classifier_by_flow.get(target.flow_name)
     if not block:
         return
@@ -731,47 +741,50 @@ def evaluate_classifier_model_diagnostics(
 
     for m in models:
         _require_classifier_eval_artifacts(m)
-    plot_features(
-        models,
-        media_file_path=classifiers_dir,
-        file_name="features.png",
-        suptitle=_classifier_diagnostics_suptitle(
-            target, "feature importances", eval_split=eval_split
-        ),
-        return_figure=False,
-    )
-    plt.close("all")
+    if chart_mode != "none":
+        plot_features(
+            models,
+            media_file_path=classifiers_dir,
+            file_name="features.png",
+            suptitle=_classifier_diagnostics_suptitle(
+                target, "feature importances", eval_split=eval_split
+            ),
+            return_figure=False,
+        )
+        plt.close("all")
 
-    if SHAP_AVAILABLE and plot_shap is not None:
-        multi_clock = len(models) > 1
-        for m in models:
-            plot_shap(
-                [m],
-                visits,
-                media_file_path=classifiers_dir,
-                file_name=_disambiguate_classifier_plot_filename(
-                    "shap.png",
-                    m.training_results.prediction_time,
-                    multi_clock=multi_clock,
-                ),
-                suptitle=_classifier_diagnostics_suptitle(
-                    target,
-                    "SHAP summary",
-                    eval_split=eval_split,
-                    prediction_time=m.training_results.prediction_time,
-                ),
-                return_figure=False,
-                label_col=label_col,
-                show=False,
-            )
-            plt.close("all")
+        if SHAP_AVAILABLE and plot_shap is not None:
+            multi_clock = len(models) > 1
+            for m in models:
+                plot_shap(
+                    [m],
+                    visits,
+                    media_file_path=classifiers_dir,
+                    file_name=_disambiguate_classifier_plot_filename(
+                        "shap.png",
+                        m.training_results.prediction_time,
+                        multi_clock=multi_clock,
+                    ),
+                    suptitle=_classifier_diagnostics_suptitle(
+                        target,
+                        "SHAP summary",
+                        eval_split=eval_split,
+                        prediction_time=m.training_results.prediction_time,
+                    ),
+                    return_figure=False,
+                    label_col=label_col,
+                    show=False,
+                )
+                plt.close("all")
 
     base_name = _classifier_base_name(block)
     for m in models:
         _require_classifier_eval_artifacts(m)
-        collector.add_row(
-            _classifier_diagnostics_scalar_row(target, m, base_name=base_name)
-        )
+        row = _classifier_diagnostics_scalar_row(target, m, base_name=base_name)
+        if chart_mode == "none":
+            row["charts_generated"] = False
+            row["skip_reason"] = SKIP_CHARTS_DISABLED
+        collector.add_row(row)
 
 
 def evaluate_classifier_probability_quality(
@@ -780,6 +793,7 @@ def evaluate_classifier_probability_quality(
     *,
     classifiers_dir: Path,
     collector: ScalarsCollector,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> None:
     """Plot discrimination, MADCAP, and calibration on all visits; emit one scalar row.
 
@@ -801,8 +815,9 @@ def evaluate_classifier_probability_quality(
     ``discrimination.png``, ``madcap.png``, ``madcap_by_age.png`` (or per-clock
     variants when several models are registered), and ``calibration.png``. Skips
     quietly when no classifier block exists. Headline metrics are recorded under
-    ``classifier_model_diagnostics``.
+    ``classifier_model_diagnostics``. Charts are skipped when ``charts="none"``.
     """
+    chart_mode = normalize_chart_mode(charts)
     block = inputs.classifier_by_flow.get(target.flow_name)
     if not block:
         return
@@ -818,80 +833,86 @@ def evaluate_classifier_probability_quality(
         return
 
     eval_split = inputs.eval_split
+    wrote_charts = False
 
-    plot_estimated_probabilities(
-        models,
-        visits,
-        media_file_path=classifiers_dir,
-        file_name="discrimination.png",
-        suptitle=_classifier_quality_suptitle(
-            target, "discrimination", eval_split=eval_split
-        ),
-        return_figure=False,
-        label_col=label_col,
-        show=False,
-    )
-    plt.close("all")
-    plot_madcap(
-        models,
-        visits,
-        media_file_path=classifiers_dir,
-        file_name="madcap.png",
-        suptitle=_classifier_quality_suptitle(target, "MADCAP", eval_split=eval_split),
-        return_figure=False,
-        label_col=label_col,
-        show=False,
-    )
-    plt.close("all")
-    multi_clock = len(models) > 1
-    for m in models:
-        plot_madcap_by_group(
-            [m],
+    if chart_mode != "none":
+        wrote_charts = True
+        plot_estimated_probabilities(
+            models,
             visits,
-            grouping_var="age_group",
-            grouping_var_name="Age group",
             media_file_path=classifiers_dir,
-            file_name=_disambiguate_classifier_plot_filename(
-                "madcap_by_age.png",
-                m.training_results.prediction_time,
-                multi_clock=multi_clock,
+            file_name="discrimination.png",
+            suptitle=_classifier_quality_suptitle(
+                target, "discrimination", eval_split=eval_split
             ),
-            suptitle=_classifier_diagnostics_suptitle(
-                target,
-                "MADCAP by age group",
-                eval_split=eval_split,
-                prediction_time=m.training_results.prediction_time,
-            ),
-            plot_difference=False,
             return_figure=False,
             label_col=label_col,
             show=False,
         )
-    plt.close("all")
-    plot_calibration(
-        models,
-        visits,
-        media_file_path=classifiers_dir,
-        file_name="calibration.png",
-        suptitle=_classifier_quality_suptitle(
-            target, "calibration", eval_split=eval_split
-        ),
-        return_figure=False,
-        label_col=label_col,
-        show=False,
-    )
-    plt.close("all")
+        plt.close("all")
+        plot_madcap(
+            models,
+            visits,
+            media_file_path=classifiers_dir,
+            file_name="madcap.png",
+            suptitle=_classifier_quality_suptitle(
+                target, "MADCAP", eval_split=eval_split
+            ),
+            return_figure=False,
+            label_col=label_col,
+            show=False,
+        )
+        plt.close("all")
+        multi_clock = len(models) > 1
+        for m in models:
+            plot_madcap_by_group(
+                [m],
+                visits,
+                grouping_var="age_group",
+                grouping_var_name="Age group",
+                media_file_path=classifiers_dir,
+                file_name=_disambiguate_classifier_plot_filename(
+                    "madcap_by_age.png",
+                    m.training_results.prediction_time,
+                    multi_clock=multi_clock,
+                ),
+                suptitle=_classifier_diagnostics_suptitle(
+                    target,
+                    "MADCAP by age group",
+                    eval_split=eval_split,
+                    prediction_time=m.training_results.prediction_time,
+                ),
+                plot_difference=False,
+                return_figure=False,
+                label_col=label_col,
+                show=False,
+            )
+        plt.close("all")
+        plot_calibration(
+            models,
+            visits,
+            media_file_path=classifiers_dir,
+            file_name="calibration.png",
+            suptitle=_classifier_quality_suptitle(
+                target, "calibration", eval_split=eval_split
+            ),
+            return_figure=False,
+            label_col=label_col,
+            show=False,
+        )
+        plt.close("all")
 
-    collector.add_row(
-        {
-            **scalar_target_fields(target),
-            "service": SERVICE_SENTINEL_ALL,
-            "component": target.component,
-            "prediction_time": None,
-            "model_name": "",
-            "charts_generated": True,
-        }
-    )
+    row: Dict[str, Any] = {
+        **scalar_target_fields(target),
+        "service": SERVICE_SENTINEL_ALL,
+        "component": target.component,
+        "prediction_time": None,
+        "model_name": "",
+        "charts_generated": wrote_charts,
+    }
+    if not wrote_charts:
+        row["skip_reason"] = SKIP_CHARTS_DISABLED
+    collector.add_row(row)
 
 
 def _benchmark_p_bar_by_prediction_time(
@@ -924,6 +945,7 @@ def evaluate_distribution(
     *,
     distributions_dir: Path,
     collector: ScalarsCollector,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> None:
     """Plot EPUDD and rPIT+CvM calibration per active service and prediction time.
 
@@ -938,17 +960,21 @@ def evaluate_distribution(
     collector : ScalarsCollector
         Receives rows per service and prediction time; merges a
         `merge_service_summary_slice` aggregate for the slice.
+    charts : {``none``, ``flagged``, ``all``}, optional
+        Chart emission mode (default ``flagged``).
 
     Notes
     -----
     Inactive services skip evaluation (`skip_reason: inactive_service`).
-    Active services with fewer than ``MIN_DISTRIBUTION_SNAPSHOTS`` snapshot
-    leaves per clock skip EPUDD and calibration
+    rPIT scalars require at least ``MIN_DISTRIBUTION_SNAPSHOTS`` leaves.
+    Chart panels require Gate A (``CHART_GATE_A_MIN_OBSERVATIONS``, ~30);
+    thinner clocks keep scalars when computable but omit panels
     (`skip_reason: insufficient_observations`). Binomial benchmark scalars are
     emitted only when ``observation_mode`` supports a benchmark cohort and
     ``add_distribution_benchmark_cohort`` registered the matching eval-split
     frame (not for yet-to-arrive ``arrived_in_window`` modes).
     """
+    chart_mode = normalize_chart_mode(charts)
     block = inputs.distribution_by_flow.get(target.flow_name)
     if not block:
         return
@@ -1011,7 +1037,7 @@ def evaluate_distribution(
                         "prediction_time": [h, mi],
                         "model_name": model_name,
                         "charts_generated": False,
-                        "skip_reason": "inactive_service",
+                        "skip_reason": SKIP_INACTIVE_SERVICE,
                         "n_snapshots": n_snapshots_inactive,
                         "reliable": False,
                     }
@@ -1022,36 +1048,17 @@ def evaluate_distribution(
         prob_all = _build_prob_dist_dict_all_for_service(
             per_date, model_name, inputs.prediction_times
         )
-        epudd_times = [
-            pt
-            for pt in inputs.prediction_times
-            if len(prob_all.get(get_model_key(model_name, pt)) or {})
-            >= MIN_DISTRIBUTION_SNAPSHOTS
-        ]
-        svc_dir = distributions_dir / target.flow_name / _safe_fs_segment(str(service))
-        svc_dir.mkdir(parents=True, exist_ok=True)
-        if epudd_times:
-            fig = plot_epudd(
-                epudd_times,
-                prob_all,
-                model_name=model_name,
-                return_figure=True,
-                media_file_path=svc_dir,
-                file_name=f"{target.component}.png",
-                suptitle=_distribution_comparison_suptitle(
-                    target, str(service), eval_split=inputs.eval_split
-                ),
-            )
-            if fig is not None:
-                plt.close(fig)
-            else:
-                plt.close("all")
 
+        # Build per-clock scalar rows first; decide the panelled figure after.
+        pending_rows: List[Dict[str, Any]] = []
+        panel_sample_ok: List[bool] = []
         for pt in inputs.prediction_times:
             h, mi = pt
             mk = get_model_key(model_name, pt)
             series_dict = prob_all.get(mk) or {}
             n_snap = len(series_dict)
+            sample_ok = sample_ok_for_chart(n_snap)
+            panel_sample_ok.append(sample_ok)
             base_row: Dict[str, Any] = {
                 **scalar_target_fields(target),
                 "service": str(service),
@@ -1061,12 +1068,12 @@ def evaluate_distribution(
                 "n_snapshots": n_snap,
             }
             if n_snap < MIN_DISTRIBUTION_SNAPSHOTS:
-                collector.add_row(
+                pending_rows.append(
                     {
                         **base_row,
-                        "charts_generated": False,
-                        "skip_reason": "insufficient_observations",
                         "reliable": False,
+                        "chart_flagged": False,
+                        "_sample_ok": False,
                     }
                 )
                 continue
@@ -1074,8 +1081,8 @@ def evaluate_distribution(
             pf_result = rpit_cvm_calibration_score(series_dict)
             row: Dict[str, Any] = {
                 **base_row,
-                "charts_generated": True,
-                "reliable": True,
+                "reliable": sample_ok,
+                "_sample_ok": sample_ok,
             }
             if pf_result is not None:
                 row.update(rpit_cvm_result_to_scalar_fields(pf_result, seed=None))
@@ -1128,6 +1135,55 @@ def evaluate_distribution(
                     }
                 )
 
+            row["chart_flagged"] = distribution_chart_flagged(row)
+            pending_rows.append(row)
+
+        panel_flagged = [
+            bool(r.get("chart_flagged")) and bool(r.get("_sample_ok"))
+            for r in pending_rows
+        ]
+        # Align panel_sample_ok with pending_rows order (one per prediction_time).
+        assert len(panel_sample_ok) == len(pending_rows)
+        write_figure = decide_panelled_figure(
+            chart_mode,
+            panel_sample_ok=panel_sample_ok,
+            panel_flagged=panel_flagged,
+        )
+        epudd_times = [
+            pt
+            for pt, ok in zip(inputs.prediction_times, panel_sample_ok)
+            if ok and write_figure
+        ]
+        if epudd_times:
+            svc_dir = (
+                distributions_dir / target.flow_name / _safe_fs_segment(str(service))
+            )
+            svc_dir.mkdir(parents=True, exist_ok=True)
+            fig = plot_epudd(
+                epudd_times,
+                prob_all,
+                model_name=model_name,
+                return_figure=True,
+                media_file_path=svc_dir,
+                file_name=f"{target.component}.png",
+                suptitle=_distribution_comparison_suptitle(
+                    target, str(service), eval_split=inputs.eval_split
+                ),
+            )
+            if fig is not None:
+                plt.close(fig)
+            else:
+                plt.close("all")
+
+        for row in pending_rows:
+            sample_ok = bool(row.pop("_sample_ok", False))
+            row.update(
+                panelled_clock_chart_fields(
+                    chart_mode,
+                    sample_ok=sample_ok,
+                    write_figure=write_figure,
+                )
+            )
             collector.add_row(row)
 
     collector.merge_service_summary_slice(
@@ -1150,8 +1206,9 @@ def evaluate_arrival_deltas(
     *,
     arrivals_dir: Path,
     collector: ScalarsCollector,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> None:
-    """Plot observed-vs-expected arrival deltas per service and prediction time.
+    """Plot observed-vs-expected arrival deltas per service (clocks as panels).
 
     Parameters
     ----------
@@ -1164,13 +1221,18 @@ def evaluate_arrival_deltas(
     collector : ScalarsCollector
         Receives rows per service and prediction time; merges a service summary
         slice for the handler.
+    charts : {``none``, ``flagged``, ``all``}, optional
+        Chart emission mode (default ``flagged``). Arrival figures are not
+        flagged in v1 — they emit only under ``charts="all"`` (still Gate A/B).
 
     Notes
     -----
     Optional per-service predictors and filter keys are taken from the arrival
-    block. Inactive services (no arrivals on snapshot dates) skip plots. Uses
+    block. Inactive services (no arrivals on snapshot dates) skip plots. Writes
+    one PNG per service that passes Gate A when ``charts="all"``. Uses
     `patientflow.viz.observed_against_expected.plot_arrival_deltas`.
     """
+    chart_mode = normalize_chart_mode(charts)
     block = inputs.arrival_by_flow.get(target.flow_name)
     if not block:
         return
@@ -1181,6 +1243,8 @@ def evaluate_arrival_deltas(
     filter_keys = block.get("filter_keys_by_service") or {}
     strict_map = block.get("strict_prediction_date_by_service") or {}
     yta_iv = block.get("yta_time_interval", timedelta(minutes=15))
+    n_histogram_days = len(snap_dates)
+    sample_ok = sample_ok_for_chart(n_histogram_days)
 
     inactive_names: List[str] = []
     active = 0
@@ -1198,29 +1262,37 @@ def evaluate_arrival_deltas(
                         "prediction_time": [h, mi],
                         "model_name": "",
                         "charts_generated": False,
-                        "skip_reason": "inactive_service",
+                        "skip_reason": SKIP_INACTIVE_SERVICE,
+                        "n_histogram_days": n_histogram_days,
                         "reliable": False,
+                        "chart_flagged": False,
                     }
                 )
             continue
 
         active += 1
-        pred = predictors.get(svc)
-        fk = filter_keys.get(svc)
-        strict = bool(strict_map.get(svc, False))
-        for pt in inputs.prediction_times:
-            h, mi = pt
+        # Arrivals: no Gate C flags in v1 → never write under charts="flagged".
+        panel_sample_ok = [sample_ok] * len(inputs.prediction_times)
+        panel_flagged = [False] * len(inputs.prediction_times)
+        write_figure = decide_panelled_figure(
+            chart_mode,
+            panel_sample_ok=panel_sample_ok,
+            panel_flagged=panel_flagged,
+        )
+        if write_figure:
+            pred = predictors.get(svc)
+            fk = filter_keys.get(svc)
+            strict = bool(strict_map.get(svc, False))
             out_dir = arrivals_dir / target.flow_name / _safe_fs_segment(str(svc))
             out_dir.mkdir(parents=True, exist_ok=True)
-            fname = f"{target.component}_{h:02d}{mi:02d}.png"
             plot_arrival_deltas(
                 df,
-                pt,
+                list(inputs.prediction_times),
                 list(snap_dates),
-                prediction_dict[pt],
+                prediction_dict,
                 yta_time_interval=yta_iv,
                 media_file_path=out_dir,
-                file_name=fname,
+                file_name=f"{target.component}.png",
                 return_figure=False,
                 arrival_rate_model=pred,
                 filter_key=fk,
@@ -1228,11 +1300,18 @@ def evaluate_arrival_deltas(
                 suptitle=_arrival_delta_suptitle(
                     target,
                     str(svc),
-                    (h, mi),
                     eval_split=inputs.eval_split,
                 ),
             )
             plt.close("all")
+
+        chart_fields = panelled_clock_chart_fields(
+            chart_mode,
+            sample_ok=sample_ok,
+            write_figure=write_figure,
+        )
+        for pt in inputs.prediction_times:
+            h, mi = pt
             collector.add_row(
                 {
                     **scalar_target_fields(target),
@@ -1240,8 +1319,10 @@ def evaluate_arrival_deltas(
                     "component": target.component,
                     "prediction_time": [h, mi],
                     "model_name": "",
-                    "charts_generated": True,
-                    "reliable": True,
+                    "n_histogram_days": n_histogram_days,
+                    "reliable": sample_ok,
+                    "chart_flagged": False,
+                    **chart_fields,
                 }
             )
 
@@ -1265,6 +1346,7 @@ def evaluate_survival_curve(
     *,
     survival_dir: Path,
     collector: ScalarsCollector,
+    charts: ChartMode | str = DEFAULT_CHART_MODE,
 ) -> None:
     """Plot train vs test survival curves and emit one aggregate scalar row.
 
@@ -1278,12 +1360,15 @@ def evaluate_survival_curve(
         Directory for the survival PNG.
     collector : ScalarsCollector
         Receives a single row with `service: _all_` and `prediction_time: null`.
+    charts : {``none``, ``flagged``, ``all``}, optional
+        Chart emission mode. Survival plots when ``charts != "none"``.
 
     Notes
     -----
     Skips when `inputs.survival` is unset. Uses
     `patientflow.viz.survival_curve.plot_admission_time_survival_curve`.
     """
+    chart_mode = normalize_chart_mode(charts)
     if not inputs.survival:
         return
     s = inputs.survival
@@ -1291,27 +1376,31 @@ def evaluate_survival_curve(
     test_df: pd.DataFrame = s["test_df"]
     survival_dir.mkdir(parents=True, exist_ok=True)
     labels = s.get("labels") or ("train", "test")
-    plot_admission_time_survival_curve(
-        [train_df, test_df],
-        start_time_col=s.get("start_time_col", "arrival_datetime"),
-        end_time_col=s.get("end_time_col", "departure_datetime"),
-        labels=list(labels),
-        media_file_path=survival_dir,
-        file_name=f"{target.component}.png",
-        return_figure=False,
-    )
-    plt.close("all")
-    collector.add_row(
-        {
-            **scalar_target_fields(target),
-            "service": SERVICE_SENTINEL_ALL,
-            "component": target.component,
-            "prediction_time": None,
-            "model_name": "",
-            "charts_generated": True,
-            "reliable": True,
-        }
-    )
+    wrote_charts = False
+    if chart_mode != "none":
+        wrote_charts = True
+        plot_admission_time_survival_curve(
+            [train_df, test_df],
+            start_time_col=s.get("start_time_col", "arrival_datetime"),
+            end_time_col=s.get("end_time_col", "departure_datetime"),
+            labels=list(labels),
+            media_file_path=survival_dir,
+            file_name=f"{target.component}.png",
+            return_figure=False,
+        )
+        plt.close("all")
+    row: Dict[str, Any] = {
+        **scalar_target_fields(target),
+        "service": SERVICE_SENTINEL_ALL,
+        "component": target.component,
+        "prediction_time": None,
+        "model_name": "",
+        "charts_generated": wrote_charts,
+        "reliable": True,
+    }
+    if not wrote_charts:
+        row["skip_reason"] = SKIP_CHARTS_DISABLED
+    collector.add_row(row)
 
 
 def _observed_destination_counts(

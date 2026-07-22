@@ -497,6 +497,7 @@ out = run_evaluation(
     Path("eval-output"),
     inputs,
     run_name=run_name,
+    charts="all",
 )
 ```
 

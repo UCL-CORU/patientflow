@@ -261,7 +261,7 @@ Rather than constructing those rows by hand, I call `standard_ed_targets()` from
 | Classifier diagnostics         | `ed_admissions_cls`    | `classifier_model_diagnostics`   | Headline metrics and SHAP plots per prediction time        |
 | Classifier probability quality | `ed_admissions_cls`    | `classifier_probability_quality` | Discrimination, MADCAP, and calibration on the visit frame |
 | ED-current bed demand          | `ed_current_beds`      | `distribution`                   | EPUDD plots and rPIT+CvM scalars (with benchmarks)         |
-| YTA arrival deltas             | `ed_yta_arrival_rates` | `arrival_deltas`                 | Cumulative arrival-timing plots per service                |
+| YTA arrival deltas             | `ed_yta_arrival_rates` | `arrival_deltas`                 | Arrival-rate delta plots per service                       |
 
 **Wiring pattern:**
 
@@ -364,7 +364,7 @@ for t in evaluation_targets:
       ed_admissions_cls/classifier_model_diagnostics: classifier_model_diagnostics (observation_mode=admitted_at_some_point)
       ed_admissions_cls/classifier_discrimination_madcap_calibration: classifier_probability_quality (observation_mode=admitted_at_some_point)
       ed_current_beds/bed_demand_ed_current: distribution (observation_mode=admitted_at_some_point)
-      ed_yta_arrival_rates/arrival_delta_cumulative: arrival_deltas (observation_mode=arrived_in_window)
+      ed_yta_arrival_rates/arrival_delta: arrival_deltas (observation_mode=arrived_in_window)
 
 ## 5. Run evaluation
 
@@ -380,6 +380,9 @@ out = run_evaluation(
     Path("eval-output"),
     inputs,
     run_name=run_name,
+    # Small public-data demo: plot all Gate A/B passers. Large multi-service
+    # runs (e.g. UCLH) should use the default charts="flagged".
+    charts="all",
     training_metadata={
         "start_training_set": str(start_training_set),
         "start_validation_set": str(start_validation_set),
@@ -410,9 +413,9 @@ out
 
 
 
-    {'run_dir': PosixPath('eval-output/notebook4d_20260708_222020'),
-     'scalars_path': PosixPath('eval-output/notebook4d_20260708_222020/scalars.json'),
-     'manifest_path': PosixPath('eval-output/notebook4d_20260708_222020/evaluation_run.yaml'),
+    {'run_dir': PosixPath('eval-output/notebook4d_20260714_155341'),
+     'scalars_path': PosixPath('eval-output/notebook4d_20260714_155341/scalars.json'),
+     'manifest_path': PosixPath('eval-output/notebook4d_20260714_155341/evaluation_run.yaml'),
      'n_targets': 4}
 
 ## 6. Review outputs
@@ -466,8 +469,8 @@ display(bed_demand_rows[base_cols].head(20))
 
 ```
 
-    Run directory: eval-output/notebook4d_20260708_222020
-    Scalars path: eval-output/notebook4d_20260708_222020/scalars.json
+    Run directory: eval-output/notebook4d_20260714_155341
+    Scalars path: eval-output/notebook4d_20260714_155341/scalars.json
     Scalar rows: 46
 
 <div>
@@ -503,180 +506,180 @@ display(bed_demand_rows[base_cols].head(20))
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[6, 0]</td>
-      <td>0.776652</td>
-      <td>2.487952</td>
-      <td>1.711300</td>
+      <td>0.772880</td>
+      <td>2.483267</td>
+      <td>1.710387</td>
     </tr>
     <tr>
       <th>7</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[9, 30]</td>
-      <td>1.129268</td>
-      <td>3.677946</td>
-      <td>2.548677</td>
+      <td>1.119914</td>
+      <td>3.680938</td>
+      <td>2.561024</td>
     </tr>
     <tr>
       <th>8</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[12, 0]</td>
-      <td>1.775317</td>
-      <td>5.695391</td>
-      <td>3.920074</td>
+      <td>1.778383</td>
+      <td>5.699299</td>
+      <td>3.920916</td>
     </tr>
     <tr>
       <th>9</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[15, 30]</td>
-      <td>1.861432</td>
-      <td>6.045136</td>
-      <td>4.183704</td>
+      <td>1.859699</td>
+      <td>6.059945</td>
+      <td>4.200246</td>
     </tr>
     <tr>
       <th>10</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[22, 0]</td>
-      <td>2.600147</td>
-      <td>5.681506</td>
-      <td>3.081358</td>
+      <td>2.605439</td>
+      <td>5.684329</td>
+      <td>3.078890</td>
     </tr>
     <tr>
       <th>11</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[6, 0]</td>
-      <td>0.049345</td>
-      <td>8.930970</td>
-      <td>8.881625</td>
+      <td>0.047776</td>
+      <td>8.918528</td>
+      <td>8.870752</td>
     </tr>
     <tr>
       <th>12</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[9, 30]</td>
-      <td>0.207216</td>
-      <td>8.009635</td>
-      <td>7.802419</td>
+      <td>0.198117</td>
+      <td>7.998894</td>
+      <td>7.800777</td>
     </tr>
     <tr>
       <th>13</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[12, 0]</td>
-      <td>0.407019</td>
-      <td>9.246605</td>
-      <td>8.839586</td>
+      <td>0.393696</td>
+      <td>9.246690</td>
+      <td>8.852994</td>
     </tr>
     <tr>
       <th>14</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[15, 30]</td>
-      <td>0.684871</td>
-      <td>9.758832</td>
-      <td>9.073961</td>
+      <td>0.687443</td>
+      <td>9.758808</td>
+      <td>9.071365</td>
     </tr>
     <tr>
       <th>15</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[22, 0]</td>
-      <td>0.580010</td>
-      <td>9.712045</td>
-      <td>9.132035</td>
+      <td>0.587846</td>
+      <td>9.709706</td>
+      <td>9.121860</td>
     </tr>
     <tr>
       <th>16</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[6, 0]</td>
-      <td>0.246221</td>
-      <td>9.433354</td>
-      <td>9.187133</td>
+      <td>0.244585</td>
+      <td>9.432731</td>
+      <td>9.188146</td>
     </tr>
     <tr>
       <th>17</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[9, 30]</td>
-      <td>0.150397</td>
-      <td>9.587675</td>
-      <td>9.437277</td>
+      <td>0.145942</td>
+      <td>9.589460</td>
+      <td>9.443517</td>
     </tr>
     <tr>
       <th>18</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[12, 0]</td>
-      <td>0.105349</td>
-      <td>9.831935</td>
-      <td>9.726585</td>
+      <td>0.105440</td>
+      <td>9.834439</td>
+      <td>9.728999</td>
     </tr>
     <tr>
       <th>19</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[15, 30]</td>
-      <td>0.174725</td>
-      <td>9.985522</td>
-      <td>9.810797</td>
+      <td>0.181714</td>
+      <td>9.985960</td>
+      <td>9.804246</td>
     </tr>
     <tr>
       <th>20</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[22, 0]</td>
-      <td>0.087599</td>
-      <td>9.726889</td>
-      <td>9.639290</td>
+      <td>0.089188</td>
+      <td>9.727871</td>
+      <td>9.638683</td>
     </tr>
     <tr>
       <th>21</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[6, 0]</td>
-      <td>0.120602</td>
-      <td>9.665625</td>
-      <td>9.545023</td>
+      <td>0.122925</td>
+      <td>9.672528</td>
+      <td>9.549603</td>
     </tr>
     <tr>
       <th>22</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[9, 30]</td>
-      <td>0.166976</td>
-      <td>9.856163</td>
-      <td>9.689187</td>
+      <td>0.171916</td>
+      <td>9.855905</td>
+      <td>9.683990</td>
     </tr>
     <tr>
       <th>23</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[12, 0]</td>
-      <td>0.989540</td>
-      <td>9.855995</td>
-      <td>8.866456</td>
+      <td>0.996825</td>
+      <td>9.855987</td>
+      <td>8.859163</td>
     </tr>
     <tr>
       <th>24</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[15, 30]</td>
-      <td>1.151243</td>
-      <td>9.994330</td>
-      <td>8.843088</td>
+      <td>1.154541</td>
+      <td>9.994362</td>
+      <td>8.839821</td>
     </tr>
     <tr>
       <th>25</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[22, 0]</td>
-      <td>0.288980</td>
-      <td>9.951598</td>
-      <td>9.662617</td>
+      <td>0.290306</td>
+      <td>9.951985</td>
+      <td>9.661679</td>
     </tr>
   </tbody>
 </table>
