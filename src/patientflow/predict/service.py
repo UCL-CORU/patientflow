@@ -879,6 +879,7 @@ def _process_inpatients_for_specialty_by_admission_type(
     inpatient_snapshots: pd.DataFrame,
     prob_departure_series: pd.Series,
     admission_type: str,
+    service_col: str = "current_subspecialty",
 ) -> Dict[str, Any]:
     """Process inpatients for a specific specialty and admission type.
 
@@ -892,6 +893,8 @@ def _process_inpatients_for_specialty_by_admission_type(
         Series containing departure probabilities for the admission type
     admission_type : str
         The admission type to process ("elective" or "emergency")
+    service_col : str, default='current_subspecialty'
+        Column naming the patient's current service unit.
 
     Returns
     -------
@@ -899,7 +902,7 @@ def _process_inpatients_for_specialty_by_admission_type(
         Dictionary containing processed inpatient data for the specialty and admission type
     """
     # Process inpatients for the specific admission type (no weighting required)
-    admission_type_mask = (inpatient_snapshots["current_subspecialty"] == spec) & (
+    admission_type_mask = (inpatient_snapshots[service_col] == spec) & (
         inpatient_snapshots["admission_type"] == admission_type
     )
     admission_type_indices = inpatient_snapshots[admission_type_mask].index
@@ -1043,6 +1046,7 @@ def _build_legacy_flows(
     y2: Optional[float],
     base_probs: Dict[str, Any],
     prediction_date: Optional[date] = None,
+    inpatient_service_col: str = "current_subspecialty",
 ) -> Dict[str, Dict[str, Any]]:
     """Build flows for all specialties using processing logic.
 
@@ -1084,10 +1088,18 @@ def _build_legacy_flows(
         # Process inpatients
         if inpatient_snapshots is not None:
             elective_data = _process_inpatients_for_specialty_by_admission_type(
-                spec, inpatient_snapshots, prob_departure_after_elective, "elective"
+                spec,
+                inpatient_snapshots,
+                prob_departure_after_elective,
+                "elective",
+                service_col=inpatient_service_col,
             )
             emergency_data = _process_inpatients_for_specialty_by_admission_type(
-                spec, inpatient_snapshots, prob_departure_after_emergency, "emergency"
+                spec,
+                inpatient_snapshots,
+                prob_departure_after_emergency,
+                "emergency",
+                service_col=inpatient_service_col,
             )
         else:
             elective_data = {
@@ -1129,6 +1141,7 @@ def _finalise_service_data(
     inpatient_snapshots: Optional[pd.DataFrame] = None,
     prob_departure_after_elective: Optional[pd.DataFrame] = None,
     prob_departure_after_emergency: Optional[pd.DataFrame] = None,
+    inpatient_service_col: str = "current_subspecialty",
 ) -> Dict[str, ServicePredictionInputs]:
     """Add transfers and create final ServicePredictionInputs objects.
 
@@ -1151,6 +1164,7 @@ def _finalise_service_data(
             specialties,
             prob_departure_after_elective=prob_departure_after_elective,
             prob_departure_after_emergency=prob_departure_after_emergency,
+            source_col=inpatient_service_col,
         )
     else:
         # If no transfer model, assume 0 transfers
@@ -1225,6 +1239,7 @@ def build_service_data(
     cdf_cut_points: Optional[List[float]] = None,
     use_admission_in_window_prob: bool = True,
     prediction_date: Optional[date] = None,
+    inpatient_service_col: str = "current_subspecialty",
 ) -> Dict[str, ServicePredictionInputs]:
     """Build per-service inputs for downstream roll-up.
 
@@ -1281,6 +1296,10 @@ def build_service_data(
         weekday stratification (the default for incoming admission predictors).
         When omitted (default), behaviour matches previous releases: pooled
         profiles are used and legacy callers stay warning-free.
+    inpatient_service_col : str, default='current_subspecialty'
+        Column on *inpatient_snapshots* naming the patient's current service
+        unit. Used to filter departures by service and as the source column
+        for transfer routing.
 
     Returns
     -------
@@ -1359,6 +1378,7 @@ def build_service_data(
         y2,
         base_probs,
         prediction_date=prediction_date,
+        inpatient_service_col=inpatient_service_col,
     )
 
     return _finalise_service_data(
@@ -1369,4 +1389,5 @@ def build_service_data(
         inpatient_snapshots=base_probs["inpatient_snapshots"],
         prob_departure_after_elective=base_probs["prob_departure_after_elective"],
         prob_departure_after_emergency=base_probs["prob_departure_after_emergency"],
+        inpatient_service_col=inpatient_service_col,
     )

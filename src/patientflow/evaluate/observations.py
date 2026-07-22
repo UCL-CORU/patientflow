@@ -46,7 +46,7 @@ departed_in_window
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any, Mapping, Optional, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 import pandas as pd
 
@@ -135,6 +135,7 @@ def count_observed_admitted_at_some_point(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    specialty_col: str = "specialty",
     admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
 ) -> int:
     """Count ED snapshot rows with a true admission label for the prediction moment.
@@ -147,7 +148,7 @@ def count_observed_admitted_at_some_point(
     ----------
     ed_visits : pandas.DataFrame
         ED visits with columns *snapshot_date*, *prediction_time*,
-        *admission_label_col*, and *specialty* when *specialty* is not None.
+        *admission_label_col*, and *specialty_col* when *specialty* is not None.
     admission_label_col : str, optional
         Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.
     snapshot_date : datetime.date
@@ -158,6 +159,8 @@ def count_observed_admitted_at_some_point(
         Unused; retained for a uniform call signature across strategies.
     specialty : str, optional
         If given, restrict to this specialty value. Default is None (no filter).
+    specialty_col : str, default='specialty'
+        Column used when *specialty* is set.
 
     Returns
     -------
@@ -175,7 +178,7 @@ def count_observed_admitted_at_some_point(
         & (ed_visits[admission_label_col].astype(bool))
     )
     if specialty is not None:
-        mask = mask & (ed_visits["specialty"] == specialty)
+        mask = mask & (ed_visits[specialty_col] == specialty)
     return int(mask.sum())
 
 
@@ -186,6 +189,7 @@ def count_observed_admitted_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    specialty_col: str = "specialty",
     admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
     departure_datetime_col: str = "departure_datetime",
 ) -> int:
@@ -205,7 +209,7 @@ def count_observed_admitted_in_window(
     ----------
     ed_visits : pandas.DataFrame
         Must include *departure_datetime_col*, *snapshot_date*, *prediction_time*,
-        *admission_label_col*, and *specialty* if *specialty* is set.
+        *admission_label_col*, and *specialty_col* if *specialty* is set.
     admission_label_col : str, optional
         Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.
     snapshot_date : datetime.date
@@ -216,6 +220,8 @@ def count_observed_admitted_in_window(
         Upper bound added to the prediction moment for the inclusion window.
     specialty : str, optional
         If given, restrict to this specialty. Default is None (no filter).
+    specialty_col : str, default='specialty'
+        Column used when *specialty* is set.
     departure_datetime_col : str, optional
         Column for leave-ED (ward admission) time. Default is
         `departure_datetime`.
@@ -250,7 +256,7 @@ def count_observed_admitted_in_window(
         & (col <= moment + prediction_window)
     )
     if specialty is not None:
-        mask = mask & (ed_visits["specialty"] == specialty)
+        mask = mask & (ed_visits[specialty_col] == specialty)
     return int(mask.sum())
 
 
@@ -269,9 +275,10 @@ def count_observed_applies_specialty_filter(observation_mode: str) -> bool:
     """Whether ``count_observed`` should filter by the service name on a specialty column.
 
     ED current modes register the same ``ed_visits`` snapshot frame for every
-    service; the service key selects rows via ``specialty``. Arrival and inpatient
-    snapshot modes use per-service frames from ``add_distribution_observations``
-    (for example YTA ``is_child`` for paediatric); those cohorts are already scoped.
+    service; the service key selects rows via *specialty_col* (default
+    ``specialty``). Arrival and inpatient snapshot modes use per-service frames
+    from ``add_distribution_observations`` (for example YTA ``is_child`` for
+    paediatric); those cohorts are already scoped.
     """
     return observation_mode in _ED_CURRENT_ARRIVAL_OBSERVATION_MODES
 
@@ -293,6 +300,7 @@ def count_observed_departed_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    specialty_col: str = "current_subspecialty",
     outcome_column: str = DEFAULT_DEPARTURE_OUTCOME_COLUMN,
     admission_type: Optional[str] = None,
 ) -> int:
@@ -300,14 +308,13 @@ def count_observed_departed_in_window(
 
     Uses boolean *outcome_column* on inpatient snapshot rows at
     (*snapshot_date*, *prediction_time*). The label encodes whether the patient
-    left the current subspecialty within the prediction window.
+    left the current service unit within the prediction window.
 
     Parameters
     ----------
     inpatient_visits : pandas.DataFrame
         Inpatient snapshots with *snapshot_date*, *prediction_time*, and
-        *outcome_column*. Optional *current_subspecialty* or *specialty* when
-        *specialty* is set.
+        *outcome_column*. Optional *specialty_col* when *specialty* is set.
     snapshot_date : datetime.date
         Snapshot calendar date.
     prediction_time : tuple of (int, int)
@@ -315,8 +322,11 @@ def count_observed_departed_in_window(
     prediction_window : datetime.timedelta
         Unused; retained for a uniform call signature across strategies.
     specialty : str, optional
-        If given, filter by *current_subspecialty* or *specialty* when present.
+        If given, filter by *specialty_col* when that column is present.
         Default is None (no filter).
+    specialty_col : str, default='current_subspecialty'
+        Service-unit column used when *specialty* is set. Frames that store
+        the unit under another name (e.g. ``specialty``) should pass that name.
     outcome_column : str, optional
         Boolean column naming departure within the window on the snapshot
         cohort. Default is `left_subspecialty_in_window`.
@@ -344,10 +354,8 @@ def count_observed_departed_in_window(
         & (inpatient_visits["prediction_time"] == prediction_time)
         & (inpatient_visits[outcome_column].astype(bool))
     )
-    if specialty is not None and "current_subspecialty" in inpatient_visits.columns:
-        mask = mask & (inpatient_visits["current_subspecialty"] == specialty)
-    elif specialty is not None and "specialty" in inpatient_visits.columns:
-        mask = mask & (inpatient_visits["specialty"] == specialty)
+    if specialty is not None and specialty_col in inpatient_visits.columns:
+        mask = mask & (inpatient_visits[specialty_col] == specialty)
     if admission_type is not None:
         if "admission_type" not in inpatient_visits.columns:
             raise ValueError(
@@ -365,6 +373,7 @@ def count_observed_arrived_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    specialty_col: str = "specialty",
     arrival_datetime_col: str = "arrival_datetime",
 ) -> int:
     """Count arrivals with arrival time in `(moment, moment + window]`.
@@ -383,8 +392,10 @@ def count_observed_arrived_in_window(
     prediction_window : datetime.timedelta
         Upper bound added to the prediction moment.
     specialty : str, optional
-        If given and a *specialty* column exists, filter to that value.
+        If given and *specialty_col* exists, filter to that value.
         Default is None (no filter).
+    specialty_col : str, default='specialty'
+        Service-unit column used when *specialty* is set.
     arrival_datetime_col : str, optional
         Column name for arrival timestamp. Default is `arrival_datetime`.
 
@@ -407,8 +418,8 @@ def count_observed_arrived_in_window(
     col = inpatient_arrivals[arrival_datetime_col]
     moment = _align_tz(moment, col)
     mask = (col > moment) & (col <= moment + prediction_window)
-    if specialty is not None and "specialty" in inpatient_arrivals.columns:
-        mask = mask & (inpatient_arrivals["specialty"] == specialty)
+    if specialty is not None and specialty_col in inpatient_arrivals.columns:
+        mask = mask & (inpatient_arrivals[specialty_col] == specialty)
     return int(mask.sum())
 
 
@@ -419,6 +430,7 @@ def count_observed_arrived_and_admitted_in_window(
     prediction_window: timedelta,
     *,
     specialty: Optional[str] = None,
+    specialty_col: str = "specialty",
     arrival_datetime_col: str = "arrival_datetime",
     departure_datetime_col: str = "departure_datetime",
 ) -> int:
@@ -441,8 +453,10 @@ def count_observed_arrived_and_admitted_in_window(
     prediction_window : datetime.timedelta
         Upper bound added to the prediction moment for both windows.
     specialty : str, optional
-        If given and a *specialty* column exists, filter to that value.
+        If given and *specialty_col* exists, filter to that value.
         Default is None (no filter).
+    specialty_col : str, default='specialty'
+        Service-unit column used when *specialty* is set.
     arrival_datetime_col : str, optional
         Column name for arrival time. Default is `arrival_datetime`.
     departure_datetime_col : str, optional
@@ -478,8 +492,8 @@ def count_observed_arrived_and_admitted_in_window(
         & (dep > moment_dep)
         & (dep <= window_end_dep)
     )
-    if specialty is not None and "specialty" in inpatient_arrivals.columns:
-        mask = mask & (inpatient_arrivals["specialty"] == specialty)
+    if specialty is not None and specialty_col in inpatient_arrivals.columns:
+        mask = mask & (inpatient_arrivals[specialty_col] == specialty)
     return int(mask.sum())
 
 
@@ -536,6 +550,7 @@ def count_observed(
     inpatient_visits: Optional[pd.DataFrame] = None,
     inpatient_arrivals: Optional[pd.DataFrame] = None,
     specialty: Optional[str] = None,
+    specialty_col: Optional[str] = None,
     admission_label_col: str = DEFAULT_ADMISSION_LABEL_COL,
     outcome_column: str = DEFAULT_DEPARTURE_OUTCOME_COLUMN,
     admission_type: Optional[str] = None,
@@ -564,6 +579,10 @@ def count_observed(
     specialty : str, optional
         Passed through to the underlying counter when supported.
         Default is None (no filter).
+    specialty_col : str, optional
+        Service-unit column name passed to the underlying counter. When omitted,
+        each counter uses its own default (``specialty`` for ED/arrivals modes;
+        ``current_subspecialty`` for `departed_in_window`).
     departure_datetime_col : str, optional
         Passed to `count_observed_admitted_in_window` and
         `count_observed_arrived_and_admitted_in_window`.
@@ -611,6 +630,9 @@ def count_observed(
             f"Unknown observation_mode {observation_mode!r}; "
             f"expected one of {OBSERVATION_MODES}"
         )
+    specialty_kwargs: Dict[str, str] = (
+        {"specialty_col": specialty_col} if specialty_col is not None else {}
+    )
     if observation_mode == "admitted_at_some_point":
         if ed_visits is None:
             return 0
@@ -621,6 +643,7 @@ def count_observed(
             prediction_window,
             specialty=specialty,
             admission_label_col=admission_label_col,
+            **specialty_kwargs,
         )
     if observation_mode == "admitted_in_window":
         if ed_visits is None:
@@ -633,6 +656,7 @@ def count_observed(
             specialty=specialty,
             admission_label_col=admission_label_col,
             departure_datetime_col=departure_datetime_col,
+            **specialty_kwargs,
         )
     if observation_mode == "departed_in_window":
         if inpatient_visits is None:
@@ -645,6 +669,7 @@ def count_observed(
             specialty=specialty,
             outcome_column=outcome_column,
             admission_type=admission_type,
+            **specialty_kwargs,
         )
     if observation_mode == "arrived_in_window":
         if inpatient_arrivals is None:
@@ -656,6 +681,7 @@ def count_observed(
             prediction_window,
             specialty=specialty,
             arrival_datetime_col=arrival_datetime_col,
+            **specialty_kwargs,
         )
     if observation_mode == "arrived_and_admitted_in_window":
         if inpatient_arrivals is None:
@@ -668,5 +694,6 @@ def count_observed(
             specialty=specialty,
             arrival_datetime_col=arrival_datetime_col,
             departure_datetime_col=departure_datetime_col,
+            **specialty_kwargs,
         )
     raise RuntimeError("unreachable")  # pragma: no cover

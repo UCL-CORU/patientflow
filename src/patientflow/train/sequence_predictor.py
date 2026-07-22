@@ -19,7 +19,10 @@ from patientflow.predictors.sequence_to_outcome_predictor import (
 )
 
 
-def get_default_visits(admitted: DataFrame) -> DataFrame:
+def get_default_visits(
+    admitted: DataFrame,
+    specialty_col: str = "specialty",
+) -> DataFrame:
     """
     Filter a dataframe of patient visits to include only non-paediatric patients.
 
@@ -31,7 +34,9 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     ----------
     admitted : DataFrame
         A pandas DataFrame containing patient visit information. Must include either
-        'age_on_arrival' or 'age_group' columns, and a 'specialty' column.
+        'age_on_arrival' or 'age_group' columns, and *specialty_col*.
+    specialty_col : str, default='specialty'
+        Column naming the patient's specialty / service unit.
 
     Returns
     -------
@@ -63,7 +68,7 @@ def get_default_visits(admitted: DataFrame) -> DataFrame:
     # Filter out paediatric patients based on both age criteria and specialty
     filtered_admitted = admitted[
         admitted.apply(opposite_special_category_func, axis=1)
-        & (admitted["specialty"] != special_category_key)
+        & (admitted[specialty_col] != special_category_key)
     ]
 
     return filtered_admitted
@@ -76,6 +81,7 @@ def train_sequence_predictor(
     input_var: str,
     grouping_var: str,
     outcome_var: str,
+    specialty_col: str = "specialty",
 ) -> SequenceToOutcomePredictor:
     """
     Train a specialty prediction model.
@@ -94,6 +100,9 @@ def train_sequence_predictor(
         Column name for grouping sequence.
     outcome_var : str
         Column name for target variable.
+    specialty_col : str, default='specialty'
+        Column naming the patient's specialty / service unit. Used to drop rows
+        with a missing specialty and to exclude the special (paediatric) category.
 
     Returns
     -------
@@ -102,9 +111,9 @@ def train_sequence_predictor(
     """
     visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
     admitted = visits_single[
-        (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
+        (visits_single.is_admitted) & ~(visits_single[specialty_col].isnull())
     ]
-    filtered_admitted = get_default_visits(admitted)
+    filtered_admitted = get_default_visits(admitted, specialty_col=specialty_col)
 
     filtered_admitted.loc[:, input_var] = filtered_admitted[input_var].apply(
         lambda x: tuple(x) if x else ()
