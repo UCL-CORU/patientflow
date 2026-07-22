@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -32049,14 +32049,14 @@ body.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">admission_type_filter_for_distribution_component</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">admission_type_filter_for_distribution_component</span><span class="p">(</span>
     <span class="n">component</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``admission_type`` filter for departures distribution components.</span>
@@ -32074,7 +32074,7 @@ body.</p>
 
 
 <h4 id="patientflow.evaluate.observations.count_observed" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">ed_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inpatient_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inpatient_arrivals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span> <span class="n">outcome_column</span><span class="o">=</span><span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span> <span class="n">admission_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">ed_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inpatient_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inpatient_arrivals</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span> <span class="n">outcome_column</span><span class="o">=</span><span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span> <span class="n">admission_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -32219,6 +32219,24 @@ body.</p>
               <div class="doc-md-description">
                 <p>Passed through to the underlying counter when supported.
 Default is None (no filter).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Service-unit column name passed to the underlying counter. When omitted,
+each counter uses its own default (<code>specialty</code> for ED/arrivals modes;
+<code>current_subspecialty</code> for <code>departed_in_window</code>).</p>
               </div>
             </td>
             <td>
@@ -32380,21 +32398,7 @@ validate_observation_mode_for_component</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">529</span>
-<span class="normal">530</span>
-<span class="normal">531</span>
-<span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span>
-<span class="normal">540</span>
-<span class="normal">541</span>
-<span class="normal">542</span>
-<span class="normal">543</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">543</span>
 <span class="normal">544</span>
 <span class="normal">545</span>
 <span class="normal">546</span>
@@ -32523,7 +32527,34 @@ validate_observation_mode_for_component</p>
 <span class="normal">669</span>
 <span class="normal">670</span>
 <span class="normal">671</span>
-<span class="normal">672</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed</span><span class="p">(</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span>
+<span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed</span><span class="p">(</span>
     <span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
@@ -32533,6 +32564,7 @@ validate_observation_mode_for_component</p>
     <span class="n">inpatient_visits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">inpatient_arrivals</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">admission_label_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span>
     <span class="n">outcome_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span>
     <span class="n">admission_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -32561,6 +32593,10 @@ validate_observation_mode_for_component</p>
 <span class="sd">    specialty : str, optional</span>
 <span class="sd">        Passed through to the underlying counter when supported.</span>
 <span class="sd">        Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, optional</span>
+<span class="sd">        Service-unit column name passed to the underlying counter. When omitted,</span>
+<span class="sd">        each counter uses its own default (``specialty`` for ED/arrivals modes;</span>
+<span class="sd">        ``current_subspecialty`` for `departed_in_window`).</span>
 <span class="sd">    departure_datetime_col : str, optional</span>
 <span class="sd">        Passed to `count_observed_admitted_in_window` and</span>
 <span class="sd">        `count_observed_arrived_and_admitted_in_window`.</span>
@@ -32608,6 +32644,9 @@ validate_observation_mode_for_component</p>
             <span class="sa">f</span><span class="s2">&quot;Unknown observation_mode </span><span class="si">{</span><span class="n">observation_mode</span><span class="si">!r}</span><span class="s2">; &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;expected one of </span><span class="si">{</span><span class="n">OBSERVATION_MODES</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
+    <span class="n">specialty_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">{</span><span class="s2">&quot;specialty_col&quot;</span><span class="p">:</span> <span class="n">specialty_col</span><span class="p">}</span> <span class="k">if</span> <span class="n">specialty_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">observation_mode</span> <span class="o">==</span> <span class="s2">&quot;admitted_at_some_point&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ed_visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span>
@@ -32618,6 +32657,7 @@ validate_observation_mode_for_component</p>
             <span class="n">prediction_window</span><span class="p">,</span>
             <span class="n">specialty</span><span class="o">=</span><span class="n">specialty</span><span class="p">,</span>
             <span class="n">admission_label_col</span><span class="o">=</span><span class="n">admission_label_col</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">specialty_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">observation_mode</span> <span class="o">==</span> <span class="s2">&quot;admitted_in_window&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">ed_visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -32630,6 +32670,7 @@ validate_observation_mode_for_component</p>
             <span class="n">specialty</span><span class="o">=</span><span class="n">specialty</span><span class="p">,</span>
             <span class="n">admission_label_col</span><span class="o">=</span><span class="n">admission_label_col</span><span class="p">,</span>
             <span class="n">departure_datetime_col</span><span class="o">=</span><span class="n">departure_datetime_col</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">specialty_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">observation_mode</span> <span class="o">==</span> <span class="s2">&quot;departed_in_window&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">inpatient_visits</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -32642,6 +32683,7 @@ validate_observation_mode_for_component</p>
             <span class="n">specialty</span><span class="o">=</span><span class="n">specialty</span><span class="p">,</span>
             <span class="n">outcome_column</span><span class="o">=</span><span class="n">outcome_column</span><span class="p">,</span>
             <span class="n">admission_type</span><span class="o">=</span><span class="n">admission_type</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">specialty_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">observation_mode</span> <span class="o">==</span> <span class="s2">&quot;arrived_in_window&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">inpatient_arrivals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -32653,6 +32695,7 @@ validate_observation_mode_for_component</p>
             <span class="n">prediction_window</span><span class="p">,</span>
             <span class="n">specialty</span><span class="o">=</span><span class="n">specialty</span><span class="p">,</span>
             <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="n">arrival_datetime_col</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">specialty_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">if</span> <span class="n">observation_mode</span> <span class="o">==</span> <span class="s2">&quot;arrived_and_admitted_in_window&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">inpatient_arrivals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -32665,6 +32708,7 @@ validate_observation_mode_for_component</p>
             <span class="n">specialty</span><span class="o">=</span><span class="n">specialty</span><span class="p">,</span>
             <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="n">arrival_datetime_col</span><span class="p">,</span>
             <span class="n">departure_datetime_col</span><span class="o">=</span><span class="n">departure_datetime_col</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">specialty_kwargs</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;unreachable&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span>
 </code></pre></div></td></tr></table></div>
@@ -32677,7 +32721,7 @@ validate_observation_mode_for_component</p>
 
 
 <h4 id="patientflow.evaluate.observations.count_observed_admitted_at_some_point" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed_admitted_at_some_point</span><span class="p">(</span><span class="n">ed_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed_admitted_at_some_point</span><span class="p">(</span><span class="n">ed_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">)</span></code>
 
 </h4>
 
@@ -32711,7 +32755,7 @@ strategies but does not affect the count: the cohort is the snapshot at
             <td>
               <div class="doc-md-description">
                 <p>ED visits with columns <em>snapshot_date</em>, <em>prediction_time</em>,
-<em>admission_label_col</em>, and <em>specialty</em> when <em>specialty</em> is not None.</p>
+<em>admission_label_col</em>, and <em>specialty_col</em> when <em>specialty</em> is not None.</p>
               </div>
             </td>
             <td>
@@ -32798,6 +32842,22 @@ strategies but does not affect the count: the cohort is the snapshot at
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column used when <em>specialty</em> is set.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -32875,13 +32935,17 @@ strategies but does not affect the count: the cohort is the snapshot at
 <span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
-<span class="normal">179</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_admitted_at_some_point</span><span class="p">(</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_admitted_at_some_point</span><span class="p">(</span>
     <span class="n">ed_visits</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
     <span class="n">admission_label_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Count ED snapshot rows with a true admission label for the prediction moment.</span>
@@ -32894,7 +32958,7 @@ strategies but does not affect the count: the cohort is the snapshot at
 <span class="sd">    ----------</span>
 <span class="sd">    ed_visits : pandas.DataFrame</span>
 <span class="sd">        ED visits with columns *snapshot_date*, *prediction_time*,</span>
-<span class="sd">        *admission_label_col*, and *specialty* when *specialty* is not None.</span>
+<span class="sd">        *admission_label_col*, and *specialty_col* when *specialty* is not None.</span>
 <span class="sd">    admission_label_col : str, optional</span>
 <span class="sd">        Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.</span>
 <span class="sd">    snapshot_date : datetime.date</span>
@@ -32905,6 +32969,8 @@ strategies but does not affect the count: the cohort is the snapshot at
 <span class="sd">        Unused; retained for a uniform call signature across strategies.</span>
 <span class="sd">    specialty : str, optional</span>
 <span class="sd">        If given, restrict to this specialty value. Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Column used when *specialty* is set.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -32922,7 +32988,7 @@ strategies but does not affect the count: the cohort is the snapshot at
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">ed_visits</span><span class="p">[</span><span class="n">admission_label_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">))</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ed_visits</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ed_visits</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -32934,7 +33000,7 @@ strategies but does not affect the count: the cohort is the snapshot at
 
 
 <h4 id="patientflow.evaluate.observations.count_observed_admitted_in_window" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed_admitted_in_window</span><span class="p">(</span><span class="n">ed_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed_admitted_in_window</span><span class="p">(</span><span class="n">ed_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">,</span> <span class="n">admission_label_col</span><span class="o">=</span><span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -32973,7 +33039,7 @@ ends.</p>
             <td>
               <div class="doc-md-description">
                 <p>Must include <em>departure_datetime_col</em>, <em>snapshot_date</em>, <em>prediction_time</em>,
-<em>admission_label_col</em>, and <em>specialty</em> if <em>specialty</em> is set.</p>
+<em>admission_label_col</em>, and <em>specialty_col</em> if <em>specialty</em> is set.</p>
               </div>
             </td>
             <td>
@@ -33062,6 +33128,22 @@ ends.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column used when <em>specialty</em> is set.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                 <code>departure_datetime_col</code>
             </td>
             <td>
@@ -33130,10 +33212,7 @@ window.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">185</span>
 <span class="normal">186</span>
 <span class="normal">187</span>
 <span class="normal">188</span>
@@ -33202,13 +33281,20 @@ window.</p>
 <span class="normal">251</span>
 <span class="normal">252</span>
 <span class="normal">253</span>
-<span class="normal">254</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_admitted_in_window</span><span class="p">(</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_admitted_in_window</span><span class="p">(</span>
     <span class="n">ed_visits</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
     <span class="n">admission_label_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_ADMISSION_LABEL_COL</span><span class="p">,</span>
     <span class="n">departure_datetime_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;departure_datetime&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -33228,7 +33314,7 @@ window.</p>
 <span class="sd">    ----------</span>
 <span class="sd">    ed_visits : pandas.DataFrame</span>
 <span class="sd">        Must include *departure_datetime_col*, *snapshot_date*, *prediction_time*,</span>
-<span class="sd">        *admission_label_col*, and *specialty* if *specialty* is set.</span>
+<span class="sd">        *admission_label_col*, and *specialty_col* if *specialty* is set.</span>
 <span class="sd">    admission_label_col : str, optional</span>
 <span class="sd">        Boolean admission label column. Default is ``DEFAULT_ADMISSION_LABEL_COL``.</span>
 <span class="sd">    snapshot_date : datetime.date</span>
@@ -33239,6 +33325,8 @@ window.</p>
 <span class="sd">        Upper bound added to the prediction moment for the inclusion window.</span>
 <span class="sd">    specialty : str, optional</span>
 <span class="sd">        If given, restrict to this specialty. Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Column used when *specialty* is set.</span>
 <span class="sd">    departure_datetime_col : str, optional</span>
 <span class="sd">        Column for leave-ED (ward admission) time. Default is</span>
 <span class="sd">        `departure_datetime`.</span>
@@ -33273,7 +33361,7 @@ window.</p>
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">col</span> <span class="o">&lt;=</span> <span class="n">moment</span> <span class="o">+</span> <span class="n">prediction_window</span><span class="p">)</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ed_visits</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ed_visits</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -33294,28 +33382,31 @@ window.</p>
 
         <p>Whether <code>count_observed</code> should filter by the service name on a specialty column.</p>
 <p>ED current modes register the same <code>ed_visits</code> snapshot frame for every
-service; the service key selects rows via <code>specialty</code>. Arrival and inpatient
-snapshot modes use per-service frames from <code>add_distribution_observations</code>
-(for example YTA <code>is_child</code> for paediatric); those cohorts are already scoped.</p>
+service; the service key selects rows via <em>specialty_col</em> (default
+<code>specialty</code>). Arrival and inpatient snapshot modes use per-service frames
+from <code>add_distribution_observations</code> (for example YTA <code>is_child</code> for
+paediatric); those cohorts are already scoped.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">274</span>
 <span class="normal">275</span>
-<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_applies_specialty_filter</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_applies_specialty_filter</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Whether ``count_observed`` should filter by the service name on a specialty column.</span>
 
 <span class="sd">    ED current modes register the same ``ed_visits`` snapshot frame for every</span>
-<span class="sd">    service; the service key selects rows via ``specialty``. Arrival and inpatient</span>
-<span class="sd">    snapshot modes use per-service frames from ``add_distribution_observations``</span>
-<span class="sd">    (for example YTA ``is_child`` for paediatric); those cohorts are already scoped.</span>
+<span class="sd">    service; the service key selects rows via *specialty_col* (default</span>
+<span class="sd">    ``specialty``). Arrival and inpatient snapshot modes use per-service frames</span>
+<span class="sd">    from ``add_distribution_observations`` (for example YTA ``is_child`` for</span>
+<span class="sd">    paediatric); those cohorts are already scoped.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">observation_mode</span> <span class="ow">in</span> <span class="n">_ED_CURRENT_ARRIVAL_OBSERVATION_MODES</span>
 </code></pre></div></td></tr></table></div>
@@ -33328,7 +33419,7 @@ snapshot modes use per-service frames from <code>add_distribution_observations</
 
 
 <h4 id="patientflow.evaluate.observations.count_observed_arrived_and_admitted_in_window" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed_arrived_and_admitted_in_window</span><span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed_arrived_and_admitted_in_window</span><span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">,</span> <span class="n">departure_datetime_col</span><span class="o">=</span><span class="s1">&#39;departure_datetime&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -33427,12 +33518,28 @@ and <em>departure_datetime_col</em> (ward admission / leave-ED) both fall in
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If given and a <em>specialty</em> column exists, filter to that value.
+                <p>If given and <em>specialty_col</em> exists, filter to that value.
 Default is None (no filter).</p>
               </div>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Service-unit column used when <em>specialty</em> is set.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -33520,18 +33627,7 @@ Default is None (no filter).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span>
-<span class="normal">419</span>
-<span class="normal">420</span>
-<span class="normal">421</span>
-<span class="normal">422</span>
-<span class="normal">423</span>
-<span class="normal">424</span>
-<span class="normal">425</span>
-<span class="normal">426</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">426</span>
 <span class="normal">427</span>
 <span class="normal">428</span>
 <span class="normal">429</span>
@@ -33588,13 +33684,28 @@ Default is None (no filter).</p>
 <span class="normal">480</span>
 <span class="normal">481</span>
 <span class="normal">482</span>
-<span class="normal">483</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_arrived_and_admitted_in_window</span><span class="p">(</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_arrived_and_admitted_in_window</span><span class="p">(</span>
     <span class="n">inpatient_arrivals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
     <span class="n">arrival_datetime_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arrival_datetime&quot;</span><span class="p">,</span>
     <span class="n">departure_datetime_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;departure_datetime&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -33617,8 +33728,10 @@ Default is None (no filter).</p>
 <span class="sd">    prediction_window : datetime.timedelta</span>
 <span class="sd">        Upper bound added to the prediction moment for both windows.</span>
 <span class="sd">    specialty : str, optional</span>
-<span class="sd">        If given and a *specialty* column exists, filter to that value.</span>
+<span class="sd">        If given and *specialty_col* exists, filter to that value.</span>
 <span class="sd">        Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Service-unit column used when *specialty* is set.</span>
 <span class="sd">    arrival_datetime_col : str, optional</span>
 <span class="sd">        Column name for arrival time. Default is `arrival_datetime`.</span>
 <span class="sd">    departure_datetime_col : str, optional</span>
@@ -33654,8 +33767,8 @@ Default is None (no filter).</p>
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">dep</span> <span class="o">&gt;</span> <span class="n">moment_dep</span><span class="p">)</span>
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">dep</span> <span class="o">&lt;=</span> <span class="n">window_end_dep</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;specialty&quot;</span> <span class="ow">in</span> <span class="n">inpatient_arrivals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">specialty_col</span> <span class="ow">in</span> <span class="n">inpatient_arrivals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -33667,7 +33780,7 @@ Default is None (no filter).</p>
 
 
 <h4 id="patientflow.evaluate.observations.count_observed_arrived_in_window" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed_arrived_in_window</span><span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed_arrived_in_window</span><span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">,</span> <span class="n">arrival_datetime_col</span><span class="o">=</span><span class="s1">&#39;arrival_datetime&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -33763,12 +33876,28 @@ Default is None (no filter).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If given and a <em>specialty</em> column exists, filter to that value.
+                <p>If given and <em>specialty_col</em> exists, filter to that value.
 Default is None (no filter).</p>
               </div>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Service-unit column used when <em>specialty</em> is set.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -33839,15 +33968,7 @@ Default is None (no filter).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">361</span>
-<span class="normal">362</span>
-<span class="normal">363</span>
-<span class="normal">364</span>
-<span class="normal">365</span>
-<span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
-<span class="normal">369</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">369</span>
 <span class="normal">370</span>
 <span class="normal">371</span>
 <span class="normal">372</span>
@@ -33890,13 +34011,25 @@ Default is None (no filter).</p>
 <span class="normal">409</span>
 <span class="normal">410</span>
 <span class="normal">411</span>
-<span class="normal">412</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_arrived_in_window</span><span class="p">(</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_arrived_in_window</span><span class="p">(</span>
     <span class="n">inpatient_arrivals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
     <span class="n">arrival_datetime_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;arrival_datetime&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Count arrivals with arrival time in `(moment, moment + window]`.</span>
@@ -33915,8 +34048,10 @@ Default is None (no filter).</p>
 <span class="sd">    prediction_window : datetime.timedelta</span>
 <span class="sd">        Upper bound added to the prediction moment.</span>
 <span class="sd">    specialty : str, optional</span>
-<span class="sd">        If given and a *specialty* column exists, filter to that value.</span>
+<span class="sd">        If given and *specialty_col* exists, filter to that value.</span>
 <span class="sd">        Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Service-unit column used when *specialty* is set.</span>
 <span class="sd">    arrival_datetime_col : str, optional</span>
 <span class="sd">        Column name for arrival timestamp. Default is `arrival_datetime`.</span>
 
@@ -33939,8 +34074,8 @@ Default is None (no filter).</p>
     <span class="n">col</span> <span class="o">=</span> <span class="n">inpatient_arrivals</span><span class="p">[</span><span class="n">arrival_datetime_col</span><span class="p">]</span>
     <span class="n">moment</span> <span class="o">=</span> <span class="n">_align_tz</span><span class="p">(</span><span class="n">moment</span><span class="p">,</span> <span class="n">col</span><span class="p">)</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">col</span> <span class="o">&gt;</span> <span class="n">moment</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">col</span> <span class="o">&lt;=</span> <span class="n">moment</span> <span class="o">+</span> <span class="n">prediction_window</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;specialty&quot;</span> <span class="ow">in</span> <span class="n">inpatient_arrivals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">specialty_col</span> <span class="ow">in</span> <span class="n">inpatient_arrivals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_arrivals</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -33952,7 +34087,7 @@ Default is None (no filter).</p>
 
 
 <h4 id="patientflow.evaluate.observations.count_observed_departed_in_window" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">count_observed_departed_in_window</span><span class="p">(</span><span class="n">inpatient_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outcome_column</span><span class="o">=</span><span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span> <span class="n">admission_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">count_observed_departed_in_window</span><span class="p">(</span><span class="n">inpatient_visits</span><span class="p">,</span> <span class="n">snapshot_date</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">specialty</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;current_subspecialty&#39;</span><span class="p">,</span> <span class="n">outcome_column</span><span class="o">=</span><span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span> <span class="n">admission_type</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -33962,7 +34097,7 @@ Default is None (no filter).</p>
         <p>Count inpatients with a true departure label on the snapshot cohort.</p>
 <p>Uses boolean <em>outcome_column</em> on inpatient snapshot rows at
 (<em>snapshot_date</em>, <em>prediction_time</em>). The label encodes whether the patient
-left the current subspecialty within the prediction window.</p>
+left the current service unit within the prediction window.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -33986,8 +34121,7 @@ left the current subspecialty within the prediction window.</p>
             <td>
               <div class="doc-md-description">
                 <p>Inpatient snapshots with <em>snapshot_date</em>, <em>prediction_time</em>, and
-<em>outcome_column</em>. Optional <em>current_subspecialty</em> or <em>specialty</em> when
-<em>specialty</em> is set.</p>
+<em>outcome_column</em>. Optional <em>specialty_col</em> when <em>specialty</em> is set.</p>
               </div>
             </td>
             <td>
@@ -34051,12 +34185,29 @@ left the current subspecialty within the prediction window.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If given, filter by <em>current_subspecialty</em> or <em>specialty</em> when present.
+                <p>If given, filter by <em>specialty_col</em> when that column is present.
 Default is None (no filter).</p>
               </div>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Service-unit column used when <em>specialty</em> is set. Frames that store
+the unit under another name (e.g. <code>specialty</code>) should pass that name.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;current_subspecialty&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -34145,14 +34296,7 @@ value in an <code>admission_type</code> column. Default is None (no route filter
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">296</span>
 <span class="normal">297</span>
 <span class="normal">298</span>
 <span class="normal">299</span>
@@ -34214,13 +34358,22 @@ value in an <code>admission_type</code> column. Default is None (no route filter
 <span class="normal">355</span>
 <span class="normal">356</span>
 <span class="normal">357</span>
-<span class="normal">358</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_departed_in_window</span><span class="p">(</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">count_observed_departed_in_window</span><span class="p">(</span>
     <span class="n">inpatient_visits</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">snapshot_date</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
     <span class="n">prediction_window</span><span class="p">:</span> <span class="n">timedelta</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">specialty</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;current_subspecialty&quot;</span><span class="p">,</span>
     <span class="n">outcome_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_DEPARTURE_OUTCOME_COLUMN</span><span class="p">,</span>
     <span class="n">admission_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
@@ -34228,14 +34381,13 @@ value in an <code>admission_type</code> column. Default is None (no route filter
 
 <span class="sd">    Uses boolean *outcome_column* on inpatient snapshot rows at</span>
 <span class="sd">    (*snapshot_date*, *prediction_time*). The label encodes whether the patient</span>
-<span class="sd">    left the current subspecialty within the prediction window.</span>
+<span class="sd">    left the current service unit within the prediction window.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    inpatient_visits : pandas.DataFrame</span>
 <span class="sd">        Inpatient snapshots with *snapshot_date*, *prediction_time*, and</span>
-<span class="sd">        *outcome_column*. Optional *current_subspecialty* or *specialty* when</span>
-<span class="sd">        *specialty* is set.</span>
+<span class="sd">        *outcome_column*. Optional *specialty_col* when *specialty* is set.</span>
 <span class="sd">    snapshot_date : datetime.date</span>
 <span class="sd">        Snapshot calendar date.</span>
 <span class="sd">    prediction_time : tuple of (int, int)</span>
@@ -34243,8 +34395,11 @@ value in an <code>admission_type</code> column. Default is None (no route filter
 <span class="sd">    prediction_window : datetime.timedelta</span>
 <span class="sd">        Unused; retained for a uniform call signature across strategies.</span>
 <span class="sd">    specialty : str, optional</span>
-<span class="sd">        If given, filter by *current_subspecialty* or *specialty* when present.</span>
+<span class="sd">        If given, filter by *specialty_col* when that column is present.</span>
 <span class="sd">        Default is None (no filter).</span>
+<span class="sd">    specialty_col : str, default=&#39;current_subspecialty&#39;</span>
+<span class="sd">        Service-unit column used when *specialty* is set. Frames that store</span>
+<span class="sd">        the unit under another name (e.g. ``specialty``) should pass that name.</span>
 <span class="sd">    outcome_column : str, optional</span>
 <span class="sd">        Boolean column naming departure within the window on the snapshot</span>
 <span class="sd">        cohort. Default is `left_subspecialty_in_window`.</span>
@@ -34272,10 +34427,8 @@ value in an <code>admission_type</code> column. Default is None (no route filter
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_visits</span><span class="p">[</span><span class="s2">&quot;prediction_time&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">prediction_time</span><span class="p">)</span>
         <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_visits</span><span class="p">[</span><span class="n">outcome_column</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">))</span>
     <span class="p">)</span>
-    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;current_subspecialty&quot;</span> <span class="ow">in</span> <span class="n">inpatient_visits</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_visits</span><span class="p">[</span><span class="s2">&quot;current_subspecialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;specialty&quot;</span> <span class="ow">in</span> <span class="n">inpatient_visits</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_visits</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">specialty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">specialty_col</span> <span class="ow">in</span> <span class="n">inpatient_visits</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">inpatient_visits</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">specialty</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">admission_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="s2">&quot;admission_type&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">inpatient_visits</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -34371,15 +34524,15 @@ when registered via <code>add_distribution_benchmark_cohort</code>; otherwise de
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">263</span>
 <span class="normal">264</span>
-<span class="normal">265</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">observation_context_frame_key</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">observation_context_frame_key</span><span class="p">(</span><span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``observation_contexts`` key for *observation_mode*.&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">OBSERVATION_CONTEXT_FRAME_KEYS</span><span class="p">[</span><span class="n">observation_mode</span><span class="p">]</span>
@@ -34480,21 +34633,7 @@ when registered via <code>add_distribution_benchmark_cohort</code>; otherwise de
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/observations.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span>
-<span class="normal">493</span>
-<span class="normal">494</span>
-<span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span>
-<span class="normal">498</span>
-<span class="normal">499</span>
-<span class="normal">500</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">500</span>
 <span class="normal">501</span>
 <span class="normal">502</span>
 <span class="normal">503</span>
@@ -34520,7 +34659,21 @@ when registered via <code>add_distribution_benchmark_cohort</code>; otherwise de
 <span class="normal">523</span>
 <span class="normal">524</span>
 <span class="normal">525</span>
-<span class="normal">526</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_observation_mode_for_component</span><span class="p">(</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_observation_mode_for_component</span><span class="p">(</span>
     <span class="n">component</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">observation_mode</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -65890,7 +66043,7 @@ and easy extension to new flow types in the future.</p>
 
 
 <h4 id="patientflow.predict.service.build_service_data" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">build_service_data</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">ed_snapshots</span><span class="p">,</span> <span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">specialties</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">flow_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cdf_cut_points</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_admission_in_window_prob</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prediction_date</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">build_service_data</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">ed_snapshots</span><span class="p">,</span> <span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">specialties</span><span class="p">,</span> <span class="n">prediction_window</span><span class="p">,</span> <span class="n">flow_selection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y1</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y2</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cdf_cut_points</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_admission_in_window_prob</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">prediction_date</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inpatient_service_col</span><span class="o">=</span><span class="s1">&#39;current_subspecialty&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -66175,6 +66328,24 @@ profiles are used and legacy callers stay warning-free.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>inpatient_service_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column on <em>inpatient_snapshots</em> naming the patient's current service
+unit. Used to filter departures by service and as the source column
+for transfer routing.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;current_subspecialty&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -66260,21 +66431,7 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/predict/service.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1191</span>
-<span class="normal">1192</span>
-<span class="normal">1193</span>
-<span class="normal">1194</span>
-<span class="normal">1195</span>
-<span class="normal">1196</span>
-<span class="normal">1197</span>
-<span class="normal">1198</span>
-<span class="normal">1199</span>
-<span class="normal">1200</span>
-<span class="normal">1201</span>
-<span class="normal">1202</span>
-<span class="normal">1203</span>
-<span class="normal">1204</span>
-<span class="normal">1205</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1205</span>
 <span class="normal">1206</span>
 <span class="normal">1207</span>
 <span class="normal">1208</span>
@@ -66441,7 +66598,28 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
 <span class="normal">1369</span>
 <span class="normal">1370</span>
 <span class="normal">1371</span>
-<span class="normal">1372</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
+<span class="normal">1372</span>
+<span class="normal">1373</span>
+<span class="normal">1374</span>
+<span class="normal">1375</span>
+<span class="normal">1376</span>
+<span class="normal">1377</span>
+<span class="normal">1378</span>
+<span class="normal">1379</span>
+<span class="normal">1380</span>
+<span class="normal">1381</span>
+<span class="normal">1382</span>
+<span class="normal">1383</span>
+<span class="normal">1384</span>
+<span class="normal">1385</span>
+<span class="normal">1386</span>
+<span class="normal">1387</span>
+<span class="normal">1388</span>
+<span class="normal">1389</span>
+<span class="normal">1390</span>
+<span class="normal">1391</span>
+<span class="normal">1392</span>
+<span class="normal">1393</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build_service_data</span><span class="p">(</span>
     <span class="n">models</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span>
         <span class="n">ServiceModels</span><span class="p">,</span>
         <span class="n">Tuple</span><span class="p">[</span>
@@ -66478,6 +66656,7 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
     <span class="n">cdf_cut_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">use_admission_in_window_prob</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">prediction_date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">inpatient_service_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;current_subspecialty&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ServicePredictionInputs</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Build per-service inputs for downstream roll-up.</span>
 
@@ -66534,6 +66713,10 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
 <span class="sd">        weekday stratification (the default for incoming admission predictors).</span>
 <span class="sd">        When omitted (default), behaviour matches previous releases: pooled</span>
 <span class="sd">        profiles are used and legacy callers stay warning-free.</span>
+<span class="sd">    inpatient_service_col : str, default=&#39;current_subspecialty&#39;</span>
+<span class="sd">        Column on *inpatient_snapshots* naming the patient&#39;s current service</span>
+<span class="sd">        unit. Used to filter departures by service and as the source column</span>
+<span class="sd">        for transfer routing.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -66612,6 +66795,7 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
         <span class="n">y2</span><span class="p">,</span>
         <span class="n">base_probs</span><span class="p">,</span>
         <span class="n">prediction_date</span><span class="o">=</span><span class="n">prediction_date</span><span class="p">,</span>
+        <span class="n">inpatient_service_col</span><span class="o">=</span><span class="n">inpatient_service_col</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">_finalise_service_data</span><span class="p">(</span>
@@ -66622,6 +66806,7 @@ patientflow.predict.demand.DemandPredictor.predict_service</p>
         <span class="n">inpatient_snapshots</span><span class="o">=</span><span class="n">base_probs</span><span class="p">[</span><span class="s2">&quot;inpatient_snapshots&quot;</span><span class="p">],</span>
         <span class="n">prob_departure_after_elective</span><span class="o">=</span><span class="n">base_probs</span><span class="p">[</span><span class="s2">&quot;prob_departure_after_elective&quot;</span><span class="p">],</span>
         <span class="n">prob_departure_after_emergency</span><span class="o">=</span><span class="n">base_probs</span><span class="p">[</span><span class="s2">&quot;prob_departure_after_emergency&quot;</span><span class="p">],</span>
+        <span class="n">inpatient_service_col</span><span class="o">=</span><span class="n">inpatient_service_col</span><span class="p">,</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -66840,7 +67025,7 @@ producing <strong>one</strong> aggregated PMF per flow rather than one PMF per s
 but is <strong>not</strong> used at prediction time. Patients that do not resolve to a
 subgroup (typically adults with missing or invalid <code>sex</code>) are excluded from
 transfer routing rather than falling back to the pooled row; see
-<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>.</p>
+<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>.</p>
 
 
 
@@ -67379,7 +67564,7 @@ p-value may be driven by a single anomalous subgroup.</p>
 
 
 <h4 id="patientflow.predict.transfers.compute_transfer_arrivals" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">compute_transfer_arrivals</span><span class="p">(</span><span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">transfer_model</span><span class="p">,</span> <span class="n">services</span><span class="p">,</span> <span class="n">prob_departure_after_elective</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prob_departure_after_emergency</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">compute_transfer_arrivals</span><span class="p">(</span><span class="n">inpatient_snapshots</span><span class="p">,</span> <span class="n">transfer_model</span><span class="p">,</span> <span class="n">services</span><span class="p">,</span> <span class="n">prob_departure_after_elective</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prob_departure_after_emergency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source_col</span><span class="o">=</span><span class="s1">&#39;current_subspecialty&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -67425,9 +67610,9 @@ the arrival distribution at each target.</p>
             <td>
               <div class="doc-md-description">
                 <p>Current inpatients, indexed consistently with the departure probability
-containers. Must expose <code>current_subspecialty</code>, <code>admission_type</code> and
-the columns used by the subgroup predicates (<code>age</code>/<code>sex</code>). When
-<code>None</code> (or empty), all targets receive a zero-arrivals PMF.</p>
+containers. Must expose <em>source_col</em>, <code>admission_type</code> and the columns
+used by the subgroup predicates (<code>age</code>/<code>sex</code>). When <code>None</code> (or
+empty), all targets receive a zero-arrivals PMF.</p>
               </div>
             </td>
             <td>
@@ -67498,6 +67683,24 @@ A DataFrame must contain a <code>pred_proba</code> column.</p>
             </td>
             <td>
                   <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>source_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column naming the patient's current service unit (source of a potential
+transfer). Matches
+<a class="autorefs autorefs-internal" title="TransferProbabilityEstimator" href="#patientflow.predictors.transfer_predictor.TransferProbabilityEstimator">TransferProbabilityEstimator.source_col</a>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;current_subspecialty&#39;</code>
             </td>
           </tr>
       </tbody>
@@ -67755,12 +67958,18 @@ excluded rows.</p>
 <span class="normal">458</span>
 <span class="normal">459</span>
 <span class="normal">460</span>
-<span class="normal">461</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_transfer_arrivals</span><span class="p">(</span>
     <span class="n">inpatient_snapshots</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
     <span class="n">transfer_model</span><span class="p">:</span> <span class="n">TransferProbabilityEstimator</span><span class="p">,</span>
     <span class="n">services</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
     <span class="n">prob_departure_after_elective</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">prob_departure_after_emergency</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">source_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;current_subspecialty&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute subgroup-aware transfer-arrival PMFs for each service.</span>
 
@@ -67784,9 +67993,9 @@ excluded rows.</p>
 <span class="sd">    ----------</span>
 <span class="sd">    inpatient_snapshots : pandas.DataFrame or None</span>
 <span class="sd">        Current inpatients, indexed consistently with the departure probability</span>
-<span class="sd">        containers. Must expose ``current_subspecialty``, ``admission_type`` and</span>
-<span class="sd">        the columns used by the subgroup predicates (``age``/``sex``). When</span>
-<span class="sd">        ``None`` (or empty), all targets receive a zero-arrivals PMF.</span>
+<span class="sd">        containers. Must expose *source_col*, ``admission_type`` and the columns</span>
+<span class="sd">        used by the subgroup predicates (``age``/``sex``). When ``None`` (or</span>
+<span class="sd">        empty), all targets receive a zero-arrivals PMF.</span>
 <span class="sd">    transfer_model : TransferProbabilityEstimator</span>
 <span class="sd">        Fitted estimator providing per-subgroup transfer tables.</span>
 <span class="sd">    services : list of str</span>
@@ -67797,6 +68006,10 @@ excluded rows.</p>
 <span class="sd">        A DataFrame must contain a ``pred_proba`` column.</span>
 <span class="sd">    prob_departure_after_emergency : pandas.DataFrame or pandas.Series, optional</span>
 <span class="sd">        As above for emergency inpatients.</span>
+<span class="sd">    source_col : str, default=&#39;current_subspecialty&#39;</span>
+<span class="sd">        Column naming the patient&#39;s current service unit (source of a potential</span>
+<span class="sd">        transfer). Matches</span>
+<span class="sd">        [TransferProbabilityEstimator.source_col][patientflow.predictors.transfer_predictor.TransferProbabilityEstimator].</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -67840,7 +68053,7 @@ excluded rows.</p>
     <span class="k">if</span> <span class="n">inpatient_snapshots</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">inpatient_snapshots</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">predicted_arrivals</span>
 
-    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;current_subspecialty&quot;</span><span class="p">,</span> <span class="s2">&quot;admission_type&quot;</span><span class="p">}</span>
+    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">{</span><span class="n">source_col</span><span class="p">,</span> <span class="s2">&quot;admission_type&quot;</span><span class="p">}</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">required_cols</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">inpatient_snapshots</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">predicted_arrivals</span>
 
@@ -67877,7 +68090,7 @@ excluded rows.</p>
 
         <span class="k">for</span> <span class="n">source_service</span> <span class="ow">in</span> <span class="n">services</span><span class="p">:</span>
             <span class="n">source_mask</span> <span class="o">=</span> <span class="n">cohort_mask</span> <span class="o">&amp;</span> <span class="p">(</span>
-                <span class="n">inpatient_snapshots</span><span class="p">[</span><span class="s2">&quot;current_subspecialty&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">source_service</span>
+                <span class="n">inpatient_snapshots</span><span class="p">[</span><span class="n">source_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">source_service</span>
             <span class="p">)</span>
             <span class="n">source_index</span> <span class="o">=</span> <span class="n">inpatient_snapshots</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="n">source_mask</span><span class="p">]</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_index</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -70386,7 +70599,7 @@ Each cohort contains two sub-dicts:</p>
 is used.</p>
 <p>The <code>"subgroups"</code> tables are the <strong>production prediction path</strong>:
 live transfer routing in
-<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>
+<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>
 resolves each departing patient to an age/sex subgroup and routes them
 with that subgroup's table. The cohort-pooled <code>"services"</code> row is
 retained for diagnostics (e.g.
@@ -74246,7 +74459,7 @@ to the target subspecialty (unconditional probabilities, not conditional
 on a transfer occurring).</p>
 <p>This matrix is a <strong>pooled</strong> view of the cohort <code>["services"]</code> row and
 is intended for diagnostics. Live prediction
-(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
+(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
 instead uses the patient-level <code>["subgroups"]</code> tables, so the routing
 applied in production can differ from this pooled matrix.</p>
 </details>
@@ -84798,7 +85011,7 @@ the functions work with both <code>age_on_arrival</code> (numeric) and
 <p>Applies each subgroup predicate in <code>subgroup_functions</code> to <code>row</code> and
 returns the name of the single matching subgroup. This is the shared
 resolution rule used by both transfer routing
-(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
+(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
 and ED specialty routing
 (<a class="autorefs autorefs-internal" href="#patientflow.predictors.subgroup_predictor.MultiSubgroupPredictor">MultiSubgroupPredictor</a>).</p>
 
@@ -86850,7 +87063,7 @@ Each cohort contains two sub-dicts:</p>
 is used.</p>
 <p>The <code>"subgroups"</code> tables are the <strong>production prediction path</strong>:
 live transfer routing in
-<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>
+<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>
 resolves each departing patient to an age/sex subgroup and routes them
 with that subgroup's table. The cohort-pooled <code>"services"</code> row is
 retained for diagnostics (e.g.
@@ -90710,7 +90923,7 @@ to the target subspecialty (unconditional probabilities, not conditional
 on a transfer occurring).</p>
 <p>This matrix is a <strong>pooled</strong> view of the cohort <code>["services"]</code> row and
 is intended for diagnostics. Live prediction
-(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None)" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
+(<a class="autorefs autorefs-internal" title="compute_transfer_arrivals(inpatient_snapshots, transfer_model, services, prob_departure_after_elective=None, prob_departure_after_emergency=None, source_col='current_subspecialty')" href="#patientflow.predict.transfers.compute_transfer_arrivals">compute_transfer_arrivals</a>)
 instead uses the patient-level <code>["subgroups"]</code> tables, so the routing
 applied in production can differ from this pooled matrix.</p>
 </details>
@@ -103624,7 +103837,7 @@ utilities for filtering patient data and training specialized sequence predictor
 
 
 <h4 id="patientflow.train.sequence_predictor.get_default_visits" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">get_default_visits</span><span class="p">(</span><span class="n">admitted</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_default_visits</span><span class="p">(</span><span class="n">admitted</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -103658,11 +103871,27 @@ age column format from the provided dataframe.</p>
             <td>
               <div class="doc-md-description">
                 <p>A pandas DataFrame containing patient visit information. Must include either
-'age_on_arrival' or 'age_group' columns, and a 'specialty' column.</p>
+'age_on_arrival' or 'age_group' columns, and <em>specialty_col</em>.</p>
               </div>
             </td>
             <td>
                 <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column naming the patient's specialty / service unit.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
             </td>
           </tr>
       </tbody>
@@ -103750,7 +103979,15 @@ are either:
 <span class="normal">66</span>
 <span class="normal">67</span>
 <span class="normal">68</span>
-<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_default_visits</span><span class="p">(</span><span class="n">admitted</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_default_visits</span><span class="p">(</span>
+    <span class="n">admitted</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Filter a dataframe of patient visits to include only non-paediatric patients.</span>
 
@@ -103762,7 +103999,9 @@ are either:
 <span class="sd">    ----------</span>
 <span class="sd">    admitted : DataFrame</span>
 <span class="sd">        A pandas DataFrame containing patient visit information. Must include either</span>
-<span class="sd">        &#39;age_on_arrival&#39; or &#39;age_group&#39; columns, and a &#39;specialty&#39; column.</span>
+<span class="sd">        &#39;age_on_arrival&#39; or &#39;age_group&#39; columns, and *specialty_col*.</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Column naming the patient&#39;s specialty / service unit.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -103794,7 +104033,7 @@ are either:
     <span class="c1"># Filter out paediatric patients based on both age criteria and specialty</span>
     <span class="n">filtered_admitted</span> <span class="o">=</span> <span class="n">admitted</span><span class="p">[</span>
         <span class="n">admitted</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">opposite_special_category_func</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="o">&amp;</span> <span class="p">(</span><span class="n">admitted</span><span class="p">[</span><span class="s2">&quot;specialty&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">special_category_key</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">admitted</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span> <span class="o">!=</span> <span class="n">special_category_key</span><span class="p">)</span>
     <span class="p">]</span>
 
     <span class="k">return</span> <span class="n">filtered_admitted</span>
@@ -103808,7 +104047,7 @@ are either:
 
 
 <h4 id="patientflow.train.sequence_predictor.train_sequence_predictor" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">train_sequence_predictor</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">input_var</span><span class="p">,</span> <span class="n">grouping_var</span><span class="p">,</span> <span class="n">outcome_var</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">train_sequence_predictor</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">input_var</span><span class="p">,</span> <span class="n">grouping_var</span><span class="p">,</span> <span class="n">outcome_var</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="s1">&#39;specialty&#39;</span><span class="p">)</span></code>
 
 </h4>
 
@@ -103925,6 +104164,23 @@ are either:
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialty_col</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Column naming the patient's specialty / service unit. Used to drop rows
+with a missing specialty and to exclude the special (paediatric) category.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;specialty&#39;</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -103954,12 +104210,7 @@ are either:
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/sequence_predictor.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 77</span>
 <span class="normal"> 78</span>
 <span class="normal"> 79</span>
 <span class="normal"> 80</span>
@@ -104005,13 +104256,23 @@ are either:
 <span class="normal">120</span>
 <span class="normal">121</span>
 <span class="normal">122</span>
-<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_sequence_predictor</span><span class="p">(</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_sequence_predictor</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">visit_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">input_var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">grouping_var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">outcome_var</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">specialty_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;specialty&quot;</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SequenceToOutcomePredictor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Train a specialty prediction model.</span>
@@ -104030,6 +104291,9 @@ are either:
 <span class="sd">        Column name for grouping sequence.</span>
 <span class="sd">    outcome_var : str</span>
 <span class="sd">        Column name for target variable.</span>
+<span class="sd">    specialty_col : str, default=&#39;specialty&#39;</span>
+<span class="sd">        Column naming the patient&#39;s specialty / service unit. Used to drop rows</span>
+<span class="sd">        with a missing specialty and to exclude the special (paediatric) category.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -104038,9 +104302,9 @@ are either:
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">visits_single</span> <span class="o">=</span> <span class="n">select_one_snapshot_per_visit</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">)</span>
     <span class="n">admitted</span> <span class="o">=</span> <span class="n">visits_single</span><span class="p">[</span>
-        <span class="p">(</span><span class="n">visits_single</span><span class="o">.</span><span class="n">is_admitted</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="p">(</span><span class="n">visits_single</span><span class="o">.</span><span class="n">specialty</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="p">(</span><span class="n">visits_single</span><span class="o">.</span><span class="n">is_admitted</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="p">(</span><span class="n">visits_single</span><span class="p">[</span><span class="n">specialty_col</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
     <span class="p">]</span>
-    <span class="n">filtered_admitted</span> <span class="o">=</span> <span class="n">get_default_visits</span><span class="p">(</span><span class="n">admitted</span><span class="p">)</span>
+    <span class="n">filtered_admitted</span> <span class="o">=</span> <span class="n">get_default_visits</span><span class="p">(</span><span class="n">admitted</span><span class="p">,</span> <span class="n">specialty_col</span><span class="o">=</span><span class="n">specialty_col</span><span class="p">)</span>
 
     <span class="n">filtered_admitted</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="n">input_var</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_admitted</span><span class="p">[</span><span class="n">input_var</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
         <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span> <span class="k">else</span> <span class="p">()</span>
@@ -121802,7 +122066,7 @@ should default <code>show</code> to false and only call this when the user opts 
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.action.edit"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
