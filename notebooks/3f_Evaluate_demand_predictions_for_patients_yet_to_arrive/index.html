@@ -1555,9 +1555,11 @@ test_snapshot_dates = [
 
 </code></pre>
 <h2 id="1-evaluate-arrival-rates">1. Evaluate arrival rates</h2>
-<p>Here I compare arrival rates learned from the training set against observed arrivals during the test set. The delta plots below compare observed cumulative arrivals within each prediction window against the curve implied by the fitted <code>yta_model</code> — one figure per hospital service, across snapshot dates in the test period. I use a single prediction time (22:00) here to keep the number of figures manageable; the same call works for any time of day.</p>
+<p>Here I compare arrival rates learned from the training set against observed arrivals during the test set.</p>
+<p>First I show a single-date arrival comparison, then a multi-date delta <strong>timeline with an embedded histogram</strong> for one specialty and prediction time.</p>
 <pre><code class="language-python">from patientflow.viz.observed_against_expected import (
     plot_arrival_delta_single_instance,
+    plot_arrival_delta_timelines,
     plot_arrival_deltas,
 )
 
@@ -1572,9 +1574,29 @@ plot_arrival_delta_single_instance(
     show=True,
 )
 
+example_specialty = sorted(yta_model.weights.keys())[0]
+plot_arrival_delta_timelines(
+    test_inpatient_arrivals_df[
+        test_inpatient_arrivals_df[&quot;specialty&quot;] == example_specialty
+    ],
+    prediction_time=(22, 0),
+    snapshot_dates=test_snapshot_dates,
+    prediction_window=prediction_window,
+    yta_time_interval=yta_time_interval,
+    arrival_rate_model=yta_model,
+    filter_key=example_specialty,
+    suptitle=example_specialty,
+    show=True,
+)
+
 </code></pre>
 <p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_0.png" /></p>
-<pre><code class="language-python">prediction_time = (22, 0)
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_1.png" /></p>
+<p>The following charst show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.</p>
+<pre><code class="language-python">prediction_times = sorted(
+    ed_visits.prediction_time.unique(),
+    key=lambda x: x[0] * 60 + x[1],
+)
 
 for specialty in sorted(yta_model.weights.keys()):
     spec_test_df = test_inpatient_arrivals_df[
@@ -1582,7 +1604,7 @@ for specialty in sorted(yta_model.weights.keys()):
     ]
     plot_arrival_deltas(
         spec_test_df,
-        prediction_time,
+        prediction_times,
         test_snapshot_dates,
         prediction_window=prediction_window,
         yta_time_interval=yta_time_interval,
@@ -1593,10 +1615,10 @@ for specialty in sorted(yta_model.weights.keys()):
     )
 
 </code></pre>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_0.png" /></p>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_1.png" /></p>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_2.png" /></p>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_6_3.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_0.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_1.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_2.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_7_3.png" /></p>
 <h2 id="2-evaluate-survival-curve-bed-demand">2. Evaluate survival-curve bed demand</h2>
 <p>Here I fit <code>EmpiricalIncomingAdmissionPredictor</code> on the time from arrival to ward admission, build bed-count PMFs with <code>get_prob_dist_using_survival_curve</code>, and compare them to observed counts with EPUDD — all on the same <code>inpatient_arrivals</code> table loaded above.</p>
 <p>On the public Zenodo extract, <code>WARD_ADMISSION_COL</code> is not present, so the next cell synthesises <code>departure_datetime</code> for illustration. If your extract already has ward-admission times, set <code>WARD_ADMISSION_COL</code> to that column instead.</p>
@@ -1694,8 +1716,8 @@ plot_epudd(
 </code></pre>
 <pre><code>Public extract: added synthetic departure_datetime for illustration only.
 </code></pre>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_1.png" /></p>
-<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_8_2.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_1.png" /></p>
+<p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_9_2.png" /></p>
 <h2 id="summary">Summary</h2>
 <p>In this notebook I have shown how to evaluate yet-to-arrive demand predictions from notebook 3e. I first checked whether front-door arrival rates learned on the training set still match observed arrivals in the test set, using delta plots by hospital service.</p>
 <p>I then ran the survival-curve bed-demand workflow on the same <code>inpatient_arrivals</code> extract: fit <code>EmpiricalIncomingAdmissionPredictor</code>, build PMFs with <code>get_prob_dist_using_survival_curve</code>, and check them with EPUDD. On the public Zenodo extract, ward-admission times are synthesised so the code path is visible; those EPUDD plots are for illustration only.</p>
