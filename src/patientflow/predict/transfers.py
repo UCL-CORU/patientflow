@@ -273,6 +273,7 @@ def compute_transfer_arrivals(
     services: List[str],
     prob_departure_after_elective: Optional[Union[pd.DataFrame, pd.Series]] = None,
     prob_departure_after_emergency: Optional[Union[pd.DataFrame, pd.Series]] = None,
+    source_col: str = "current_subspecialty",
 ) -> Dict[str, Dict[str, np.ndarray]]:
     """Compute subgroup-aware transfer-arrival PMFs for each service.
 
@@ -296,9 +297,9 @@ def compute_transfer_arrivals(
     ----------
     inpatient_snapshots : pandas.DataFrame or None
         Current inpatients, indexed consistently with the departure probability
-        containers. Must expose ``current_subspecialty``, ``admission_type`` and
-        the columns used by the subgroup predicates (``age``/``sex``). When
-        ``None`` (or empty), all targets receive a zero-arrivals PMF.
+        containers. Must expose *source_col*, ``admission_type`` and the columns
+        used by the subgroup predicates (``age``/``sex``). When ``None`` (or
+        empty), all targets receive a zero-arrivals PMF.
     transfer_model : TransferProbabilityEstimator
         Fitted estimator providing per-subgroup transfer tables.
     services : list of str
@@ -309,6 +310,10 @@ def compute_transfer_arrivals(
         A DataFrame must contain a ``pred_proba`` column.
     prob_departure_after_emergency : pandas.DataFrame or pandas.Series, optional
         As above for emergency inpatients.
+    source_col : str, default='current_subspecialty'
+        Column naming the patient's current service unit (source of a potential
+        transfer). Matches
+        [TransferProbabilityEstimator.source_col][patientflow.predictors.transfer_predictor.TransferProbabilityEstimator].
 
     Returns
     -------
@@ -352,7 +357,7 @@ def compute_transfer_arrivals(
     if inpatient_snapshots is None or inpatient_snapshots.empty:
         return predicted_arrivals
 
-    required_cols = {"current_subspecialty", "admission_type"}
+    required_cols = {source_col, "admission_type"}
     if not required_cols.issubset(inpatient_snapshots.columns):
         return predicted_arrivals
 
@@ -389,7 +394,7 @@ def compute_transfer_arrivals(
 
         for source_service in services:
             source_mask = cohort_mask & (
-                inpatient_snapshots["current_subspecialty"] == source_service
+                inpatient_snapshots[source_col] == source_service
             )
             source_index = inpatient_snapshots.index[source_mask]
             if len(source_index) == 0:

@@ -666,6 +666,44 @@ class TestBuildServiceData(unittest.TestCase):
             r_none_b["medical"].inflows["elective_yta"].distribution,
         )
 
+    def test_non_default_inpatient_service_col(self):
+        """build_service_data accepts a non-default inpatient service column."""
+        ed_snapshots = self._make_snapshots(40)
+        inpatient_snapshots = self._make_inpatient_snapshots(30)
+        inpatient_snapshots = inpatient_snapshots.rename(
+            columns={"current_subspecialty": "reporting_unit"}
+        )
+        # Put all elective inpatients into one service so departures are non-trivial.
+        elective_mask = inpatient_snapshots["admission_type"] == "elective"
+        inpatient_snapshots.loc[elective_mask, "reporting_unit"] = "medical"
+
+        result = build_service_data(
+            models=self.models,
+            prediction_time=self.prediction_time,
+            ed_snapshots=ed_snapshots,
+            inpatient_snapshots=inpatient_snapshots,
+            specialties=self.specialties,
+            prediction_window=self.prediction_window,
+            flow_selection=FlowSelection.default(),
+            x1=self.x1,
+            y1=self.y1,
+            x2=self.x2,
+            y2=self.y2,
+            inpatient_service_col="reporting_unit",
+        )
+
+        self.assertIn("medical", result)
+        medical_elective = np.asarray(
+            result["medical"].outflows["elective_departures"].distribution
+        )
+        # At least one elective medical inpatient → P(0) < 1.
+        self.assertLess(medical_elective[0], 1.0)
+        for other in ("surgical", "haem/onc", "paediatric"):
+            other_pmf = np.asarray(
+                result[other].outflows["elective_departures"].distribution
+            )
+            self.assertAlmostEqual(other_pmf[0], 1.0)
+
 
 class TestComputeTransferArrivalsSmoke(unittest.TestCase):
     """Smoke test for the re-exported compute_transfer_arrivals.

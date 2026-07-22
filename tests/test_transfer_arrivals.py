@@ -406,6 +406,30 @@ class TestComputeTransferArrivalsSubgroup(unittest.TestCase):
         # Female routes to gynae with effective prob 0.5 -> EV 0.5.
         self.assertAlmostEqual(_expected_value(result["emergency"]["gynae"]), 0.5)
 
+    def test_non_default_source_col(self):
+        """source_col selects the service-unit column used for filtering sources."""
+        snapshots = pd.DataFrame(
+            {
+                "reporting_unit": ["cardiology", "cardiology"],
+                "admission_type": ["emergency", "emergency"],
+                "age_on_arrival": [30, 30],
+                "sex": ["F", "M"],
+            }
+        )
+        prob = pd.DataFrame({"pred_proba": [1.0, 1.0]}, index=snapshots.index)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            result = compute_transfer_arrivals(
+                snapshots,
+                self.model,
+                self.services,
+                prob_departure_after_emergency=prob,
+                source_col="reporting_unit",
+            )
+        # Female -> gynae, male -> surgery; both with p_depart=1.
+        self.assertAlmostEqual(_expected_value(result["emergency"]["gynae"]), 1.0)
+        self.assertAlmostEqual(_expected_value(result["emergency"]["surgery"]), 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

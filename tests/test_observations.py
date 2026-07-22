@@ -234,6 +234,7 @@ def test_departed_in_window_counts_label_not_datetime():
         (10, 0),
         timedelta(hours=8),
         specialty="medical",
+        specialty_col="specialty",
     )
     assert n == 1
 
@@ -339,9 +340,52 @@ def test_departed_in_window_filters_admission_type():
         (10, 0),
         timedelta(hours=8),
         specialty="medical",
+        specialty_col="specialty",
         admission_type="elective",
     )
     assert n == 1
+
+
+def test_admitted_at_some_point_non_default_specialty_col():
+    df = pd.DataFrame(
+        [
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "is_admitted": 1,
+                "reporting_unit": "medical",
+            },
+            {
+                "snapshot_date": date(2024, 1, 1),
+                "prediction_time": (10, 0),
+                "is_admitted": 1,
+                "reporting_unit": "surgical",
+            },
+        ]
+    )
+    n = count_observed_admitted_at_some_point(
+        df,
+        date(2024, 1, 1),
+        (10, 0),
+        timedelta(hours=8),
+        specialty="medical",
+        specialty_col="reporting_unit",
+    )
+    assert n == 1
+
+
+def test_get_default_visits_non_default_specialty_col():
+    from patientflow.train.sequence_predictor import get_default_visits
+
+    admitted = pd.DataFrame(
+        {
+            "age_on_arrival": [40, 5, 50],
+            "reporting_unit": ["medical", "paediatric", "paediatric"],
+        }
+    )
+    filtered = get_default_visits(admitted, specialty_col="reporting_unit")
+    assert len(filtered) == 1
+    assert filtered.iloc[0]["reporting_unit"] == "medical"
 
 
 def test_validate_observation_mode_for_component():
