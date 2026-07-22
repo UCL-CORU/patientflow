@@ -43,9 +43,7 @@ def test_distribution_chart_flagged_absolute_fallback_when_no_reduction():
     assert not distribution_chart_flagged(
         {"rpit_cvm_mean_w2": CHART_ABS_W2_FLAG_THRESHOLD - 0.01}
     )
-    assert distribution_chart_flagged(
-        {"rpit_cvm_mean_w2": CHART_ABS_W2_FLAG_THRESHOLD}
-    )
+    assert distribution_chart_flagged({"rpit_cvm_mean_w2": CHART_ABS_W2_FLAG_THRESHOLD})
 
 
 def test_sample_ok_for_chart_gate_a():
@@ -58,9 +56,7 @@ def test_decide_panelled_figure_modes():
     flagged = [False, False, True]
     assert not decide_panelled_figure("none", panel_sample_ok=ok, panel_flagged=flagged)
     assert decide_panelled_figure("all", panel_sample_ok=ok, panel_flagged=flagged)
-    assert decide_panelled_figure(
-        "flagged", panel_sample_ok=ok, panel_flagged=flagged
-    )
+    assert decide_panelled_figure("flagged", panel_sample_ok=ok, panel_flagged=flagged)
     assert not decide_panelled_figure(
         "flagged",
         panel_sample_ok=ok,
@@ -75,15 +71,11 @@ def test_decide_panelled_figure_modes():
 
 
 def test_panelled_clock_chart_fields():
-    assert panelled_clock_chart_fields(
-        "all", sample_ok=False, write_figure=True
-    ) == {
+    assert panelled_clock_chart_fields("all", sample_ok=False, write_figure=True) == {
         "charts_generated": False,
         "skip_reason": "insufficient_observations",
     }
-    assert panelled_clock_chart_fields(
-        "none", sample_ok=True, write_figure=False
-    ) == {
+    assert panelled_clock_chart_fields("none", sample_ok=True, write_figure=False) == {
         "charts_generated": False,
         "skip_reason": "charts_disabled",
     }
