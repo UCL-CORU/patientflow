@@ -113,7 +113,7 @@ class TestClassifiers(unittest.TestCase):
         self.assertEqual(metrics["n_samples"], info["test_set_no"])
         self.assertLessEqual(metrics["n_positive_cases"], metrics["n_samples"])
 
-    def test_selected_eval_metrics_uses_validation_when_no_test_eval(self):
+    def test_selected_eval_metrics_uses_cv_train_when_no_test_eval(self):
         model = train_classifier(
             train_visits=self.train_visits,
             valid_visits=self.valid_visits,
@@ -123,18 +123,24 @@ class TestClassifiers(unittest.TestCase):
             ordinal_mappings=self.ordinal_mappings,
             visit_col="visit_number",
             evaluate_on_test=False,
+            use_balanced_training=True,
+            majority_to_minority_ratio=1.0,
         )
         m = model.selected_eval_metrics
-        self.assertEqual(m["split"], "valid")
+        self.assertEqual(m["split"], "cv_train")
         self.assertIn("log_loss", m)
         self.assertIn("auroc", m)
         self.assertIn("auprc", m)
+        balance_info = model.training_results.balance_info
+        self.assertEqual(m["n_samples"], balance_info["balanced_size"])
         self.assertEqual(
-            m["n_samples"],
+            m["n_positive_cases"],
             model.training_results.training_info["dataset_info"][
-                "train_valid_test_set_no"
-            ]["valid_set_no"],
+                "train_valid_test_positive_cases"
+            ]["train_positive_cases"],
         )
+        self.assertTrue(m["balanced"])
+        self.assertEqual(m["majority_to_minority_ratio"], 1.0)
 
     def test_get_dataset_metadata_positive_cases(self):
         X_train = self.train_visits.drop(columns=["is_admitted"]).iloc[:100]

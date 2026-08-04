@@ -1007,13 +1007,18 @@ def train_classifier(
             "n_positive_cases": int((y_test == 1).sum()),
         }
     elif best_cv_results is not None:
+        # Headline metrics are CV-on-train (post-balancing), not held-out validation.
         best_model.selected_eval_metrics = {
-            "split": "valid",
+            "split": "cv_train",
             "log_loss": float(best_cv_results["valid_logloss"]),
             "auroc": float(best_cv_results["valid_auc"]),
             "auprc": float(best_cv_results["valid_auprc"]),
-            "n_samples": int(len(y_valid)),
-            "n_positive_cases": int((y_valid == 1).sum()),
+            "n_samples": int(len(y_train)),
+            "n_positive_cases": int((y_train == 1).sum()),
+            "balanced": use_balanced_training,
+            "majority_to_minority_ratio": (
+                majority_to_minority_ratio if use_balanced_training else 1.0
+            ),
         }
 
     return best_model
