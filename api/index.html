@@ -36605,8 +36605,7 @@ updates the internal merge index only.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
-<span class="normal">103</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
 <span class="normal">104</span>
 <span class="normal">105</span>
 <span class="normal">106</span>
@@ -36716,7 +36715,8 @@ updates the internal merge index only.</p>
 <span class="normal">210</span>
 <span class="normal">211</span>
 <span class="normal">212</span>
-<span class="normal">213</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">213</span>
+<span class="normal">214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScalarsCollector</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Accumulate scalar dicts, merge with prior runs, and write `scalars.json`.</span>
 
@@ -36891,8 +36891,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
-<span class="normal">156</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
 <span class="normal">159</span>
@@ -36900,7 +36899,8 @@ updates the internal merge index only.</p>
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span>
-<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">164</span>
+<span class="normal">165</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Insert or replace one scalar row keyed by `scalar_merge_key`.</span>
 
 <span class="sd">    Parameters</span>
@@ -36932,9 +36932,9 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">as_list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">as_list</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return all scalar rows as a list (order not guaranteed).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_by_key</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
@@ -36991,8 +36991,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
-<span class="normal">121</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">121</span>
 <span class="normal">122</span>
 <span class="normal">123</span>
 <span class="normal">124</span>
@@ -37002,7 +37001,8 @@ updates the internal merge index only.</p>
 <span class="normal">128</span>
 <span class="normal">129</span>
 <span class="normal">130</span>
-<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_prior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prior_rows</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_prior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prior_rows</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge in rows from a previous run; later `add_row` wins on key clash.</span>
 
 <span class="sd">    Parameters</span>
@@ -37072,8 +37072,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">133</span>
-<span class="normal">134</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
 <span class="normal">137</span>
@@ -37092,7 +37091,8 @@ updates the internal merge index only.</p>
 <span class="normal">150</span>
 <span class="normal">151</span>
 <span class="normal">152</span>
-<span class="normal">153</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_prior_from_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">153</span>
+<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_prior_from_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Load `evaluation_rows` (and optional `_service_summary`) from JSON.</span>
 
 <span class="sd">    Parameters</span>
@@ -37183,8 +37183,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">176</span>
-<span class="normal">177</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">177</span>
 <span class="normal">178</span>
 <span class="normal">179</span>
 <span class="normal">180</span>
@@ -37197,7 +37196,8 @@ updates the internal merge index only.</p>
 <span class="normal">187</span>
 <span class="normal">188</span>
 <span class="normal">189</span>
-<span class="normal">190</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">merge_service_summary_slice</span><span class="p">(</span>
+<span class="normal">190</span>
+<span class="normal">191</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">merge_service_summary_slice</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">slice_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store one fragment under `_service_summary[&quot;by_slice&quot;][slice_key]`.</span>
@@ -37234,9 +37234,9 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">service_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">service_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a shallow copy of the accumulated `_service_summary` dict.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_service_summary</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -37292,15 +37292,15 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
-<span class="normal">167</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
 <span class="normal">173</span>
-<span class="normal">174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_service_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">summary</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">174</span>
+<span class="normal">175</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_service_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">summary</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Replace the entire `_service_summary` payload.</span>
 
 <span class="sd">    Parameters</span>
@@ -37362,8 +37362,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">200</span>
-<span class="normal">201</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">201</span>
 <span class="normal">202</span>
 <span class="normal">203</span>
 <span class="normal">204</span>
@@ -37375,7 +37374,8 @@ updates the internal merge index only.</p>
 <span class="normal">210</span>
 <span class="normal">211</span>
 <span class="normal">212</span>
-<span class="normal">213</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">213</span>
+<span class="normal">214</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialise `evaluation_rows` and `_service_summary` to `path`.</span>
 
 <span class="sd">    Parameters</span>
@@ -37438,7 +37438,8 @@ updates the internal merge index only.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Must include <code>split</code> (<code>"test"</code> or <code>"valid"</code>) from trained models.</p>
+                <p>Must include <code>split</code> from trained models: <code>"test"</code>, <code>"valid"</code>, or
+<code>"cv_train"</code>.</p>
               </div>
             </td>
             <td>
@@ -37454,7 +37455,9 @@ updates the internal merge index only.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Dataset metadata with <code>test_positive_cases</code> / <code>valid_positive_cases</code>.</p>
+                <p>Dataset metadata with <code>test_positive_cases</code> / <code>valid_positive_cases</code>
+(used for <code>"test"</code> / <code>"valid"</code>). For <code>"cv_train"</code>, the count is
+taken from <code>selected_eval_metrics["n_positive_cases"]</code>.</p>
               </div>
             </td>
             <td>
@@ -37491,8 +37494,7 @@ updates the internal merge index only.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/evaluate/scalars.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">216</span>
-<span class="normal">217</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">217</span>
 <span class="normal">218</span>
 <span class="normal">219</span>
 <span class="normal">220</span>
@@ -37517,7 +37519,15 @@ updates the internal merge index only.</p>
 <span class="normal">239</span>
 <span class="normal">240</span>
 <span class="normal">241</span>
-<span class="normal">242</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">classifier_reliable</span><span class="p">(</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">classifier_reliable</span><span class="p">(</span>
     <span class="n">selected_eval_metrics</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
     <span class="n">train_valid_test_positive_cases</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -37526,9 +37536,12 @@ updates the internal merge index only.</p>
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    selected_eval_metrics : mapping</span>
-<span class="sd">        Must include `split` (`&quot;test&quot;` or `&quot;valid&quot;`) from trained models.</span>
+<span class="sd">        Must include `split` from trained models: ``&quot;test&quot;``, ``&quot;valid&quot;``, or</span>
+<span class="sd">        ``&quot;cv_train&quot;``.</span>
 <span class="sd">    train_valid_test_positive_cases : mapping</span>
-<span class="sd">        Dataset metadata with `test_positive_cases` / `valid_positive_cases`.</span>
+<span class="sd">        Dataset metadata with `test_positive_cases` / `valid_positive_cases`</span>
+<span class="sd">        (used for ``&quot;test&quot;`` / ``&quot;valid&quot;``). For ``&quot;cv_train&quot;``, the count is</span>
+<span class="sd">        taken from ``selected_eval_metrics[&quot;n_positive_cases&quot;]``.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -37539,8 +37552,12 @@ updates the internal merge index only.</p>
     <span class="n">split</span> <span class="o">=</span> <span class="n">selected_eval_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;split&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">split</span> <span class="o">==</span> <span class="s2">&quot;test&quot;</span><span class="p">:</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">train_valid_test_positive_cases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;test_positive_cases&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
+    <span class="k">elif</span> <span class="n">split</span> <span class="o">==</span> <span class="s2">&quot;valid&quot;</span><span class="p">:</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">train_valid_test_positive_cases</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;valid_positive_cases&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">split</span> <span class="o">==</span> <span class="s2">&quot;cv_train&quot;</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">selected_eval_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_positive_cases&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
     <span class="k">if</span> <span class="n">n</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">False</span>
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">RELIABILITY_MIN_POSITIVE_CASES</span>
@@ -37629,9 +37646,10 @@ updates the internal merge index only.</p>
   <p>Survival rows use <code>prediction_time=None</code> and typically
 <code>service="_all_"</code>. Classifier model-diagnostics rows use a non-empty
 <code>model_name</code> (the clocked model key, e.g. <code>admissions_0600</code>) and may
-include <code>metrics_split</code> (<code>"valid"</code> or <code>"test"</code>) for the holdout used
-at train time (from <code>TrainedClassifier.selected_eval_metrics</code>). Plot
-cohort labels use run-level <code>EvaluationInputs.eval_split</code> instead.
+include <code>metrics_split</code> (<code>"test"</code>, <code>"valid"</code>, or <code>"cv_train"</code>) for
+the population used at train time (from
+<code>TrainedClassifier.selected_eval_metrics</code>). Plot cohort labels use
+run-level <code>EvaluationInputs.eval_split</code> instead.
 Classifier probability-quality rows use flow-level keys
 with <code>model_name=""</code> and <code>prediction_time=None</code>.</p>
 </details>
@@ -37676,7 +37694,8 @@ with <code>model_name=""</code> and <code>prediction_time=None</code>.</p>
 <span class="normal">88</span>
 <span class="normal">89</span>
 <span class="normal">90</span>
-<span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scalar_merge_key</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="normal">91</span>
+<span class="normal">92</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scalar_merge_key</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a stable tuple key used to merge and deduplicate scalar rows.</span>
 
 <span class="sd">    Rows with different `evaluation_mode`, `component`, `prediction_time`, or</span>
@@ -37701,9 +37720,10 @@ with <code>model_name=""</code> and <code>prediction_time=None</code>.</p>
 <span class="sd">    Survival rows use `prediction_time=None` and typically</span>
 <span class="sd">    `service=&quot;_all_&quot;`. Classifier model-diagnostics rows use a non-empty</span>
 <span class="sd">    `model_name` (the clocked model key, e.g. ``admissions_0600``) and may</span>
-<span class="sd">    include ``metrics_split`` (``&quot;valid&quot;`` or ``&quot;test&quot;``) for the holdout used</span>
-<span class="sd">    at train time (from ``TrainedClassifier.selected_eval_metrics``). Plot</span>
-<span class="sd">    cohort labels use run-level ``EvaluationInputs.eval_split`` instead.</span>
+<span class="sd">    include ``metrics_split`` (``&quot;test&quot;``, ``&quot;valid&quot;``, or ``&quot;cv_train&quot;``) for</span>
+<span class="sd">    the population used at train time (from</span>
+<span class="sd">    ``TrainedClassifier.selected_eval_metrics``). Plot cohort labels use</span>
+<span class="sd">    run-level ``EvaluationInputs.eval_split`` instead.</span>
 <span class="sd">    Classifier probability-quality rows use flow-level keys</span>
 <span class="sd">    with ``model_name=&quot;&quot;`` and ``prediction_time=None``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -42461,9 +42481,7 @@ non-ED YTA, elective YTA, transfer).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
@@ -42499,7 +42517,9 @@ non-ED YTA, elective YTA, transfer).</p>
 <span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span>
-<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ServiceModels</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Named bundle for the seven demand-prediction model slots.</span>
 
@@ -42639,10 +42659,12 @@ non-ED YTA, elective YTA, transfer).</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Headline metrics from the test split when test evaluation ran, otherwise
-from aggregated time-series CV on the validation folds. Keys include
-<code>split</code>, <code>log_loss</code>, <code>auroc</code>, <code>auprc</code>, <code>n_samples</code>,
-<code>n_positive_cases</code>.</p>
+                <p>Headline metrics from the test split when test evaluation ran
+(<code>split="test"</code>), otherwise from aggregated time-series CV on the
+(possibly balanced) training matrix (<code>split="cv_train"</code>). Keys
+include <code>split</code>, <code>log_loss</code>, <code>auroc</code>, <code>auprc</code>, <code>n_samples</code>,
+<code>n_positive_cases</code>; the CV-on-train path also records <code>balanced</code>
+and <code>majority_to_minority_ratio</code>.</p>
               </div>
             </td>
           </tr>
@@ -42681,7 +42703,9 @@ from aggregated time-series CV on the validation folds. Keys include
 <span class="normal">117</span>
 <span class="normal">118</span>
 <span class="normal">119</span>
-<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainedClassifier</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Container for trained model artifacts and their associated information.</span>
@@ -42695,10 +42719,12 @@ from aggregated time-series CV on the validation folds. Keys include
 <span class="sd">    calibrated_pipeline : sklearn.pipeline.Pipeline or None, optional</span>
 <span class="sd">        The calibrated version of the pipeline, if model calibration was performed.</span>
 <span class="sd">    selected_eval_metrics : dict of str to Any, optional</span>
-<span class="sd">        Headline metrics from the test split when test evaluation ran, otherwise</span>
-<span class="sd">        from aggregated time-series CV on the validation folds. Keys include</span>
-<span class="sd">        ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,</span>
-<span class="sd">        ``n_positive_cases``.</span>
+<span class="sd">        Headline metrics from the test split when test evaluation ran</span>
+<span class="sd">        (``split=&quot;test&quot;``), otherwise from aggregated time-series CV on the</span>
+<span class="sd">        (possibly balanced) training matrix (``split=&quot;cv_train&quot;``). Keys</span>
+<span class="sd">        include ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,</span>
+<span class="sd">        ``n_positive_cases``; the CV-on-train path also records ``balanced``</span>
+<span class="sd">        and ``majority_to_minority_ratio``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">training_results</span><span class="p">:</span> <span class="n">TrainingResults</span>
@@ -100938,7 +100964,12 @@ satisfied with validation performance to avoid test set contamination.</p>
 <span class="normal">1016</span>
 <span class="normal">1017</span>
 <span class="normal">1018</span>
-<span class="normal">1019</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
+<span class="normal">1019</span>
+<span class="normal">1020</span>
+<span class="normal">1021</span>
+<span class="normal">1022</span>
+<span class="normal">1023</span>
+<span class="normal">1024</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
@@ -101320,13 +101351,18 @@ satisfied with validation performance to avoid test set contamination.</p>
             <span class="s2">&quot;n_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_test</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
         <span class="p">}</span>
     <span class="k">elif</span> <span class="n">best_cv_results</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Headline metrics are CV-on-train (post-balancing), not held-out validation.</span>
         <span class="n">best_model</span><span class="o">.</span><span class="n">selected_eval_metrics</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;split&quot;</span><span class="p">:</span> <span class="s2">&quot;valid&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;split&quot;</span><span class="p">:</span> <span class="s2">&quot;cv_train&quot;</span><span class="p">,</span>
             <span class="s2">&quot;log_loss&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_logloss&quot;</span><span class="p">]),</span>
             <span class="s2">&quot;auroc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_auc&quot;</span><span class="p">]),</span>
             <span class="s2">&quot;auprc&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">best_cv_results</span><span class="p">[</span><span class="s2">&quot;valid_auprc&quot;</span><span class="p">]),</span>
-            <span class="s2">&quot;n_samples&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_valid</span><span class="p">)),</span>
-            <span class="s2">&quot;n_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_valid</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+            <span class="s2">&quot;n_samples&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y_train</span><span class="p">)),</span>
+            <span class="s2">&quot;n_positive_cases&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">((</span><span class="n">y_train</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+            <span class="s2">&quot;balanced&quot;</span><span class="p">:</span> <span class="n">use_balanced_training</span><span class="p">,</span>
+            <span class="s2">&quot;majority_to_minority_ratio&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">majority_to_minority_ratio</span> <span class="k">if</span> <span class="n">use_balanced_training</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="p">),</span>
         <span class="p">}</span>
 
     <span class="k">return</span> <span class="n">best_model</span>
@@ -101733,12 +101769,7 @@ snapshots (<code>single_snapshot_per_visit=False</code>), by default True.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1022</span>
-<span class="normal">1023</span>
-<span class="normal">1024</span>
-<span class="normal">1025</span>
-<span class="normal">1026</span>
-<span class="normal">1027</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1027</span>
 <span class="normal">1028</span>
 <span class="normal">1029</span>
 <span class="normal">1030</span>
@@ -101845,7 +101876,12 @@ snapshots (<code>single_snapshot_per_visit=False</code>), by default True.</p>
 <span class="normal">1131</span>
 <span class="normal">1132</span>
 <span class="normal">1133</span>
-<span class="normal">1134</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
+<span class="normal">1134</span>
+<span class="normal">1135</span>
+<span class="normal">1136</span>
+<span class="normal">1137</span>
+<span class="normal">1138</span>
+<span class="normal">1139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
