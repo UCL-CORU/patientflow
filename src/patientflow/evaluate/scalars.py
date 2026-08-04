@@ -75,9 +75,10 @@ def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     Survival rows use `prediction_time=None` and typically
     `service="_all_"`. Classifier model-diagnostics rows use a non-empty
     `model_name` (the clocked model key, e.g. ``admissions_0600``) and may
-    include ``metrics_split`` (``"valid"`` or ``"test"``) for the holdout used
-    at train time (from ``TrainedClassifier.selected_eval_metrics``). Plot
-    cohort labels use run-level ``EvaluationInputs.eval_split`` instead.
+    include ``metrics_split`` (``"test"``, ``"valid"``, or ``"cv_train"``) for
+    the population used at train time (from
+    ``TrainedClassifier.selected_eval_metrics``). Plot cohort labels use
+    run-level ``EvaluationInputs.eval_split`` instead.
     Classifier probability-quality rows use flow-level keys
     with ``model_name=""`` and ``prediction_time=None``.
     """
@@ -222,9 +223,12 @@ def classifier_reliable(
     Parameters
     ----------
     selected_eval_metrics : mapping
-        Must include `split` (`"test"` or `"valid"`) from trained models.
+        Must include `split` from trained models: ``"test"``, ``"valid"``, or
+        ``"cv_train"``.
     train_valid_test_positive_cases : mapping
-        Dataset metadata with `test_positive_cases` / `valid_positive_cases`.
+        Dataset metadata with `test_positive_cases` / `valid_positive_cases`
+        (used for ``"test"`` / ``"valid"``). For ``"cv_train"``, the count is
+        taken from ``selected_eval_metrics["n_positive_cases"]``.
 
     Returns
     -------
@@ -235,8 +239,12 @@ def classifier_reliable(
     split = selected_eval_metrics.get("split")
     if split == "test":
         n = train_valid_test_positive_cases.get("test_positive_cases")
-    else:
+    elif split == "valid":
         n = train_valid_test_positive_cases.get("valid_positive_cases")
+    elif split == "cv_train":
+        n = selected_eval_metrics.get("n_positive_cases")
+    else:
+        return False
     if n is None:
         return False
     return int(n) >= RELIABILITY_MIN_POSITIVE_CASES

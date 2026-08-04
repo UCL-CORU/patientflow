@@ -108,10 +108,12 @@ class TrainedClassifier:
     calibrated_pipeline : sklearn.pipeline.Pipeline or None, optional
         The calibrated version of the pipeline, if model calibration was performed.
     selected_eval_metrics : dict of str to Any, optional
-        Headline metrics from the test split when test evaluation ran, otherwise
-        from aggregated time-series CV on the validation folds. Keys include
-        ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,
-        ``n_positive_cases``.
+        Headline metrics from the test split when test evaluation ran
+        (``split="test"``), otherwise from aggregated time-series CV on the
+        (possibly balanced) training matrix (``split="cv_train"``). Keys
+        include ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,
+        ``n_positive_cases``; the CV-on-train path also records ``balanced``
+        and ``majority_to_minority_ratio``.
     """
 
     training_results: TrainingResults

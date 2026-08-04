@@ -15,6 +15,7 @@ trained-models/*
 *.joblib
 
 *.vscode*
+*.code-workspace
 *.DS_Store
 
 # config local to uclh

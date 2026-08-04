@@ -31,7 +31,12 @@ from patientflow.evaluate.runner import (
     prediction_dict_for_manifest,
     write_evaluation_run_manifest,
 )
-from patientflow.evaluate.scalars import ScalarsCollector, scalar_target_fields
+from patientflow.evaluate.scalars import (
+    RELIABILITY_MIN_POSITIVE_CASES,
+    ScalarsCollector,
+    classifier_reliable,
+    scalar_target_fields,
+)
 from patientflow.load import get_model_key
 from patientflow.predict.demand import FlowSelection
 
@@ -157,6 +162,26 @@ def test_scalar_target_fields_includes_observation_mode():
     fields = scalar_target_fields(target)
     assert fields["observation_mode"] == target.observation_mode
     assert fields["flow"] == target.flow_name
+
+
+def test_classifier_reliable_by_split():
+    pos = {
+        "train_positive_cases": 100,
+        "valid_positive_cases": RELIABILITY_MIN_POSITIVE_CASES,
+        "test_positive_cases": RELIABILITY_MIN_POSITIVE_CASES - 1,
+    }
+    assert classifier_reliable({"split": "valid"}, pos)
+    assert not classifier_reliable({"split": "test"}, pos)
+    assert classifier_reliable(
+        {"split": "cv_train", "n_positive_cases": RELIABILITY_MIN_POSITIVE_CASES},
+        pos,
+    )
+    assert not classifier_reliable(
+        {"split": "cv_train", "n_positive_cases": RELIABILITY_MIN_POSITIVE_CASES - 1},
+        pos,
+    )
+    assert not classifier_reliable({"split": "unknown"}, pos)
+    assert not classifier_reliable({}, pos)
 
 
 def test_manifest_optional_training_metadata(tmp_path: Path):
