@@ -294,7 +294,7 @@ plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    suptitle="Base model with imbalanced training data"  # optional
+    suptitle="Base model (imbalanced, uncalibrated) — validation set",
 )
 
 ```
@@ -326,8 +326,9 @@ plot_calibration(
     test_visits=valid_visits,
     show=True,
     # strategy="quantile",  # optional
-    suptitle="Base model with imbalanced training data"  # optional
+    suptitle="Base model (imbalanced, uncalibrated) — validation set",
 )
+
 ```
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_21_0.png)
@@ -350,8 +351,9 @@ plot_madcap(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    suptitle="Base model with imbalanced training data"  # optional
+    suptitle="Base model (imbalanced, uncalibrated) — validation set",
 )
+
 ```
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_23_0.png)
@@ -416,21 +418,21 @@ plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    #suptitle="Balanced model (uncalibrated)"  # optional
+    suptitle="Balanced model (uncalibrated) — validation set",
 )
 plot_calibration(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
     # strategy="quantile",  # optional
-    #suptitle="Balanced model (uncalibrated)"  # optional
+    suptitle="Balanced model (uncalibrated) — validation set",
 )
 
 plot_madcap(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    #suptitle="Balanced model (uncalibrated)"  # optional
+    suptitle="Balanced model (uncalibrated) — validation set",
 )
 
 ```
@@ -509,26 +511,26 @@ plot_estimated_probabilities(
     trained_models=trained_models_sigmoid,
     test_visits=valid_visits,
     show=True,
-    suptitle="Sigmoid calibration — discrimination on the validation set",
+    suptitle="Balanced + sigmoid — discrimination on the validation set",
 )
 plot_estimated_probabilities(
     trained_models=trained_models_isotonic,
     test_visits=valid_visits,
     show=True,
-    suptitle="Isotonic calibration — discrimination on the validation set",
+    suptitle="Balanced + isotonic — discrimination on the validation set",
 )
 
 plot_calibration(
     trained_models=trained_models_sigmoid,
     test_visits=valid_visits,
     show=True,
-    suptitle="Sigmoid calibration — calibration on the validation set",
+    suptitle="Balanced + sigmoid — calibration on the validation set",
 )
 plot_calibration(
     trained_models=trained_models_isotonic,
     test_visits=valid_visits,
     show=True,
-    suptitle="Isotonic calibration — calibration on the validation set",
+    suptitle="Balanced + isotonic — calibration on the validation set",
 )
 
 ```
@@ -607,18 +609,19 @@ plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    #suptitle="Balanced + sigmoid calibration — discrimination on validation",
+    suptitle="Balanced + sigmoid — discrimination on the validation set",
 )
 plot_calibration(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
-    #suptitle="Balanced + sigmoid calibration — calibration on validation",
+    suptitle="Balanced + sigmoid — calibration on the validation set",
 )
 plot_madcap(
     trained_models=trained_models,
     test_visits=valid_visits,
     show=True,
+    suptitle="Balanced + sigmoid — MADCAP on the validation set",
 )
 
 ```
@@ -725,18 +728,19 @@ plot_estimated_probabilities(
     trained_models=trained_models,
     test_visits=test_visits,
     show=True,
-    #suptitle="Balanced + sigmoid calibration — discrimination on the test set",
+    suptitle="Balanced + sigmoid — discrimination on the test set",
 )
 plot_calibration(
     trained_models=trained_models,
     test_visits=test_visits,
     show=True,
-    #suptitle="Balanced + sigmoid calibration — calibration on the test set",
+    suptitle="Balanced + sigmoid — calibration on the test set",
 )
 plot_madcap(
     trained_models=trained_models,
     test_visits=test_visits,
     show=True,
+    suptitle="Balanced + sigmoid — MADCAP on the test set",
 )
 
 ```
