@@ -579,7 +579,7 @@
   <span class="md-ellipsis">
     
   
-    2c. Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient snapshots
   
 
     
@@ -994,7 +994,7 @@
   <span class="md-ellipsis">
     
   
-    4. Specify requirements for demand prediction
+    4. Specify requirements for the demand prediction model
   
 
     
@@ -1274,7 +1274,7 @@
   <span class="md-ellipsis">
     
   
-    4e. Generate predictions using a customisable hospital hierarchy.
+    4e. Generate predictions using a customisable hospital hierarchy
   
 
     
@@ -1667,7 +1667,7 @@
 <p>I show two approaches to evaluating the performance of models that predict discrete distributions when each observation lies on its own CDF:</p>
 <ul>
 <li>Randomised Probability Integral Transform (PIT) Histogram</li>
-<li>QQ plots adjusted to handle discrete distributions</li>
+<li>Evaluating Predictions for Unique Discrete Distributions (EPUDD) plots — tailored to discrete variables (introduced below)</li>
 </ul>
 <p>More information is given below.</p>
 <h3 id="about-the-data-used-in-this-notebook">About the data used in this notebook</h3>
@@ -1709,7 +1709,9 @@ from patientflow.load import load_config_file
 params = load_config_file(config_path)
 
 start_training_set = params[&quot;start_training_set&quot;]
+start_calibration_set = params[&quot;start_calibration_set&quot;]
 print(f&quot;Training set starts: {start_training_set}&quot;)
+print(f&quot;Calibration set starts: {start_calibration_set}&quot;)
 
 start_validation_set = params[&quot;start_validation_set&quot;]
 print(f&quot;Validation set starts: {start_validation_set}&quot;)
@@ -1722,6 +1724,7 @@ print(f&quot;Test set ends: {end_test_set}&quot;)
 
 </code></pre>
 <pre><code>Training set starts: 2031-03-01
+Calibration set starts: 2031-08-01
 Validation set starts: 2031-09-01
 Test set starts: 2031-10-01
 Test set ends: 2032-01-01
@@ -1731,14 +1734,15 @@ Test set ends: 2032-01-01
 <pre><code class="language-python">from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
     start_test_set,
     end_test_set,
     col_name=&quot;snapshot_date&quot;, # states which column contains the date to use when making the splits
-    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits
+    visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits,
+    start_calibration=start_calibration_set,
 )
 
 # set prediction times
@@ -1780,9 +1784,9 @@ ordinal_mappings = {
         &quot;U&quot; #unconscious - no response to pain or voice stimulus
     ]    }
 </code></pre>
-<pre><code>Split sizes: [62071, 10415, 29134]
+<pre><code>Split sizes: [51170, 10901, 10415, 29134]
 </code></pre>
-<p>We loop through each prediction time, training a model, using balanced training set and re-calibration on the validation set. Here I'm using a minimal hyperparameter grid for expediency.</p>
+<p>We loop through each prediction time, training a model, using a balanced training set and re-calibration on the validation set. Here I'm using a minimal hyperparameter grid for expediency.</p>
 <pre><code class="language-python">from patientflow.train.classifiers import train_classifier
 from patientflow.load import get_model_key
 
@@ -1804,6 +1808,7 @@ for prediction_time in prediction_times:
         calibrate_probabilities=True,
         calibration_method=&quot;isotonic&quot;,
         use_balanced_training=True,
+        calibration_visits=calibration_visits,
     )
     model_name = 'admissions'
     model_key = get_model_key(model_name, prediction_time)
@@ -1890,11 +1895,11 @@ for prediction_time, values in results.items():
 </code></pre>
 <pre><code>Time    MAE    MPE
 ----------------------
-06:00  1.54    33.49%
-09:30  1.62    38.62%
-12:00  2.17    31.24%
-15:30  2.69    23.28%
-22:00  3.15    24.02%
+06:00  1.63    31.00%
+09:30  1.58    39.42%
+12:00  2.08    28.77%
+15:30  2.77    23.96%
+22:00  2.72    22.74%
 </code></pre>
 <p>The 06:00 and 09:30 models have the lowest Mean Absolute Error but from a previous notebook we know that they also have the smallest number of patients admitted. Their Mean Percentage Errors were higher than for the later prediction times. While the later times have larger absolute errors, they are proportionally nearer to the actual values.</p>
 <p>We can plot the observed values against the expected, as shown below.</p>
@@ -1904,7 +1909,7 @@ plot_deltas(results, show=True)
 <p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_15_0.png" /></p>
 <p>From the plots above:</p>
 <ul>
-<li>The 06:00 and 09:30 models data shows a slight positive bias, with more values above zero than below, suggesting under-prediction (observed values higher than expected)</li>
+<li>The 06:00 and 09:30 model data show a slight positive bias, with more values above zero than below, suggesting under-prediction (observed values higher than expected)</li>
 <li>The 12:00 model appears more spread out with a wider range of error</li>
 <li>The 15:30 model has a slight negative bias</li>
 <li>The 22:00 time slot displays a distinct positive skew, with most values above zero, suggesting consistent under-prediction</li>
@@ -1913,7 +1918,7 @@ plot_deltas(results, show=True)
 <h3 id="randomised-probability-integral-transform-pit-histogram">Randomised Probability Integral Transform (PIT) Histogram</h3>
 <p>As noted in the introduction, we want to evaluate each observed value against the predicted distribution for that snapshot; thus we are using a different predicted distribution each time. We have a model that determines a Cumulative Distribution Function (CDF) Fi(x) specific to the discrete random variable associated with the ith observation in a series of counts and we want to assess the accuracy of the underlying model.</p>
 <p>For continuous variables, there's an elegant solution called the Probability Integral Transform (PIT) developed by <a href="https://onlinelibrary.wiley.com/doi/full/10.1111/j.1541-0420.2009.01191.x">Czado et al, 2009</a>. Each observation can be mapped to the corresponding value of its CDF; this is referred to as a probability integral transform (PIT). If the underlying model is well calibrated, a histogram of these PIT values would be uniform, and a cumulative plot of PIT values would have a slope of 1.</p>
-<p>For a discrete random variable, instead of a single point, each observation corresponds to a range on the CDF. We identify the range of the cdf Fi(x) associated with the observation oi. For discrete integer variables, this has a lower limit, upper limit and mid-points given by
+<p>For a discrete random variable, instead of a single point, each observation corresponds to a range on the CDF. We identify the range of the CDF Fi(x) associated with the observation oi. For discrete integer variables, this has a lower limit, upper limit and mid-points given by
 li = Fi(oi-1), ui = Fi(oi) and mi = 𝑙𝑖+𝑢𝑖2.</p>
 <p>The randomised PIT histogram is obtained by allotting to each observation oi a PIT value sampled at random from the range [li,ui] and then forming a histogram of these (with one convention being to have 10 bins of width 0.1). A well performing model will give a uniform histogram (subject to randomisation and binning).</p>
 <pre><code class="language-python">from patientflow.viz.randomised_pit import plot_randomised_pit
@@ -1924,14 +1929,14 @@ plot_randomised_pit(prediction_times,
 </code></pre>
 <p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_19_0.png" /></p>
 <h3 id="evaluating-predictions-for-unique-discrete-distributions-epudd-plot">Evaluating Predictions for Unique Discrete Distributions (EPUDD) Plot</h3>
-<p>In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in <a href="https://www.sciencedirect.com/science/article/pii/S2211692316300418">Pagel et al (2017)</a>. We call this an Evaluating Predictions for Unique Discrete Distributions (EPUDD) Plot</p>
+<p>The second approach introduced above is described here in more detail. In prior work, we developed an alternative to the QQ plot suited to discrete random variables where each observation has a unique predicted distribution. See Figure 9 in <a href="https://www.sciencedirect.com/science/article/pii/S2211692316300418">Pagel et al (2017)</a>. We call this an Evaluating Predictions for Unique Discrete Distributions (EPUDD) Plot</p>
 <p>In the EPUDD Plot the x axis represents the CDF from the model's predictions (in grey) and the y axis represents the proportion of cumulative probability mass that falls at or below each CDF threshold.</p>
 <p>Both sets of points are plotted with the predicted CDF values on the x axis. The difference is:</p>
 <ul>
 <li>Grey points: Show the full predicted CDF curve</li>
 <li>Coloured points: Show only where the actual observations fall along their predicted CDF</li>
 </ul>
-<p>If the observed cdf points track the model cdfs, the model is well calibrated.</p>
+<p>If the observed CDF points track the model CDFs, the model is well calibrated.</p>
 <p>Note that the model points (grey) represent discrete probability mass, averaged over all prediction times in the test set. Because discrete probability mass may be stepped, the model points may not follow the y=x line.</p>
 <pre><code class="language-python">from patientflow.viz.epudd import plot_epudd
 
@@ -1942,13 +1947,13 @@ plot_epudd(prediction_times,
         plot_all_bounds=False)
 </code></pre>
 <p><img alt="png" src="../3b_Evaluate_group_snapshots_files/3b_Evaluate_group_snapshots_21_0.png" /></p>
-<p>In the two sets of plots above, the 06:00 and 09:30 perform reasonably well. At 12:00 and 15:30 the predicted probabilities are lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.</p>
+<p>In the two sets of plots above, the 06:00 and 09:30 models perform reasonably well. At 12:00 and 15:30 the predicted probabilities are lower than the observed frequencies, and at 22:00 they are higher. At 22:00, more patients are being admitted than the model expects.</p>
 <p>From these plots, there appears to be some bias introduced at the aggregation to group snapshots, that has not been propagated through from the patient-level predictions.</p>
 <p>Further work is needed to isolate the reason for this bias.</p>
 <h2 id="summary">Summary</h2>
 <p>Here I have demonstrated some methods for evaluating predicted distributions, including summary statistics, Randomised PIT Histograms and plots for Evaluating Predictions for Unique Discrete Distributions (EPUDD).</p>
 <p>We prefer plots over summary statistics like MAE or MPE. Plots allow us to compare the predicted and observed distributions across the full probability range. This can be helpful for detecting issues in the tails of distributions. For instance, in the 22:00 time, the plot reveals deviations in the upper quantiles that summary statistics would obscure. This helps to identify where in the modelling pipeline model bias is being introduced, and identify aspects that need to be investigated further.</p>
-<p>I demonstrated two approaches to such plots. We prefer the EPUDD to the Randomised PIT approach because it is not subject to randomisation and binning, and can reveal sparse areas of the cdf (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.</p>
+<p>I demonstrated two approaches to such plots. We prefer the EPUDD to the Randomised PIT approach because it is not subject to randomisation and binning, and can reveal sparse areas of the CDF (eg around 0.3 CDF value on the 12:00 plot). I will make use of this plot in later notebooks evaluating our emergency demand predictions by specialty.</p>
 
 
 

@@ -579,7 +579,7 @@
   <span class="md-ellipsis">
     
   
-    2c. Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient snapshots
   
 
     
@@ -803,7 +803,7 @@
   <span class="md-ellipsis">
     
   
-    4. Specify requirements for demand prediction
+    4. Specify requirements for the demand prediction model
   
 
     
@@ -1163,7 +1163,7 @@
   <span class="md-ellipsis">
     
   
-    4e. Generate predictions using a customisable hospital hierarchy.
+    4e. Generate predictions using a customisable hospital hierarchy
   
 
     
@@ -1460,8 +1460,8 @@ ed_visits = prediction_inputs[&quot;ed_visits&quot;]
 params = prediction_inputs[&quot;config&quot;]
 
 </code></pre>
-<pre><code>Split sizes: [62071, 10415, 29134]
-Split sizes: [7716, 1285, 3898]
+<pre><code>Split sizes: [51170, 10901, 10415, 29134]
+Split sizes: [6388, 1328, 1285, 3898]
 
 Processing: (6, 0)
 
@@ -1484,17 +1484,19 @@ Processing: (22, 0)
 <pre><code class="language-python">from patientflow.prepare import create_temporal_splits
 
 start_training_set = params[&quot;start_training_set&quot;]
+start_calibration_set = params[&quot;start_calibration_set&quot;]
 start_validation_set = params[&quot;start_validation_set&quot;]
 start_test_set = params[&quot;start_test_set&quot;]
 end_test_set = params[&quot;end_test_set&quot;]
 
-train_visits_df, _, _ = create_temporal_splits(
+train_visits_df, _, _, _ = create_temporal_splits(
     ed_visits, start_training_set, start_validation_set,
     start_test_set, end_test_set, col_name=&quot;snapshot_date&quot;,
+    start_calibration=start_calibration_set,
 )
 
 </code></pre>
-<pre><code>Split sizes: [62071, 10415, 29134]
+<pre><code>Split sizes: [51170, 10901, 10415, 29134]
 </code></pre>
 <h2 id="explore-the-cohort-aware-specialty-model">Explore the cohort-aware specialty model</h2>
 <p>The <code>prepare_prediction_inputs</code> function trained a <code>MultiSubgroupPredictor</code> for specialty prediction. This model handles paediatric and adult patients as separate cohorts, each with their own <code>SequenceToOutcomePredictor</code>. Let's explore how it works.</p>
@@ -1529,13 +1531,13 @@ spec_model = MultiSubgroupPredictor(
 )
 spec_model = spec_model.fit(train_visits_df)
 </code></pre>
-<p>By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because the <code>infer_specialty_to_subgroups</code> function includes any subgroup that appears <strong>at least once</strong> for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.</p>
+<p>By training on the data, we have derived the following mapping. Intended containment of children to paediatric specialties, and exclusion of adults from paediatric specialties, did not work as intended. That is because the <code>infer_specialty_to_subgroups</code> function includes any subgroup that appears <strong>at least once</strong> for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.</p>
 <pre><code class="language-python">spec_model.specialty_to_subgroups
 </code></pre>
-<pre><code>{'medical': ['paediatric', 'adult'],
- 'surgical': ['paediatric', 'adult'],
+<pre><code>{'surgical': ['paediatric', 'adult'],
+ 'medical': ['paediatric', 'adult'],
  'paediatric': ['paediatric', 'adult'],
- 'haem/onc': ['paediatric', 'adult']}
+ 'haem/onc': ['adult']}
 </code></pre>
 <p>Looking at the actual subgroup mapping in the data, we see that some children do go to adult specialties and vice versa. From the data below, 3% of children were admitted to surgical specialties; these might be genuine decisions rather than coding errors.</p>
 <pre><code class="language-python">
@@ -1557,27 +1559,27 @@ for specialty in spec_model.specialty_to_subgroups.keys():
     if missing_age &gt; 0:
         print(f&quot;  Missing age_group: {missing_age} ({missing_age/total*100:.1f}%)&quot;)
 </code></pre>
-<pre><code>medical specialty:
-  Total patients: 5392
-  Paediatric (age_group == '0-17'): 12 (0.2%)
-  Adult (age_group != '0-17'): 5380 (99.8%)
+<pre><code>surgical specialty:
+  Total patients: 1803
+  Paediatric (age_group == '0-17'): 52 (2.9%)
+  Adult (age_group != '0-17'): 1751 (97.1%)
 
-surgical specialty:
-  Total patients: 2185
-  Paediatric (age_group == '0-17'): 70 (3.2%)
-  Adult (age_group != '0-17'): 2115 (96.8%)
+medical specialty:
+  Total patients: 4385
+  Paediatric (age_group == '0-17'): 12 (0.3%)
+  Adult (age_group != '0-17'): 4373 (99.7%)
 
 paediatric specialty:
-  Total patients: 528
-  Paediatric (age_group == '0-17'): 513 (97.2%)
-  Adult (age_group != '0-17'): 15 (2.8%)
+  Total patients: 440
+  Paediatric (age_group == '0-17'): 428 (97.3%)
+  Adult (age_group != '0-17'): 12 (2.7%)
 
 haem/onc specialty:
-  Total patients: 707
-  Paediatric (age_group == '0-17'): 1 (0.1%)
-  Adult (age_group != '0-17'): 706 (99.9%)
+  Total patients: 573
+  Paediatric (age_group == '0-17'): 0 (0.0%)
+  Adult (age_group != '0-17'): 573 (100.0%)
 </code></pre>
-<p>We can override this mapping if we wished to enforce stricter policy rules, as shown below.</p>
+<p>We can override this mapping if we wish to enforce stricter policy rules, as shown below.</p>
 <pre><code class="language-python">expected_mapping = {
     'paediatric': ['paediatric'],
     'medical': ['adult'],

@@ -579,7 +579,7 @@
   <span class="md-ellipsis">
     
   
-    2c. Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient snapshots
   
 
     
@@ -905,7 +905,7 @@
   <span class="md-ellipsis">
     
   
-    4. Specify requirements for demand prediction
+    4. Specify requirements for the demand prediction model
   
 
     
@@ -1185,7 +1185,7 @@
   <span class="md-ellipsis">
     
   
-    4e. Generate predictions using a customisable hospital hierarchy.
+    4e. Generate predictions using a customisable hospital hierarchy
   
 
     
@@ -1526,6 +1526,7 @@ yta_model = prediction_inputs[&quot;yta_model&quot;]
 params = prediction_inputs[&quot;config&quot;]
 
 start_training_set = params[&quot;start_training_set&quot;]
+start_calibration_set = params[&quot;start_calibration_set&quot;]
 start_validation_set = params[&quot;start_validation_set&quot;]
 start_test_set = params[&quot;start_test_set&quot;]
 end_test_set = params[&quot;end_test_set&quot;]
@@ -1536,7 +1537,7 @@ inpatient_arrivals = inpatient_arrivals.copy()
 inpatient_arrivals[&quot;arrival_datetime&quot;] = __import__(&quot;pandas&quot;).to_datetime(
     inpatient_arrivals[&quot;arrival_datetime&quot;], utc=True
 )
-_, _, test_inpatient_arrivals_df = create_temporal_splits(
+_, _, _, test_inpatient_arrivals_df = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
@@ -1544,6 +1545,7 @@ _, _, test_inpatient_arrivals_df = create_temporal_splits(
     end_test_set,
     col_name=&quot;arrival_datetime&quot;,
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 test_snapshot_dates = [
@@ -1592,7 +1594,7 @@ plot_arrival_delta_timelines(
 </code></pre>
 <p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_0.png" /></p>
 <p><img alt="png" src="../3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_1.png" /></p>
-<p>The following charst show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.</p>
+<p>The following charts show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.</p>
 <pre><code class="language-python">prediction_times = sorted(
     ed_visits.prediction_time.unique(),
     key=lambda x: x[0] * 60 + x[1],
@@ -1651,7 +1653,7 @@ illustration_suffix = &quot; (illustrative only)&quot; if using_synthetic_ward_t
 arrivals[&quot;arrival_datetime&quot;] = pd.to_datetime(arrivals[&quot;arrival_datetime&quot;], utc=True)
 arrivals[WARD_ADMISSION_COL] = pd.to_datetime(arrivals[WARD_ADMISSION_COL], utc=True)
 
-train_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
+train_arrivals, calibration_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
     arrivals,
     start_training_set,
     start_validation_set,
@@ -1659,6 +1661,7 @@ train_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
     end_test_set,
     col_name=&quot;arrival_datetime&quot;,
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 train_indexed = train_arrivals.copy()
@@ -1668,7 +1671,7 @@ yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
 _ = yta_model_empirical.fit(
     train_indexed,
     yta_time_interval=yta_time_interval,
-    num_days=(start_validation_set - start_training_set).days,
+    num_days=(start_calibration_set - start_training_set).days,
     start_time_col=&quot;arrival_datetime&quot;,
     end_time_col=WARD_ADMISSION_COL,
     stratify_by_weekday=True,
@@ -1722,7 +1725,7 @@ plot_epudd(
 <p>In this notebook I have shown how to evaluate yet-to-arrive demand predictions from notebook 3e. I first checked whether front-door arrival rates learned on the training set still match observed arrivals in the test set, using delta plots by hospital service.</p>
 <p>I then ran the survival-curve bed-demand workflow on the same <code>inpatient_arrivals</code> extract: fit <code>EmpiricalIncomingAdmissionPredictor</code>, build PMFs with <code>get_prob_dist_using_survival_curve</code>, and check them with EPUDD. On the public Zenodo extract, ward-admission times are synthesised so the code path is visible; those EPUDD plots are for illustration only.</p>
 <p>For systematic multi-component evaluation with <code>patientflow.evaluate</code> (<code>EvaluationInputsBuilder</code> and <code>run_evaluation</code>), see notebook <strong>4d</strong>.</p>
-<p>In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.</p>
+<p>In notebooks <strong>4a</strong> onwards, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.</p>
 
 
 

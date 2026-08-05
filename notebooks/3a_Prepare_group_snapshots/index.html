@@ -579,7 +579,7 @@
   <span class="md-ellipsis">
     
   
-    2c. Evaluate models trained on patient-level snapshots
+    2c. Evaluate models trained on patient snapshots
   
 
     
@@ -927,7 +927,7 @@
   <span class="md-ellipsis">
     
   
-    4. Specify requirements for demand prediction
+    4. Specify requirements for the demand prediction model
   
 
     
@@ -1207,7 +1207,7 @@
   <span class="md-ellipsis">
     
   
-    4e. Generate predictions using a customisable hospital hierarchy.
+    4e. Generate predictions using a customisable hospital hierarchy
   
 
     
@@ -1680,7 +1680,7 @@ snapshots_df.head()
 
 <p>Note that each record in the snapshots dataframe is indexed by a unique snapshot_id.</p>
 <h2 id="prepare-group-snapshots">Prepare group snapshots</h2>
-<p><code>patientflow</code> includes a <code>prepare_group_snapshot_dict()</code> function. As input, it requires a pandas dataframe with a <code>snapshot_date</code> column. If a start date and end date are provided, the function will check for any intervening snapshot dates that are missing, and create an empty group snapshot for this date</p>
+<p><code>patientflow</code> includes a <code>prepare_group_snapshot_dict()</code> function. As input, it requires a pandas dataframe with a <code>snapshot_date</code> column. If a start date and end date are provided, the function will check for any intervening snapshot dates that are missing, and create an empty group snapshot for this date.</p>
 <p>Here I create a group snapshot dictionary, for patients in the ED at 09.30.</p>
 <pre><code class="language-python">from patientflow.prepare import prepare_group_snapshot_dict
 
@@ -1935,7 +1935,7 @@ Unique snapshot_ids in the first group snapshot:
 </table>
 </div>
 
-<p>More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with the <code>prepare_patient_snapshots</code>, which makes the data ready for processing in groups. This will:</p>
+<p>More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with <code>prepare_patient_snapshots()</code>, which makes the data ready for processing in groups. This will:</p>
 <ul>
 <li>filter visits to include only those at the requested prediction time</li>
 <li>randomly select one snapshot per visit, if requested. If <code>single_snapshot_per_visit</code> is set to True, a <code>visit_col</code> argument must be used, giving the name of the column containing visit identifiers</li>
@@ -2191,12 +2191,13 @@ from patientflow.train.classifiers import train_classifier
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6-week training set
+start_calibration_set = date(2023, 2, 1)
+start_validation_set = date(2023, 2, 15) # validation after calibration
 start_test_set = date(2023, 3, 1) # 2-week validation set
 end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     snapshots_df,
     start_training_set,
     start_validation_set,
@@ -2205,7 +2206,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     col_name=&quot;snapshot_date&quot;, # states which column contains the date, for use when making the splits
     patient_id=&quot;patient_id&quot;, # states which column contains the patient id, for use when making the splits
     visit_col=&quot;visit_number&quot;, # states which column contains the visit number to use when making the splits
-
+    start_calibration=start_calibration_set,
 )
 # exclude columns that are not needed for training
 exclude_from_training_data=['visit_number', 'snapshot_date', 'prediction_time']
@@ -2221,16 +2222,20 @@ model = train_classifier(
     ordinal_mappings={'latest_triage_score': [1, 2, 3, 4, 5]},
     visit_col='visit_number',
     use_balanced_training=True,
-    calibrate_probabilities=True
+    calibrate_probabilities=True,
+    calibration_visits=calibration_visits,
 )
 
 </code></pre>
 <pre><code>Patient Set Overlaps (before random assignment):
-Train-Valid: 0 of 5318
+Train-Calib: 0 of 3981
+Train-Valid: 0 of 4028
+Train-Test: 217 of 4929
+Calib-Valid: 0 of 2627
+Calib-Test: 90 of 3655
 Valid-Test: 102 of 3690
-Train-Test: 307 of 6129
 All Sets: 0 of 7364 total patients
-Split sizes: [6406, 2122, 4304]
+Split sizes: [4326, 2062, 2122, 4304]
 </code></pre>
 <p>Now, using the trained model, I will predict a bed count distribution for one snapshot using <code>get_prob_dist_for_prediction_moment()</code>. That function expects the following:</p>
 <ul>
@@ -2330,7 +2335,7 @@ ax.legend();
 <h2 id="summary">Summary</h2>
 <p>In this notebook I have demonstrated the functions in <code>patientflow</code> that handle the preparation of group snapshots. These include:</p>
 <ul>
-<li><code>prepare_patient_snapshots</code>, which makes the data ready for processing in groups.</li>
+<li><code>prepare_patient_snapshots()</code>, which makes the data ready for processing in groups.</li>
 <li><code>get_prob_dist_for_prediction_moment</code>, which computes predicted and observed probabilities for a specific snapshot date and prediction time.</li>
 <li><code>get_prob_dist</code> which computes probability distributions for multiple snapshot dates.</li>
 </ul>
