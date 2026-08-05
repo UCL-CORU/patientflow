@@ -162,7 +162,7 @@ snapshot_dates[0:10]
      datetime.date(2023, 1, 9),
      datetime.date(2023, 1, 10)]
 
-## Predicting future arrivals, with model trained on past data.
+## Predicting future arrivals with a model trained on past data
 
 When predicting how many patients will arrive after a prediction time, and be admitted before the end of a prediction window, we need some way to decide how long it takes admitted patients to be processed by the ED.
 
@@ -179,23 +179,24 @@ from patientflow.prepare import create_temporal_splits
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6-week training set
+start_calibration_set = date(2023, 2, 1)
+start_validation_set = date(2023, 2, 15) # validation after calibration
 start_test_set = date(2023, 3, 1) # 2-week validation set
 end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
     start_test_set,
     end_test_set,
     col_name="arrival_datetime", # states which column contains the date to use when making the splits
-
+    start_calibration=start_calibration_set,
 )
 ```
 
-    Split sizes: [2214, 710, 1584]
+    Split sizes: [1532, 682, 710, 1584]
 
 ### Approach 1 using past data: Poisson model trained on past arrival rates of patients who both arrived and were admitted within a prediction window
 
@@ -367,26 +368,26 @@ survival_df.head()
     <tr>
       <th>1</th>
       <td>1.283333</td>
-      <td>0.999548</td>
-      <td>0.000452</td>
+      <td>0.999347</td>
+      <td>0.000653</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>1.333333</td>
-      <td>0.999097</td>
-      <td>0.000903</td>
+      <td>1.400000</td>
+      <td>0.998695</td>
+      <td>0.001305</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>1.350000</td>
-      <td>0.998645</td>
-      <td>0.001355</td>
+      <td>1.516667</td>
+      <td>0.998042</td>
+      <td>0.001958</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>1.400000</td>
-      <td>0.998193</td>
-      <td>0.001807</td>
+      <td>1.566667</td>
+      <td>0.996736</td>
+      <td>0.003264</td>
     </tr>
   </tbody>
 </table>
@@ -409,20 +410,20 @@ If I'm making a prediction at 12:00 for number of admissions by 20:00, I could d
 First I calculate the arrival rate for a one hour slice:
 
 ```python
-num_days_in_training_data = (start_validation_set - start_training_set).days
+num_days_in_training_data = (start_calibration_set - start_training_set).days
 print(f'Number of days in training data: {num_days_in_training_data}')
 
 print(f'Number of admitted patients arriving between 19:00 and 20:00 in training data: {len(train_visits[(train_visits.arrival_datetime.dt.hour == 19) ])}')
 print(f'Average number of admitted patients arriving between 19:00 and 20:00 in training data: {(len(train_visits[(train_visits.arrival_datetime.dt.hour == 19) ])/num_days_in_training_data):.2f}')
 ```
 
-    Number of days in training data: 45
-    Number of admitted patients arriving between 19:00 and 20:00 in training data: 50
-    Average number of admitted patients arriving between 19:00 and 20:00 in training data: 1.11
+    Number of days in training data: 31
+    Number of admitted patients arriving between 19:00 and 20:00 in training data: 32
+    Average number of admitted patients arriving between 19:00 and 20:00 in training data: 1.03
 
 The arrival rate can be multiplied by the probability of admission within the prediction window and used as a weighted mean in a Poisson distribution for each hour. The eight Poisson distributions (one for each hour) can then be convolved into a single distribution. This is shown below.
 
-(As noted above this may seem complicated. I show it because a similar approach informs the aspirational approach that follows.)
+(This may seem complicated. I show it because a similar approach informs the aspirational approach that follows.)
 
 ```python
 from scipy import stats
@@ -497,7 +498,7 @@ from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomi
 train_visits_copy = train_visits.copy(deep=True)
 
 yta_model_empirical =  EmpiricalIncomingAdmissionPredictor(verbose=True)
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 
 # the arrival_datetime column needs to be set as the index of the dataframe
 if 'arrival_datetime' in train_visits_copy.columns:
@@ -512,10 +513,10 @@ _ = yta_model_empirical.fit(train_visits_copy,
                         end_time_col='admitted_to_ward_datetime')
 ```
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-01-31
 
 
     Time interval of 0:15:00 used to bucket arrival rates.
@@ -527,7 +528,7 @@ _ = yta_model_empirical.fit(train_visits_copy,
     To see the weights saved by this model, use the get_weights() method
 
 
-    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
+    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 740 time points
 
 The survival curve that was calculated from the training set is saved with the returned object
 
@@ -569,26 +570,26 @@ yta_model_empirical.survival_df
     <tr>
       <th>1</th>
       <td>1.283333</td>
-      <td>0.999548</td>
-      <td>0.000452</td>
+      <td>0.999347</td>
+      <td>0.000653</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>1.333333</td>
-      <td>0.999097</td>
-      <td>0.000903</td>
+      <td>1.400000</td>
+      <td>0.998695</td>
+      <td>0.001305</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>1.350000</td>
-      <td>0.998645</td>
-      <td>0.001355</td>
+      <td>1.516667</td>
+      <td>0.998042</td>
+      <td>0.001958</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>1.400000</td>
-      <td>0.998193</td>
-      <td>0.001807</td>
+      <td>1.566667</td>
+      <td>0.996736</td>
+      <td>0.003264</td>
     </tr>
     <tr>
       <th>...</th>
@@ -597,38 +598,38 @@ yta_model_empirical.survival_df
       <td>...</td>
     </tr>
     <tr>
-      <th>876</th>
+      <th>735</th>
+      <td>36.716667</td>
+      <td>0.002611</td>
+      <td>0.997389</td>
+    </tr>
+    <tr>
+      <th>736</th>
       <td>40.333333</td>
-      <td>0.001807</td>
-      <td>0.998193</td>
+      <td>0.001958</td>
+      <td>0.998042</td>
     </tr>
     <tr>
-      <th>877</th>
+      <th>737</th>
       <td>40.650000</td>
-      <td>0.001355</td>
-      <td>0.998645</td>
+      <td>0.001305</td>
+      <td>0.998695</td>
     </tr>
     <tr>
-      <th>878</th>
+      <th>738</th>
       <td>41.050000</td>
-      <td>0.000903</td>
-      <td>0.999097</td>
+      <td>0.000653</td>
+      <td>0.999347</td>
     </tr>
     <tr>
-      <th>879</th>
+      <th>739</th>
       <td>42.666667</td>
-      <td>0.000452</td>
-      <td>0.999548</td>
-    </tr>
-    <tr>
-      <th>880</th>
-      <td>44.383333</td>
       <td>0.000000</td>
       <td>1.000000</td>
     </tr>
   </tbody>
 </table>
-<p>881 rows × 3 columns</p>
+<p>740 rows × 3 columns</p>
 </div>
 
 The weights saved with the model contain an arrival rate for each interval. To generate the arrival rates for a given prediction time, we pass this as a parameter to the model.
@@ -664,7 +665,7 @@ print(
 )
 ```
 
-    The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
+    The calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.226, 0.935, 1.226, 1.065, 1.484, 1.452, 1.29, 1.194, 0.968, 0.806]
 
 #### Generate a prediction
 
@@ -714,7 +715,7 @@ It is also possible to generate predictions by specialty, by passing a dictionar
 from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomingAdmissionPredictor
 
 train_visits_copy = train_visits.copy(deep=True)
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
@@ -735,28 +736,28 @@ _ = yta_model_by_spec_empirical.fit(train_visits_copy,
                         end_time_col='admitted_to_ward_datetime')
 ```
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-01-31
 
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-01-31
 
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-02–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-02–2023-01-31
 
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-01-31
 
 
     Time interval of 0:15:00 used to bucket arrival rates.
@@ -768,7 +769,7 @@ _ = yta_model_by_spec_empirical.fit(train_visits_copy,
     To see the weights saved by this model, use the get_weights() method
 
 
-    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 881 time points
+    EmpiricalIncomingAdmissionPredictor has been fitted with survival curve containing 740 time points
 
 ```python
 import matplotlib.pyplot as plt
@@ -889,7 +890,7 @@ from patientflow.predictors.incoming_admission_predictors import ParametricIncom
 train_visits_copy = train_visits.copy(deep=True)
 
 yta_model_parametric =  ParametricIncomingAdmissionPredictor(verbose=True)
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 
@@ -901,10 +902,10 @@ _ = yta_model_parametric.fit(train_visits_copy,
 
 ```
 
-    Calculating time-varying arrival rates for data provided, which spans 45 unique dates
+    Calculating time-varying arrival rates for data provided, which spans 31 unique dates
 
 
-    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-02-14
+    Calculating weekday-stratified arrival rates for index span 2023-01-01–2023-01-31
 
 
     Time interval of 0:15:00 used to bucket arrival rates.
@@ -947,7 +948,7 @@ print(
 
 ```
 
-    Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.289, 1.067, 1.356, 1.2, 1.289, 1.356, 1.2, 1.178, 0.933, 0.889]
+    Using the aspirational approach, the calculated arrival rates for the first 10 discrete time intervals for the 12:00 prediction time are: [1.226, 0.935, 1.226, 1.065, 1.484, 1.452, 1.29, 1.194, 0.968, 0.806]
 
 To use the weighted Poisson for prediction, the required prediction time and prediction window are passed. The aspirations for time to admission can be changed at any point. Here, I'm going to set the target at 80% within 4 hours.
 
@@ -1004,7 +1005,7 @@ from patientflow.predictors.incoming_admission_predictors import ParametricIncom
 train_visits_copy = train_visits.copy(deep=True)
 
 yta_model_parametric =  ParametricIncomingAdmissionPredictor(verbose=False)
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 if 'arrival_datetime' in train_visits_copy.columns:
     train_visits_copy.set_index('arrival_datetime', inplace=True)
 

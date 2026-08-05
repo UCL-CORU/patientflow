@@ -73,6 +73,7 @@ prediction_times = params["prediction_times"]
 prediction_dict = {tuple[Any, ...](pt): prediction_window for pt in prediction_times}
 
 start_training_set = params["start_training_set"]
+start_calibration_set = params["start_calibration_set"]
 start_validation_set = params["start_validation_set"]
 start_test_set = params["start_test_set"]
 end_test_set = params["end_test_set"]
@@ -80,7 +81,7 @@ end_test_set = params["end_test_set"]
 # Routine development: "valid". Final holdout report: "test" (same saved models).
 eval_split = "valid"
 
-_, valid_visits_df, test_visits_df = create_temporal_splits(
+_, _, valid_visits_df, test_visits_df = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
@@ -89,6 +90,7 @@ _, valid_visits_df, test_visits_df = create_temporal_splits(
     col_name="snapshot_date",
     visit_col="visit_number",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 if eval_split == "valid":
@@ -117,7 +119,7 @@ inpatient_arrivals = inpatient_arrivals.copy()
 inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
     inpatient_arrivals["arrival_datetime"], utc=True
 )
-_, valid_inpatient_arrivals_df, test_inpatient_arrivals_df = create_temporal_splits(
+_, _, valid_inpatient_arrivals_df, test_inpatient_arrivals_df = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
@@ -125,6 +127,7 @@ _, valid_inpatient_arrivals_df, test_inpatient_arrivals_df = create_temporal_spl
     end_test_set,
     col_name="arrival_datetime",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 eval_inpatient_arrivals_df = (
@@ -165,7 +168,7 @@ Bed-demand evaluation compares a **predicted distribution** (how many admissions
 | `arrived_in_window`              | Yet-to-arrive                                   | **`arrival_datetime`** falls in the prediction window       | `inpatient_arrivals`                             |
 | `arrived_and_admitted_in_window` | Yet-to-arrive (direct admission)                | Arrive and are admitted within the window (not via ED)      | `inpatient_arrivals` (often pre-filtered)        |
 
-This notebook uses `admitted_at_some_point` for ED-current bed demand and classifiers. YTA arrival deltas (section 4) compare observed and expected arrival timing; they use filtered `inpatient_arrivals` frames rather than `count_observed`, though the target still carries an `observation_mode` label for scalar rows. Window-based bed-demand modes are common at UCLH; see notebook 3f for survival-curve evaluation with real ward timestamps. After `builder.build()` in section 4, the printed target list shows which mode each task declares.
+This notebook uses `admitted_at_some_point` for ED-current bed demand and classifiers. YTA arrival deltas (section 4) compare observed and expected arrival timing; they use filtered `inpatient_arrivals` frames rather than `count_observed`, though the target still carries an `observation_mode` label for scalar rows. Window-based bed-demand modes are common at UCLH; see notebook **3f** for survival-curve bed-demand evaluation (the public dataset uses synthesised ward timestamps for illustration). After `builder.build()` in section 4, the printed target list shows which mode each task declares.
 
 ## 3. Build ED-current PMF dicts
 
@@ -226,7 +229,7 @@ def build_ed_current_by_service(spec_predictor) -> dict:
 
 ed_current_by_service = build_ed_current_by_service(spec_model)
 
-train_inpatient_arrivals_df, _, _ = create_temporal_splits(
+train_inpatient_arrivals_df, _, _, _ = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
@@ -234,6 +237,7 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
     end_test_set,
     col_name="arrival_datetime",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 baseline_probs = (
     train_inpatient_arrivals_df["specialty"].value_counts(normalize=True).to_dict()
@@ -395,27 +399,27 @@ out
 
 ```
 
-    Predicted classification (not admitted, admitted):  [662 399]
+    Predicted classification (not admitted, admitted):  [647 414]
 
 
-    Predicted classification (not admitted, admitted):  [1039  505]
+    Predicted classification (not admitted, admitted):  [1029  515]
 
 
-    Predicted classification (not admitted, admitted):  [1751  809]
+    Predicted classification (not admitted, admitted):  [1739  821]
 
 
-    Predicted classification (not admitted, admitted):  [1918  944]
+    Predicted classification (not admitted, admitted):  [1870  992]
 
 
-    Predicted classification (not admitted, admitted):  [1549  839]
+    Predicted classification (not admitted, admitted):  [1614  774]
 
 
 
 
 
-    {'run_dir': PosixPath('eval-output/notebook4d_20260714_155341'),
-     'scalars_path': PosixPath('eval-output/notebook4d_20260714_155341/scalars.json'),
-     'manifest_path': PosixPath('eval-output/notebook4d_20260714_155341/evaluation_run.yaml'),
+    {'run_dir': PosixPath('eval-output/notebook4d_20260804_191146'),
+     'scalars_path': PosixPath('eval-output/notebook4d_20260804_191146/scalars.json'),
+     'manifest_path': PosixPath('eval-output/notebook4d_20260804_191146/evaluation_run.yaml'),
      'n_targets': 4}
 
 ## 6. Review outputs
@@ -469,8 +473,8 @@ display(bed_demand_rows[base_cols].head(20))
 
 ```
 
-    Run directory: eval-output/notebook4d_20260714_155341
-    Scalars path: eval-output/notebook4d_20260714_155341/scalars.json
+    Run directory: eval-output/notebook4d_20260804_191146
+    Scalars path: eval-output/notebook4d_20260804_191146/scalars.json
     Scalar rows: 46
 
 <div>
@@ -506,180 +510,180 @@ display(bed_demand_rows[base_cols].head(20))
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[6, 0]</td>
-      <td>0.772880</td>
-      <td>2.483267</td>
-      <td>1.710387</td>
+      <td>2.586187</td>
+      <td>2.496441</td>
+      <td>-0.089745</td>
     </tr>
     <tr>
       <th>7</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[9, 30]</td>
-      <td>1.119914</td>
-      <td>3.680938</td>
-      <td>2.561024</td>
+      <td>2.071827</td>
+      <td>3.693121</td>
+      <td>1.621293</td>
     </tr>
     <tr>
       <th>8</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[12, 0]</td>
-      <td>1.778383</td>
-      <td>5.699299</td>
-      <td>3.920916</td>
+      <td>2.202597</td>
+      <td>5.696769</td>
+      <td>3.494172</td>
     </tr>
     <tr>
       <th>9</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[15, 30]</td>
-      <td>1.859699</td>
-      <td>6.059945</td>
-      <td>4.200246</td>
+      <td>2.340532</td>
+      <td>6.054620</td>
+      <td>3.714088</td>
     </tr>
     <tr>
       <th>10</th>
       <td>ed_current_beds</td>
       <td>medical</td>
       <td>[22, 0]</td>
-      <td>2.605439</td>
-      <td>5.684329</td>
-      <td>3.078890</td>
+      <td>0.956285</td>
+      <td>5.681486</td>
+      <td>4.725201</td>
     </tr>
     <tr>
       <th>11</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[6, 0]</td>
-      <td>0.047776</td>
-      <td>8.918528</td>
-      <td>8.870752</td>
+      <td>0.300416</td>
+      <td>8.920682</td>
+      <td>8.620266</td>
     </tr>
     <tr>
       <th>12</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[9, 30]</td>
-      <td>0.198117</td>
-      <td>7.998894</td>
-      <td>7.800777</td>
+      <td>0.444873</td>
+      <td>7.996816</td>
+      <td>7.551942</td>
     </tr>
     <tr>
       <th>13</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[12, 0]</td>
-      <td>0.393696</td>
-      <td>9.246690</td>
-      <td>8.852994</td>
+      <td>0.887283</td>
+      <td>9.242915</td>
+      <td>8.355632</td>
     </tr>
     <tr>
       <th>14</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[15, 30]</td>
-      <td>0.687443</td>
-      <td>9.758808</td>
-      <td>9.071365</td>
+      <td>0.530690</td>
+      <td>9.759489</td>
+      <td>9.228799</td>
     </tr>
     <tr>
       <th>15</th>
       <td>ed_current_beds</td>
       <td>surgical</td>
       <td>[22, 0]</td>
-      <td>0.587846</td>
-      <td>9.709706</td>
-      <td>9.121860</td>
+      <td>0.074633</td>
+      <td>9.708881</td>
+      <td>9.634248</td>
     </tr>
     <tr>
       <th>16</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[6, 0]</td>
-      <td>0.244585</td>
-      <td>9.432731</td>
-      <td>9.188146</td>
+      <td>0.091693</td>
+      <td>9.435551</td>
+      <td>9.343859</td>
     </tr>
     <tr>
       <th>17</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[9, 30]</td>
-      <td>0.145942</td>
-      <td>9.589460</td>
-      <td>9.443517</td>
+      <td>0.130170</td>
+      <td>9.592582</td>
+      <td>9.462412</td>
     </tr>
     <tr>
       <th>18</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[12, 0]</td>
-      <td>0.105440</td>
-      <td>9.834439</td>
-      <td>9.728999</td>
+      <td>0.105657</td>
+      <td>9.832507</td>
+      <td>9.726850</td>
     </tr>
     <tr>
       <th>19</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[15, 30]</td>
-      <td>0.181714</td>
-      <td>9.985960</td>
-      <td>9.804246</td>
+      <td>0.132659</td>
+      <td>9.985821</td>
+      <td>9.853162</td>
     </tr>
     <tr>
       <th>20</th>
       <td>ed_current_beds</td>
       <td>haem/onc</td>
       <td>[22, 0]</td>
-      <td>0.089188</td>
-      <td>9.727871</td>
-      <td>9.638683</td>
+      <td>0.096550</td>
+      <td>9.729465</td>
+      <td>9.632915</td>
     </tr>
     <tr>
       <th>21</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[6, 0]</td>
-      <td>0.122925</td>
-      <td>9.672528</td>
-      <td>9.549603</td>
+      <td>0.119541</td>
+      <td>9.674350</td>
+      <td>9.554809</td>
     </tr>
     <tr>
       <th>22</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[9, 30]</td>
-      <td>0.171916</td>
-      <td>9.855905</td>
-      <td>9.683990</td>
+      <td>0.127717</td>
+      <td>9.857766</td>
+      <td>9.730049</td>
     </tr>
     <tr>
       <th>23</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[12, 0]</td>
-      <td>0.996825</td>
-      <td>9.855987</td>
-      <td>8.859163</td>
+      <td>1.173558</td>
+      <td>9.854889</td>
+      <td>8.681332</td>
     </tr>
     <tr>
       <th>24</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[15, 30]</td>
-      <td>1.154541</td>
-      <td>9.994362</td>
-      <td>8.839821</td>
+      <td>0.737867</td>
+      <td>9.994305</td>
+      <td>9.256437</td>
     </tr>
     <tr>
       <th>25</th>
       <td>ed_current_beds</td>
       <td>paediatric</td>
       <td>[22, 0]</td>
-      <td>0.290306</td>
-      <td>9.951985</td>
-      <td>9.661679</td>
+      <td>0.242987</td>
+      <td>9.951676</td>
+      <td>9.708689</td>
     </tr>
   </tbody>
 </table>
@@ -691,4 +695,4 @@ Across all services and prediction times, `rpit_cvm_w2_reduction` is positive an
 
 In this notebook I have shown how to run a systematic evaluation with `patientflow.evaluate`. I built ED-current PMF dicts with `get_prob_dist_by_service`, registered them on `EvaluationInputsBuilder` together with admission classifiers, YTA arrival deltas, and two distribution benchmarks (binomial class-balance and the specialty-proportions baseline from notebook **3d**). I declared the evaluation tasks with `standard_ed_targets()`, ran `run_evaluation`, and read `evaluation_rows` from `scalars.json` — use those scalars to triage where to look; a next step might be to open the EPUDD plots to diagnose what is wrong.
 
-Notebook 3d covered the same ED-current PMFs manually (EPUDD plots and scalar MAE against the specialty-proportions baseline). Notebook 3f covered yet-to-arrive arrival deltas and survival-curve bed demand in more detail. To include those components in this evaluation (YTA bed-demand EPUDD based on survival curve, for example), add the corresponding EvaluationTarget rows (or enable the extra flags on standard*ed_targets()) and wire them with matching add*\* calls and distinct flow_name values in section 4.
+Notebook 3d covered the same ED-current PMFs manually (EPUDD plots and scalar MAE against the specialty-proportions baseline). Notebook 3f covered yet-to-arrive arrival deltas and survival-curve bed demand in more detail. To include those components in this evaluation (YTA bed-demand EPUDD based on survival curve, for example), add the corresponding `EvaluationTarget` rows (or enable the extra flags on `standard_ed_targets()`) and wire them with matching `add_*` calls and distinct flow_name values in section 4.

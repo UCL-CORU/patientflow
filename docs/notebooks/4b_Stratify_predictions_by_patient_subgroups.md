@@ -37,8 +37,8 @@ params = prediction_inputs["config"]
 
 ```
 
-    Split sizes: [62071, 10415, 29134]
-    Split sizes: [7716, 1285, 3898]
+    Split sizes: [51170, 10901, 10415, 29134]
+    Split sizes: [6388, 1328, 1285, 3898]
 
     Processing: (6, 0)
 
@@ -62,18 +62,20 @@ params = prediction_inputs["config"]
 from patientflow.prepare import create_temporal_splits
 
 start_training_set = params["start_training_set"]
+start_calibration_set = params["start_calibration_set"]
 start_validation_set = params["start_validation_set"]
 start_test_set = params["start_test_set"]
 end_test_set = params["end_test_set"]
 
-train_visits_df, _, _ = create_temporal_splits(
+train_visits_df, _, _, _ = create_temporal_splits(
     ed_visits, start_training_set, start_validation_set,
     start_test_set, end_test_set, col_name="snapshot_date",
+    start_calibration=start_calibration_set,
 )
 
 ```
 
-    Split sizes: [62071, 10415, 29134]
+    Split sizes: [51170, 10901, 10415, 29134]
 
 ## Explore the cohort-aware specialty model
 
@@ -113,16 +115,16 @@ spec_model = MultiSubgroupPredictor(
 spec_model = spec_model.fit(train_visits_df)
 ```
 
-By training on the data, we have derived the following mapping. The intended containment of children to paediatric specialties only, and excluding adults from paediatric specialties did not work as intended. That is because the `infer_specialty_to_subgroups` function includes any subgroup that appears **at least once** for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.
+By training on the data, we have derived the following mapping. Intended containment of children to paediatric specialties, and exclusion of adults from paediatric specialties, did not work as intended. That is because the `infer_specialty_to_subgroups` function includes any subgroup that appears **at least once** for a specialty in the training data. This means that a few edge cases (e.g., an adult patient incorrectly coded as being admitted to paediatric specialty, or vice versa, or a legitimate reason for breaking the usual policy) can leave both subgroups included in the mapping.
 
 ```python
 spec_model.specialty_to_subgroups
 ```
 
-    {'medical': ['paediatric', 'adult'],
-     'surgical': ['paediatric', 'adult'],
+    {'surgical': ['paediatric', 'adult'],
+     'medical': ['paediatric', 'adult'],
      'paediatric': ['paediatric', 'adult'],
-     'haem/onc': ['paediatric', 'adult']}
+     'haem/onc': ['adult']}
 
 Looking at the actual subgroup mapping in the data, we see that some children do go to adult specialties and vice versa. From the data below, 3% of children were admitted to surgical specialties; these might be genuine decisions rather than coding errors.
 
@@ -147,27 +149,27 @@ for specialty in spec_model.specialty_to_subgroups.keys():
         print(f"  Missing age_group: {missing_age} ({missing_age/total*100:.1f}%)")
 ```
 
-    medical specialty:
-      Total patients: 5392
-      Paediatric (age_group == '0-17'): 12 (0.2%)
-      Adult (age_group != '0-17'): 5380 (99.8%)
-
     surgical specialty:
-      Total patients: 2185
-      Paediatric (age_group == '0-17'): 70 (3.2%)
-      Adult (age_group != '0-17'): 2115 (96.8%)
+      Total patients: 1803
+      Paediatric (age_group == '0-17'): 52 (2.9%)
+      Adult (age_group != '0-17'): 1751 (97.1%)
+
+    medical specialty:
+      Total patients: 4385
+      Paediatric (age_group == '0-17'): 12 (0.3%)
+      Adult (age_group != '0-17'): 4373 (99.7%)
 
     paediatric specialty:
-      Total patients: 528
-      Paediatric (age_group == '0-17'): 513 (97.2%)
-      Adult (age_group != '0-17'): 15 (2.8%)
+      Total patients: 440
+      Paediatric (age_group == '0-17'): 428 (97.3%)
+      Adult (age_group != '0-17'): 12 (2.7%)
 
     haem/onc specialty:
-      Total patients: 707
-      Paediatric (age_group == '0-17'): 1 (0.1%)
-      Adult (age_group != '0-17'): 706 (99.9%)
+      Total patients: 573
+      Paediatric (age_group == '0-17'): 0 (0.0%)
+      Adult (age_group != '0-17'): 573 (100.0%)
 
-We can override this mapping if we wished to enforce stricter policy rules, as shown below.
+We can override this mapping if we wish to enforce stricter policy rules, as shown below.
 
 ```python
 expected_mapping = {

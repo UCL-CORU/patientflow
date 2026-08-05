@@ -271,6 +271,94 @@ class TestClassifiers(unittest.TestCase):
                 "single_snapshot_per_visit"
             ]
         )
+        # Without calibration_visits, the calibrator source stays 'validation'
+        self.assertEqual(
+            model.training_results.calibration_info["source"]["dataset"],
+            "validation",
+        )
+
+    def test_calibration_visits_fit_calibrator_and_score_validation(self):
+        """With calibration_visits, the calibrator is fitted on them, metadata
+        records the calibration source, and headline metrics come from the
+        untouched validation set."""
+        calibration_visits = self.train_visits.iloc[:300].copy()
+
+        model = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            visit_col="visit_number",
+            calibrate_probabilities=True,
+            calibration_method="sigmoid",
+            evaluate_on_test=False,
+            calibration_visits=calibration_visits,
+        )
+
+        self.assertIsNotNone(model.calibrated_pipeline)
+
+        source = model.training_results.calibration_info["source"]
+        self.assertEqual(source["dataset"], "calibration")
+        # Deployment-like preparation keeps every snapshot, so the calibrator
+        # saw exactly the calibration frame, not the validation set
+        self.assertEqual(source["n_samples"], len(calibration_visits))
+
+        prep = model.training_results.training_info["dataset_preparation"][
+            "single_snapshot_per_visit"
+        ]
+        self.assertIn("calibration", prep)
+        self.assertFalse(prep["calibration"])
+
+        metrics = model.selected_eval_metrics
+        self.assertEqual(metrics["split"], "valid")
+        for key in ("log_loss", "auroc", "auprc"):
+            self.assertIn(key, metrics)
+        dataset_info = model.training_results.training_info["dataset_info"]
+        self.assertEqual(
+            metrics["n_samples"],
+            dataset_info["train_valid_test_set_no"]["valid_set_no"],
+        )
+        self.assertEqual(
+            metrics["n_positive_cases"],
+            dataset_info["train_valid_test_positive_cases"]["valid_positive_cases"],
+        )
+
+    def test_calibration_visits_with_test_eval_still_reports_test_split(self):
+        """evaluate_on_test=True takes precedence over validation scoring."""
+        model = train_classifier(
+            train_visits=self.train_visits,
+            valid_visits=self.valid_visits,
+            prediction_time=self.prediction_time,
+            exclude_from_training_data=self.exclude_from_training_data,
+            grid=self.grid,
+            ordinal_mappings=self.ordinal_mappings,
+            test_visits=self.test_visits,
+            visit_col="visit_number",
+            calibrate_probabilities=True,
+            evaluate_on_test=True,
+            calibration_visits=self.train_visits.iloc[:300].copy(),
+        )
+        self.assertEqual(model.selected_eval_metrics["split"], "test")
+        self.assertEqual(
+            model.training_results.calibration_info["source"]["dataset"],
+            "calibration",
+        )
+
+    def test_calibration_visits_require_prediction_time_column(self):
+        bad_calibration = self.train_visits.iloc[:100].drop(columns=["prediction_time"])
+        with self.assertRaises(ValueError):
+            train_classifier(
+                train_visits=self.train_visits,
+                valid_visits=self.valid_visits,
+                prediction_time=self.prediction_time,
+                exclude_from_training_data=self.exclude_from_training_data,
+                grid=self.grid,
+                ordinal_mappings=self.ordinal_mappings,
+                visit_col="visit_number",
+                calibration_visits=bad_calibration,
+            )
 
     def test_role_specific_snapshot_overrides_without_visit_col(self):
         """visit_col is not required when all role-specific snapshot flags are False."""

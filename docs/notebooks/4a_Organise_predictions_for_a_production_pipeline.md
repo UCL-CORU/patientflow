@@ -1,6 +1,6 @@
 # 4a. Organise predictions for a production pipeline
 
-In the previous notebooks in this series, we worked with raw probability distributions — PMF arrays from group snapshots (3a, 3b) and Poisson-based distributions from yet-to-arrive models (3e). We used functions like `get_prob_dist_for_prediction_moment()` and `ParametricIncomingAdmissionPredictor.predict()` to generate these distributions, and `plot_prob_dist()` to visualise them.
+In the **3x** notebooks, we worked with raw probability distributions — PMF arrays from group snapshots (3a, 3b) and Poisson-based distributions from yet-to-arrive models (3e). We used functions like `get_prob_dist_for_prediction_moment()` and `ParametricIncomingAdmissionPredictor.predict()` to generate these distributions, and `plot_prob_dist()` to visualise them.
 
 These building blocks work well for individual predictions, but a production system needs to combine multiple demand sources (current patients, yet-to-arrive patients), for multiple services (medical, surgical, paediatric, ...), at multiple times of day. How do we organise all of these predictions in a structured way?
 
@@ -44,14 +44,16 @@ snapshots_df = create_fake_snapshots(
 
 # Temporal splits
 start_training_set = date(2023, 1, 1)
+start_calibration_set = date(2023, 2, 1)
 start_validation_set = date(2023, 2, 15)
 start_test_set = date(2023, 3, 1)
 end_test_set = date(2023, 4, 1)
 
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     snapshots_df, start_training_set, start_validation_set,
     start_test_set, end_test_set,
-    col_name='snapshot_date', patient_id='patient_id', visit_col='visit_number'
+    col_name='snapshot_date', patient_id='patient_id', visit_col='visit_number',
+    start_calibration=start_calibration_set,
 )
 
 # Train a simple admission probability model (as in notebook 3a)
@@ -63,16 +65,20 @@ model = train_classifier(
     ordinal_mappings={'latest_triage_score': [1, 2, 3, 4, 5]},
     visit_col='visit_number',
     use_balanced_training=True,
-    calibrate_probabilities=True
+    calibrate_probabilities=True,
+    calibration_visits=calibration_visits,
 )
 ```
 
     Patient Set Overlaps (before random assignment):
-    Train-Valid: 0 of 5318
+    Train-Calib: 0 of 3981
+    Train-Valid: 0 of 4028
+    Train-Test: 217 of 4929
+    Calib-Valid: 0 of 2627
+    Calib-Test: 90 of 3655
     Valid-Test: 102 of 3690
-    Train-Test: 307 of 6129
     All Sets: 0 of 7364 total patients
-    Split sizes: [6406, 2122, 4304]
+    Split sizes: [4326, 2062, 2122, 4304]
 
 Next, fake arrival data for training a yet-to-arrive model (as in notebook 3e):
 
@@ -88,9 +94,10 @@ inpatient_arrivals = visits_df.rename(
 ).drop(columns='is_admitted')
 inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arrival_datetime'])
 
-train_arrivals, _, _ = create_temporal_splits(
+train_arrivals, _, _, _ = create_temporal_splits(
     inpatient_arrivals, start_training_set, start_validation_set,
-    start_test_set, end_test_set, col_name='arrival_datetime'
+    start_test_set, end_test_set, col_name='arrival_datetime',
+    start_calibration=start_calibration_set,
 )
 
 # Train a parametric yet-to-arrive model (as in notebook 3e)
@@ -98,7 +105,7 @@ train_arrivals_copy = train_arrivals.copy(deep=True)
 if 'arrival_datetime' in train_arrivals_copy.columns:
     train_arrivals_copy.set_index('arrival_datetime', inplace=True)
 
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 
 yta_model = ParametricIncomingAdmissionPredictor(verbose=False)
 _ = yta_model.fit(
@@ -108,7 +115,7 @@ _ = yta_model.fit(
 )
 ```
 
-    Split sizes: [2214, 710, 1584]
+    Split sizes: [1532, 682, 710, 1584]
 
 We also need the aspirational curve parameters for the parametric model. These are loaded from the config file in the repository:
 
@@ -273,43 +280,43 @@ yta_distribution.head(10)
   <tbody>
     <tr>
       <th>0</th>
-      <td>8.208667e-09</td>
+      <td>7.686749e-09</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>1.528296e-07</td>
+      <td>1.436174e-07</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>1.422696e-06</td>
+      <td>1.341657e-06</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>8.829289e-06</td>
+      <td>8.355739e-06</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>4.109609e-05</td>
+      <td>3.902917e-05</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>1.530260e-04</td>
+      <td>1.458424e-04</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>4.748417e-04</td>
+      <td>4.541476e-04</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>1.262948e-03</td>
+      <td>1.212170e-03</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>2.939208e-03</td>
+      <td>2.830987e-03</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>6.080267e-03</td>
+      <td>5.877056e-03</td>
     </tr>
   </tbody>
 </table>
@@ -339,7 +346,7 @@ print(f'Yet-to-arrive Poisson rate (lambda): {yta_lambda:.3f}')
 
 ```
 
-    Yet-to-arrive Poisson rate (lambda): 18.618
+    Yet-to-arrive Poisson rate (lambda): 18.684
 
 We can wrap this Poisson rate in a `FlowInputs` container. The key difference from Step 2 is that `flow_type` is `"poisson"` and `distribution` is a float (the rate) rather than a numpy array.
 
@@ -361,7 +368,7 @@ print(f'Distribution:  {ed_yta_flow.distribution} (Poisson lambda)')
     Flow ID:       ed_yta
     Flow type:     poisson
     Display name:  ED yet-to-arrive admissions
-    Distribution:  18.618075334578297 (Poisson lambda)
+    Distribution:  18.683767842067834 (Poisson lambda)
 
 Both PMF and Poisson flows use the same `FlowInputs` container, distinguished only by `flow_type`. This uniform interface means downstream code can handle any flow without special-casing.
 
@@ -427,8 +434,8 @@ print(service_inputs)
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[2:12]: [0.008, 0.030, 0.076, 0.141, 0.194, 0.202, 0.163, 0.104, 0.052, 0.021] (E=6.8 of 21 patients in ED)
-        ED yet-to-arrive admissions              λ = 18.618
+        Admissions from current ED               PMF[1:11]: [0.005, 0.024, 0.069, 0.136, 0.194, 0.207, 0.170, 0.109, 0.055, 0.022] (E=5.9 of 21 patients in ED)
+        ED yet-to-arrive admissions              λ = 18.684
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
         Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
@@ -479,9 +486,9 @@ print(f'Percentiles:          {arrivals.percentiles}')
 print(f'PMF shape:            {arrivals.probabilities.shape}')
 ```
 
-    Expectation:          6.8
-    Expected value:       7
-    Percentiles:          {25: 5, 50: 7, 75: 8}
+    Expectation:          5.9
+    Expected value:       6
+    Percentiles:          {25: 5, 50: 6, 75: 7}
     PMF shape:            (22,)
 
 ```python
@@ -524,9 +531,9 @@ print(f'Combined — expected beds: {combined_bundle.arrivals.expectation:.1f}')
 
 ```
 
-    Current ED only — expected beds: 6.8
-    Yet-to-arrive only — Poisson rate: 18.6
-    Combined — expected beds: 25.4
+    Current ED only — expected beds: 5.9
+    Yet-to-arrive only — Poisson rate: 18.7
+    Combined — expected beds: 24.6
 
 The expected value of the combined distribution equals the sum of the individual expected values — a property of convolution. But the full probability distribution captures the combined uncertainty, not just the means.
 
@@ -572,14 +579,14 @@ print(f'  Expected net flow:   {default_bundle.net_flow.expectation:.1f}')
     === FlowSelection.incoming_only() ===
 
 
-      Expected arrivals:   25.4
+      Expected arrivals:   24.6
       Expected departures: 0.0
-      Expected net flow:   25.4
+      Expected net flow:   24.6
 
     === FlowSelection.default() ===
-      Expected arrivals:   25.4
+      Expected arrivals:   24.6
       Expected departures: 7.0
-      Expected net flow:   18.4
+      Expected net flow:   17.6
 
 The available presets are:
 
@@ -605,9 +612,9 @@ print(combined_bundle)
 ```
 
     PredictionBundle(service: medical)
-      Arrivals:    PMF[20:30]: [0.047, 0.058, 0.069, 0.077, 0.083, 0.085, 0.083, 0.077, 0.069, 0.060] (E=25.4)
+      Arrivals:    PMF[20:30]: [0.056, 0.067, 0.076, 0.082, 0.085, 0.083, 0.078, 0.071, 0.061, 0.051] (E=24.6)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[20:30]: [0.047, 0.058, 0.069, 0.077, 0.083, 0.085, 0.083, 0.077, 0.069, 0.060] (E=25.4)
+      Net flow:    PMF[20:30]: [0.056, 0.067, 0.076, 0.082, 0.085, 0.083, 0.078, 0.071, 0.061, 0.051] (E=24.6)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 Each `DemandPrediction` carries useful summary statistics:
@@ -622,9 +629,9 @@ print(f'90% probability:     need at least {arrivals.min_beds_with_probability(0
 print(f'PMF array length:    {len(arrivals.probabilities)}')
 ```
 
-    Expected beds:       25.4
-    Most likely (mode):  25
-    Percentiles:         {25: 22, 50: 25, 75: 29}
+    Expected beds:       24.6
+    Most likely (mode):  24
+    Percentiles:         {25: 21, 50: 24, 75: 28}
     90% probability:     need at least 19 beds
     PMF array length:    76
 

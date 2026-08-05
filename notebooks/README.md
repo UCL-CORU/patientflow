@@ -10,7 +10,7 @@ The first notebook explains how to set up your environment to run the notebooks 
 
 - **[0_Set_up_your_environment](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/0_Set_up_your_environment.ipynb):** Shows how to set things up if you want to run these notebooks in a Jupyter environment
 
-I then explain who are the intended users of predictive models of patient flow.
+I then explain who the intended users of predictive models of patient flow are.
 
 - **[1_Meet_the_users_of_our_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/1_Meet_the_users_of_our_predictions.ipynb):** Talks about the users of patient flow predictions in acute hospitals.
 
@@ -30,7 +30,7 @@ Next is a series of notebooks on preparing group snapshots, generating predictio
 - **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.ipynb):** Shows how to predict demand, using historical data, when patient snapshots are not appropriate.
 - **[3f_Evaluate_demand_predictions_for_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.ipynb):** Evaluate arrival rates and survival-curve yet-to-arrive bed demand against observed outcomes.
 
-A set of notebooks follow, that show how we assembled the building blocks from the 3x\_ notebooks into a production system at UCLH to predict demand for beds.
+A set of notebooks follows that shows how we assembled the building blocks from the 3x\_ notebooks into a production system at UCLH to predict demand for beds.
 
 - **[4_Specify_demand_model](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4_Specify_demand_model.ipynb):** Specifies the operational requirements for demand predictions at UCLH, bridges from the 3x\_ notebooks, and provides an overview of the notebooks that follow.
 - **[4a_Organise_predictions_for_a_production_pipeline](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4a_Organise_predictions_for_a_production_pipeline.ipynb):** Introduces the structured data classes (`FlowInputs`, `ServicePredictionInputs`, `DemandPredictor`, `FlowSelection`, `PredictionBundle`, `ServiceModels`) that organise predictions for production use.

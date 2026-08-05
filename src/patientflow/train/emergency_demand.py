@@ -197,6 +197,7 @@ def train_all_models(
     save_models=True,
     test_realtime=True,
     verbose=True,
+    start_calibration_set=None,
 ):
     """
     Train and evaluate patient flow models.
@@ -239,6 +240,11 @@ def train_all_models(
         Whether to run real-time prediction tests. Defaults to True.
     verbose : bool, optional
         Whether to print progress messages during training. Defaults to True.
+    start_calibration_set : datetime.date, optional
+        Start of an optional chronological calibration window between training
+        and validation. When provided, probability calibration is fitted on
+        this window instead of validation (leaving validation eval-only), and
+        the training span used for arrival-rate estimation ends at this date.
 
     Returns
     -------
@@ -283,7 +289,7 @@ def train_all_models(
     model_names = {
         "admissions": "admissions",
         "specialty": "ed_specialty",
-        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds()/3600)}_hours",
+        "yet_to_arrive": f"yet_to_arrive_{int(prediction_window.total_seconds() / 3600)}_hours",
     }
 
     if "arrival_datetime" in visits.columns:
@@ -291,17 +297,32 @@ def train_all_models(
     else:
         col_name = "snapshot_date"
 
-    train_visits, valid_visits, test_visits = create_temporal_splits(
-        visits,
-        start_training_set,
-        start_validation_set,
-        start_test_set,
-        end_test_set,
-        col_name=col_name,
-        verbose=verbose,
-    )
+    if start_calibration_set is not None:
+        train_visits, calibration_visits, valid_visits, test_visits = (
+            create_temporal_splits(
+                visits,
+                start_training_set,
+                start_validation_set,
+                start_test_set,
+                end_test_set,
+                col_name=col_name,
+                verbose=verbose,
+                start_calibration=start_calibration_set,
+            )
+        )
+    else:
+        calibration_visits = None
+        train_visits, valid_visits, test_visits = create_temporal_splits(
+            visits,
+            start_training_set,
+            start_validation_set,
+            start_test_set,
+            end_test_set,
+            col_name=col_name,
+            verbose=verbose,
+        )
 
-    train_yta, _, _ = create_temporal_splits(
+    train_yta, *_ = create_temporal_splits(
         yta[(~yta.specialty.isnull())],
         start_training_set,
         start_validation_set,
@@ -309,6 +330,7 @@ def train_all_models(
         end_test_set,
         col_name="arrival_datetime",
         verbose=verbose,
+        start_calibration=start_calibration_set,
     )
 
     # Use predicted_times from visits if not explicitly provided
@@ -318,6 +340,7 @@ def train_all_models(
     # Train admission models
     admission_models = train_multiple_classifiers(
         train_visits=train_visits,
+        calibration_visits=calibration_visits,
         valid_visits=valid_visits,
         test_visits=test_visits,
         grid=grid_params,
@@ -364,7 +387,15 @@ def train_all_models(
     # Train yet-to-arrive model
     yta_model_name = model_names["yet_to_arrive"]
 
-    num_days = (start_validation_set - start_training_set).days
+    # The training window ends where the next configured window begins;
+    # otherwise the arrival-rate denominator would silently include days
+    # whose visits are not in the training data.
+    end_training_set = (
+        start_calibration_set
+        if start_calibration_set is not None
+        else start_validation_set
+    )
+    num_days = (end_training_set - start_training_set).days
 
     yta_model = train_parametric_admission_predictor(
         train_visits=train_visits,
@@ -465,6 +496,7 @@ def prepare_prediction_inputs(
 
     prediction_times = config["prediction_times"]
     start_training_set = config["start_training_set"]
+    start_calibration_set = config.get("start_calibration_set")
     start_validation_set = config["start_validation_set"]
     start_test_set = config["start_test_set"]
     end_test_set = config["end_test_set"]
@@ -537,6 +569,7 @@ def prepare_prediction_inputs(
     prediction_inputs = train_all_models(
         visits=ed_visits,
         start_training_set=start_training_set,
+        start_calibration_set=start_calibration_set,
         start_validation_set=start_validation_set,
         start_test_set=start_test_set,
         end_test_set=end_test_set,
@@ -624,6 +657,7 @@ def main(data_folder_name=None):
     # Extract parameters
     prediction_times = config["prediction_times"]
     start_training_set = config["start_training_set"]
+    start_calibration_set = config["start_calibration_set"]
     start_validation_set = config["start_validation_set"]
     start_test_set = config["start_test_set"]
     end_test_set = config["end_test_set"]
@@ -700,6 +734,7 @@ def main(data_folder_name=None):
     train_all_models(
         visits=ed_visits,
         start_training_set=start_training_set,
+        start_calibration_set=start_calibration_set,
         start_validation_set=start_validation_set,
         start_test_set=start_test_set,
         end_test_set=end_test_set,
