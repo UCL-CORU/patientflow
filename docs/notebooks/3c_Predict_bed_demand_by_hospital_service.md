@@ -58,13 +58,13 @@ ed_visits.snapshot_date = pd.to_datetime(ed_visits.snapshot_date).dt.date
 
 # load the config file to set the dates for the training, validation and test sets
 params = load_config_file(config_path)
-start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
+start_training_set, start_calibration_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_calibration_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
 
 # apply the temporal splits
 from patientflow.prepare import create_temporal_splits
 
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
@@ -72,7 +72,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     end_test_set,
     col_name="snapshot_date", # states which column contains the date to use when making the splits
     visit_col="visit_number", # states which column contains the visit number to use when making the splits
-
+    start_calibration=start_calibration_set,
 )
 
 ```
@@ -80,7 +80,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     Inferred project root: /Users/zellaking/Repos/patientflow
 
 
-    Split sizes: [62071, 10415, 29134]
+    Split sizes: [51170, 10901, 10415, 29134]
 
 ## Train a model to predict probability of admission to each specialty
 
@@ -199,7 +199,7 @@ This sequence predictor could be applied to other types of data, such as sequenc
 - `grouping_var` - the terminal node in the decision tree, observed in this example at the end of the ED visit
 - `outcome_var` - the final outcome to be predicted
 
-The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, under 18 patients might always be assumed to be visiting paediatric specialties. I demonstrate this in a later notebook.
+The `apply_special_category_filtering` argument provides for the handling of certain categories in a specific way. For example, patients under 18 might always be assumed to be visiting paediatric specialties. I demonstrate this in a later notebook.
 
 ```python
 from patientflow.predictors.sequence_to_outcome_predictor import SequenceToOutcomePredictor
@@ -224,7 +224,7 @@ print(
 ```
 
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
-    {'medical': 0.611, 'surgical': 0.248, 'paediatric': 0.061, 'haem/onc': 0.08}
+    {'surgical': 0.251, 'medical': 0.607, 'paediatric': 0.063, 'haem/onc': 0.079}
 
 Similarly, we can view the probability of being admitted to each specialty after a consultation request to acute medicine
 
@@ -236,7 +236,7 @@ print(
 ```
 
     Probability of being admitted to each specialty if one consultation request to acute medicine has taken place by the time of the snapshot:
-    {'medical': 0.95, 'surgical': 0.017, 'paediatric': 0.002, 'haem/onc': 0.032}
+    {'surgical': 0.016, 'medical': 0.948, 'paediatric': 0.001, 'haem/onc': 0.035}
 
 The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
 
@@ -267,12 +267,12 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <th>(acute,)</th>
       <th>(acute, acute)</th>
       <th>(acute, acute, acute)</th>
-      <th>(acute, acute, discharge)</th>
       <th>(acute, acute, icu)</th>
       <th>(acute, acute, medical)</th>
       <th>(acute, acute, medical, surgical)</th>
       <th>(acute, acute, mental_health)</th>
-      <th>(acute, acute, palliative)</th>
+      <th>(acute, acute, surgical)</th>
+      <th>(acute, allied)</th>
     </tr>
     <tr>
       <th>consultation_sequence</th>
@@ -291,42 +291,42 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
   <tbody>
     <tr>
       <th>()</th>
-      <td>0.015452</td>
-      <td>0.433579</td>
-      <td>0.014760</td>
-      <td>0.000231</td>
-      <td>0.000231</td>
-      <td>0.000</td>
-      <td>0.000692</td>
-      <td>0.000231</td>
-      <td>0.000461</td>
-      <td>0.000</td>
+      <td>0.011433</td>
+      <td>0.438093</td>
+      <td>0.013943</td>
+      <td>0.000279</td>
+      <td>0.000000</td>
+      <td>0.000279</td>
+      <td>0.000279</td>
+      <td>0.000558</td>
+      <td>0.000558</td>
+      <td>0.005020</td>
     </tr>
     <tr>
       <th>(acute,)</th>
       <td>0.000000</td>
-      <td>0.820442</td>
-      <td>0.007182</td>
-      <td>0.000000</td>
-      <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.828191</td>
+      <td>0.004909</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.007714</td>
     </tr>
     <tr>
       <th>(acute, acute)</th>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.850000</td>
+      <td>0.900000</td>
       <td>0.000000</td>
-      <td>0.025000</td>
-      <td>0.025</td>
-      <td>0.075000</td>
+      <td>0.033333</td>
+      <td>0.066667</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.025</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>(acute, acute, medical)</th>
@@ -335,24 +335,24 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
-      <th>(acute, allied)</th>
+      <th>(acute, ambulatory)</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>...</th>
@@ -368,17 +368,17 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>...</td>
     </tr>
     <tr>
-      <th>(surgical, paeds)</th>
+      <th>(surgical, other)</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>(surgical, surgical)</th>
@@ -387,11 +387,11 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>(surgical, surgical, acute)</th>
@@ -400,11 +400,11 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>(surgical, surgical, icu)</th>
@@ -413,11 +413,11 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
     <tr>
       <th>(surgical, surgical, medical)</th>
@@ -426,15 +426,15 @@ spec_model.input_to_grouping_probs.iloc[:, :10]
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
     </tr>
   </tbody>
 </table>
-<p>123 rows × 10 columns</p>
+<p>103 rows × 10 columns</p>
 </div>
 
 #### Using the `SequenceToOutcomePredictor`
@@ -446,11 +446,11 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
 ```
 
     snapshot_id
-    192732    {'medical': 0.1318359375, 'surgical': 0.826171...
-    209659    {'medical': 0.09243697478991597, 'surgical': 0...
-    207377    {'medical': 0.8333333333333333, 'surgical': 0....
-    216864    {'medical': 0.6107109665427509, 'surgical': 0....
-    207071    {'medical': 0.6107109665427509, 'surgical': 0....
+    192732    {'surgical': 0.8227405247813412, 'medical': 0....
+    209659    {'surgical': 0.8954703832752613, 'medical': 0....
+    207377    {'surgical': 0.0, 'medical': 0.833333333333333...
+    216864    {'surgical': 0.25145865945638257, 'medical': 0...
+    207071    {'surgical': 0.25145865945638257, 'medical': 0...
     Name: consultation_sequence, dtype: object
 
 A dictionary is returned for each patient, with probabilities summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
@@ -467,7 +467,7 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lamb
 
 
 
-    array([0.13183594, 0.09243697, 0.83333333, 0.61071097, 0.61071097])
+    array([0.13236152, 0.07665505, 0.83333333, 0.60722926, 0.60722926])
 
 ### Predicting specialty of admission using a simpler input
 
@@ -585,7 +585,7 @@ ed_visits[(ed_visits.is_admitted) & (ed_visits.prediction_time == (9,30))][['tem
 
 ```python
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
@@ -593,7 +593,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     end_test_set,
     col_name="snapshot_date", # states which column contains the date to use when making the splits
     visit_col="visit_number", # states which column contains the visit number to use when making the splits
-
+    start_calibration=start_calibration_set,
 )
 
 from patientflow.predictors.value_to_outcome_predictor import ValueToOutcomePredictor
@@ -608,7 +608,7 @@ spec_model_simple = ValueToOutcomePredictor(
 _ = spec_model_simple.fit(train_visits)
 ```
 
-    Split sizes: [62071, 10415, 29134]
+    Split sizes: [51170, 10901, 10415, 29134]
 
 The weights, which map the input variable to specialty, and the intermediate mappings from input to grouping variables can be viewed in the same way as before. The weights are returned with a key of an empty string rather than a None value for probabilities with a Null value in the input variable.
 
@@ -625,10 +625,10 @@ print(
 ```
 
     Probability of being admitted to each specialty at the end of the visit if the value of the input is "medical" at the time of the snapshot:
-    {'haem/onc': 0.019, 'medical': 0.91, 'paediatric': 0.01, 'surgical': 0.061}
+    {'haem/onc': 0.023, 'medical': 0.921, 'paediatric': 0.006, 'surgical': 0.051}
 
     Probability of being admitted to each specialty at the end of the visit if no input has been recorded by the time of the snapshot:
-    {'haem/onc': 0.063, 'medical': 0.652, 'paediatric': 0.057, 'surgical': 0.228}
+    {'haem/onc': 0.061, 'medical': 0.651, 'paediatric': 0.059, 'surgical': 0.229}
 
 ```python
 spec_model_simple.input_to_grouping_probs
@@ -695,30 +695,29 @@ spec_model_simple.input_to_grouping_probs
   <tbody>
     <tr>
       <th></th>
-      <td>0.015452</td>
-      <td>0.545664</td>
-      <td>0.000231</td>
-      <td>0.00738</td>
-      <td>0.003690</td>
-      <td>0.001614</td>
-      <td>0.044742</td>
-      <td>0.007611</td>
-      <td>0.026983</td>
-      <td>0.007841</td>
-      <td>0.037131</td>
-      <td>0.030673</td>
-      <td>0.000461</td>
-      <td>0.04405</td>
-      <td>0.000231</td>
-      <td>0.226245</td>
-      <td>0.503717</td>
+      <td>0.011433</td>
+      <td>0.547407</td>
+      <td>0.000279</td>
+      <td>0.007808</td>
+      <td>0.003067</td>
+      <td>0.001952</td>
+      <td>0.040993</td>
+      <td>0.007808</td>
+      <td>0.027607</td>
+      <td>0.006972</td>
+      <td>0.038204</td>
+      <td>0.030675</td>
+      <td>0.000558</td>
+      <td>0.045733</td>
+      <td>0.000279</td>
+      <td>0.229225</td>
+      <td>0.510317</td>
     </tr>
     <tr>
       <th>acute</th>
       <td>0.000000</td>
       <td>1.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -728,17 +727,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.230367</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.221574</td>
     </tr>
     <tr>
       <th>allied</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>1.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -748,17 +747,18 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000116</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000142</td>
     </tr>
     <tr>
       <th>ambulatory</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>1.00000</td>
+      <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -768,17 +768,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.017658</td>
+      <td>0.000000</td>
+      <td>0.018215</td>
     </tr>
     <tr>
       <th>discharge</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -788,17 +788,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.001394</td>
+      <td>0.000000</td>
+      <td>0.000996</td>
     </tr>
     <tr>
       <th>elderly</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>1.000000</td>
       <td>0.000000</td>
@@ -808,17 +808,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.001046</td>
+      <td>0.000000</td>
+      <td>0.001138</td>
     </tr>
     <tr>
       <th>haem_onc</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>1.000000</td>
@@ -828,57 +828,57 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.041473</td>
+      <td>0.000000</td>
+      <td>0.040558</td>
     </tr>
     <tr>
       <th>icu</th>
       <td>0.000000</td>
-      <td>0.027778</td>
-      <td>0.000000</td>
-      <td>0.00000</td>
-      <td>0.000000</td>
-      <td>0.000000</td>
-      <td>0.000000</td>
-      <td>0.972222</td>
+      <td>0.032258</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.967742</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.004182</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.004412</td>
     </tr>
     <tr>
       <th>medical</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.989130</td>
+      <td>0.000000</td>
+      <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
-      <td>0.010870</td>
-      <td>0.010688</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.011100</td>
     </tr>
     <tr>
       <th>mental_health</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -888,17 +888,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.008713</td>
+      <td>0.000000</td>
+      <td>0.008965</td>
     </tr>
     <tr>
       <th>neuro</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -908,17 +908,17 @@ spec_model_simple.input_to_grouping_probs
       <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.002556</td>
+      <td>0.000000</td>
+      <td>0.002846</td>
     </tr>
     <tr>
       <th>obs_gyn</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -928,17 +928,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>1.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.026022</td>
+      <td>0.000000</td>
+      <td>0.025189</td>
     </tr>
     <tr>
       <th>other</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
       <td>0.333333</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -948,17 +948,16 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.666667</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.000349</td>
+      <td>0.000000</td>
+      <td>0.000427</td>
     </tr>
     <tr>
       <th>paeds</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -968,17 +967,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>1.00000</td>
+      <td>0.000000</td>
+      <td>1.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.027765</td>
+      <td>0.026896</td>
     </tr>
     <tr>
       <th>palliative</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -988,17 +987,17 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
       <td>1.000000</td>
       <td>0.000000</td>
-      <td>0.000116</td>
+      <td>0.000142</td>
     </tr>
     <tr>
       <th>surgical</th>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
@@ -1008,10 +1007,11 @@ spec_model_simple.input_to_grouping_probs
       <td>0.000000</td>
       <td>0.000000</td>
       <td>0.000000</td>
-      <td>0.00000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
       <td>0.000000</td>
       <td>1.000000</td>
-      <td>0.123838</td>
+      <td>0.127081</td>
     </tr>
   </tbody>
 </table>
@@ -1073,6 +1073,7 @@ admission_model = train_classifier(
     calibrate_probabilities=True,
     calibration_method="isotonic",
     use_balanced_training=True,
+    calibration_visits=calibration_visits,
 )
 
 ```

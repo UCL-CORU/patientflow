@@ -44,6 +44,7 @@ yta_model = prediction_inputs["yta_model"]
 params = prediction_inputs["config"]
 
 start_training_set = params["start_training_set"]
+start_calibration_set = params["start_calibration_set"]
 start_validation_set = params["start_validation_set"]
 start_test_set = params["start_test_set"]
 end_test_set = params["end_test_set"]
@@ -54,7 +55,7 @@ inpatient_arrivals = inpatient_arrivals.copy()
 inpatient_arrivals["arrival_datetime"] = __import__("pandas").to_datetime(
     inpatient_arrivals["arrival_datetime"], utc=True
 )
-_, _, test_inpatient_arrivals_df = create_temporal_splits(
+_, _, _, test_inpatient_arrivals_df = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
@@ -62,6 +63,7 @@ _, _, test_inpatient_arrivals_df = create_temporal_splits(
     end_test_set,
     col_name="arrival_datetime",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 test_snapshot_dates = [
@@ -118,7 +120,7 @@ plot_arrival_delta_timelines(
 
 ![png](3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_files/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive_5_1.png)
 
-The following charst show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.
+The following charts show one row per hospital service, with a histogram panel for each prediction time, across snapshot dates in the test period.
 
 ```python
 prediction_times = sorted(
@@ -188,7 +190,7 @@ illustration_suffix = " (illustrative only)" if using_synthetic_ward_times else 
 arrivals["arrival_datetime"] = pd.to_datetime(arrivals["arrival_datetime"], utc=True)
 arrivals[WARD_ADMISSION_COL] = pd.to_datetime(arrivals[WARD_ADMISSION_COL], utc=True)
 
-train_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
+train_arrivals, calibration_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
     arrivals,
     start_training_set,
     start_validation_set,
@@ -196,6 +198,7 @@ train_arrivals, valid_arrivals, test_arrivals = create_temporal_splits(
     end_test_set,
     col_name="arrival_datetime",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 train_indexed = train_arrivals.copy()
@@ -205,7 +208,7 @@ yta_model_empirical = EmpiricalIncomingAdmissionPredictor(verbose=False)
 _ = yta_model_empirical.fit(
     train_indexed,
     yta_time_interval=yta_time_interval,
-    num_days=(start_validation_set - start_training_set).days,
+    num_days=(start_calibration_set - start_training_set).days,
     start_time_col="arrival_datetime",
     end_time_col=WARD_ADMISSION_COL,
     stratify_by_weekday=True,
@@ -266,4 +269,4 @@ I then ran the survival-curve bed-demand workflow on the same `inpatient_arrival
 
 For systematic multi-component evaluation with `patientflow.evaluate` (`EvaluationInputsBuilder` and `run_evaluation`), see notebook **4d**.
 
-In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.
+In notebooks **4a** onwards, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.

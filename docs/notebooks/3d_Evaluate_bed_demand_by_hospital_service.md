@@ -52,11 +52,12 @@ prediction_window = timedelta(minutes=params["prediction_window"])
 prediction_times = list(params["prediction_times"])
 
 start_training_set = params["start_training_set"]
+start_calibration_set = params["start_calibration_set"]
 start_validation_set = params["start_validation_set"]
 start_test_set = params["start_test_set"]
 end_test_set = params["end_test_set"]
 
-_, _, test_visits_df = create_temporal_splits(
+_, _, _, test_visits_df = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
@@ -65,6 +66,7 @@ _, _, test_visits_df = create_temporal_splits(
     col_name="snapshot_date",
     visit_col="visit_number",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 test_snapshot_dates = [
@@ -205,7 +207,7 @@ inpatient_arrivals = inpatient_arrivals.copy()
 inpatient_arrivals["arrival_datetime"] = pd.to_datetime(
     inpatient_arrivals["arrival_datetime"], utc=True
 )
-train_inpatient_arrivals_df, _, _ = create_temporal_splits(
+train_inpatient_arrivals_df, _, _, _ = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
@@ -213,6 +215,7 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
     end_test_set,
     col_name="arrival_datetime",
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 baseline_probs = (
@@ -284,161 +287,161 @@ display(comparison_df)
       <th>0</th>
       <td>surgical</td>
       <td>admissions_0600</td>
-      <td>0.840294</td>
-      <td>0.867202</td>
-      <td>0.026908</td>
+      <td>0.801679</td>
+      <td>0.858141</td>
+      <td>0.056463</td>
     </tr>
     <tr>
       <th>1</th>
       <td>surgical</td>
       <td>admissions_0930</td>
-      <td>0.833683</td>
-      <td>0.860289</td>
-      <td>0.026606</td>
+      <td>0.861672</td>
+      <td>0.887846</td>
+      <td>0.026173</td>
     </tr>
     <tr>
       <th>2</th>
       <td>surgical</td>
       <td>admissions_1200</td>
-      <td>1.210593</td>
-      <td>1.387282</td>
-      <td>0.176688</td>
+      <td>1.277388</td>
+      <td>1.437351</td>
+      <td>0.159963</td>
     </tr>
     <tr>
       <th>3</th>
       <td>surgical</td>
       <td>admissions_1530</td>
-      <td>1.472382</td>
-      <td>1.633026</td>
-      <td>0.160645</td>
+      <td>1.560773</td>
+      <td>1.667173</td>
+      <td>0.106400</td>
     </tr>
     <tr>
       <th>4</th>
       <td>surgical</td>
       <td>admissions_2200</td>
-      <td>1.469115</td>
-      <td>1.498436</td>
-      <td>0.029322</td>
+      <td>1.380850</td>
+      <td>1.408271</td>
+      <td>0.027421</td>
     </tr>
     <tr>
       <th>5</th>
       <td>haem/onc</td>
       <td>admissions_0600</td>
-      <td>0.416914</td>
-      <td>0.538630</td>
-      <td>0.121716</td>
+      <td>0.399544</td>
+      <td>0.484354</td>
+      <td>0.084809</td>
     </tr>
     <tr>
       <th>6</th>
       <td>haem/onc</td>
       <td>admissions_0930</td>
-      <td>0.448768</td>
-      <td>0.539599</td>
-      <td>0.090831</td>
+      <td>0.390813</td>
+      <td>0.491466</td>
+      <td>0.100653</td>
     </tr>
     <tr>
       <th>7</th>
       <td>haem/onc</td>
       <td>admissions_1200</td>
-      <td>0.575750</td>
-      <td>0.645621</td>
-      <td>0.069871</td>
+      <td>0.577235</td>
+      <td>0.628655</td>
+      <td>0.051420</td>
     </tr>
     <tr>
       <th>8</th>
       <td>haem/onc</td>
       <td>admissions_1530</td>
-      <td>0.798887</td>
-      <td>0.882070</td>
-      <td>0.083183</td>
+      <td>0.809756</td>
+      <td>0.872876</td>
+      <td>0.063120</td>
     </tr>
     <tr>
       <th>9</th>
       <td>haem/onc</td>
       <td>admissions_2200</td>
-      <td>0.739284</td>
-      <td>0.825518</td>
-      <td>0.086235</td>
+      <td>0.721199</td>
+      <td>0.801925</td>
+      <td>0.080726</td>
     </tr>
     <tr>
       <th>10</th>
       <td>medical</td>
       <td>admissions_0600</td>
-      <td>1.481626</td>
-      <td>1.606857</td>
-      <td>0.125230</td>
+      <td>1.977793</td>
+      <td>2.073985</td>
+      <td>0.096192</td>
     </tr>
     <tr>
       <th>11</th>
       <td>medical</td>
       <td>admissions_0930</td>
-      <td>1.359765</td>
-      <td>1.492526</td>
-      <td>0.132760</td>
+      <td>1.572897</td>
+      <td>1.712363</td>
+      <td>0.139466</td>
     </tr>
     <tr>
       <th>12</th>
       <td>medical</td>
       <td>admissions_1200</td>
-      <td>1.669823</td>
-      <td>1.751949</td>
-      <td>0.082125</td>
+      <td>1.747010</td>
+      <td>1.874020</td>
+      <td>0.127010</td>
     </tr>
     <tr>
       <th>13</th>
       <td>medical</td>
       <td>admissions_1530</td>
-      <td>2.489543</td>
-      <td>2.748100</td>
-      <td>0.258558</td>
+      <td>2.638974</td>
+      <td>2.931093</td>
+      <td>0.292119</td>
     </tr>
     <tr>
       <th>14</th>
       <td>medical</td>
       <td>admissions_2200</td>
-      <td>3.574783</td>
-      <td>3.930862</td>
-      <td>0.356079</td>
+      <td>2.859526</td>
+      <td>3.077419</td>
+      <td>0.217893</td>
     </tr>
     <tr>
       <th>15</th>
       <td>paediatric</td>
       <td>admissions_0600</td>
-      <td>0.318168</td>
-      <td>0.536598</td>
-      <td>0.218430</td>
+      <td>0.308607</td>
+      <td>0.464199</td>
+      <td>0.155592</td>
     </tr>
     <tr>
       <th>16</th>
       <td>paediatric</td>
       <td>admissions_0930</td>
-      <td>0.319004</td>
-      <td>0.482170</td>
-      <td>0.163166</td>
+      <td>0.329154</td>
+      <td>0.466705</td>
+      <td>0.137551</td>
     </tr>
     <tr>
       <th>17</th>
       <td>paediatric</td>
       <td>admissions_1200</td>
-      <td>0.512457</td>
-      <td>0.565690</td>
-      <td>0.053233</td>
+      <td>0.537058</td>
+      <td>0.577504</td>
+      <td>0.040446</td>
     </tr>
     <tr>
       <th>18</th>
       <td>paediatric</td>
       <td>admissions_1530</td>
-      <td>0.696109</td>
-      <td>0.795939</td>
-      <td>0.099830</td>
+      <td>0.650287</td>
+      <td>0.751931</td>
+      <td>0.101644</td>
     </tr>
     <tr>
       <th>19</th>
       <td>paediatric</td>
       <td>admissions_2200</td>
-      <td>0.648586</td>
-      <td>0.724046</td>
-      <td>0.075460</td>
+      <td>0.740811</td>
+      <td>0.794429</td>
+      <td>0.053618</td>
     </tr>
   </tbody>
 </table>
@@ -501,4 +504,4 @@ I also compared the sequence specialty predictor from notebook 3c against a base
 
 For the same PMFs run through `patientflow.evaluate` (`EvaluationInputsBuilder` and `run_evaluation`), see notebook **4d**.
 
-In the notebooks that follow, prefixed with 4, I demonstrate how these functions are assembled into a production system at University College London Hospital to predict emergency demand.
+In notebooks **3e** and **3f**, I extend evaluation to patients yet to arrive. The **4x** notebooks then show how these functions are assembled into a production system at University College London Hospital to predict emergency demand.

@@ -173,7 +173,7 @@ Note that each record in the snapshots dataframe is indexed by a unique snapshot
 
 ## Prepare group snapshots
 
-`patientflow` includes a `prepare_group_snapshot_dict()` function. As input, it requires a pandas dataframe with a `snapshot_date` column. If a start date and end date are provided, the function will check for any intervening snapshot dates that are missing, and create an empty group snapshot for this date
+`patientflow` includes a `prepare_group_snapshot_dict()` function. As input, it requires a pandas dataframe with a `snapshot_date` column. If a start date and end date are provided, the function will check for any intervening snapshot dates that are missing, and create an empty group snapshot for this date.
 
 Here I create a group snapshot dictionary, for patients in the ED at 09.30.
 
@@ -441,7 +441,7 @@ snapshots_df.loc[first_group_snapshot_values]
 </table>
 </div>
 
-More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with the `prepare_patient_snapshots`, which makes the data ready for processing in groups. This will:
+More useful is to return not just the indices, but also the data for each visit in the group snapshot. This can be done with `prepare_patient_snapshots()`, which makes the data ready for processing in groups. This will:
 
 - filter visits to include only those at the requested prediction time
 - randomly select one snapshot per visit, if requested. If `single_snapshot_per_visit` is set to True, a `visit_col` argument must be used, giving the name of the column containing visit identifiers
@@ -710,12 +710,13 @@ from patientflow.train.classifiers import train_classifier
 
 # set the temporal split
 start_training_set = date(2023, 1, 1)
-start_validation_set = date(2023, 2, 15) # 6-week training set
+start_calibration_set = date(2023, 2, 1)
+start_validation_set = date(2023, 2, 15) # validation after calibration
 start_test_set = date(2023, 3, 1) # 2-week validation set
 end_test_set = date(2023, 4, 1) # 1-month test set
 
 # create the temporal splits
-train_visits, valid_visits, test_visits = create_temporal_splits(
+train_visits, calibration_visits, valid_visits, test_visits = create_temporal_splits(
     snapshots_df,
     start_training_set,
     start_validation_set,
@@ -724,7 +725,7 @@ train_visits, valid_visits, test_visits = create_temporal_splits(
     col_name="snapshot_date", # states which column contains the date, for use when making the splits
     patient_id="patient_id", # states which column contains the patient id, for use when making the splits
     visit_col="visit_number", # states which column contains the visit number to use when making the splits
-
+    start_calibration=start_calibration_set,
 )
 # exclude columns that are not needed for training
 exclude_from_training_data=['visit_number', 'snapshot_date', 'prediction_time']
@@ -740,17 +741,21 @@ model = train_classifier(
     ordinal_mappings={'latest_triage_score': [1, 2, 3, 4, 5]},
     visit_col='visit_number',
     use_balanced_training=True,
-    calibrate_probabilities=True
+    calibrate_probabilities=True,
+    calibration_visits=calibration_visits,
 )
 
 ```
 
     Patient Set Overlaps (before random assignment):
-    Train-Valid: 0 of 5318
+    Train-Calib: 0 of 3981
+    Train-Valid: 0 of 4028
+    Train-Test: 217 of 4929
+    Calib-Valid: 0 of 2627
+    Calib-Test: 90 of 3655
     Valid-Test: 102 of 3690
-    Train-Test: 307 of 6129
     All Sets: 0 of 7364 total patients
-    Split sizes: [6406, 2122, 4304]
+    Split sizes: [4326, 2062, 2122, 4304]
 
 Now, using the trained model, I will predict a bed count distribution for one snapshot using `get_prob_dist_for_prediction_moment()`. That function expects the following:
 
@@ -873,7 +878,7 @@ The returned object is now ready for evaluation, which I cover in the next noteb
 
 In this notebook I have demonstrated the functions in `patientflow` that handle the preparation of group snapshots. These include:
 
-- `prepare_patient_snapshots`, which makes the data ready for processing in groups.
+- `prepare_patient_snapshots()`, which makes the data ready for processing in groups.
 - `get_prob_dist_for_prediction_moment`, which computes predicted and observed probabilities for a specific snapshot date and prediction time.
 - `get_prob_dist` which computes probability distributions for multiple snapshot dates.
 

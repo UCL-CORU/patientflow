@@ -1,4 +1,4 @@
-# 4e. Generate predictions using a customisable hospital hierarchy.
+# 4e. Generate predictions using a customisable hospital hierarchy
 
 In previous notebooks I have shown the prediction of demand by service, using a hard-coded list of specialties (medical, surgical, haem/onc and paediatric).
 
@@ -6,7 +6,7 @@ In the real UCLH application, our users are interested in multiple levels of pre
 
 To support prediction at a fine-grained level at UCLH, where there are approximately 50 reporting units and 500+ subspecialties, a hard-coded list is unsuitable. Instead, we want the list of specialties to be dynamic, and we want to be able to map these to the hospital's standard reporting groupings.
 
-This notebook shows code to set up hospital hierarchy to achieve this.
+This notebook shows code to set up a hospital hierarchy to achieve this.
 
 A typical workflow is:
 
@@ -44,7 +44,7 @@ The first step is to create an entry in config.yaml specifying the names of each
 
 ```yaml
 # Hierarchy configuration
-# Defines the organizational hierarchy structure
+# Defines the organisational hierarchy structure
 levels:
   - entity_type: specialty
     parent_type: division
@@ -137,14 +137,16 @@ prediction_window = timedelta(minutes=params['prediction_window'])
 
 # Create temporal splits to select test set snapshots
 start_training_set = params['start_training_set']
+start_calibration_set = params['start_calibration_set']
 start_validation_set = params['start_validation_set']
 start_test_set = params['start_test_set']
 end_test_set = params['end_test_set']
 
-_, _, test_visits_df = create_temporal_splits(
+_, _, _, test_visits_df = create_temporal_splits(
     ed_visits, start_training_set, start_validation_set,
     start_test_set, end_test_set, col_name='snapshot_date',
     verbose=False,
+    start_calibration=start_calibration_set,
 )
 
 specialty_filters = {
@@ -234,8 +236,8 @@ prediction_inputs['medical']
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[0:10]: [0.010, 0.023, 0.056, 0.108, 0.163, 0.194, 0.182, 0.134, 0.077, 0.035] (E=5.2 of 79 patients in ED)
-        ED yet-to-arrive admissions              λ = 1.836
+        Admissions from current ED               PMF[1:11]: [0.018, 0.043, 0.084, 0.134, 0.173, 0.181, 0.154, 0.106, 0.059, 0.027] (E=5.7 of 79 patients in ED)
+        ED yet-to-arrive admissions              λ = 1.916
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
         Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
@@ -315,9 +317,9 @@ print(results['medical'])
     The predicted demand for an entity can be neatly viewed by printing it, producing the following output:
 
     PredictionBundle(service: medical) [aspirational]
-      Arrivals:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
+      Arrivals:    PMF[3:13]: [0.030, 0.059, 0.095, 0.130, 0.152, 0.152, 0.131, 0.098, 0.064, 0.037] (E=7.6)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
+      Net flow:    PMF[3:13]: [0.030, 0.059, 0.095, 0.130, 0.152, 0.152, 0.131, 0.098, 0.064, 0.037] (E=7.6)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 ## 5. Access results at any level
@@ -335,23 +337,23 @@ print(results['Hospital'])
 
     Results for medical specialty
     PredictionBundle(service: medical) [aspirational]
-      Arrivals:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
+      Arrivals:    PMF[3:13]: [0.030, 0.059, 0.095, 0.130, 0.152, 0.152, 0.131, 0.098, 0.064, 0.037] (E=7.6)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[2:12]: [0.018, 0.041, 0.077, 0.119, 0.153, 0.164, 0.148, 0.114, 0.076, 0.044] (E=7.1)
+      Net flow:    PMF[3:13]: [0.030, 0.059, 0.095, 0.130, 0.152, 0.152, 0.131, 0.098, 0.064, 0.037] (E=7.6)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
     Results for Medical Division
     PredictionBundle(division: Medical Division) [aspirational]
-      Arrivals:    PMF[4:14]: [0.022, 0.043, 0.072, 0.104, 0.131, 0.143, 0.137, 0.116, 0.088, 0.059] (E=9.4)
+      Arrivals:    PMF[5:15]: [0.031, 0.054, 0.083, 0.111, 0.131, 0.136, 0.127, 0.105, 0.079, 0.053] (E=10.0)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[4:14]: [0.022, 0.043, 0.072, 0.104, 0.131, 0.143, 0.137, 0.116, 0.088, 0.059] (E=9.4)
+      Net flow:    PMF[5:15]: [0.031, 0.054, 0.083, 0.111, 0.131, 0.136, 0.127, 0.105, 0.079, 0.053] (E=10.0)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
     Results for Hospital
     PredictionBundle(hospital: Hospital) [aspirational]
-      Arrivals:    PMF[9:19]: [0.044, 0.065, 0.086, 0.104, 0.115, 0.116, 0.108, 0.092, 0.073, 0.053] (E=13.8)
+      Arrivals:    PMF[10:20]: [0.041, 0.059, 0.078, 0.095, 0.107, 0.111, 0.106, 0.095, 0.079, 0.061] (E=15.2)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[9:19]: [0.044, 0.065, 0.086, 0.104, 0.115, 0.116, 0.108, 0.092, 0.073, 0.053] (E=13.8)
+      Net flow:    PMF[10:20]: [0.041, 0.059, 0.078, 0.095, 0.107, 0.111, 0.106, 0.095, 0.079, 0.061] (E=15.2)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=True, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 Components of the arrivals flow can be examined.
@@ -363,8 +365,8 @@ print(f"25th, 50th and 75th percentiles for probability distribution are: {resul
 
 ```
 
-    9.4 patients are expected to need beds in the Medical Division.
-    25th, 50th and 75th percentiles for probability distribution are: {25: 7, 50: 9, 75: 11}
+    10.0 patients are expected to need beds in the Medical Division.
+    25th, 50th and 75th percentiles for probability distribution are: {25: 8, 50: 10, 75: 12}
 
 We can get the minimum number of beds needed with a given probability, as shown in notebook 4c.
 
@@ -452,8 +454,8 @@ print(
 )
 ```
 
-    Medical Division expected arrivals (flow_sel_ed_inflows): 9.4
-    Medical Division expected arrivals (emergency_only): 9.4
+    Medical Division expected arrivals (flow_sel_ed_inflows): 10.0
+    Medical Division expected arrivals (emergency_only): 10.0
     Medical Division expected arrivals (elective_only): 0.0
 
 ### A useful shortcut
@@ -496,7 +498,7 @@ print(f"{results['Medical Division'].arrivals.expectation:.1f} patients are expe
 ```
 
     Shortcut method produced predictions for 8 entities.
-    9.4 patients are expected to need beds in the Medical Division.
+    10.0 patients are expected to need beds in the Medical Division.
 
 ## Summary
 

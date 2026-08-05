@@ -1,4 +1,4 @@
-# 4. Specify requirements for demand prediction
+# 4. Specify requirements for the demand prediction model
 
 ## From building blocks to a production pipeline
 

@@ -66,29 +66,32 @@ inpatient_arrivals['arrival_datetime'] = pd.to_datetime(inpatient_arrivals['arri
 #  Set modelling parameters
 params = load_config_file(config_path)
 
-start_training_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
+start_training_set, start_calibration_set, start_validation_set, start_test_set, end_test_set = params["start_training_set"], params["start_calibration_set"], params["start_validation_set"], params["start_test_set"], params["end_test_set"]
 
-print(f'\nTraining set starts {start_training_set} and ends on {start_validation_set - pd.Timedelta(days=1)} inclusive')
+print(f'\nTraining set starts {start_training_set} and ends on {start_calibration_set - pd.Timedelta(days=1)} inclusive')
+print(f'Calibration set starts on {start_calibration_set} and ends on {start_validation_set - pd.Timedelta(days=1)} inclusive')
 print(f'Validation set starts on {start_validation_set} and ends on {start_test_set - pd.Timedelta(days=1)} inclusive' )
 print(f'Test set starts on {start_test_set} and ends on {end_test_set- pd.Timedelta(days=1)} inclusive' )
 
 # Split data into training, validation and test sets
-train_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
+train_visits_df, calibration_visits_df, valid_visits_df, test_visits_df = create_temporal_splits(
     ed_visits,
     start_training_set,
     start_validation_set,
     start_test_set,
     end_test_set,
     col_name="snapshot_date",
+    start_calibration=start_calibration_set,
 )
 
-train_inpatient_arrivals_df, _, _ = create_temporal_splits(
+train_inpatient_arrivals_df, _, _, _ = create_temporal_splits(
     inpatient_arrivals,
     start_training_set,
     start_validation_set,
     start_test_set,
     end_test_set,
     col_name="arrival_datetime",
+    start_calibration=start_calibration_set,
 )
 ```
 
@@ -96,13 +99,14 @@ train_inpatient_arrivals_df, _, _ = create_temporal_splits(
 
 
 
-    Training set starts 2031-03-01 and ends on 2031-08-31 inclusive
+    Training set starts 2031-03-01 and ends on 2031-07-31 inclusive
+    Calibration set starts on 2031-08-01 and ends on 2031-08-31 inclusive
     Validation set starts on 2031-09-01 and ends on 2031-09-30 inclusive
     Test set starts on 2031-10-01 and ends on 2031-12-31 inclusive
 
 
-    Split sizes: [62071, 10415, 29134]
-    Split sizes: [7716, 1285, 3898]
+    Split sizes: [51170, 10901, 10415, 29134]
+    Split sizes: [6388, 1328, 1285, 3898]
 
 The data has been prepared as a series of snapshots of each patient's data at five moments during the day. These five moments are the times when the bed managers wish to receive predictive models of emergency demand. If a patient arrives in the ED at 4 am, and leaves at 11 am, they will be represented in the 06:00 and 09:30 prediction times. Everything known about a patient up until that moment is included in that snapshot.
 
@@ -182,6 +186,7 @@ for prediction_time in ed_visits.prediction_time.unique():
         calibrate_probabilities=True,
         calibration_method="isotonic",
         use_balanced_training=True,
+        calibration_visits=calibration_visits_df,
     )
     model_key = get_model_key(model_name, prediction_time)
 
@@ -202,7 +207,7 @@ for prediction_time in ed_visits.prediction_time.unique():
 
     Training model for (9, 30)
 
-The `SequenceToOutcomePredictor` is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in the previous notebook, ordered sequences of consult requests (also known as referrals to service) are used to train this model.
+The `SequenceToOutcomePredictor` is used to train the probability of each patient being admitted to a specialty, if admitted. As shown in notebook **3c**, ordered sequences of consult requests (also known as referrals to service) are used to train this model.
 
 Here a `MultiSubgroupPredictor` wrapper is applied. This will train multiple instances of the `SequenceToOutcomePredictor`, for subgroups of patients. We will train the model to handle paediatric patients as special cases; at UCLH, it is assumed that all patients under 18 on arrival will be admitted to a paediatric specialty.
 
@@ -261,7 +266,7 @@ yta_model_by_spec =  ParametricIncomingAdmissionPredictor(filters = specialty_fi
 
 # calculate the number of days between the start of the training and validation sets;
 # this is used to calculate daily arrival rates
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 
 if 'arrival_datetime' in train_inpatient_arrivals_df.columns:
     train_inpatient_arrivals_df.set_index('arrival_datetime', inplace=True)
@@ -320,7 +325,7 @@ group_snapshots_dict = prepare_group_snapshot_dict(
     Number of adult patients in the ED at 22:00 on 2031-10-09: 69
     Number of patients under the age of 18 in the ED at 22:00 on 2031-10-09: 10
 
-The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshots:
+The predicted bed counts for patients in the ED take three probabilities into account for each patient snapshot:
 
 - probability of being admitted after the ED has ended
 - probability of being admitted to each specialty, if admitted
@@ -559,8 +564,8 @@ prediction_inputs['medical']
 
     ServicePredictionInputs(service='medical')
       INFLOWS:
-        Admissions from current ED               PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6 of 79 patients in ED)
-        ED yet-to-arrive admissions              λ = 1.836
+        Admissions from current ED               PMF[2:12]: [0.011, 0.028, 0.058, 0.099, 0.142, 0.168, 0.166, 0.136, 0.093, 0.053] (E=7.4 of 79 patients in ED)
+        ED yet-to-arrive admissions              λ = 1.916
         Non-ED emergency admissions              λ = 0.000
         Elective admissions                      λ = 0.000
         Elective transfers from other services   PMF[0:1]: [1.000] (E=0.0)
@@ -599,9 +604,9 @@ print(current_ed_bundle)
 ```
 
     PredictionBundle(service: medical)
-      Arrivals:    PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Arrivals:    PMF[2:12]: [0.011, 0.028, 0.058, 0.099, 0.142, 0.168, 0.166, 0.136, 0.093, 0.053] (E=7.4)
       Departures:  PMF[0:1]: [1.000] (E=0.0)
-      Net flow:    PMF[2:12]: [0.019, 0.047, 0.091, 0.144, 0.181, 0.183, 0.149, 0.097, 0.051, 0.021] (E=6.6)
+      Net flow:    PMF[2:12]: [0.011, 0.028, 0.058, 0.099, 0.142, 0.168, 0.166, 0.136, 0.093, 0.053] (E=7.4)
       Flows:       selection cohort=emergency inflows(ed_current=True, ed_yta=False, non_ed_yta=False, elective_yta=False, transfers_in=False) outflows(departures=False)
 
 From the bundle, we can extract a probability distribution for the number of beds needed for patients currently in the ED. We can view the expectation, or view the percentiles of the distribution as shown below.
@@ -617,7 +622,7 @@ print(f"Need at least {current_ed_bundle.arrivals.min_beds_with_probability(0.7)
 
     Most likely number of beds needed for the medical specialty: 7
     Need at least 4 beds with 90% probability
-    Need at least 5 beds with 70% probability
+    Need at least 6 beds with 70% probability
 
 To derive the yet-to-arrive predictions, we can set the FlowSelection accordingly.
 
@@ -716,9 +721,9 @@ create_predictions(
     y2 = y2)
 ```
 
-    {'medical': {'in_ed': [5, 4], 'yet_to_arrive': [1, 0]},
-     'surgical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
-     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
+    {'medical': {'in_ed': [6, 4], 'yet_to_arrive': [1, 0]},
+     'surgical': {'in_ed': [3, 1], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]}}
 
 ### Alternative: using an empirical survival curve
@@ -808,7 +813,7 @@ from patientflow.predictors.incoming_admission_predictors import EmpiricalIncomi
 # First I'll train the empirical yet-to-arrive model
 train_inpatient_arrivals_df_copy = train_inpatient_arrivals_df.copy(deep=True)
 
-num_days = (start_validation_set - start_training_set).days
+num_days = (start_calibration_set - start_training_set).days
 
 # the arrival_datetime column needs to be set as the index of the dataframe
 if 'arrival_datetime' in train_inpatient_arrivals_df_copy.columns:
@@ -850,7 +855,7 @@ create_predictions(
     use_admission_in_window_prob = True)
 ```
 
-    {'medical': {'in_ed': [2, 1], 'yet_to_arrive': [0, 0]},
+    {'medical': {'in_ed': [3, 1], 'yet_to_arrive': [0, 0]},
      'surgical': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
-     'haem/onc': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]},
+     'haem/onc': {'in_ed': [1, 0], 'yet_to_arrive': [0, 0]},
      'paediatric': {'in_ed': [0, 0], 'yet_to_arrive': [0, 0]}}
