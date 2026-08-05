@@ -195,16 +195,42 @@ def load_config_file(
             print("Error: 'prediction_times' key not found in the configuration file.")
             sys.exit(1)
 
-        if "modelling_dates" in config and len(config["modelling_dates"]) == 4:
+        modelling_dates = config.get("modelling_dates", [])
+        if len(modelling_dates) == 4:
             (
                 params["start_training_set"],
                 params["start_validation_set"],
                 params["start_test_set"],
                 params["end_test_set"],
-            ) = [item for item in config["modelling_dates"]]
+            ) = [item for item in modelling_dates]
+        elif len(modelling_dates) == 5:
+            # Five dates configure an optional calibration window between
+            # training and validation (issue #228).
+            (
+                params["start_training_set"],
+                params["start_calibration_set"],
+                params["start_validation_set"],
+                params["start_test_set"],
+                params["end_test_set"],
+            ) = [item for item in modelling_dates]
         else:
             print(
-                f"Error: expecting 4 modelling dates and only got {len(config.get('modelling_dates', []))}"
+                "Error: expecting 4 or 5 modelling dates and got "
+                f"{len(modelling_dates)}"
+            )
+            return None
+
+        # Dates are read positionally, so a misordered list would silently
+        # skew downstream window arithmetic; reject it here.
+        out_of_order = [
+            (earlier, later)
+            for earlier, later in zip(modelling_dates, modelling_dates[1:])
+            if earlier >= later
+        ]
+        if out_of_order:
+            print(
+                "Error: modelling_dates must be in ascending chronological "
+                f"order; got {out_of_order} out of order"
             )
             return None
 

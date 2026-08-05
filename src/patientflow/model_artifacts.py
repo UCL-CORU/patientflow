@@ -80,7 +80,10 @@ class TrainingResults:
     training_info : dict of str to Any, optional
         Metadata or logs collected during training.
     calibration_info : dict of str to Any, optional
-        Information about model calibration, if applicable.
+        Information about model calibration, if applicable. The nested
+        ``source.dataset`` records which frame the calibrator was fitted on:
+        ``"calibration"`` when a dedicated chronological calibration window
+        was supplied, otherwise ``"validation"`` (legacy behaviour).
     test_results : dict of str to float, optional
         Evaluation metrics computed on the test dataset. None if test evaluation was not performed.
     balance_info : dict of str to bool or int or float, optional
@@ -109,8 +112,10 @@ class TrainedClassifier:
         The calibrated version of the pipeline, if model calibration was performed.
     selected_eval_metrics : dict of str to Any, optional
         Headline metrics from the test split when test evaluation ran
-        (``split="test"``), otherwise from aggregated time-series CV on the
-        (possibly balanced) training matrix (``split="cv_train"``). Keys
+        (``split="test"``); otherwise from the chronological validation set
+        scored with the final pipeline when a dedicated calibration window was
+        used (``split="valid"``); otherwise from aggregated time-series CV on
+        the (possibly balanced) training matrix (``split="cv_train"``). Keys
         include ``split``, ``log_loss``, ``auroc``, ``auprc``, ``n_samples``,
         ``n_positive_cases``; the CV-on-train path also records ``balanced``
         and ``majority_to_minority_ratio``.

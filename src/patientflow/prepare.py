@@ -28,7 +28,18 @@ from patientflow.load import get_dict_cols
 from datetime import datetime, date
 
 
-from typing import Tuple, List, Set, Dict, Any, Type, Callable, Union
+from typing import (
+    Tuple,
+    List,
+    Set,
+    Dict,
+    Any,
+    Optional,
+    Type,
+    Callable,
+    Union,
+    overload,
+)
 
 from patientflow.errors import MissingKeysError
 
@@ -116,17 +127,22 @@ def apply_set(row: pd.Series) -> str:
     Parameters
     ----------
     row : pandas.Series
-        Series containing 'training_set', 'validation_set', and 'test_set' weights
+        Series containing 'training_set', 'validation_set', and 'test_set'
+        weights, and optionally a 'calibration_set' weight when a calibration
+        window is configured
 
     Returns
     -------
     str
-        One of 'train', 'valid', or 'test' based on weighted random choice
+        One of 'train', 'valid', or 'test' (plus 'calibration' when a
+        'calibration_set' weight is present) based on weighted random choice
     """
-    return random.choices(
-        ["train", "valid", "test"],
-        weights=[row.training_set, row.validation_set, row.test_set],
-    )[0]
+    labels = ["train", "valid", "test"]
+    weights = [row.training_set, row.validation_set, row.test_set]
+    if "calibration_set" in row.index:
+        labels.insert(1, "calibration")
+        weights.insert(1, row.calibration_set)
+    return random.choices(labels, weights=weights)[0]
 
 
 def assign_patient_ids(
@@ -139,6 +155,8 @@ def assign_patient_ids(
     patient_id: str = "mrn",
     visit_col: str = "encounter",
     seed: int = 42,
+    *,
+    start_calibration_set: Optional[date] = None,
 ) -> pd.DataFrame:
     """Probabilistically assign patient IDs to train/validation/test sets.
 
@@ -162,11 +180,19 @@ def assign_patient_ids(
         Column name for visit identifier, by default "encounter"
     seed : int, optional
         Random seed for reproducible results, by default 42
+    start_calibration_set : datetime.date, optional
+        Start date for an optional calibration period between training and
+        validation. When provided, patients are assigned across four sets
+        (train/calibration/valid/test) so that no patient can inform both the
+        probability calibrator and validation evaluation.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame with patient ID assignments based on weighted random sampling
+        DataFrame with patient ID assignments based on weighted random sampling.
+        The assignment column is named ``training_validation_test`` (kept for
+        compatibility) and additionally takes the value ``"calibration"`` when
+        a calibration period is configured.
 
     Notes
     -----
@@ -174,6 +200,16 @@ def assign_patient_ids(
     - Randomly assigns each patient ID to one set, weighted by their temporal distribution
     - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
     """
+    if start_calibration_set is not None and not (
+        start_training_set < start_calibration_set < start_validation_set
+    ):
+        raise ValueError(
+            "start_calibration_set must fall between start_training_set and "
+            f"start_validation_set: got start_training_set={start_training_set}, "
+            f"start_calibration_set={start_calibration_set}, "
+            f"start_validation_set={start_validation_set}"
+        )
+
     # Set random seed for reproducibility
     random.seed(seed)
 
@@ -218,9 +254,18 @@ def assign_patient_ids(
     patients = valid_patients
 
     # Use the date_series for set assignment
-    patients["training_set"] = (date_series >= start_training_set) & (
-        date_series < start_validation_set
+    end_training_set = (
+        start_calibration_set
+        if start_calibration_set is not None
+        else start_validation_set
     )
+    patients["training_set"] = (date_series >= start_training_set) & (
+        date_series < end_training_set
+    )
+    if start_calibration_set is not None:
+        patients["calibration_set"] = (date_series >= start_calibration_set) & (
+            date_series < start_validation_set
+        )
     patients["validation_set"] = (date_series >= start_validation_set) & (
         date_series < start_test_set
     )
@@ -228,20 +273,70 @@ def assign_patient_ids(
         date_series < end_test_set
     )
 
-    patients = patients.groupby(patient_id)[
-        ["training_set", "validation_set", "test_set"]
-    ].sum()
+    membership_cols = ["training_set", "validation_set", "test_set"]
+    if start_calibration_set is not None:
+        membership_cols.insert(1, "calibration_set")
+
+    patients = patients.groupby(patient_id)[membership_cols].sum()
     patients["training_validation_test"] = patients.apply(apply_set, axis=1)
 
+    set_display_names = {
+        "training_set": "Train",
+        "calibration_set": "Calib",
+        "validation_set": "Valid",
+        "test_set": "Test",
+    }
+    overlap_lines = []
+    for i, col_a in enumerate(membership_cols):
+        for col_b in membership_cols[i + 1 :]:
+            n_both = patients[(patients[col_a] > 0) & (patients[col_b] > 0)].shape[0]
+            n_either = patients[patients[col_a] + patients[col_b] > 0].shape[0]
+            overlap_lines.append(
+                f"{set_display_names[col_a]}-{set_display_names[col_b]}: "
+                f"{n_both} of {n_either}"
+            )
+    n_all_sets = patients[(patients[membership_cols] > 0).all(axis=1)].shape[0]
     print(
-        f"\nPatient Set Overlaps (before random assignment):"
-        f"\nTrain-Valid: {patients[patients.training_set * patients.validation_set != 0].shape[0]} of {patients[patients.training_set + patients.validation_set > 0].shape[0]}"
-        f"\nValid-Test: {patients[patients.validation_set * patients.test_set != 0].shape[0]} of {patients[patients.validation_set + patients.test_set > 0].shape[0]}"
-        f"\nTrain-Test: {patients[patients.training_set * patients.test_set != 0].shape[0]} of {patients[patients.training_set + patients.test_set > 0].shape[0]}"
-        f"\nAll Sets: {patients[patients.training_set * patients.validation_set * patients.test_set != 0].shape[0]} of {patients.shape[0]} total patients"
+        "\nPatient Set Overlaps (before random assignment):\n"
+        + "\n".join(overlap_lines)
+        + f"\nAll Sets: {n_all_sets} of {patients.shape[0]} total patients"
     )
 
     return patients
+
+
+@overload
+def create_temporal_splits(
+    df: pd.DataFrame,
+    start_train: date,
+    start_valid: date,
+    start_test: date,
+    end_test: date,
+    col_name: str = ...,
+    patient_id: str = ...,
+    visit_col: str = ...,
+    seed: int = ...,
+    verbose: bool = ...,
+    *,
+    start_calibration: None = ...,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: ...
+
+
+@overload
+def create_temporal_splits(
+    df: pd.DataFrame,
+    start_train: date,
+    start_valid: date,
+    start_test: date,
+    end_test: date,
+    col_name: str = ...,
+    patient_id: str = ...,
+    visit_col: str = ...,
+    seed: int = ...,
+    verbose: bool = ...,
+    *,
+    start_calibration: date,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: ...
 
 
 def create_temporal_splits(
@@ -255,7 +350,12 @@ def create_temporal_splits(
     visit_col: str = "encounter",
     seed: int = 42,
     verbose: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    *,
+    start_calibration: Optional[date] = None,
+) -> Union[
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame],
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame],
+]:
     """Split dataset into temporal train/validation/test sets.
 
     Parameters
@@ -280,17 +380,33 @@ def create_temporal_splits(
         Random seed for reproducible results, by default 42
     verbose : bool, optional
         Whether to print split sizes, by default True
+    start_calibration : datetime.date, optional
+        Start of an optional calibration window between training and
+        validation (inclusive; must satisfy
+        ``start_train < start_calibration < start_valid``). When provided, a
+        fourth chronological split is returned for fitting probability
+        calibrators, leaving validation eval-only.
 
     Returns
     -------
-    Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
-        Tuple containing (train_df, valid_df, test_df) split dataframes
+    Tuple[pandas.DataFrame, ...]
+        Tuple containing (train_df, valid_df, test_df) split dataframes, or
+        (train_df, calibration_df, valid_df, test_df) when
+        ``start_calibration`` is provided
 
     Notes
     -----
     Creates temporal data splits using primary datetime column and optional snapshot dates.
     Handles patient ID grouping if present to prevent data leakage.
     """
+    if start_calibration is not None and not (
+        start_train < start_calibration < start_valid
+    ):
+        raise ValueError(
+            "start_calibration must fall between start_train and start_valid: "
+            f"got start_train={start_train}, start_calibration={start_calibration}, "
+            f"start_valid={start_valid}"
+        )
 
     def get_date_value(series: pd.Series) -> pd.Series:
         """Convert timestamp or date column to date, handling both types.
@@ -310,6 +426,12 @@ def create_temporal_splits(
         except (AttributeError, TypeError):
             return series
 
+    set_keys = (
+        ["train", "valid", "test"]
+        if start_calibration is None
+        else ["train", "calibration", "valid", "test"]
+    )
+
     if patient_id in df.columns:
         set_assignment: pd.DataFrame = assign_patient_ids(
             df,
@@ -321,18 +443,31 @@ def create_temporal_splits(
             patient_id,
             visit_col,
             seed=seed,
+            start_calibration_set=start_calibration,
         )
         patient_sets: Dict[str, Set] = {
-            k: set(set_assignment[set_assignment.training_validation_test == v].index)
-            for k, v in {"train": "train", "valid": "valid", "test": "test"}.items()
+            key: set(
+                set_assignment[set_assignment.training_validation_test == key].index
+            )
+            for key in set_keys
         }
 
+    if start_calibration is None:
+        windows = [
+            (start_train, start_valid, "train"),
+            (start_valid, start_test, "valid"),
+            (start_test, end_test, "test"),
+        ]
+    else:
+        windows = [
+            (start_train, start_calibration, "train"),
+            (start_calibration, start_valid, "calibration"),
+            (start_valid, start_test, "valid"),
+            (start_test, end_test, "test"),
+        ]
+
     splits: List[pd.DataFrame] = []
-    for start, end, set_key in [
-        (start_train, start_valid, "train"),
-        (start_valid, start_test, "valid"),
-        (start_test, end_test, "test"),
-    ]:
+    for start, end, set_key in windows:
         mask = (get_date_value(df[col_name]) >= start) & (
             get_date_value(df[col_name]) < end
         )

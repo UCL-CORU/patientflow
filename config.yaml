@@ -6,9 +6,21 @@ prediction_times:
   - [15, 30]
   - [22, 0]
 
-# Training, validation and test set dates
+# Training, validation and test set dates, in ascending chronological order.
+# Optionally, a fifth date may be added as the SECOND item to configure a
+# calibration window between training and validation, e.g.
+#   - 2031-03-01 # start training set
+#   - 2031-08-01 # start calibration set (optional)
+#   - 2031-09-01 # start validation set
+#   - 2031-10-01 # start test set
+#   - 2032-01-01 # end test set
+# With a calibration window, probability calibration is fitted on that window
+# and validation stays eval-only. With four dates, calibration is fitted on
+# the validation set (legacy behaviour), so validation calibration plots are
+# not honest holdout evidence.
 modelling_dates:
   - 2031-03-01 # start training set
+  - 2031-08-01 # start calibration set
   - 2031-09-01 # start validation set
   - 2031-10-01 # start test set
   - 2032-01-01 # end test set

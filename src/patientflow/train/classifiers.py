@@ -646,6 +646,7 @@ def train_classifier(
     calibrate_on_deployment_like_validation: bool = True,
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
+    calibration_visits: Optional[DataFrame] = None,
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
@@ -692,14 +693,22 @@ def train_classifier(
         Whether to use one snapshot per visit for test data preparation.
         Defaults to `single_snapshot_per_visit` when not provided.
     calibrate_on_deployment_like_validation : bool, default=True
-        If True, fit probability calibration on validation snapshots prepared with
+        If True, fit probability calibration on snapshots prepared with
         `single_snapshot_per_visit=False` to preserve deployment-like prevalence and
-        case mix for calibration.
+        case mix for calibration. This governs the calibration source frame
+        regardless of which window supplies it (`calibration_visits` when
+        provided, otherwise `valid_visits`).
     label_col : str, default="is_admitted"
         Name of the column containing the target labels
     evaluate_on_test : bool, default=False
         Whether to evaluate the final model on the test set. Set to True only when
         satisfied with validation performance to avoid test set contamination.
+    calibration_visits : DataFrame, optional
+        Visits from a chronological calibration window between training and
+        validation. When provided, the calibrator is fitted on this frame and
+        validation remains eval-only. When omitted, the calibrator is fitted
+        on validation (so validation is no longer an honest holdout for
+        calibration).
 
     Returns
     -------
@@ -744,6 +753,7 @@ def train_classifier(
             ("train_visits", train_visits),
             ("valid_visits", valid_visits),
             ("test_visits", test_visits if evaluate_on_test else None),
+            ("calibration_visits", calibration_visits),
         ]
         if df is not None and "prediction_time" not in df.columns
     ]
@@ -789,22 +799,32 @@ def train_classifier(
     dataset_metadata = get_dataset_metadata(
         X_train, X_valid, y_train, y_valid, X_test, y_test
     )
+    single_snapshot_per_visit_calibration = (
+        False
+        if calibrate_on_deployment_like_validation
+        else single_snapshot_per_visit_valid
+    )
     snapshot_metadata = {
         "single_snapshot_per_visit": {
             "legacy": single_snapshot_per_visit,
             "train": single_snapshot_per_visit_train,
             "valid": single_snapshot_per_visit_valid,
             "test": single_snapshot_per_visit_test,
+            "calibration": single_snapshot_per_visit_calibration,
         }
     }
 
-    calibration_single_snapshot_per_visit = (
-        False
-        if calibrate_on_deployment_like_validation
-        else single_snapshot_per_visit_valid
-    )
     if calibrate_probabilities:
-        if calibration_single_snapshot_per_visit == single_snapshot_per_visit_valid:
+        if calibration_visits is not None:
+            X_calibration, y_calibration = prepare_patient_snapshots(
+                calibration_visits,
+                prediction_time,
+                exclude_from_training_data,
+                visit_col=visit_col,
+                single_snapshot_per_visit=single_snapshot_per_visit_calibration,
+                label_col=label_col,
+            )
+        elif single_snapshot_per_visit_calibration == single_snapshot_per_visit_valid:
             X_calibration, y_calibration = X_valid, y_valid
         else:
             X_calibration, y_calibration = prepare_patient_snapshots(
@@ -812,7 +832,7 @@ def train_classifier(
                 prediction_time,
                 exclude_from_training_data,
                 visit_col=visit_col,
-                single_snapshot_per_visit=calibration_single_snapshot_per_visit,
+                single_snapshot_per_visit=single_snapshot_per_visit_calibration,
                 label_col=label_col,
             )
     else:
@@ -926,8 +946,10 @@ def train_classifier(
                 best_training.calibration_info = {
                     "method": calibration_method,
                     "source": {
-                        "dataset": "validation",
-                        "single_snapshot_per_visit": calibration_single_snapshot_per_visit,
+                        "dataset": "calibration"
+                        if calibration_visits is not None
+                        else "validation",
+                        "single_snapshot_per_visit": single_snapshot_per_visit_calibration,
                         "deployment_like_validation": calibrate_on_deployment_like_validation,
                         "n_samples": len(y_calibration),
                         "positive_rate": float(y_calibration.mean()),
@@ -943,11 +965,13 @@ def train_classifier(
         best_classifier = best_model.pipeline.named_steps["classifier"]
 
         if best_feature_columns is not None:
-            X_valid_preprocessed = best_feature_columns.transform(X_calibration)
+            X_calibration_preprocessed = best_feature_columns.transform(X_calibration)
         else:
-            X_valid_preprocessed = X_calibration
+            X_calibration_preprocessed = X_calibration
 
-        X_valid_transformed = best_feature_transformer.transform(X_valid_preprocessed)
+        X_calibration_transformed = best_feature_transformer.transform(
+            X_calibration_preprocessed
+        )
 
         if sk_version >= "1.6.0":
             from sklearn.frozen import FrozenEstimator
@@ -960,7 +984,7 @@ def train_classifier(
             calibrated_classifier = CalibratedClassifierCV(
                 estimator=best_classifier, method=calibration_method, cv="prefit"
             )
-        calibrated_classifier.fit(X_valid_transformed, y_calibration)
+        calibrated_classifier.fit(X_calibration_transformed, y_calibration)
 
         calibrated_steps = []
         if best_feature_columns is not None:
@@ -1006,6 +1030,19 @@ def train_classifier(
             "n_samples": int(len(y_test)),
             "n_positive_cases": int((y_test == 1).sum()),
         }
+    elif calibration_visits is not None and best_model.pipeline is not None:
+        # With a dedicated calibration window, validation is eval-only, so
+        # headline metrics scored there are honest holdout evidence.
+        final_pipeline = best_model.calibrated_pipeline or best_model.pipeline
+        valid_results = evaluate_model(final_pipeline, X_valid, y_valid)
+        best_model.selected_eval_metrics = {
+            "split": "valid",
+            "log_loss": float(valid_results["test_logloss"]),
+            "auroc": float(valid_results["test_auc"]),
+            "auprc": float(valid_results["test_auprc"]),
+            "n_samples": int(len(y_valid)),
+            "n_positive_cases": int((y_valid == 1).sum()),
+        }
     elif best_cv_results is not None:
         # Headline metrics are CV-on-train (post-balancing), not held-out validation.
         best_model.selected_eval_metrics = {
@@ -1046,6 +1083,7 @@ def train_multiple_classifiers(
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
     verbose: bool = True,
+    calibration_visits: Optional[DataFrame] = None,
 ) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times.
 
@@ -1095,6 +1133,10 @@ def train_multiple_classifiers(
         Whether to evaluate on test set, by default False
     verbose : bool, optional
         Whether to print progress messages, by default True
+    calibration_visits : DataFrame, optional
+        Visits from a dedicated chronological calibration window. When
+        provided, probability calibration is fitted on this frame instead of
+        validation for every prediction time (see `train_classifier`).
 
     Returns
     -------
@@ -1132,6 +1174,7 @@ def train_multiple_classifiers(
             calibrate_on_deployment_like_validation=calibrate_on_deployment_like_validation,
             label_col=label_col,
             evaluate_on_test=evaluate_on_test,
+            calibration_visits=calibration_visits,
         )
 
         trained_models[model_key] = best_model
