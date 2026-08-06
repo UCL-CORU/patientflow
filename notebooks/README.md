@@ -39,6 +39,7 @@ A set of notebooks follows that shows how we assembled the building blocks from 
 - **[4d_Evaluate_demand_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4d_Evaluate_demand_predictions.ipynb):** Shows how to evaluate all production model components systematically across the test set with `run_evaluation`, benchmarks, and scalar summaries.
 - **[4e_Generate_predictions_using_hierarchy](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4e_Generate_predictions_using_hierarchy.ipynb):** Shows the use of a hierarchical approach to generate demand predictions at different levels of a hospital's reporting hierarchy.
 - **[4f_Evaluate_transfer_predictions](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4f_Evaluate_transfer_predictions.ipynb):** Shows how to evaluate inpatient transfer routing with the `transition_matrix` evaluation mode and Monte Carlo Pearson goodness-of-fit tests.
+- **[4g_Analyse_demographic_bias](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/4g_Analyse_demographic_bias.ipynb):** Shows how admission predictions can look different across patient groups, using public data and a made-up ethnicity label for the demo.
 
 ## Data used in the notebooks
 
