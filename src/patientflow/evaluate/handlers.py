@@ -798,6 +798,7 @@ def evaluate_classifier_probability_quality(
     classifiers_dir: Path,
     collector: ScalarsCollector,
     charts: ChartMode | str = DEFAULT_CHART_MODE,
+    madcap_figsize: Optional[Tuple[float, float]] = None,
 ) -> None:
     """Plot discrimination, MADCAP, and calibration on all visits; emit one scalar row.
 
@@ -812,6 +813,9 @@ def evaluate_classifier_probability_quality(
         `classifiers_dir / target.flow_name`).
     collector : ScalarsCollector
         Receives one flow-level row (``charts_generated`` only; no headline metrics).
+    madcap_figsize : tuple of float, optional
+        Figure size passed to :func:`plot_madcap_by_group`. When omitted,
+        that function keeps its default ``(9, 3)`` per wrapped row.
 
     Notes
     -----
@@ -902,6 +906,7 @@ def evaluate_classifier_probability_quality(
                     return_figure=False,
                     label_col=label_col,
                     show=False,
+                    figsize=madcap_figsize,
                 )
             plt.close("all")
         plot_calibration(
