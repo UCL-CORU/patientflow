@@ -25,7 +25,7 @@ plot_madcap_by_group(prediction_times, model_file_path, media_file_path, visits_
 """
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import math
@@ -54,6 +54,10 @@ DEFAULT_AGE_CATEGORIES = {
     },
     "Adults 65 or over": {"numeric": {"min": 65}, "groups": ["65-74", "75-115"]},
 }
+
+DEFAULT_MADCAP_BY_GROUP_FIGSIZE = (9, 3)
+DEFAULT_MADCAP_BY_GROUP_DIFF_FIGSIZE = (10, 8)
+MADCAP_MAX_COLS = 4
 
 
 def classify_age(age, age_categories=None):
@@ -323,6 +327,8 @@ def _plot_madcap_by_group_single(
     *,
     show: bool = False,
     suptitle: Optional[str] = None,
+    figsize: Optional[Tuple[float, float]] = None,
+    max_cols: int = MADCAP_MAX_COLS,
 ):
     """Generate MADCAP plots for specific groups at a given prediction time.
 
@@ -352,6 +358,14 @@ def _plot_madcap_by_group_single(
     suptitle : str, optional
         Figure-level title. When omitted, a default title is derived from
         ``group_name`` and the prediction clock.
+    figsize : tuple of float, optional
+        Figure size in inches ``(width, height)``. When omitted, uses
+        ``(9, 3)`` per row if ``plot_difference`` is false, or ``(10, 8)``
+        if true. Default height scales with the number of wrapped rows.
+    max_cols : int, default 4
+        Maximum subgroup panels per row when ``plot_difference`` is false.
+        Extra groups wrap onto further rows. Ignored when plotting
+        difference panels (those stay one column per group).
 
     Returns
     -------
@@ -379,12 +393,30 @@ def _plot_madcap_by_group_single(
 
     predict_proba, label, group = map(np.array, (predict_proba, label, group))
     unique_groups = list(np.unique(group))
+    n_groups = len(unique_groups)
+    if n_groups == 0:
+        if return_figure:
+            return None
+        pyplot_show_if(show)
+        return None
 
-    fig_size = (10, 8) if plot_difference else (9, 3)
-    fig, ax = plt.subplots(
-        2 if plot_difference else 1, len(unique_groups), figsize=fig_size
-    )
-    ax = ax.reshape(-1, len(unique_groups)) if plot_difference else ax.reshape(1, -1)
+    col_cap = max(int(max_cols), 1)
+    if plot_difference:
+        n_rows, n_cols = 2, n_groups
+    else:
+        n_cols = min(col_cap, n_groups)
+        n_rows = math.ceil(n_groups / n_cols)
+
+    if figsize is None:
+        if plot_difference:
+            figsize = DEFAULT_MADCAP_BY_GROUP_DIFF_FIGSIZE
+        else:
+            figsize = (
+                DEFAULT_MADCAP_BY_GROUP_FIGSIZE[0],
+                DEFAULT_MADCAP_BY_GROUP_FIGSIZE[1] * n_rows,
+            )
+
+    fig, ax = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
 
     for i, grp in enumerate(unique_groups):
         mask = group == grp
@@ -401,20 +433,33 @@ def _plot_madcap_by_group_single(
         observed = np.cumsum(mean_labels[inverse_indices])
         x = np.arange(len(sorted_proba))
 
-        ax[0, i].plot(x, model, label="predicted")
-        ax[0, i].plot(x, observed, label="observed")
-        ax[0, i].legend(loc="upper left", fontsize=8)
-        ax[0, i].set_xlabel("Cases ordered by estimated probability", fontsize=8)
-        ax[0, i].set_ylabel("Cumulative count of positive outcomes", fontsize=8)
-        ax[0, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
-        ax[0, i].tick_params(axis="both", which="major", labelsize=8)
-
         if plot_difference:
-            ax[1, i].plot(x, model - observed)
-            ax[1, i].set_xlabel("Cases ordered by estimated probability", fontsize=8)
-            ax[1, i].set_ylabel("Predicted - observed count", fontsize=8)
-            ax[1, i].set_title(f"{group_name}: {grp!s}", fontsize=8)
-            ax[1, i].tick_params(axis="both", which="major", labelsize=8)
+            ax_madcap = ax[0, i]
+            ax_diff = ax[1, i]
+        else:
+            row, col = divmod(i, n_cols)
+            ax_madcap = ax[row, col]
+            ax_diff = None
+
+        ax_madcap.plot(x, model, label="predicted")
+        ax_madcap.plot(x, observed, label="observed")
+        ax_madcap.legend(loc="upper left", fontsize=8)
+        ax_madcap.set_xlabel("Cases ordered by estimated probability", fontsize=8)
+        ax_madcap.set_ylabel("Cumulative count of positive outcomes", fontsize=8)
+        ax_madcap.set_title(f"{group_name}: {grp!s}", fontsize=8)
+        ax_madcap.tick_params(axis="both", which="major", labelsize=8)
+
+        if ax_diff is not None:
+            ax_diff.plot(x, model - observed)
+            ax_diff.set_xlabel("Cases ordered by estimated probability", fontsize=8)
+            ax_diff.set_ylabel("Predicted - observed count", fontsize=8)
+            ax_diff.set_title(f"{group_name}: {grp!s}", fontsize=8)
+            ax_diff.tick_params(axis="both", which="major", labelsize=8)
+
+    if not plot_difference:
+        for j in range(n_groups, n_rows * n_cols):
+            row, col = divmod(j, n_cols)
+            ax[row, col].set_visible(False)
 
     # Adjust layout first
     fig.tight_layout(pad=1.08)
@@ -460,6 +505,8 @@ def plot_madcap_by_group(
     exclude_from_training_data: Optional[List[str]] = None,
     show: bool = False,
     suptitle: Optional[str] = None,
+    figsize: Optional[Tuple[float, float]] = None,
+    max_cols: int = MADCAP_MAX_COLS,
 ) -> Optional[List[plt.Figure]]:
     """Generate MADCAP plots for different groups across multiple prediction times.
 
@@ -492,6 +539,11 @@ def plot_madcap_by_group(
     suptitle : str, optional
         Figure-level title passed to each grouped figure. When omitted, each
         figure uses a default title from ``grouping_var_name`` and the clock.
+    figsize : tuple of float, optional
+        Passed to each grouped figure. When omitted, uses ``(9, 3)`` per
+        wrapped row (``plot_difference=False``) or ``(10, 8)``.
+    max_cols : int, default 4
+        Maximum subgroup panels per row when ``plot_difference`` is false.
 
     Returns
     -------
@@ -560,6 +612,8 @@ def plot_madcap_by_group(
             return_figure=True,
             show=show,
             suptitle=suptitle,
+            figsize=figsize,
+            max_cols=max_cols,
         )
         if return_figure:
             figures.append(fig)
