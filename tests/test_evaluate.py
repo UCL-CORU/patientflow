@@ -15,15 +15,19 @@ from patientflow.evaluate.handlers import (
     _classifier_diagnostics_suptitle,
     _classifier_quality_suptitle,
     _distribution_comparison_suptitle,
+    evaluate_classifier_probability_quality,
     evaluate_distribution,
 )
 from patientflow.evaluate.inputs import (
     EVAL_SPLITS,
+    DEFAULT_MADCAP_GROUPINGS,
     EvaluationInputs,
     EvaluationInputsBuilder,
     EvaluationTarget,
+    MadcapGrouping,
     eval_split_label,
     normalize_prediction_dict,
+    resolve_madcap_groupings,
     standard_ed_targets,
 )
 from patientflow.evaluate.runner import (
@@ -38,6 +42,7 @@ from patientflow.evaluate.scalars import (
     scalar_target_fields,
 )
 from patientflow.load import get_model_key
+from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 from patientflow.predict.demand import FlowSelection
 
 
@@ -279,6 +284,267 @@ def test_arrival_delta_suptitle_uses_eval_split():
     assert "(validation set)" in title
     assert "medical" in title
     assert "09:30" not in title
+
+
+# --- classifier MADCAP groupings ---
+
+
+def _minimal_trained_classifier(
+    prediction_time: tuple[int, int] = (6, 0),
+) -> TrainedClassifier:
+    return TrainedClassifier(
+        training_results=TrainingResults(
+            prediction_time=prediction_time,
+            training_info={
+                "dataset_info": {
+                    "train_valid_test_positive_cases": {
+                        "train": 10,
+                        "valid": 5,
+                        "test": 5,
+                    }
+                }
+            },
+        ),
+        selected_eval_metrics={
+            "auroc": 0.8,
+            "auprc": 0.7,
+            "log_loss": 0.4,
+            "split": "valid",
+            "n_samples": 20,
+            "n_positive_cases": 5,
+        },
+    )
+
+
+def test_resolve_madcap_groupings_default_and_explicit():
+    assert resolve_madcap_groupings(None) == list(DEFAULT_MADCAP_GROUPINGS)
+    custom = [MadcapGrouping("sex", "Sex", "madcap_by_sex")]
+    assert resolve_madcap_groupings(custom) == custom
+    assert resolve_madcap_groupings([]) == []
+
+
+def test_add_classifier_defaults_madcap_groupings_to_age():
+    builder = EvaluationInputsBuilder(
+        flow_selection=FlowSelection.emergency_only(),
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
+    )
+    visits = pd.DataFrame({"is_admitted": [0, 1], "age_group": ["18-24", "65-74"]})
+    builder.add_classifier(
+        "ed_admissions_cls",
+        [_minimal_trained_classifier()],
+        visits,
+        "is_admitted",
+    )
+    block = builder.build().classifier_by_flow["ed_admissions_cls"]
+    assert block["madcap_groupings"] == [
+        MadcapGrouping("age_group", "Age group", "madcap_by_age")
+    ]
+
+
+def test_add_classifier_stores_explicit_madcap_groupings():
+    groupings = [
+        MadcapGrouping("age_group", "Age group", "madcap_by_age"),
+        MadcapGrouping("ethnicity", "Ethnicity", "madcap_by_ethnicity"),
+    ]
+    builder = EvaluationInputsBuilder(
+        flow_selection=FlowSelection.emergency_only(),
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
+    )
+    visits = pd.DataFrame(
+        {
+            "is_admitted": [0, 1],
+            "age_group": ["18-24", "65-74"],
+            "ethnicity": ["A", "B"],
+        }
+    )
+    builder.add_classifier(
+        "ed_admissions_cls",
+        [_minimal_trained_classifier()],
+        visits,
+        "is_admitted",
+        madcap_groupings=groupings,
+    )
+    block = builder.build().classifier_by_flow["ed_admissions_cls"]
+    assert block["madcap_groupings"] == groupings
+
+
+def test_evaluate_classifier_probability_quality_madcap_groupings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Emit one MADCAP-by-group call per present grouping; skip missing columns."""
+    by_group_calls: list[dict] = []
+
+    def _noop_plot(*_args, **_kwargs):
+        return None
+
+    def _capture_by_group(*args, **kwargs):
+        by_group_calls.append(
+            {
+                "grouping_var": kwargs.get("grouping_var"),
+                "grouping_var_name": kwargs.get("grouping_var_name"),
+                "file_name": kwargs.get("file_name"),
+                "suptitle": kwargs.get("suptitle"),
+            }
+        )
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_estimated_probabilities", _noop_plot
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_madcap", _noop_plot)
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_madcap_by_group", _capture_by_group
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_calibration", _noop_plot)
+
+    visits = pd.DataFrame(
+        {
+            "is_admitted": [0, 1, 0, 1],
+            "age_group": ["18-24", "65-74", "18-24", "65-74"],
+            "ethnicity": ["GroupA", "GroupB", "GroupA", "GroupB"],
+        }
+    )
+    groupings = [
+        MadcapGrouping("age_group", "Age group", "madcap_by_age"),
+        MadcapGrouping("ethnicity", "Ethnicity", "madcap_by_ethnicity"),
+        MadcapGrouping("missing_col", "Missing", "madcap_by_missing"),
+    ]
+    target = _classifier_probability_quality_target()
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(6, 0)]),
+            eval_split="test",
+        )
+        .add_classifier(
+            target.flow_name,
+            [_minimal_trained_classifier((6, 0))],
+            visits,
+            "is_admitted",
+            madcap_groupings=groupings,
+        )
+        .with_evaluation_targets([target])
+        .build()
+    )
+    collector = ScalarsCollector()
+    out_dir = tmp_path / "classifiers"
+    evaluate_classifier_probability_quality(
+        inputs, target, classifiers_dir=out_dir, collector=collector
+    )
+
+    assert [(c["grouping_var"], c["file_name"]) for c in by_group_calls] == [
+        ("age_group", "madcap_by_age.png"),
+        ("ethnicity", "madcap_by_ethnicity.png"),
+    ]
+    assert by_group_calls[0]["grouping_var_name"] == "Age group"
+    assert "MADCAP by age group" in by_group_calls[0]["suptitle"]
+    assert "MADCAP by ethnicity" in by_group_calls[1]["suptitle"]
+    assert collector.as_list()[0]["charts_generated"] is True
+
+
+def test_evaluate_classifier_probability_quality_default_age_madcap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    by_group_calls: list[dict] = []
+
+    def _noop_plot(*_args, **_kwargs):
+        return None
+
+    def _capture_by_group(*_args, **kwargs):
+        by_group_calls.append({"file_name": kwargs.get("file_name")})
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_estimated_probabilities", _noop_plot
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_madcap", _noop_plot)
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_madcap_by_group", _capture_by_group
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_calibration", _noop_plot)
+
+    visits = pd.DataFrame({"is_admitted": [0, 1], "age_group": ["18-24", "65-74"]})
+    target = _classifier_probability_quality_target()
+    # Omit madcap_groupings key (legacy block shape) — handler should still default.
+    inputs = EvaluationInputs(
+        flow_selection=FlowSelection.emergency_only(),
+        prediction_dict=_uniform_prediction_dict([(6, 0)]),
+        evaluation_targets=[target],
+        eval_split="valid",
+        classifier_by_flow={
+            target.flow_name: {
+                "trained_models": [_minimal_trained_classifier()],
+                "visits_df": visits,
+                "label_col": "is_admitted",
+                "model_name": "admissions",
+            }
+        },
+    )
+    evaluate_classifier_probability_quality(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=ScalarsCollector(),
+    )
+    assert by_group_calls == [{"file_name": "madcap_by_age.png"}]
+
+
+def test_evaluate_classifier_probability_quality_multi_clock_filenames(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    by_group_calls: list[dict] = []
+
+    def _noop_plot(*_args, **_kwargs):
+        return None
+
+    def _capture_by_group(*_args, **kwargs):
+        by_group_calls.append({"file_name": kwargs.get("file_name")})
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_estimated_probabilities", _noop_plot
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_madcap", _noop_plot)
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_madcap_by_group", _capture_by_group
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_calibration", _noop_plot)
+
+    visits = pd.DataFrame(
+        {
+            "is_admitted": [0, 1],
+            "age_group": ["18-24", "65-74"],
+            "ethnicity": ["A", "B"],
+        }
+    )
+    target = _classifier_probability_quality_target()
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(6, 0), (15, 30)]),
+        )
+        .add_classifier(
+            target.flow_name,
+            [
+                _minimal_trained_classifier((6, 0)),
+                _minimal_trained_classifier((15, 30)),
+            ],
+            visits,
+            "is_admitted",
+            madcap_groupings=[
+                MadcapGrouping("ethnicity", "Ethnicity", "madcap_by_ethnicity"),
+            ],
+        )
+        .with_evaluation_targets([target])
+        .build()
+    )
+    evaluate_classifier_probability_quality(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=ScalarsCollector(),
+    )
+    assert [c["file_name"] for c in by_group_calls] == [
+        "madcap_by_ethnicity_0600.png",
+        "madcap_by_ethnicity_1530.png",
+    ]
 
 
 # --- distribution: observation contexts and recompute ---

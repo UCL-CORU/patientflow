@@ -14,6 +14,7 @@ patientflow.evaluate.scalars.ScalarsCollector
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -46,6 +47,7 @@ from patientflow.evaluate.inputs import (
     EvaluationTarget,
     eval_split_label,
     prediction_times_from_dict,
+    resolve_madcap_groupings,
 )
 from patientflow.evaluate.observations import (
     admission_type_filter_for_distribution_component,
@@ -75,6 +77,8 @@ from patientflow.viz.calibration import plot_calibration
 from patientflow.viz.estimated_probabilities import plot_estimated_probabilities
 from patientflow.viz.madcap import plot_madcap, plot_madcap_by_group
 from patientflow.viz.survival_curve import plot_admission_time_survival_curve
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_fs_segment(name: str) -> str:
@@ -812,10 +816,13 @@ def evaluate_classifier_probability_quality(
     Notes
     -----
     Plots use the full registered `visits_df` (not split by specialty). Writes
-    ``discrimination.png``, ``madcap.png``, ``madcap_by_age.png`` (or per-clock
-    variants when several models are registered), and ``calibration.png``. Skips
-    quietly when no classifier block exists. Headline metrics are recorded under
-    ``classifier_model_diagnostics``. Charts are skipped when ``charts="none"``.
+    ``discrimination.png``, ``madcap.png``, one stratified MADCAP chart set per
+    requested :class:`~patientflow.evaluate.inputs.MadcapGrouping` (default
+    ``madcap_by_age.png``; per-clock variants when several models are
+    registered), and ``calibration.png``. Groupings whose column is missing on
+    ``visits_df`` are skipped quietly. Skips quietly when no classifier block
+    exists. Headline metrics are recorded under ``classifier_model_diagnostics``.
+    Charts are skipped when ``charts="none"``.
     """
     chart_mode = normalize_chart_mode(charts)
     block = inputs.classifier_by_flow.get(target.flow_name)
@@ -863,31 +870,40 @@ def evaluate_classifier_probability_quality(
             show=False,
         )
         plt.close("all")
+        groupings = resolve_madcap_groupings(block.get("madcap_groupings"))
         multi_clock = len(models) > 1
-        for m in models:
-            plot_madcap_by_group(
-                [m],
-                visits,
-                grouping_var="age_group",
-                grouping_var_name="Age group",
-                media_file_path=classifiers_dir,
-                file_name=_disambiguate_classifier_plot_filename(
-                    "madcap_by_age.png",
-                    m.training_results.prediction_time,
-                    multi_clock=multi_clock,
-                ),
-                suptitle=_classifier_diagnostics_suptitle(
-                    target,
-                    "MADCAP by age group",
-                    eval_split=eval_split,
-                    prediction_time=m.training_results.prediction_time,
-                ),
-                plot_difference=False,
-                return_figure=False,
-                label_col=label_col,
-                show=False,
-            )
-        plt.close("all")
+        for grouping in groupings:
+            if grouping.column not in visits.columns:
+                logger.info(
+                    "Skipping MADCAP grouping %r: column %r not in visits_df",
+                    grouping.file_stem,
+                    grouping.column,
+                )
+                continue
+            for m in models:
+                plot_madcap_by_group(
+                    [m],
+                    visits,
+                    grouping_var=grouping.column,
+                    grouping_var_name=grouping.display_name,
+                    media_file_path=classifiers_dir,
+                    file_name=_disambiguate_classifier_plot_filename(
+                        f"{grouping.file_stem}.png",
+                        m.training_results.prediction_time,
+                        multi_clock=multi_clock,
+                    ),
+                    suptitle=_classifier_diagnostics_suptitle(
+                        target,
+                        f"MADCAP by {grouping.display_name.lower()}",
+                        eval_split=eval_split,
+                        prediction_time=m.training_results.prediction_time,
+                    ),
+                    plot_difference=False,
+                    return_figure=False,
+                    label_col=label_col,
+                    show=False,
+                )
+            plt.close("all")
         plot_calibration(
             models,
             visits,

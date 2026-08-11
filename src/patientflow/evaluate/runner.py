@@ -40,7 +40,13 @@ from patientflow.evaluate.scalars import ScalarsCollector
 try:
     import matplotlib
 
-    matplotlib.use("Agg")
+    # Prefer Agg for headless chart writes, but do not clobber an already
+    # interactive notebook/GUI backend (importing this module would otherwise
+    # break later plt.show() / inline display in the same kernel).
+    backend = matplotlib.get_backend().lower()
+    interactive = ("inline", "ipympl", "nbagg", "widget", "macosx", "qt", "tk", "gtk")
+    if not any(token in backend for token in interactive):
+        matplotlib.use("Agg")
 except Exception:  # pragma: no cover
     pass
 

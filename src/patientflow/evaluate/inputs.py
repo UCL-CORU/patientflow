@@ -10,6 +10,7 @@ Submodules should be imported explicitly, for example::
         EvaluationInputs,
         EvaluationInputsBuilder,
         EvaluationTarget,
+        MadcapGrouping,
         eval_split_label,
         standard_ed_targets,
     )
@@ -139,6 +140,41 @@ def prediction_times_from_dict(
 ) -> List[Tuple[int, int]]:
     """Return prediction clock times in ascending order."""
     return sorted(prediction_dict.keys())
+
+
+@dataclass(frozen=True)
+class MadcapGrouping:
+    """Caller-prescribed MADCAP-by-group chart specification.
+
+    Parameters
+    ----------
+    column : str
+        Column on the registered ``visits_df`` used to stratify the chart.
+    display_name : str
+        Human-readable name for axis labels / plot titles
+        (for example ``"Age group"``).
+    file_stem : str
+        Output filename stem without ``.png`` (for example ``"madcap_by_age"``).
+        Multi-clock runs append ``_HHMM`` via the probability-quality handler.
+    """
+
+    column: str
+    display_name: str
+    file_stem: str
+
+
+DEFAULT_MADCAP_GROUPINGS: Tuple[MadcapGrouping, ...] = (
+    MadcapGrouping("age_group", "Age group", "madcap_by_age"),
+)
+
+
+def resolve_madcap_groupings(
+    madcap_groupings: Optional[Sequence[MadcapGrouping]] = None,
+) -> List[MadcapGrouping]:
+    """Return caller groupings, or the age-group default when ``None``."""
+    if madcap_groupings is None:
+        return list(DEFAULT_MADCAP_GROUPINGS)
+    return list(madcap_groupings)
 
 
 @dataclass(frozen=True)
@@ -324,7 +360,9 @@ class EvaluationInputs:
         Targets the runner dispatches over.
     classifier_by_flow : dict
         Nested `flow_name` → `{"trained_models", "visits_df", "label_col",
-        "model_name"}` (``model_name`` is the prefix for :func:`get_model_key`).
+        "model_name", "madcap_groupings"}` (``model_name`` is the prefix for
+        :func:`get_model_key`; ``madcap_groupings`` is a list of
+        :class:`MadcapGrouping`).
     distribution_by_flow : dict
         Nested `flow_name` → distribution block (`prob_dist_by_service`,
         `model_name`, etc.).
@@ -511,6 +549,7 @@ class EvaluationInputsBuilder:
         label_col: str,
         *,
         model_name: str = "admissions",
+        madcap_groupings: Optional[Sequence[MadcapGrouping]] = None,
     ) -> EvaluationInputsBuilder:
         """Register classifiers and visit data for one flow.
 
@@ -522,12 +561,19 @@ class EvaluationInputsBuilder:
             Models sorted by prediction time if a sequence; mapping keys are
             `(hour, minute)` tuples.
         visits_df : pandas.DataFrame
-            Visit-level frame for MADCAP / calibration / SHAP.
+            Visit-level frame for MADCAP / calibration / SHAP. May include
+            eval-only demographic columns used solely for stratified MADCAP
+            charts; those columns are not model inputs unless they were
+            present at training time.
         label_col : str
             Binary outcome column on `visits_df`.
         model_name : str, optional
             Base model name passed to :func:`patientflow.load.get_model_key` when
             recording scalar rows (default ``"admissions"``).
+        madcap_groupings : sequence of MadcapGrouping or None, optional
+            Stratified MADCAP chart specs. When ``None``, defaults to one
+            grouping on ``age_group`` → ``madcap_by_age.png``. Missing columns
+            are skipped quietly at evaluation time.
 
         Returns
         -------
@@ -546,6 +592,7 @@ class EvaluationInputsBuilder:
             "visits_df": visits_df,
             "label_col": label_col,
             "model_name": model_name,
+            "madcap_groupings": resolve_madcap_groupings(madcap_groupings),
         }
         return self
 

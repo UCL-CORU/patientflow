@@ -14,6 +14,8 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 
+from patientflow.viz.utils import pyplot_show_if
+
 
 def plot_data_distribution(
     df,
@@ -31,6 +33,10 @@ def plot_data_distribution(
     truncate_outliers=True,
     outlier_method="zscore",
     outlier_threshold=2.0,
+    col_wrap=None,
+    sharey=True,
+    *,
+    show=False,
 ):
     """Plot distributions of data variables grouped by categories.
 
@@ -68,12 +74,22 @@ def plot_data_distribution(
     outlier_threshold : float, default=1.5
         Threshold for outlier detection. For IQR method, this is the multiplier.
         For z-score method, this is the number of standard deviations.
+    col_wrap : int, optional
+        Wrap facet columns after this many panels (passed to
+        :class:`seaborn.FacetGrid`). Use when there are many grouping levels
+        so the figure does not become a single unreadable row.
+    sharey : bool, default=True
+        If False, each facet uses its own y-axis scale (useful when group
+        sizes differ a lot and you care about within-group shape).
+    show : bool, default=False
+        If True, call ``matplotlib.pyplot.show()`` when not using
+        ``return_figure``. Leave false for non-interactive backends.
 
     Returns
     -------
     seaborn.FacetGrid or None
         If return_figure is True, returns the FacetGrid object. Otherwise,
-        displays the plot and returns None.
+        optionally displays the plot (when ``show`` is true) and returns None.
 
     Raises
     ------
@@ -122,7 +138,15 @@ def plot_data_distribution(
                     lower_bound = max(0, lower_bound)
                 x_limits = (lower_bound, upper_bound)
 
-    g = sns.FacetGrid(df, col=grouping_var, height=3, aspect=1.5)
+    facet_kwargs = {
+        "col": grouping_var,
+        "height": 3,
+        "aspect": 1.5,
+        "sharey": sharey,
+    }
+    if col_wrap is not None:
+        facet_kwargs["col_wrap"] = col_wrap
+    g = sns.FacetGrid(df, **facet_kwargs)
 
     if is_discrete:
         valid_values = sorted([x for x in df[col_name].unique() if pd.notna(x)])
@@ -212,6 +236,6 @@ def plot_data_distribution(
 
     if return_figure:
         return g
-    else:
-        plt.show()
-        plt.close()
+    pyplot_show_if(show)
+    plt.close()
+    return None
