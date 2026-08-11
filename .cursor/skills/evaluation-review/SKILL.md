@@ -78,6 +78,9 @@ distributions and Pearson X² for transition matrices.
 
 Chart bookkeeping only (no metrics on the row). If `charts_generated`, review
 the discrimination/MADCAP/calibration PNGs under `classifiers/{flow}/`.
+When `madcap_panel_trust.json` is present, use it before reading stratified
+MADCAP panels: `clears_floor` false means too thin to trust; floor but not
+`clears_panel_target` is exploratory only.
 
 ### `distribution` (one row per service x prediction time)
 
@@ -152,6 +155,8 @@ so an in-figure panel is not itself evidence that that clock flagged.
   reserve per-service detail for flagged or negative-reduction rows.
 - `uclh_ed_yta_beds` (aspirational YTA bed demand) is deliberately excluded
   from evaluation; do not report its absence as a gap.
+- Stratified MADCAP may include age, sex, and grouped ethnicity. Read
+  `madcap_panel_trust.json` (if present) before treating a panel as decisive.
 
 ## Report format
 
