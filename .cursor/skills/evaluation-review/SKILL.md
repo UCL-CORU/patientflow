@@ -40,7 +40,19 @@ flag.**
 3. **Triage rows** using the per-mode guidance below.
 4. **Check coverage** via `_service_summary.by_slice`: `n_inactive_services`
    and `inactive_service_names` show which services had nothing to evaluate.
-5. **Open flagged charts only**, then write up findings.
+5. **Check classifier SHAP plots.** If `classifier_model_diagnostics` ran
+   (`charts` is not `none`) and `classifiers/{flow}/` has `features.png` but
+   no `shap*.png`, **warn the user**. SHAP is optional: patientflow skips it
+   when the `shap` package is not installed. For uclhflow, remind them to
+   reinstall the evaluate environment with the `model` extra and re-run:
+
+   ```shell
+   pip install -e ".[model]"
+   ```
+
+   Then re-run `python -m predictor.evaluate` so SHAP PNGs are written. Do
+   not treat missing SHAP as a model-quality finding.
+6. **Open flagged charts only**, then write up findings.
 
 ## scalars.json structure
 
@@ -73,6 +85,10 @@ distributions and Pearson X² for transition matrices.
   (e.g. AUROC ~0.05 below the rest) and any `reliable: false` row.
 - Caveat: these metrics come from train-time scoring (`metrics_split`:
   typically `cv_train` or `test`), which may differ from the run's eval split.
+- Charts: `features.png` (always, when `charts != none`) and optional
+  `shap*.png` / `shap_HHMM.png`. If feature importance exists but SHAP does
+  not, warn and point at `pip install -e ".[model]"` (uclhflow) — see
+  workflow step 5.
 
 ### `classifier_probability_quality`
 
@@ -157,6 +173,9 @@ so an in-figure panel is not itself evidence that that clock flagged.
   from evaluation; do not report its absence as a gap.
 - Stratified MADCAP may include age, sex, and grouped ethnicity. Read
   `madcap_panel_trust.json` (if present) before treating a panel as decisive.
+- SHAP is not a default uclhflow dependency. If SHAP PNGs are missing,
+  warn and remind: `pip install -e ".[model]"` in the evaluate environment,
+  then re-run evaluate. Feature-importance plots do not require that extra.
 
 ## Report format
 
@@ -171,7 +190,9 @@ Structure the write-up as:
 4. **Coverage and reliability** - inactive services, unreliable slices,
    `skip_reason` counts.
 5. **Chart review** - which PNGs were opened and what they showed; note
-   anything (like arrivals under `flagged`) that could not be reviewed.
+   anything (like arrivals under `flagged`, or missing SHAP) that could not
+   be reviewed. If SHAP is missing, include the `pip install -e ".[model]"`
+   reminder in the write-up.
 
 ## Presentations
 
