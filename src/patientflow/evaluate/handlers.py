@@ -815,7 +815,7 @@ def evaluate_classifier_probability_quality(
         Receives one flow-level row (``charts_generated`` only; no headline metrics).
     madcap_figsize : tuple of float, optional
         Figure size passed to :func:`plot_madcap_by_group`. When omitted,
-        that function keeps its default ``(9, 3)`` per wrapped row.
+        that function sizes each subgroup panel as a square.
 
     Notes
     -----
