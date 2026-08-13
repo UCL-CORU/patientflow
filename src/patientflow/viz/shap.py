@@ -142,14 +142,11 @@ def plot_shap(
             print("Mean SHAP values (class 0):", np.abs(shap_values[0]).mean(0))
             print("Mean SHAP values (class 1):", np.abs(shap_values[1]).mean(0))
 
-        # Create SHAP summary plot
-        rng = np.random.default_rng()
         shap.summary_plot(
             shap_values,
             X_test,
             feature_names=truncated_cols,
             show=False,
-            rng=rng,
         )
 
         fig = plt.gcf()
