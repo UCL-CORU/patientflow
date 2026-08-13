@@ -199,7 +199,7 @@ def run_evaluation(
         Chart emission mode. Default ``flagged`` for large multi-service runs.
     madcap_figsize : tuple of float, optional
         Figure size for stratified MADCAP charts. Omitted keeps the viz
-        default (``(9, 3)`` per wrapped row).
+        default (square subgroup panels).
 
     Returns
     -------

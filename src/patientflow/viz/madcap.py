@@ -55,9 +55,21 @@ DEFAULT_AGE_CATEGORIES = {
     "Adults 65 or over": {"numeric": {"min": 65}, "groups": ["65-74", "75-115"]},
 }
 
-DEFAULT_MADCAP_BY_GROUP_FIGSIZE = (9, 3)
+MADCAP_PANEL_INCHES = 3.2
+MADCAP_MAX_COLS = 3
 DEFAULT_MADCAP_BY_GROUP_DIFF_FIGSIZE = (10, 8)
-MADCAP_MAX_COLS = 4
+
+
+def madcap_by_group_figsize(n_rows: int, n_cols: int) -> Tuple[float, float]:
+    """Figure size that leaves a square cell for each subgroup panel."""
+    return (
+        n_cols * MADCAP_PANEL_INCHES + 0.8,
+        n_rows * MADCAP_PANEL_INCHES + 1.0,
+    )
+
+
+# One row of ``MADCAP_MAX_COLS`` square panels (age / sex default).
+DEFAULT_MADCAP_BY_GROUP_FIGSIZE = madcap_by_group_figsize(1, MADCAP_MAX_COLS)
 
 
 def classify_age(age, age_categories=None):
@@ -359,13 +371,15 @@ def _plot_madcap_by_group_single(
         Figure-level title. When omitted, a default title is derived from
         ``group_name`` and the prediction clock.
     figsize : tuple of float, optional
-        Figure size in inches ``(width, height)``. When omitted, uses
-        ``(9, 3)`` per row if ``plot_difference`` is false, or ``(10, 8)``
-        if true. Default height scales with the number of wrapped rows.
-    max_cols : int, default 4
+        Figure size in inches ``(width, height)``. When omitted and
+        ``plot_difference`` is false, sizes the figure so each panel is
+        square (``MADCAP_PANEL_INCHES`` per cell). Difference plots use
+        ``(10, 8)``.
+    max_cols : int, default 3
         Maximum subgroup panels per row when ``plot_difference`` is false.
-        Extra groups wrap onto further rows. Ignored when plotting
-        difference panels (those stay one column per group).
+        Extra groups wrap onto further rows (six ethnicity groups → 2×3).
+        Ignored when plotting difference panels (those stay one column
+        per group).
 
     Returns
     -------
@@ -411,12 +425,11 @@ def _plot_madcap_by_group_single(
         if plot_difference:
             figsize = DEFAULT_MADCAP_BY_GROUP_DIFF_FIGSIZE
         else:
-            figsize = (
-                DEFAULT_MADCAP_BY_GROUP_FIGSIZE[0],
-                DEFAULT_MADCAP_BY_GROUP_FIGSIZE[1] * n_rows,
-            )
+            figsize = madcap_by_group_figsize(n_rows, n_cols)
 
-    fig, ax = plt.subplots(n_rows, n_cols, figsize=figsize, squeeze=False)
+    fig, ax = plt.subplots(
+        n_rows, n_cols, figsize=figsize, squeeze=False, constrained_layout=True
+    )
 
     for i, grp in enumerate(unique_groups):
         mask = group == grp
@@ -448,6 +461,7 @@ def _plot_madcap_by_group_single(
         ax_madcap.set_ylabel("Cumulative count of positive outcomes", fontsize=8)
         ax_madcap.set_title(f"{group_name}: {grp!s}", fontsize=8)
         ax_madcap.tick_params(axis="both", which="major", labelsize=8)
+        ax_madcap.set_box_aspect(1)
 
         if ax_diff is not None:
             ax_diff.plot(x, model - observed)
@@ -455,24 +469,16 @@ def _plot_madcap_by_group_single(
             ax_diff.set_ylabel("Predicted - observed count", fontsize=8)
             ax_diff.set_title(f"{group_name}: {grp!s}", fontsize=8)
             ax_diff.tick_params(axis="both", which="major", labelsize=8)
+            ax_diff.set_box_aspect(1)
 
     if not plot_difference:
         for j in range(n_groups, n_rows * n_cols):
             row, col = divmod(j, n_cols)
             ax[row, col].set_visible(False)
 
-    # Adjust layout first
-    fig.tight_layout(pad=1.08)
-
-    # Then add super title
     if suptitle is None:
         suptitle = f"MADCAP by {group_name} at {hour}:{minutes:02}"
-    fig.suptitle(suptitle, fontsize=10, y=1.04)
-
-    # Fine-tune the layout
-    fig.subplots_adjust(top=0.90)
-
-    # fig.tight_layout(pad=1.08, rect=[0, 0.03, 1, 0.95])
+    fig.suptitle(suptitle, fontsize=10)
 
     if media_path:
         plot_name = (
@@ -540,9 +546,9 @@ def plot_madcap_by_group(
         Figure-level title passed to each grouped figure. When omitted, each
         figure uses a default title from ``grouping_var_name`` and the clock.
     figsize : tuple of float, optional
-        Passed to each grouped figure. When omitted, uses ``(9, 3)`` per
-        wrapped row (``plot_difference=False``) or ``(10, 8)``.
-    max_cols : int, default 4
+        Passed to each grouped figure. When omitted, sizes each panel as a
+        square (``plot_difference=False``) or uses ``(10, 8)``.
+    max_cols : int, default 3
         Maximum subgroup panels per row when ``plot_difference`` is false.
 
     Returns
