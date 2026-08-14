@@ -156,6 +156,31 @@ class TestShapOptional(unittest.TestCase):
             viz_shap.plot_shap([model], train_visits, show=False, return_figure=False)
         mock_show.assert_not_called()
 
+    def test_summary_plot_kwargs_omits_rng_when_unsupported(self):
+        import patientflow.viz.shap as viz_shap
+
+        def summary_plot_without_rng(*args, **kwargs):
+            pass
+
+        with patch.object(viz_shap, "shap") as mock_shap:
+            mock_shap.summary_plot = summary_plot_without_rng
+            kwargs = viz_shap._summary_plot_kwargs(feature_names=["a"], show=False)
+        self.assertEqual(kwargs, {"feature_names": ["a"], "show": False})
+
+    def test_summary_plot_kwargs_includes_rng_when_supported(self):
+        import patientflow.viz.shap as viz_shap
+
+        def summary_plot_with_rng(*args, rng=None, **kwargs):
+            pass
+
+        with patch.object(viz_shap, "shap") as mock_shap:
+            mock_shap.summary_plot = summary_plot_with_rng
+            kwargs = viz_shap._summary_plot_kwargs(feature_names=["a"], show=False)
+        self.assertEqual(kwargs["feature_names"], ["a"])
+        self.assertFalse(kwargs["show"])
+        self.assertIn("rng", kwargs)
+        self.assertIsNotNone(kwargs["rng"])
+
 
 # ---------------------------------------------------------------------------
 # Tier 2 – Unit tests for pure functions
