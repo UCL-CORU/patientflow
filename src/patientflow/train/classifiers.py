@@ -53,8 +53,6 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 from sklearn.pipeline import Pipeline
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn import __version__ as sk_version
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -65,6 +63,10 @@ from patientflow.model_artifacts import (
     FoldResults,
     TrainingResults,
     TrainedClassifier,
+)
+from patientflow.train.probability_calibrator import (
+    CalibrationMethod,
+    PrefitProbabilityCalibrator,
 )
 
 
@@ -638,7 +640,7 @@ def train_classifier(
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     calibrate_probabilities: bool = True,
-    calibration_method: str = "sigmoid",
+    calibration_method: CalibrationMethod = "sigmoid",
     single_snapshot_per_visit: bool = True,
     single_snapshot_per_visit_train: Optional[bool] = None,
     single_snapshot_per_visit_valid: Optional[bool] = None,
@@ -973,17 +975,9 @@ def train_classifier(
             X_calibration_preprocessed
         )
 
-        if sk_version >= "1.6.0":
-            from sklearn.frozen import FrozenEstimator
-
-            calibrated_classifier = CalibratedClassifierCV(
-                estimator=FrozenEstimator(best_classifier),
-                method=calibration_method,
-            )
-        else:
-            calibrated_classifier = CalibratedClassifierCV(
-                estimator=best_classifier, method=calibration_method, cv="prefit"
-            )
+        calibrated_classifier = PrefitProbabilityCalibrator(
+            estimator=best_classifier, method=calibration_method
+        )
         calibrated_classifier.fit(X_calibration_transformed, y_calibration)
 
         calibrated_steps = []
@@ -1072,7 +1066,7 @@ def train_multiple_classifiers(
     model_name: str = "admissions",
     visit_col: str = "visit_number",
     calibrate_probabilities: bool = True,
-    calibration_method: str = "isotonic",
+    calibration_method: CalibrationMethod = "isotonic",
     use_balanced_training: bool = True,
     majority_to_minority_ratio: float = 1.0,
     single_snapshot_per_visit: bool = True,
