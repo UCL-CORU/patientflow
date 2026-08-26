@@ -14,6 +14,7 @@ from patientflow.prepare import prepare_patient_snapshots
 from patientflow.viz.utils import apply_figure_suptitle
 from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.model_artifacts import TrainedClassifier
+import inspect
 import scipy.sparse
 import numpy as np
 from sklearn.pipeline import Pipeline
@@ -27,6 +28,25 @@ try:
 except ImportError:  # pragma: no cover - exercised when shap is absent
     shap = None  # type: ignore
     SHAP_AVAILABLE = False
+
+
+def _summary_plot_kwargs(
+    *,
+    feature_names: List[str],
+    show: bool = False,
+) -> dict:
+    """Keyword args for ``shap.summary_plot``, including ``rng`` when supported.
+
+    ``rng`` was added in shap 0.47. Passing it on older releases raises
+    ``TypeError: unexpected keyword argument 'rng'``.
+    """
+    kwargs: dict = {
+        "feature_names": feature_names,
+        "show": show,
+    }
+    if shap is not None and "rng" in inspect.signature(shap.summary_plot).parameters:
+        kwargs["rng"] = np.random.default_rng()
+    return kwargs
 
 
 def plot_shap(
@@ -142,14 +162,12 @@ def plot_shap(
             print("Mean SHAP values (class 0):", np.abs(shap_values[0]).mean(0))
             print("Mean SHAP values (class 1):", np.abs(shap_values[1]).mean(0))
 
-        # Create SHAP summary plot
-        rng = np.random.default_rng()
+        # Create SHAP summary plot. shap>=0.47 accepts rng= (avoids mutating
+        # NumPy's global RNG); older releases raise TypeError if it is passed.
         shap.summary_plot(
             shap_values,
             X_test,
-            feature_names=truncated_cols,
-            show=False,
-            rng=rng,
+            **_summary_plot_kwargs(feature_names=truncated_cols, show=False),
         )
 
         fig = plt.gcf()

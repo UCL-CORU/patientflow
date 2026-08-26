@@ -17,6 +17,7 @@ from patientflow.train.classifiers import (
     infer_feature_kind,
     train_classifier,
 )
+from patientflow.train.probability_calibrator import PrefitProbabilityCalibrator
 from patientflow.model_artifacts import (
     ServiceModels,
     TrainedClassifier,
@@ -261,6 +262,10 @@ class TestClassifiers(unittest.TestCase):
         # Check that we have a calibrated pipeline
         self.assertIsNotNone(model.calibrated_pipeline)
         self.assertIsInstance(model.calibrated_pipeline, Pipeline)
+        self.assertIsInstance(
+            model.calibrated_pipeline.named_steps["classifier"],
+            PrefitProbabilityCalibrator,
+        )
 
         # Check calibration info
         self.assertIsNotNone(model.training_results.calibration_info)

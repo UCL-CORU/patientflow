@@ -105,7 +105,7 @@ _DISTRIBUTION_COMPONENT_LABELS: Dict[str, str] = {
 }
 
 _ARRIVAL_FLOW_LABELS: Dict[str, str] = {
-    "ed_yta_arrival_rates": "ED yet-to-arrive arrival deltas",
+    "ed_yta_arrival_rates": "Arrival delta plots",
 }
 
 
@@ -198,10 +198,10 @@ def _arrival_delta_suptitle(
     """
     subject = _ARRIVAL_FLOW_LABELS.get(
         target.flow_name,
-        target.flow_name.replace("_", " ").title(),
+        "Arrival delta plots",
     )
     cohort = eval_split_label(eval_split)
-    return f"{subject}: {service} ({cohort})"
+    return f"{subject} for {service} service ({cohort})"
 
 
 def _distribution_comparison_suptitle(
@@ -798,6 +798,7 @@ def evaluate_classifier_probability_quality(
     classifiers_dir: Path,
     collector: ScalarsCollector,
     charts: ChartMode | str = DEFAULT_CHART_MODE,
+    madcap_figsize: Optional[Tuple[float, float]] = None,
 ) -> None:
     """Plot discrimination, MADCAP, and calibration on all visits; emit one scalar row.
 
@@ -812,6 +813,9 @@ def evaluate_classifier_probability_quality(
         `classifiers_dir / target.flow_name`).
     collector : ScalarsCollector
         Receives one flow-level row (``charts_generated`` only; no headline metrics).
+    madcap_figsize : tuple of float, optional
+        Figure size passed to :func:`plot_madcap_by_group`. When omitted,
+        that function sizes each subgroup panel as a square.
 
     Notes
     -----
@@ -902,6 +906,7 @@ def evaluate_classifier_probability_quality(
                     return_figure=False,
                     label_col=label_col,
                     show=False,
+                    figsize=madcap_figsize,
                 )
             plt.close("all")
         plot_calibration(

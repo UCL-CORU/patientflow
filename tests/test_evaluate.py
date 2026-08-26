@@ -281,8 +281,7 @@ def test_arrival_delta_suptitle_uses_eval_split():
         observation_mode="arrived_in_window",
     )
     title = _arrival_delta_suptitle(target, "medical", eval_split="valid")
-    assert "(validation set)" in title
-    assert "medical" in title
+    assert title == "Arrival delta plots for medical service (validation set)"
     assert "09:30" not in title
 
 
@@ -545,6 +544,53 @@ def test_evaluate_classifier_probability_quality_multi_clock_filenames(
         "madcap_by_ethnicity_0600.png",
         "madcap_by_ethnicity_1530.png",
     ]
+
+
+def test_evaluate_classifier_probability_quality_passes_madcap_figsize(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    by_group_calls: list[dict] = []
+
+    def _noop_plot(*_args, **_kwargs):
+        return None
+
+    def _capture_by_group(*_args, **kwargs):
+        by_group_calls.append({"figsize": kwargs.get("figsize")})
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_estimated_probabilities", _noop_plot
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_madcap", _noop_plot)
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_madcap_by_group", _capture_by_group
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_calibration", _noop_plot)
+
+    visits = pd.DataFrame({"is_admitted": [0, 1], "age_group": ["18-24", "65-74"]})
+    target = _classifier_probability_quality_target()
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(6, 0)]),
+            eval_split="test",
+        )
+        .add_classifier(
+            target.flow_name,
+            [_minimal_trained_classifier((6, 0))],
+            visits,
+            "is_admitted",
+        )
+        .with_evaluation_targets([target])
+        .build()
+    )
+    evaluate_classifier_probability_quality(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=ScalarsCollector(),
+        madcap_figsize=(12, 2),
+    )
+    assert by_group_calls == [{"figsize": (12, 2)}]
 
 
 # --- distribution: observation contexts and recompute ---

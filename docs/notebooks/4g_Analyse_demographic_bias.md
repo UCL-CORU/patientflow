@@ -1,12 +1,14 @@
 # 4g. Analyse demographic bias
 
-Pooled discrimination and calibration can look fine while performance still differs systematically across patient groups. That is easy to miss on overall plots alone. When subgroup patterns diverge, though, more than one mechanism can produce the same look. Two that matter for emergency demand prediction are introduced below.
+Understanding bias in predictive models is a vital part of the path to deployment. Discrimination and calibration plots can look fine when prepared using pooled data, but they may conceal systematic differences across patient groups. We use MADCAP plots to evaluate discrimination and calibration, and in notebook 2c I showed how to plot those for age subgroups using stratified MADCAPs.
+
+When subgroup patterns diverge, though, it can be hard to work out why because more than one mechanism can produce the same plots. In this notebook, I discuss two mechanisms that may result in differences in model performance for subgroups, and suggest methodologies for investigating each.
 
 ## Two mechanisms whereby models encode bias
 
-**1. Case-mix / omitted-attribute divergence.** The model is faithful to the features it was trained on, but an excluded characteristic correlates with legitimate differences in who presents and how (for example differential disease burden or pathways upstream of the ED). Predictions then look systematically different across groups even though the model is doing what it was asked to do. That pattern can reveal a real health inequality in case mix, not necessarily a broken predictor.
+**1. Case-mix / omitted-attribute divergence.** A model is faithful to the features it was trained on, but an excluded characteristic correlates with differences in who presents and how (for example a differential disease burden or different access to health services upstream of the ED). Predictions then look systematically different across groups even though the model is doing what it was asked to do. That pattern can reveal a real health inequality in case mix.
 
-**2. Label bias.** The outcome being predicted (`is_admitted`) is a record of a human decision. If that decision varies unfairly by group for the same clinical need, a model calibrated to the label will faithfully reproduce the bias. Against that unfair label, MADCAP can look _well_ calibrated, including within groups, which is what makes this mechanism hard to spot with the usual plots.
+**2. Label bias.** The outcome being predicted (`is_admitted`) is a record of a human decision. If that decision varies unfairly by group for the same clinical need, a model calibrated to the label will faithfully reproduce the bias ([Obermeyer et al., 2019](https://pubmed.ncbi.nlm.nih.gov/31649194/)). Against that unfair label, MADCAP can look _well_ calibrated, including within groups.
 
 Stratified MADCAP is especially useful for mechanism 1. Mechanism 2 is harder to identify with these plots: calibration to the recorded label can look fine while still encoding unfair decisions. Telling the two apart needs clinical and operational judgement, careful handling of sensitive attributes, and usually checks beyond a single chart family.
 
@@ -20,14 +22,16 @@ A natural starting point is attributes that shape how patients present and which
 
 Under the UK Equality Act 2010, **age, sex, and race (including ethnicity)** are all protected characteristics. The considerations are not the same for each:
 
-- **Age and sex.** We expect these to affect clinical need and which services a patient is likely to use (for example paediatric versus adult pathways, or differences in admission patterns). They are routinely used as _features_ in clinical prediction and appear in many standard risk scores. That said, their inclusion should always be justified in context, not assumed fine just because it is standard practice. Different case mix by age does not make poor calibration for children or older adults acceptable.
-- **Race and ethnicity.** We would _not_ want race or ethnicity to determine which services a patient can access, or how their risk is scored. For **bed-demand forecasting** specifically, ethnicity should not add useful signal beyond the clinical features already in the model, so it is rarely appropriate as a _training feature_ here. It can also encode structural inequities and act as a proxy for other factors. Leaving ethnicity out of training is different from _monitoring_ whether the model performs differently across ethnic groups. Stratifying diagnostics by ethnicity, where the data can be used appropriately, can surface unfair performance without feeding ethnicity into the score.
+- **Age and sex.** We expect these to affect clinical need and which services a patient is likely to use (for example paediatric versus adult pathways, or differences in admission patterns). They are routinely used as _features_ in clinical prediction and appear in many standard risk scores. That said, their inclusion should always be justified in context, rather than assuming that it is fine to include them because it is standard practice. Different case mix by age does not make poor calibration for children or older adults acceptable.
+- **Race and ethnicity.** We would not want race or ethnicity to determine which services a patient can access, or how their risk is scored. For bed-demand prediction specifically, once the usual clinical/operational features are included (age, acuity, location, and so on), race or ethnicity ought not to tell you anything extra about who is admitted. For this reason, so they are rarely appropriate as training features.
 
-This notebook never uses ethnicity as a model input. Any artificial ethnicity column below is for evaluation only, and it is synthetic.
+Leaving ethnicity out of training is different from _monitoring_ whether the model performs differently across ethnic groups. Stratifying diagnostics by ethnicity, where the data can be used appropriately, can surface unfair performance.
+
+This notebook shows how to do this. Any artificial ethnicity column below is used for evaluation only, and it is synthetic.
 
 ## Approach
 
-I load data and train admission classifiers (same helper as notebook **4d**). For mechanism 1 I construct a case-mix / omitted-attribute example and use stratified MADCAP (via `patientflow.evaluate`) to inspect it. For mechanism 2 I discuss label bias: why `is_admitted` can encode unfair decisions, and what that implies for interpretation. I close with implications of going forward when subgroup patterns look wrong, then a short summary.
+I load data and train admission classifiers (same approach as notebook **4d**). For mechanism 1 I construct a case-mix / omitted-attribute example and use stratified MADCAP (via `patientflow.evaluate`) to inspect it. For mechanism 2 I discuss label bias: why `is_admitted` can encode unfair decisions, and what that implies for interpretation. I close with implications of going forward when subgroup patterns look wrong, then a short summary.
 
 ```python
 %load_ext autoreload
@@ -90,7 +94,7 @@ print(f"Admission models: {len(admissions_models)}")
 
 ## 1. Mechanism 1: case-mix / omitted-attribute divergence
 
-Here I demonstrate how to investigate mechanism 1. I assign each visit an **artificial ethnicity** label with different admission base rates: membership odds depend on `is_admitted`, so one label is enriched among admitted patients. The classifier never saw this column, so two visits with the same clinical features get the same predicted probability regardless of artificial ethnicity, but by design, admission rates differ by group.
+Here I demonstrate how to investigate mechanism 1. I assign each visit an **artificial ethnicity** label with different admission base rates: membership odds depend on `is_admitted`, so one label is proportionately higher among admitted patients. The classifier never saw this column, so two visits with the same clinical features get the same predicted probability regardless of artificial ethnicity, but by design, admission rates differ by group.
 
 That is a **case-mix / omitted-attribute** illustration, not a claim about any real ethnic group, and not label bias (the admission labels themselves are left unchanged).
 
@@ -191,6 +195,8 @@ summary
 
 ### A worked example: checking whether a feature is a demographic proxy
 
+Another manifestation of the same problem is a feature the model already uses that is correlated with a demographic it does not: predictions can still differ by group without ethnicity ever being an input. It is worth checking candidate features against a demographic split before reading the MADCAP charts.
+
 We don't have real ethnicity data to check directly. But the same concern: a feature that looks operational but carries demographic signal, can be demonstrated with real columns we do have. Here we check whether `current_location_type`, which records where in the department a patient was at snapshot time, is associated with `age_group`.
 
 ```python
@@ -236,6 +242,8 @@ plot_data_distribution(
 
 ![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_7_0.png)
 
+The table below uses the same data as the plot: each row is one location, and the values are the share of that location’s snapshots in selected age groups. I show 0–17, 18–24, 25–34 and 75+ so the paediatric pathway and the older-adult skew are easy to compare.
+
 ```python
 loc_age = pd.crosstab(
     ed_visits_main_locs["current_location_type"],
@@ -253,15 +261,21 @@ print(loc_age.loc[location_order, ["0-17", "18-24", "25-34", "75-115"]].round(3)
     paeds                  0.997  0.001  0.001   0.000
     resus                  0.034  0.066  0.129   0.233
 
-Patients aged 75+ make up about 2.5% of UTC attendances but about 18% of majors and 23% of resus, despite none of those fields being an explicit age rule. One location, `paeds`, is deliberately age-restricted (a paediatric pathway) and should be read separately: its age skew is expected and by design, not evidence of a hidden proxy. The interesting finding is that the non-paediatric locations still carry meaningful age skew.
+Patients aged 75+ make up about 2.5% of UTC attendances but about 18% of majors and 23% of resus, despite none of those fields being an explicit age rule. One location, `paeds`, is deliberately age-restricted (a paediatric pathway); its age mix is expected and by design, not evidence of a hidden proxy. The interesting finding is that the non-paediatric locations still have different age mixes, even though none of those fields is an age rule.
 
-This is a template, not a conclusion: a feature correlating with a demographic split means it could carry that demographic's information into the model indirectly, even if the demographic itself is never a training feature. It doesn't tell you whether that's a problem in any particular case: that needs clinical and operational judgement about whether the correlation reflects legitimate clinical routing or an unwanted proxy. The same check (plot the candidate feature against the demographic split, read off the skew) can be rerun against real ethnicity data, or any other protected characteristic, if it becomes available where the data can be used appropriately.
+The charts and table above show how the age mix varies by location. They do not tell us whether location still stands in for age once age is included as a feature in the same model.
+
+Different mixes by location are a reason to look further, not a verdict that the model is unfair. A practical sequence is:
+
+1. Repeat these feature-versus-group plots for other operational features that might stand in for a demographic. Use the grouping that matches the question — age here; ethnicity or another protected characteristic that is not a training feature, where that data can be used appropriately.
+2. With clinicians, decide whether any association is expected routing (as with paeds) or needs explanation (older patients in majors and resus versus UTC).
+3. Then use stratified MADCAP (next) to see whether predicted and observed outcomes actually diverge by group.
 
 ### Stratified MADCAP as a diagnostic for mechanism 1
 
-One practical check for case-mix / omitted-attribute divergence is to repeat the MADCAP (Model Accuracy Diagnostic Calibration Plot) view within subgroups. Notebook **2c** did that with hand-rolled `plot_madcap_by_group` on age. Notebook **4d** showed systematic evaluation with `patientflow.evaluate`; here I use that path with **caller-prescribed MADCAP groupings** on `add_classifier`.
+One practical check for case-mix / omitted-attribute divergence is to repeat the MADCAP (Model Accuracy Diagnostic Calibration Plot) view within subgroups. Notebook **2c** did that with `plot_madcap_by_group` on age. Notebook **4d** produced the same plots as part of an evaluation run using `patientflow.evaluate`; here I use the `evaluate` package again, but this time specifying my own MADCAP groups using `MadcapGrouping`.
 
-`MadcapGrouping` names the visit-frame column, a display label, and the output file stem. When `madcap_groupings` is omitted, evaluate still defaults to age-only (`madcap_by_age.png`). Here I request age, sex, and the artificial ethnicity column. Eval-only columns on `visits_df` are used for stratification charts; modern pipelines drop extras at predict time via `FeatureColumnTransformer`, so they do not become model features unless they were present at training.
+`MadcapGrouping` names the visit-frame column, a display label, and the output file stem. When `madcap_groupings` is omitted, evaluate still defaults to age subgroup plots(`madcap_by_age.png`). Here I request MADCAP by age, sex, and the artificial ethnicity column. The ethnicity column is on the visit frame for those charts only; it is not a model input.
 
 ```python
 from pathlib import Path
@@ -382,23 +396,24 @@ for grouping in madcap_groupings:
 
 ```
 
-![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_14_0.png)
+![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_15_0.png)
 
-![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_14_1.png)
+![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_15_1.png)
 
-![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_14_2.png)
+![png](4g_Analyse_demographic_bias_files/4g_Analyse_demographic_bias_15_2.png)
 
-On the **ethnicity** panels, Group A was given a higher admission prevalence while predictions ignore ethnicity, so you should see a different relationship between cumulative predicted and observed outcomes than in Groups B and C. Age and sex charts use real columns already on the public frame; ethnicity is synthetic. Under mechanism 1 the model need not be "wrong": the divergence can reflect omitted case mix. The chart alone does not prove which mechanism you are seeing.
+On the **ethnicity** panels, the results are as designed. Group A was given a higher admission prevalence while predictions ignore ethnicity, so a different relationship between cumulative predicted and observed outcomes than in Groups B and C is what we would expect.
+
+On the **age** panels, predicted and observed track well for adults under 65. For adults 65 or over, more patients were admitted than the model expected. That is the same group that, in the location check, is much more often in majors and resus than in UTC, so this panel reflects a different mix of ED pathways.
+
+We need to be careful about over-interpretation. We have not shown that the shortfall of predicted versus observed admissions among adults 65 or over is explained by their different mix of ED locations. We have shown two separate facts:
+
+- older patients are much more often in majors and resus than in UTC
+- on the 06:00 MADCAP, adults 65 or over have fewer predicted admissions than were observed
 
 ### How large does a subgroup panel need to be?
 
-Calibration assessments are unstable in thin slices. Work on minimum sample sizes for validating clinical prediction models ([Riley et al., 2021](https://doi.org/10.1002/sim.9025)) suggests calibration assessment needs at least ~100 outcome events in the group being evaluated, and the same paper notes that subgroup-level calibration typically needs more than this floor. So **~100 events is too permissive as a rule for stratified MADCAPs when the groups are small**: treat it as a lower bound for a single validation cohort, not as enough evidence per stratum. For stratified charts, either aim substantially higher per panel before treating the plot as decisive (for example on the order of 200+ admissions if you want flexible calibration-style reading), widen the evaluation window until thin groups accumulate enough events, or treat panels that only clear ~100 events as exploratory, useful for hypothesis generation, not as a green light.
-
-Each stratified MADCAP panel is **one prediction time × one subgroup**. Here we only show the **06:00** charts, so the counts below are for that clock only. The event is admission (`is_admitted`). Translate a chosen event target into visits using **that subgroup's** admission rate:
-
-visits needed ≈ event target / subgroup admission rate
-
-For example, at a 20% admission rate, ~100 admissions need about 500 visits and ~200 admissions need about 1,000. A high-prevalence group needs fewer visits to reach the same event count than a low-prevalence group.
+Calibration assessments are unstable with the groups being evaluated are small. Work on minimum sample sizes for validating clinical prediction models ([Riley et al., 2021](https://doi.org/10.1002/sim.9025)) suggests calibration assessment needs at least ~100 outcome events in the group being evaluated, and the same paper notes that subgroup-level calibration typically needs more than this floor. So **~100 events** is a lower bound for a single validation cohort. For stratified charts, either aim substantially higher per panel before treating the plot as decisive (for example on the order of 200+ admissions), which may mean you have to widen the evaluation window until thin groups accumulate enough events, or treat panels that only clear ~100 events as exploratory, useful for hypothesis generation, not as a green light.
 
 ```python
 # Cited floor for a validation cohort; too low to treat as enough per subgroup panel.
@@ -594,15 +609,15 @@ On the real demographic charts at the same clock, **adults under 65** and **sex*
 
 ## 2. Mechanism 2: label bias
 
-The Mechanism 1 example left the admission outcome alone and varied an omitted attribute: the artificial ethnicity column, which the classifier never saw. **Label bias** is different: the target `is_admitted` is itself a clinical and operational decision. If clinicians admit (or discharge) similar patients differently by group, for example underestimating severity for some patients, then the recorded label is unfair relative to true need. A well-calibrated model on that label will still reproduce the inequity: it learns to predict the biased decision, not an unbiased notion of who needed a bed.
+In mechanism 1 we left the admission labels as they were. We showed an omitted-attribute illustration (artificial ethnicity), a real-data check of whether an operational feature tracks a demographic (location and age), and stratified MADCAP on those groupings.
+
+**Label bias** is different: the target `is_admitted` is itself a clinical and operational decision. If clinicians admit (or discharge) similar patients differently by group, for example underestimating severity for some patients, then the recorded label is unfair relative to true need. A well-calibrated model on that label will still reproduce the inequity: it learns to predict the biased decision, not an unbiased notion of who needed a bed.
 
 That matters for interpretation:
 
 - Against `is_admitted`, MADCAP can look well calibrated even when the label is unfair: the model is faithful to a biased target.
 - Improving calibration to `is_admitted` does not remove label bias; it may entrench it.
-- Remediation is not primarily "add ethnicity as a feature" or "fit a better calibrator". It needs scrutiny of the decision process, possibly different outcome definitions, and careful handling of sensitive attributes.
-
-This notebook does **not** fabricate a label-bias example on the public data (that would mean rewriting who was admitted). The point here is to keep the two mechanisms distinct when you read subgroup charts in practice.
+- If the label looks unfair, the next step is not to add ethnicity as a feature or fit a better calibrator. It is to look at the admission decision itself, and possibly to predict a different outcome — with careful handling of sensitive attributes.
 
 ## Putting the two mechanisms together
 
@@ -621,4 +636,12 @@ Subgroup diagnostics help with mechanism 1. They do not, on their own, clear mec
 
 ## Summary
 
-In this notebook I have examined demographic differences in emergency admission predictions in the context of two mechanisms: **case-mix / omitted-attribute divergence** and **label bias**. For mechanism 1 I attached an artificial ethnicity column with different admission prevalence (illustration only, not real demographics), requested stratified MADCAP via caller-prescribed `MadcapGrouping` specs on `add_classifier`, and inspected the charts. For mechanism 2 I discussed why `is_admitted` can encode unfair decisions and why calibrating to that label does not remove the inequity.
+This notebook looked at two ways subgroup plots can mislead: **case-mix / omitted-attribute divergence** (mechanism 1) and **label bias** (mechanism 2).
+
+- I attached an artificial ethnicity column with different admission rates (illustration only, not real demographics) and requested stratified MADCAP by age, sex, and that column.
+- I checked whether an operational feature tracks a demographic: `current_location_type` versus `age_group`. Non-paediatric locations still have different age mixes (older patients more often in majors and resus than in UTC).
+- On the 06:00 MADCAP, adults 65 or over were under-predicted. That is the same group that uses a different mix of ED locations; we have not shown that the location mix explains the shortfall.
+- I set a sample-size rule for those panels (~100 admissions as a floor; ~200 before treating a panel as more than exploratory).
+- For mechanism 2 I discussed why `is_admitted` can encode unfair decisions, and why calibrating to that label does not remove the inequity. This notebook does not fabricate a label-bias example on the public data.
+
+Stratified MADCAP helps with mechanism 1; it will not, on its own, clear mechanism 2.

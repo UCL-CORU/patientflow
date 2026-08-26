@@ -140,7 +140,7 @@ for specialty in sorted(yta_model.weights.keys()):
         yta_time_interval=yta_time_interval,
         arrival_rate_model=yta_model,
         filter_key=specialty,
-        suptitle=specialty,
+        suptitle=f"Arrival delta plots for {specialty} service",
         show=True,
     )
 

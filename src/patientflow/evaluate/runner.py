@@ -158,6 +158,7 @@ def run_evaluation(
     run_name: Optional[str] = None,
     training_metadata: Optional[Mapping[str, Any]] = None,
     charts: ChartMode | str = DEFAULT_CHART_MODE,
+    madcap_figsize: Optional[Tuple[float, float]] = None,
 ) -> Dict[str, Any]:
     """Execute every `EvaluationTarget` in `inputs` and write artefacts.
 
@@ -196,6 +197,9 @@ def run_evaluation(
         manifest (caller-defined; not loaded from patientflow ``config.yaml``).
     charts : {``none``, ``flagged``, ``all``}, optional
         Chart emission mode. Default ``flagged`` for large multi-service runs.
+    madcap_figsize : tuple of float, optional
+        Figure size for stratified MADCAP charts. Omitted keeps the viz
+        default (square subgroup panels).
 
     Returns
     -------
@@ -251,6 +255,7 @@ def run_evaluation(
                     classifiers_dir=classifiers_dir / target.flow_name,
                     collector=collector,
                     charts=chart_mode,
+                    madcap_figsize=madcap_figsize,
                 )
             case "distribution":
                 evaluate_distribution(
