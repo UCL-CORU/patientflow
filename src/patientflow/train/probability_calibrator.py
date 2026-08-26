@@ -178,8 +178,7 @@ class PrefitProbabilityCalibrator(ClassifierMixin, BaseEstimator):
         """
         if self.method not in ("isotonic", "sigmoid"):
             raise ValueError(
-                "method must be 'isotonic' or 'sigmoid', "
-                f"got {self.method!r}"
+                "method must be 'isotonic' or 'sigmoid', " f"got {self.method!r}"
             )
 
         y_arr = np.asarray(y).ravel()

@@ -560,7 +560,12 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
-        self.assertIn("weekday-specific rates (from fitted model)", title_text)
+        self.assertNotIn("Expected baseline", title_text)
+        self.assertIn("8:00", title_text)
+        self.assertIn(
+            "weekday-specific rates (from fitted model)",
+            " ".join(t.get_text() for t in fig.texts),
+        )
 
     def test_plot_predictor_alias_matches_arrival_rate_model(self):
         """1.6.2 predictor= keyword still selects the fitted baseline."""
@@ -577,7 +582,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         self.assertIsInstance(fig, Figure)
         self.assertIn(
             "weekday-specific rates (from fitted model)",
-            fig.axes[0].get_title(),
+            " ".join(t.get_text() for t in fig.texts),
         )
 
     def test_plot_raises_when_predictor_and_arrival_rate_model_both_passed(self):
@@ -607,7 +612,11 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
-        self.assertIn("pooled rates (from dataframe)", title_text)
+        self.assertNotIn("Expected baseline", title_text)
+        self.assertIn(
+            "pooled rates (from dataframe)",
+            " ".join(t.get_text() for t in fig.texts),
+        )
 
     def test_plot_raises_on_yta_interval_mismatch(self):
         """yta_time_interval must match arrival_rate_model.yta_time_interval."""
@@ -639,8 +648,11 @@ class TestPlotArrivalDeltas(unittest.TestCase):
                 return_figure=True,
             )
         self.assertIsInstance(fig, Figure)
-        title_text = fig.axes[0].get_title()
-        self.assertIn("pooled rates (from fitted model)", title_text)
+        self.assertNotIn("Expected baseline", fig.axes[0].get_title())
+        self.assertIn(
+            "pooled rates (from fitted model)",
+            " ".join(t.get_text() for t in fig.texts),
+        )
 
     def test_plot_strict_raises_when_model_lacks_weekday(self):
         """strict_prediction_date=True surfaces missing weekday profiles."""

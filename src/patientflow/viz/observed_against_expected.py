@@ -1126,10 +1126,9 @@ def plot_arrival_deltas(
             arrival_datetime_col=arrival_datetime_col,
         )
         hours = int(window.total_seconds() / 3600)
-        titles.append(
-            f"{format_prediction_time(prediction_time)} "
-            f"({hours}h window)\nExpected baseline: {baseline_source}"
-        )
+        # Clock + window only — baseline is stated once on the figure so
+        # multi-panel titles do not overlap (UCL-CORU/patientflow#237).
+        titles.append(f"{format_prediction_time(prediction_time)} ({hours}h window)")
         deltas_by_clock.append(final_deltas)
 
     all_deltas = [delta for deltas in deltas_by_clock for delta in deltas]
@@ -1151,8 +1150,16 @@ def plot_arrival_deltas(
 
     if suptitle:
         fig.suptitle(suptitle, fontsize=14)
+    fig.text(
+        0.5,
+        0.01,
+        f"Expected baseline: {baseline_source}",
+        ha="center",
+        va="bottom",
+        fontsize=9,
+    )
 
-    plt.tight_layout()
+    plt.tight_layout(rect=(0, 0.04, 1, 1))
 
     if media_file_path:
         filename = file_name if file_name else "multiple_deltas.png"
