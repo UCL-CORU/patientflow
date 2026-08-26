@@ -17,6 +17,7 @@ trained-models/*
 *.vscode*
 *.code-workspace
 *.DS_Store
+.cursor/rules/
 
 # config local to uclh
 config-uclh.yaml

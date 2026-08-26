@@ -105,7 +105,7 @@ _DISTRIBUTION_COMPONENT_LABELS: Dict[str, str] = {
 }
 
 _ARRIVAL_FLOW_LABELS: Dict[str, str] = {
-    "ed_yta_arrival_rates": "ED yet-to-arrive arrival deltas",
+    "ed_yta_arrival_rates": "Arrival delta plots",
 }
 
 
@@ -198,10 +198,10 @@ def _arrival_delta_suptitle(
     """
     subject = _ARRIVAL_FLOW_LABELS.get(
         target.flow_name,
-        target.flow_name.replace("_", " ").title(),
+        "Arrival delta plots",
     )
     cohort = eval_split_label(eval_split)
-    return f"{subject}: {service} ({cohort})"
+    return f"{subject} for {service} service ({cohort})"
 
 
 def _distribution_comparison_suptitle(

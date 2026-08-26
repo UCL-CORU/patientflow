@@ -783,6 +783,7 @@ def plot_arrival_delta_timelines(
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
     arrival_datetime_col: str = "arrival_datetime",
+    show_baseline_label: bool = False,
     show: bool = False,
 ):
     """Plot per-day arrival-delta timelines with an embedded final-delta histogram.
@@ -824,6 +825,9 @@ def plot_arrival_delta_timelines(
         Figure-level title.
     arrival_datetime_col : str, default="arrival_datetime"
         Column name for arrival timestamps, or a ``DatetimeIndex`` name.
+    show_baseline_label : bool, default=False
+        If True, append the expected-rate provenance line to the left-panel
+        title. Off by default.
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
@@ -970,12 +974,14 @@ def plot_arrival_delta_timelines(
     ax1.axhline(y=0, color="gray", linestyle="--", alpha=0.5)
     ax1.set_xlabel("Time")
     ax1.set_ylabel("Difference (Actual - Expected)")
-    ax1.set_title(
+    title = (
         f"Difference Between Actual and Expected Arrivals in the "
         f"{(int(prediction_window.total_seconds() / 3600))} hours after "
-        f"{format_prediction_time(prediction_time)} on all dates\n"
-        f"Expected baseline: {baseline_source}"
+        f"{format_prediction_time(prediction_time)} on all dates"
     )
+    if show_baseline_label:
+        title = f"{title}\nExpected baseline: {baseline_source}"
+    ax1.set_title(title)
 
     if suptitle:
         fig.suptitle(suptitle, fontsize=14)
@@ -1022,12 +1028,14 @@ def plot_arrival_deltas(
     strict_prediction_date: bool = False,
     suptitle: Optional[str] = None,
     arrival_datetime_col: str = "arrival_datetime",
+    show_baseline_label: bool = False,
     show: bool = False,
 ):
     """Plot histograms of final (observed − expected) arrival deltas by clock.
 
     One panel per prediction clock. Every snapshot date contributes a final
     delta, including quiet days with zero arrivals (``0 − expected_total``).
+    Panel titles match the EPUDD pattern (``Arrival delta plot for H:MM``).
 
     Parameters
     ----------
@@ -1074,10 +1082,16 @@ def plot_arrival_deltas(
         the supplied filter key, a ``ValueError`` is raised instead of
         falling back to pooled rates.
     suptitle : str, optional
-        Figure-level title. Typically the entity (service / specialty)
-        being analysed. Rendered above the per-axis titles.
+        Figure-level title. Typically
+        ``Arrival delta plots for {service} service``. Rendered above the
+        per-axis titles.
     arrival_datetime_col : str, default="arrival_datetime"
         Column name for arrival timestamps, or the name of a ``DatetimeIndex``.
+    show_baseline_label : bool, default=False
+        If True, annotate the figure with which expected-rate source was used
+        (weekday model rates, pooled model rates, or dataframe-derived rates).
+        Off by default; the label is provenance only and is not needed when
+        a fitted weekday model is the usual baseline.
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` when not returning the figure.
 
@@ -1125,10 +1139,9 @@ def plot_arrival_deltas(
             strict_prediction_date=strict_prediction_date,
             arrival_datetime_col=arrival_datetime_col,
         )
-        hours = int(window.total_seconds() / 3600)
-        # Clock + window only — baseline is stated once on the figure so
-        # multi-panel titles do not overlap (UCL-CORU/patientflow#237).
-        titles.append(f"{format_prediction_time(prediction_time)} ({hours}h window)")
+        hour, minutes = prediction_time
+        # Match EPUDD panel titles: "EPUDD plot for H:MM"
+        titles.append(f"Arrival delta plot for {hour}:{minutes:02}")
         deltas_by_clock.append(final_deltas)
 
     all_deltas = [delta for deltas in deltas_by_clock for delta in deltas]
@@ -1150,16 +1163,18 @@ def plot_arrival_deltas(
 
     if suptitle:
         fig.suptitle(suptitle, fontsize=14)
-    fig.text(
-        0.5,
-        0.01,
-        f"Expected baseline: {baseline_source}",
-        ha="center",
-        va="bottom",
-        fontsize=9,
-    )
-
-    plt.tight_layout(rect=(0, 0.04, 1, 1))
+    if show_baseline_label:
+        fig.text(
+            0.5,
+            0.01,
+            f"Expected baseline: {baseline_source}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+        plt.tight_layout(rect=(0, 0.04, 1, 1))
+    else:
+        plt.tight_layout()
 
     if media_file_path:
         filename = file_name if file_name else "multiple_deltas.png"

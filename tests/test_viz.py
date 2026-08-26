@@ -547,7 +547,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         self.assertGreater(sum(rates_mon.values()), sum(rates_tue.values()))
 
     def test_plot_with_arrival_rate_model_uses_weekday_baseline(self):
-        """Annotation indicates weekday-specific model baseline was used."""
+        """Baseline provenance is off by default; opt in with show_baseline_label."""
         predictor = self._make_predictor()
         fig = plot_arrival_deltas(
             self.df,
@@ -560,11 +560,25 @@ class TestPlotArrivalDeltas(unittest.TestCase):
         )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
-        self.assertNotIn("Expected baseline", title_text)
-        self.assertIn("8:00", title_text)
+        self.assertEqual(title_text, "Arrival delta plot for 8:00")
+        self.assertNotIn(
+            "Expected baseline",
+            " ".join(t.get_text() for t in fig.texts),
+        )
+
+        fig_labelled = plot_arrival_deltas(
+            self.df,
+            prediction_times=(8, 0),
+            snapshot_dates=self.snapshot_dates,
+            prediction_window=self.prediction_window,
+            yta_time_interval=self.yta_time_interval,
+            arrival_rate_model=predictor,
+            show_baseline_label=True,
+            return_figure=True,
+        )
         self.assertIn(
             "weekday-specific rates (from fitted model)",
-            " ".join(t.get_text() for t in fig.texts),
+            " ".join(t.get_text() for t in fig_labelled.texts),
         )
 
     def test_plot_predictor_alias_matches_arrival_rate_model(self):
@@ -577,6 +591,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
             predictor=predictor,
+            show_baseline_label=True,
             return_figure=True,
         )
         self.assertIsInstance(fig, Figure)
@@ -608,11 +623,13 @@ class TestPlotArrivalDeltas(unittest.TestCase):
             snapshot_dates=self.snapshot_dates,
             prediction_window=self.prediction_window,
             yta_time_interval=self.yta_time_interval,
+            show_baseline_label=True,
             return_figure=True,
         )
         self.assertIsInstance(fig, Figure)
         title_text = fig.axes[0].get_title()
         self.assertNotIn("Expected baseline", title_text)
+        self.assertEqual(title_text, "Arrival delta plot for 8:00")
         self.assertIn(
             "pooled rates (from dataframe)",
             " ".join(t.get_text() for t in fig.texts),
@@ -645,6 +662,7 @@ class TestPlotArrivalDeltas(unittest.TestCase):
                 prediction_window=self.prediction_window,
                 yta_time_interval=self.yta_time_interval,
                 arrival_rate_model=predictor,
+                show_baseline_label=True,
                 return_figure=True,
             )
         self.assertIsInstance(fig, Figure)

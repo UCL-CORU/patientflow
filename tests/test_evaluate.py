@@ -281,8 +281,7 @@ def test_arrival_delta_suptitle_uses_eval_split():
         observation_mode="arrived_in_window",
     )
     title = _arrival_delta_suptitle(target, "medical", eval_split="valid")
-    assert "(validation set)" in title
-    assert "medical" in title
+    assert title == "Arrival delta plots for medical service (validation set)"
     assert "09:30" not in title
 
 
