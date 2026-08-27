@@ -28,6 +28,7 @@ def plot_features(
     return_figure: bool = False,
     *,
     show: bool = False,
+    max_label_length: int | None = 25,
 ) -> Optional[plt.Figure]:
     """Plot feature importance for multiple models.
 
@@ -48,6 +49,9 @@ def plot_features(
     show : bool, default=False
         If True, call ``matplotlib.pyplot.show()`` after drawing (when not
         returning the figure). Leave false for non-interactive backends.
+    max_label_length : int or None, default=25
+        Maximum characters for y-axis feature labels. Pass ``None`` for full
+        (untruncated) names. Default truncation matches historical behaviour.
 
     Returns
     -------
@@ -58,7 +62,8 @@ def plot_features(
     -----
     The function sorts models by prediction time and creates a horizontal bar plot
     for each model showing the top N most important features. Feature names are
-    truncated to 25 characters for better display.
+    truncated to ``max_label_length`` characters by default for denser multi-clock
+    strips; pass ``max_label_length=None`` when full names are needed.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -88,7 +93,10 @@ def plot_features(
             "feature_transformer"
         ].get_feature_names_out()
         transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-        truncated_cols = [col[:25] for col in transformed_cols]
+        if max_label_length is None:
+            display_cols = transformed_cols
+        else:
+            display_cols = [col[:max_label_length] for col in transformed_cols]
 
         # Get feature importances
         feature_importances = pipeline.named_steps["classifier"].feature_importances_
@@ -101,7 +109,7 @@ def plot_features(
         hour, minutes = prediction_time
         ax.barh(range(len(indices)), feature_importances[indices], align="center")
         ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels(np.array(truncated_cols)[indices])
+        ax.set_yticklabels(np.array(display_cols)[indices])
         ax.set_xlabel("Importance")
         ax.set_ylabel("Features")
         ax.set_title(f"Feature Importances for {hour}:{minutes:02}")

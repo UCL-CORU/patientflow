@@ -249,17 +249,9 @@ for prediction_time in prediction_times:
 ```
 
     Training model for (22, 0)
-
-
     Training model for (15, 30)
-
-
     Training model for (6, 0)
-
-
     Training model for (12, 0)
-
-
     Training model for (9, 30)
 
 ## Inspecting the base model
@@ -394,17 +386,9 @@ for prediction_time in prediction_times:
 ```
 
     Training model for (22, 0)
-
-
     Training model for (15, 30)
-
-
     Training model for (6, 0)
-
-
     Training model for (12, 0)
-
-
     Training model for (9, 30)
 
 From the plots below, we see improved discrimination. There are positive cases clustered at the right hand end of the distribution plot. However, this gain has come at the cost of much worse calibration when the models are applied to the validation set, without undersampling the majority class, as shown in the calibration plot and MADCAP plots.
@@ -536,45 +520,25 @@ plot_calibration(
 ```
 
     Training sigmoid model for (22, 0)
-
-
     Training sigmoid model for (15, 30)
-
-
     Training sigmoid model for (6, 0)
-
-
     Training sigmoid model for (12, 0)
-
-
     Training sigmoid model for (9, 30)
-
-
     Training isotonic model for (22, 0)
-
-
     Training isotonic model for (15, 30)
-
-
     Training isotonic model for (6, 0)
-
-
     Training isotonic model for (12, 0)
-
-
     Training isotonic model for (9, 30)
-
-
     Calibrator fitted on: calibration
     Calibration source detail: {'dataset': 'calibration', 'single_snapshot_per_visit': False, 'deployment_like_validation': True, 'n_samples': 2482, 'positive_rate': 0.17324738114423852}
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_11.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_1.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_12.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_2.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_13.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_3.png)
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_14.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_29_4.png)
 
 On these validation plots, **sigmoid** is the better choice for this dataset. The calibration curves stay closer to the diagonal and vary smoothly. Isotonic is clearly over-flexible for the size of the calibration window: the reliability curves zigzag, with high-probability bins jumping toward 1.0 and back — a classic sign that the step function has fitted noise rather than a stable remapping.
 
@@ -666,13 +630,17 @@ plot_madcap_by_group(
 
 ## Feature importances and SHAP plots
 
-`patientflow` offers functions that generate SHAP and feature importance plots for each prediction time.
+`patientflow` offers functions that generate SHAP and feature importance plots. Below we show both for the 15:30 model; the same plots can be produced for any other prediction time.
 
 ```python
+from patientflow.load import get_model_key
 from patientflow.viz.features import plot_features
 
+model_1530 = trained_models[get_model_key("admissions", (15, 30))]
+
 plot_features(
-    trained_models,
+    [model_1530],
+    max_label_length=None,
     show=True,
 )
 
@@ -690,32 +658,17 @@ Note that the SHAP package is not loaded by default, due to dependency issues. Y
 from patientflow.viz.shap import plot_shap
 
 plot_shap(
-    trained_models,
+    [model_1530],
     valid_visits,
+    max_label_length=None,
     show=True,
 )
 
 ```
 
-    Predicted classification (not admitted, admitted):  [670 391]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_1.png)
-
-    Predicted classification (not admitted, admitted):  [995 549]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_3.png)
-
-    Predicted classification (not admitted, admitted):  [1739  821]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_5.png)
-
     Predicted classification (not admitted, admitted):  [1886  976]
 
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_7.png)
-
-    Predicted classification (not admitted, admitted):  [1615  773]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_9.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_1.png)
 
 ## When to look at the test set
 

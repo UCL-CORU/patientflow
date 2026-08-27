@@ -60,6 +60,7 @@ def plot_shap(
     exclude_from_training_data: Optional[List[str]] = None,
     show: bool = False,
     suptitle: Optional[str] = None,
+    max_label_length: int | None = 45,
 ):
     """Generate SHAP plots for multiple trained models.
 
@@ -94,6 +95,9 @@ def plot_shap(
     suptitle : str, optional
         Figure-level title above the SHAP summary (for example cohort and
         prediction clock). When omitted, a default title uses the clock only.
+    max_label_length : int or None, default=45
+        Maximum characters for SHAP feature-name labels. Pass ``None`` for full
+        (untruncated) names. Default truncation matches historical behaviour.
 
     Returns
     -------
@@ -135,7 +139,10 @@ def plot_shap(
             "feature_transformer"
         ].get_feature_names_out()
         transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-        truncated_cols = [col[:45] for col in transformed_cols]
+        if max_label_length is None:
+            display_cols = transformed_cols
+        else:
+            display_cols = [col[:max_label_length] for col in transformed_cols]
 
         # Transform features
         X_test = pipeline.named_steps["feature_transformer"].transform(X_test)
@@ -167,7 +174,7 @@ def plot_shap(
         shap.summary_plot(
             shap_values,
             X_test,
-            **_summary_plot_kwargs(feature_names=truncated_cols, show=False),
+            **_summary_plot_kwargs(feature_names=display_cols, show=False),
         )
 
         fig = plt.gcf()

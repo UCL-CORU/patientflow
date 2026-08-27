@@ -182,6 +182,152 @@ class TestShapOptional(unittest.TestCase):
         self.assertIsNotNone(kwargs["rng"])
 
 
+def _train_tiny_classifier_for_viz():
+    """Train a small classifier with long one-hot feature names for viz tests."""
+    from patientflow.train.classifiers import train_classifier
+
+    n = 200
+    long_a = "alpha_" + ("a" * 50)
+    long_b = "beta_" + ("b" * 50)
+    train_visits = pd.DataFrame(
+        {
+            "visit_number": range(n),
+            "age": np.random.randint(0, 100, n),
+            "sex": pd.Series(np.random.choice(["M", "F"], n), dtype="object"),
+            "arrival_method": pd.Series(
+                np.random.choice(["ambulance", "walk-in", "referral"], n),
+                dtype="object",
+            ),
+            "long_cat": pd.Series(
+                np.random.choice([long_a, long_b], n),
+                dtype="object",
+            ),
+            "is_admitted": np.random.choice([0, 1], n, p=[0.7, 0.3]),
+            "snapshot_time": pd.date_range(start="2023-01-01", periods=n, freq="h"),
+            "prediction_time": [(4, 0)] * n,
+        }
+    )
+    grid = {"max_depth": [2], "learning_rate": [0.1], "n_estimators": [20]}
+    ordinal = {"arrival_method": ["walk-in", "referral", "ambulance"]}
+    model = train_classifier(
+        train_visits=train_visits,
+        valid_visits=train_visits,
+        prediction_time=(4, 0),
+        exclude_from_training_data=[
+            "snapshot_time",
+            "visit_number",
+            "prediction_time",
+        ],
+        grid=grid,
+        ordinal_mappings=ordinal,
+        visit_col="visit_number",
+        evaluate_on_test=False,
+        calibrate_probabilities=False,
+    )
+    return model, train_visits
+
+
+class TestFeatureAndShapLabelLength(unittest.TestCase):
+    """Opt-in full feature names for plot_features / plot_shap."""
+
+    def test_plot_features_default_truncates_to_25(self):
+        from patientflow.viz.features import plot_features
+
+        model, _ = _train_tiny_classifier_for_viz()
+        full_names = [
+            col.split("__")[-1]
+            for col in model.pipeline.named_steps[
+                "feature_transformer"
+            ].get_feature_names_out()
+        ]
+        self.assertTrue(any(len(name) > 25 for name in full_names))
+
+        fig = plot_features([model], return_figure=True)
+        try:
+            labels = [t.get_text() for t in fig.axes[0].get_yticklabels()]
+            self.assertTrue(labels)
+            self.assertTrue(all(len(label) <= 25 for label in labels))
+        finally:
+            plt.close(fig)
+
+    def test_plot_features_none_keeps_full_names(self):
+        from patientflow.viz.features import plot_features
+
+        model, _ = _train_tiny_classifier_for_viz()
+        full_names = {
+            col.split("__")[-1]
+            for col in model.pipeline.named_steps[
+                "feature_transformer"
+            ].get_feature_names_out()
+        }
+
+        fig = plot_features([model], return_figure=True, max_label_length=None)
+        try:
+            labels = [t.get_text() for t in fig.axes[0].get_yticklabels()]
+            self.assertTrue(labels)
+            self.assertTrue(any(len(label) > 25 for label in labels))
+            self.assertTrue(set(labels).issubset(full_names))
+        finally:
+            plt.close(fig)
+
+    @unittest.skipUnless(
+        __import__("patientflow.viz.shap", fromlist=["SHAP_AVAILABLE"]).SHAP_AVAILABLE,
+        "shap not installed",
+    )
+    def test_plot_shap_default_truncates_to_45(self):
+        import patientflow.viz.shap as viz_shap
+
+        model, visits = _train_tiny_classifier_for_viz()
+        full_names = [
+            col.split("__")[-1]
+            for col in model.pipeline.named_steps[
+                "feature_transformer"
+            ].get_feature_names_out()
+        ]
+        self.assertTrue(any(len(name) > 45 for name in full_names))
+        captured: list[list[str]] = []
+
+        real_summary = viz_shap.shap.summary_plot
+
+        def _capture_summary(*args, **kwargs):
+            captured.append(list(kwargs.get("feature_names") or []))
+            return real_summary(*args, **kwargs)
+
+        with patch.object(viz_shap.shap, "summary_plot", side_effect=_capture_summary):
+            viz_shap.plot_shap([model], visits, show=False, return_figure=False)
+        self.assertTrue(captured)
+        self.assertTrue(all(len(name) <= 45 for name in captured[0]))
+        self.assertNotEqual(captured[0], full_names)
+
+    @unittest.skipUnless(
+        __import__("patientflow.viz.shap", fromlist=["SHAP_AVAILABLE"]).SHAP_AVAILABLE,
+        "shap not installed",
+    )
+    def test_plot_shap_none_keeps_full_names(self):
+        import patientflow.viz.shap as viz_shap
+
+        model, visits = _train_tiny_classifier_for_viz()
+        full_names = [
+            col.split("__")[-1]
+            for col in model.pipeline.named_steps[
+                "feature_transformer"
+            ].get_feature_names_out()
+        ]
+        captured: list[list[str]] = []
+
+        real_summary = viz_shap.shap.summary_plot
+
+        def _capture_summary(*args, **kwargs):
+            captured.append(list(kwargs.get("feature_names") or []))
+            return real_summary(*args, **kwargs)
+
+        with patch.object(viz_shap.shap, "summary_plot", side_effect=_capture_summary):
+            viz_shap.plot_shap(
+                [model], visits, show=False, return_figure=False, max_label_length=None
+            )
+        self.assertEqual(captured[0], full_names)
+
+
 # ---------------------------------------------------------------------------
 # Tier 2 – Unit tests for pure functions
 # ---------------------------------------------------------------------------
