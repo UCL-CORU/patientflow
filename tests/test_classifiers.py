@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 from xgboost import XGBClassifier
 
 from patientflow.predict.emergency_demand import dataframe_for_classifier_predict_proba
@@ -532,6 +532,63 @@ class TestClassifiers(unittest.TestCase):
     def test_infer_feature_kind_two_string_object_is_categorical(self):
         s = pd.Series(["a", "b"] * 3, dtype="object")
         self.assertEqual(infer_feature_kind(s, "x", {}), FeatureKind.CATEGORICAL)
+
+    def test_infer_feature_kind_non_nullable_bool_is_boolean(self):
+        s = pd.Series([True, False, True], dtype=bool)
+        self.assertEqual(infer_feature_kind(s, "flag", {}), FeatureKind.BOOLEAN)
+
+    def test_infer_feature_kind_nullable_boolean_is_boolean(self):
+        s = pd.Series([True, False, pd.NA], dtype="boolean")
+        self.assertEqual(infer_feature_kind(s, "flag", {}), FeatureKind.BOOLEAN)
+
+    def test_infer_feature_kind_object_true_none_remains_categorical(self):
+        """Object True/None is not treated as boolean (callers use nullable bool)."""
+        s = pd.Series([True, False, None], dtype="object")
+        self.assertEqual(infer_feature_kind(s, "flag", {}), FeatureKind.CATEGORICAL)
+
+    def test_infer_feature_kind_float_binary_with_nan_is_numeric(self):
+        """Float 1.0/NaN flags keep the numeric path (not boolean)."""
+        s = pd.Series([1.0, np.nan, 1.0])
+        self.assertEqual(infer_feature_kind(s, "flag", {}), FeatureKind.NUMERIC_BINARY)
+
+    def test_create_column_transformer_non_nullable_bool_one_float_column(self):
+        """Plain bool becomes one float column (1.0 / 0.0), not one-hot."""
+        df = pd.DataFrame({"flag": [True, False, True, False]})
+        ct = create_column_transformer(df)
+        by_col = {cols[0]: trans for _, trans, cols in ct.transformers}
+        self.assertIsInstance(by_col["flag"], FunctionTransformer)
+        out = ct.fit_transform(df)
+        self.assertEqual(out.shape, (4, 1))
+        np.testing.assert_array_equal(out.ravel(), [1.0, 0.0, 1.0, 0.0])
+
+    def test_create_column_transformer_nullable_boolean_preserves_nan(self):
+        """Nullable boolean emits one float column with NaN for <NA>, not one-hot."""
+        df = pd.DataFrame(
+            {"flag": pd.Series([True, False, pd.NA, True], dtype="boolean")}
+        )
+        ct = create_column_transformer(df)
+        by_col = {cols[0]: trans for _, trans, cols in ct.transformers}
+        self.assertIsInstance(by_col["flag"], FunctionTransformer)
+        for _, trans, _ in ct.transformers:
+            self.assertNotIsInstance(trans, OneHotEncoder)
+        out = ct.fit_transform(df)
+        self.assertEqual(out.shape, (4, 1))
+        np.testing.assert_allclose(out.ravel()[:2], [1.0, 0.0])
+        self.assertTrue(np.isnan(out.ravel()[2]))
+        self.assertEqual(out.ravel()[3], 1.0)
+
+    def test_feature_column_transformer_boolean_default_false(self):
+        """Missing boolean columns (numpy or nullable) still default to False."""
+        fit_df = pd.DataFrame(
+            {"flag": pd.Series([True, False, pd.NA], dtype="boolean")}
+        )
+        fct = FeatureColumnTransformer()
+        fct.fit(fit_df)
+        self.assertIs(fct.column_defaults_["flag"], False)
+
+        out = fct.transform(pd.DataFrame({"other": [1, 2]}))
+        self.assertIn("flag", out.columns)
+        self.assertTrue(out["flag"].eq(False).all())
 
     def test_feature_column_transformer_timedelta_default(self):
         """Missing timedelta columns are filled with pd.Timedelta(0)."""
