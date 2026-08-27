@@ -134,8 +134,7 @@ def plot_shap(
         transformed_cols = pipeline.named_steps[
             "feature_transformer"
         ].get_feature_names_out()
-        transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-        truncated_cols = [col[:45] for col in transformed_cols]
+        feature_names = [col.split("__")[-1] for col in transformed_cols]
 
         # Transform features
         X_test = pipeline.named_steps["feature_transformer"].transform(X_test)
@@ -167,7 +166,7 @@ def plot_shap(
         shap.summary_plot(
             shap_values,
             X_test,
-            **_summary_plot_kwargs(feature_names=truncated_cols, show=False),
+            **_summary_plot_kwargs(feature_names=feature_names, show=False),
         )
 
         fig = plt.gcf()

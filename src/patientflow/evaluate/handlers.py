@@ -729,7 +729,9 @@ def evaluate_classifier_model_diagnostics(
     -----
     Skips quietly when no classifier block is registered for the flow. Uses
     `patientflow.viz.features.plot_features` and, when available,
-    `patientflow.viz.shap.plot_shap`. Closes matplotlib figures after each plot.
+    `patientflow.viz.shap.plot_shap`. Writes a multi-clock ``features.png``
+    strip plus per-clock ``features_HHMM.png`` when several models share the
+    flow (mirroring SHAP). Closes matplotlib figures after each plot.
     Charts are skipped when ``charts="none"``; scalar rows still emit.
     """
     chart_mode = normalize_chart_mode(charts)
@@ -757,8 +759,28 @@ def evaluate_classifier_model_diagnostics(
         )
         plt.close("all")
 
+        multi_clock = len(models) > 1
+        if multi_clock:
+            for m in models:
+                plot_features(
+                    [m],
+                    media_file_path=classifiers_dir,
+                    file_name=_disambiguate_classifier_plot_filename(
+                        "features.png",
+                        m.training_results.prediction_time,
+                        multi_clock=True,
+                    ),
+                    suptitle=_classifier_diagnostics_suptitle(
+                        target,
+                        "feature importances",
+                        eval_split=eval_split,
+                        prediction_time=m.training_results.prediction_time,
+                    ),
+                    return_figure=False,
+                )
+                plt.close("all")
+
         if SHAP_AVAILABLE and plot_shap is not None:
-            multi_clock = len(models) > 1
             for m in models:
                 plot_shap(
                     [m],
