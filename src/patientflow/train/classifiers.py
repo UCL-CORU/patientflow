@@ -91,6 +91,22 @@ def _timedelta_to_float_seconds(X: npt.NDArray[Any]) -> npt.NDArray[np.float64]:
     return sec.reshape(arr.shape[0], -1)
 
 
+def _bool_to_float(X: Any) -> npt.NDArray[np.float64]:
+    """Map boolean values to float: True→1.0, False→0.0, missing→NaN.
+
+    Accepts DataFrame / Series / ndarray inputs from ``ColumnTransformer``.
+    Missingness (``pd.NA``, ``None``, ``NaN``) is preserved as ``NaN`` rather
+    than imputed to False.
+    """
+    if isinstance(X, Series):
+        frame = X.to_frame()
+    elif isinstance(X, DataFrame):
+        frame = X
+    else:
+        frame = DataFrame(np.asarray(X))
+    return frame.astype("Float64").to_numpy(dtype=np.float64, na_value=np.nan)
+
+
 def infer_feature_kind(
     series: Series,
     col: str,
@@ -101,10 +117,14 @@ def infer_feature_kind(
     This is the single source of truth for both ``create_column_transformer``
     and ``FeatureColumnTransformer`` defaults. Checks are ordered from explicit
     contracts (ordinal mapping, concrete dtypes) to broad fallbacks.
+
+    Boolean routing covers both numpy ``bool`` and pandas nullable
+    ``BooleanDtype`` (``True`` / ``False`` / ``<NA>``). Object columns with
+    mixed Python types (e.g. ``True`` / ``None``) remain categorical.
     """
     if col in ordinal_mappings:
         return FeatureKind.ORDINAL
-    if series.dtype == "bool":
+    if series.dtype == "bool" or isinstance(series.dtype, pd.BooleanDtype):
         return FeatureKind.BOOLEAN
     if pd.api.types.is_timedelta64_dtype(series):
         return FeatureKind.TIMEDELTA
@@ -144,7 +164,9 @@ def _make_transformer_for_kind(
     col: str,
     kind: FeatureKind,
     ordinal_mappings: Dict[str, List[Any]],
-) -> Union[OrdinalEncoder, OneHotEncoder, StandardScaler, Pipeline, str]:
+) -> Union[
+    OrdinalEncoder, OneHotEncoder, StandardScaler, Pipeline, FunctionTransformer, str
+]:
     if kind == FeatureKind.ORDINAL:
         return OrdinalEncoder(
             categories=[ordinal_mappings[col]],
@@ -152,7 +174,10 @@ def _make_transformer_for_kind(
             unknown_value=np.nan,
         )
     if kind == FeatureKind.BOOLEAN:
-        return "passthrough"
+        return FunctionTransformer(
+            _bool_to_float,
+            feature_names_out="one-to-one",
+        )
     if kind == FeatureKind.TIMEDELTA:
         return Pipeline(
             [
@@ -421,7 +446,14 @@ def create_column_transformer(
     transformers: List[
         Tuple[
             str,
-            Union[OrdinalEncoder, OneHotEncoder, StandardScaler, Pipeline, str],
+            Union[
+                OrdinalEncoder,
+                OneHotEncoder,
+                StandardScaler,
+                Pipeline,
+                FunctionTransformer,
+                str,
+            ],
             List[str],
         ]
     ] = []

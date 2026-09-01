@@ -58,7 +58,7 @@ def plot_features(
     -----
     The function sorts models by prediction time and creates a horizontal bar plot
     for each model showing the top N most important features. Feature names are
-    truncated to 25 characters for better display.
+    shown in full (not truncated) so long transformer output names remain distinct.
     """
     # Convert dict to list if needed
     if isinstance(trained_models, dict):
@@ -72,7 +72,9 @@ def plot_features(
     )
 
     num_plots = len(trained_models_sorted)
-    fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 6, 12))
+    # Wider panels when a single clock is plotted (side-by-side deck slides).
+    panel_w = 8 if num_plots == 1 else 6
+    fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * panel_w, 12))
 
     # Handle case of single prediction time
     if num_plots == 1:
@@ -87,8 +89,7 @@ def plot_features(
         transformed_cols = pipeline.named_steps[
             "feature_transformer"
         ].get_feature_names_out()
-        transformed_cols = [col.split("__")[-1] for col in transformed_cols]
-        truncated_cols = [col[:25] for col in transformed_cols]
+        feature_names = [col.split("__")[-1] for col in transformed_cols]
 
         # Get feature importances
         feature_importances = pipeline.named_steps["classifier"].feature_importances_
@@ -101,7 +102,7 @@ def plot_features(
         hour, minutes = prediction_time
         ax.barh(range(len(indices)), feature_importances[indices], align="center")
         ax.set_yticks(range(len(indices)))
-        ax.set_yticklabels(np.array(truncated_cols)[indices])
+        ax.set_yticklabels(np.array(feature_names)[indices])
         ax.set_xlabel("Importance")
         ax.set_ylabel("Features")
         ax.set_title(f"Feature Importances for {hour}:{minutes:02}")

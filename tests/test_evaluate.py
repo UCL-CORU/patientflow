@@ -15,6 +15,7 @@ from patientflow.evaluate.handlers import (
     _classifier_diagnostics_suptitle,
     _classifier_quality_suptitle,
     _distribution_comparison_suptitle,
+    evaluate_classifier_model_diagnostics,
     evaluate_classifier_probability_quality,
     evaluate_distribution,
 )
@@ -283,6 +284,75 @@ def test_arrival_delta_suptitle_uses_eval_split():
     title = _arrival_delta_suptitle(target, "medical", eval_split="valid")
     assert title == "Arrival delta plots for medical service (validation set)"
     assert "09:30" not in title
+
+
+def test_evaluate_classifier_model_diagnostics_per_clock_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Multi-clock diagnostics write features.png plus features_HHMM.png."""
+    feature_calls: list[dict] = []
+
+    def _capture_features(models, *args, **kwargs):
+        n = len(models) if not isinstance(models, dict) else len(models)
+        feature_calls.append(
+            {
+                "n_models": n,
+                "file_name": kwargs.get("file_name"),
+                "suptitle": kwargs.get("suptitle"),
+            }
+        )
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_features", _capture_features
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.SHAP_AVAILABLE", False)
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_shap", None)
+
+    visits = pd.DataFrame({"is_admitted": [0, 1]})
+    target = EvaluationTarget(
+        flow_name="ed_admissions_cls",
+        flow_type="admissions",
+        evaluation_mode="classifier_model_diagnostics",
+        component="classifier_model_diagnostics",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(6, 0), (15, 30)]),
+            eval_split="valid",
+        )
+        .add_classifier(
+            target.flow_name,
+            [
+                _minimal_trained_classifier((6, 0)),
+                _minimal_trained_classifier((15, 30)),
+            ],
+            visits,
+            "is_admitted",
+        )
+        .with_evaluation_targets([target])
+        .build()
+    )
+    collector = ScalarsCollector()
+    evaluate_classifier_model_diagnostics(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=collector,
+    )
+
+    assert [c["file_name"] for c in feature_calls] == [
+        "features.png",
+        "features_0600.png",
+        "features_1530.png",
+    ]
+    assert feature_calls[0]["n_models"] == 2
+    assert feature_calls[1]["n_models"] == 1
+    assert feature_calls[2]["n_models"] == 1
+    assert "at 06:00" in feature_calls[1]["suptitle"]
+    assert "at 15:30" in feature_calls[2]["suptitle"]
+    assert len(collector.as_list()) == 2
 
 
 # --- classifier MADCAP groupings ---
