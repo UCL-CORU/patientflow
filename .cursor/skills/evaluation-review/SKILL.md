@@ -1,17 +1,17 @@
 ---
 name: evaluation-review
 description: >-
-  Review the output of a patientflow/uclhflow evaluation run (a run directory
-  containing scalars.json, evaluation_run.yaml, and optional chart PNGs written
-  by patientflow.evaluate.runner.run_evaluation). Use when the user asks to
+  Review the output of a patientflow evaluation run (a run directory containing
+  scalars.json, evaluation_run.yaml, and optional chart PNGs written by
+  patientflow.evaluate.runner.run_evaluation). Use when the user asks to
   review, triage, summarise, or interpret an evaluation run, an eval-output
   folder, scalars.json, rPIT/CvM results, or flagged charts.
 ---
 
 # Reviewing an Evaluation Run
 
-An evaluation run directory (under `notebooks/eval-output/` in patientflow, or
-`eval-output/{valid|test}/{run_name}/` in uclhflow) looks like:
+An evaluation run directory (commonly under `notebooks/eval-output/` or a
+site-specific `eval-output/` tree) looks like:
 
 ```
 {run_dir}/
@@ -36,7 +36,7 @@ flag.**
    run as `all`.
 2. **Load `scalars.json`** and group `evaluation_rows` by `evaluation_mode`.
    Prefer a short Python/jq pass over reading the raw file when there are many
-   rows (uclhflow runs cover hundreds of subspecialties).
+   rows.
 3. **Triage rows** using the per-mode guidance below.
 4. **Check coverage** via `_service_summary.by_slice`: `n_inactive_services`
    and `inactive_service_names` show which services had nothing to evaluate.
@@ -93,9 +93,9 @@ The headline metric is the randomised-PIT Cramér-von Mises statistic:
   than the baseline - always report these**.
 - `reliable` = `n_snapshots >= 30`. Note unreliable rows but don't over-read
   their W² values.
-- Benchmarks only exist where a benchmark cohort was registered (in uclhflow:
-  ED-current and departures flows, not YTA flows). Without reductions, fall
-  back to absolute `rpit_cvm_mean_w2 >= 1.0` as the concern threshold.
+- Benchmarks only exist where a benchmark cohort was registered for that flow.
+  Without reductions, fall back to absolute `rpit_cvm_mean_w2 >= 1.0` as the
+  concern threshold.
 
 Rank distribution problems by: negative reduction first (most negative =
 worst), then high absolute W² among reliable rows.
@@ -138,21 +138,6 @@ In all modes, `skip_reason` distinguishes `charts_disabled`,
 service with clocks as panels; if any clock flags, all Gate-A clocks are drawn,
 so an in-figure panel is not itself evidence that that clock flagged.
 
-## uclhflow specifics
-
-- Runs are produced by `python -m predictor.evaluate` (see uclhflow README);
-  flows are named `uclh_*`: ED admissions + discharges classifiers,
-  distribution flows (`uclh_ed_current_beds`, `uclh_non_ed_yta_beds`,
-  `uclh_elective_yta_beds`, `uclh_departures_elective_beds`,
-  `uclh_departures_emergency_beds`), transition matrices
-  (elective/emergency), and `uclh_ed_yta_arrival_rates` arrival deltas.
-- Services are the full Clarity **subspecialty** list (hundreds), not the
-  legacy medical/surgical/haem-onc/paediatric groups. Expect many
-  `reliable: false` and inactive services; summarise these as counts, and
-  reserve per-service detail for flagged or negative-reduction rows.
-- `uclh_ed_yta_beds` (aspirational YTA bed demand) is deliberately excluded
-  from evaluation; do not report its absence as a gap.
-
 ## Report format
 
 Structure the write-up as:
@@ -167,18 +152,3 @@ Structure the write-up as:
    `skip_reason` counts.
 5. **Chart review** - which PNGs were opened and what they showed; note
    anything (like arrivals under `flagged`) that could not be reviewed.
-
-## Presentations
-
-When the user asks for a PowerPoint / slide deck from an evaluation run, do
-**not** format slides in this skill. Hand off to the uclhflow
-`eval-presentation` skill (`.cursor/skills/eval-presentation/` in the uclhflow
-repo), which builds a results-only deck via `scripts/build_deck.py`.
-
-That skill also owns locating a fresh `eval_valid*` / `eval_test*` zip in
-`~/Downloads`, confirming it with the user, and unzipping into
-`/Users/zellaking/Google Drive/UCL(H)/UCLH Evaluation` before building the
-deck.
-
-Optionally write a short `commentary.json` (slide-key → list of bullet strings)
-for pass-through onto slides; keep interpretation here, layout there.
