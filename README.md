@@ -262,6 +262,10 @@ We welcome contributions to the patientflow project. To contribute, follow the i
 - Use type hints where appropriate
 - Write docstrings for all functions, classes, and modules
 - Add unit tests for new functionality
+- Choose the output channel by intent:
+  - Progress / diagnostics (counts, split sizes, overlaps): `print` behind `verbose` for notebook helpers, or `logging.info` for long orchestrators such as `run_evaluation`
+  - Soft data-quality issues where execution continues: `warnings.warn` (never `print("Warning: …")`)
+  - Hard failures: raise with the message in the exception
 
 ### Submitting Your Contribution
 

@@ -6,12 +6,12 @@ from datetime import timedelta
 
 from pathlib import Path
 
-from patientflow.predict.emergency_demand import create_predictions
+from patientflow.predict.emergency_demand import create_predictions, add_missing_columns
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
@@ -954,6 +954,34 @@ class TestCreatePredictions(unittest.TestCase):
         for specialty in self.specialties:
             self.assertIsInstance(predictions[specialty]["in_ed"], list)
             self.assertIsInstance(predictions[specialty]["yet_to_arrive"], list)
+
+
+class _FakeFeatureTransformer:
+    transformers = [("num", StandardScaler(), ["num_obs", "age_on_arrival"])]
+
+
+class _FakePipeline:
+    named_steps = {"feature_transformer": _FakeFeatureTransformer()}
+
+
+class TestAddMissingColumns(unittest.TestCase):
+    def test_warns_when_columns_filled(self):
+        df = pd.DataFrame({"other": [1, 2]})
+        with self.assertWarns(UserWarning) as ctx:
+            out = add_missing_columns(_FakePipeline(), df)
+        self.assertIn("not found in the real-time data", str(ctx.warning))
+        self.assertIn("num_obs", out.columns)
+        self.assertIn("age_on_arrival", out.columns)
+        self.assertEqual(out["num_obs"].tolist(), [0, 0])
+
+    def test_silent_when_all_present(self):
+        import warnings
+
+        df = pd.DataFrame({"num_obs": [1], "age_on_arrival": [40]})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            add_missing_columns(_FakePipeline(), df)
+        self.assertFalse(any(issubclass(w.category, UserWarning) for w in caught))
 
 
 if __name__ == "__main__":

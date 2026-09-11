@@ -148,19 +148,6 @@ def plot_shap(
 
         shap_values = explainer.shap_values(X_test)
 
-        # Print prediction distribution
-        predictions = pipeline.named_steps["classifier"].predict(X_test)
-        print(
-            "Predicted classification (not admitted, admitted): ",
-            np.bincount(predictions),
-        )
-
-        # Print mean SHAP values for each class
-        if isinstance(shap_values, list):
-            print("SHAP values shape:", [arr.shape for arr in shap_values])
-            print("Mean SHAP values (class 0):", np.abs(shap_values[0]).mean(0))
-            print("Mean SHAP values (class 1):", np.abs(shap_values[1]).mean(0))
-
         # Create SHAP summary plot. shap>=0.47 accepts rng= (avoids mutating
         # NumPy's global RNG); older releases raise TypeError if it is passed.
         shap.summary_plot(

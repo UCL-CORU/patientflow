@@ -155,6 +155,7 @@ def assign_patient_ids(
     patient_id: str = "mrn",
     visit_col: str = "encounter",
     seed: int = 42,
+    verbose: bool = True,
     *,
     start_calibration_set: Optional[date] = None,
 ) -> pd.DataFrame:
@@ -180,6 +181,8 @@ def assign_patient_ids(
         Column name for visit identifier, by default "encounter"
     seed : int, optional
         Random seed for reproducible results, by default 42
+    verbose : bool, optional
+        Whether to print filter counts and set-overlap diagnostics, by default True
     start_calibration_set : datetime.date, optional
         Start date for an optional calibration period between training and
         validation. When provided, patients are assigned across four sets
@@ -199,6 +202,8 @@ def assign_patient_ids(
     - Counts encounters in each time period per patient ID
     - Randomly assigns each patient ID to one set, weighted by their temporal distribution
     - Patient with 70% encounters in training, 30% in validation has 70% chance of training assignment
+    - Progress diagnostics (filter counts, overlaps) use ``print`` only when
+      ``verbose=True``; soft data-quality issues elsewhere use ``warnings.warn``
     """
     if start_calibration_set is not None and not (
         start_training_set < start_calibration_set < start_validation_set
@@ -239,14 +244,15 @@ def assign_patient_ids(
     pre_training_patients = patients[date_series < start_training_set]
     post_test_patients = patients[date_series >= end_test_set]
 
-    if len(pre_training_patients) > 0:
-        print(
-            f"Filtered out {len(pre_training_patients)} patients with only pre-training visits"
-        )
-    if len(post_test_patients) > 0:
-        print(
-            f"Filtered out {len(post_test_patients)} patients with only post-test visits"
-        )
+    if verbose:
+        if len(pre_training_patients) > 0:
+            print(
+                f"Filtered out {len(pre_training_patients)} patients with only pre-training visits"
+            )
+        if len(post_test_patients) > 0:
+            print(
+                f"Filtered out {len(post_test_patients)} patients with only post-test visits"
+            )
 
     valid_patients = patients[
         (date_series >= start_training_set) & (date_series < end_test_set)
@@ -296,11 +302,12 @@ def assign_patient_ids(
                 f"{n_both} of {n_either}"
             )
     n_all_sets = patients[(patients[membership_cols] > 0).all(axis=1)].shape[0]
-    print(
-        "\nPatient Set Overlaps (before random assignment):\n"
-        + "\n".join(overlap_lines)
-        + f"\nAll Sets: {n_all_sets} of {patients.shape[0]} total patients"
-    )
+    if verbose:
+        print(
+            "\nPatient Set Overlaps (before random assignment):\n"
+            + "\n".join(overlap_lines)
+            + f"\nAll Sets: {n_all_sets} of {patients.shape[0]} total patients"
+        )
 
     return patients
 
@@ -379,7 +386,8 @@ def create_temporal_splits(
     seed : int, optional
         Random seed for reproducible results, by default 42
     verbose : bool, optional
-        Whether to print split sizes, by default True
+        Whether to print split sizes and patient-set assignment diagnostics,
+        by default True
     start_calibration : datetime.date, optional
         Start of an optional calibration window between training and
         validation (inclusive; must satisfy
@@ -398,6 +406,11 @@ def create_temporal_splits(
     -----
     Creates temporal data splits using primary datetime column and optional snapshot dates.
     Handles patient ID grouping if present to prevent data leakage.
+
+    Progress / diagnostics (split sizes, filter counts, set overlaps) use
+    ``print`` only when ``verbose=True``. Soft continue-anyway data issues
+    elsewhere in the library use ``warnings.warn``; long orchestrators such as
+    ``run_evaluation`` use ``logging.info`` milestones instead of stdout.
     """
     if start_calibration is not None and not (
         start_train < start_calibration < start_valid
@@ -443,6 +456,7 @@ def create_temporal_splits(
             patient_id,
             visit_col,
             seed=seed,
+            verbose=verbose,
             start_calibration_set=start_calibration,
         )
         patient_sets: Dict[str, Set] = {

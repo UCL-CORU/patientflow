@@ -259,5 +259,41 @@ class TestAssignPatientIds(unittest.TestCase):
             )
 
 
+class TestVerboseQuietStdout(unittest.TestCase):
+    def test_create_temporal_splits_verbose_false_is_silent(self):
+        import io
+        from contextlib import redirect_stdout
+
+        df = make_visits(n_patients=40, visits_per_patient=2)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            create_temporal_splits(
+                df,
+                START_TRAIN,
+                START_VALID,
+                START_TEST,
+                END_TEST,
+                verbose=False,
+            )
+        self.assertEqual(buf.getvalue(), "")
+
+    def test_assign_patient_ids_verbose_false_is_silent(self):
+        import io
+        from contextlib import redirect_stdout
+
+        df = make_visits(n_patients=40, visits_per_patient=2)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            assign_patient_ids(
+                df,
+                START_TRAIN,
+                START_VALID,
+                START_TEST,
+                END_TEST,
+                verbose=False,
+            )
+        self.assertEqual(buf.getvalue(), "")
+
+
 if __name__ == "__main__":
     unittest.main()

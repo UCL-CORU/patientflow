@@ -36,7 +36,7 @@ get_dict_cols:
 import ast  # to convert tuples to strings
 import os
 from pathlib import Path
-import sys
+import warnings
 
 import pandas as pd
 
@@ -95,9 +95,10 @@ def set_project_root(env_var: Optional[str] = None, verbose: bool = True) -> Pat
     NotADirectoryError
         If the path from the environment variable does not exist or is not a directory.
     ValueError
-        If the project root cannot be determined, or if converting ``env_path`` to ``Path`` fails (some cases are re-raised after logging).
+        If the project root cannot be determined, or if converting ``env_path`` to
+        ``Path`` fails.
     TypeError
-        If converting ``env_path`` to ``Path`` raises ``TypeError`` (re-raised after logging).
+        If converting ``env_path`` to ``Path`` raises ``TypeError``.
     """
     # Only try to get env path if env_var is provided
     env_path: Optional[str] = os.getenv(env_var) if env_var is not None else None
@@ -105,16 +106,12 @@ def set_project_root(env_var: Optional[str] = None, verbose: bool = True) -> Pat
 
     # Try getting from environment variable first
     if env_path is not None:
-        try:
-            project_root = Path(env_path)
-            if not project_root.is_dir():
-                raise NotADirectoryError(f"Path does not exist: {project_root}")
-            if verbose:
-                print(f"Project root from environment: {project_root}")
-            return project_root
-        except (TypeError, ValueError) as e:
-            print(f"Error converting {env_path} to Path: {e}")
-            raise
+        project_root = Path(env_path)
+        if not project_root.is_dir():
+            raise NotADirectoryError(f"Path does not exist: {project_root}")
+        if verbose:
+            print(f"Project root from environment: {project_root}")
+        return project_root
     else:
         # If not in env var, try to infer from current path
         current: Path = Path().absolute()
@@ -130,22 +127,22 @@ def set_project_root(env_var: Optional[str] = None, verbose: bool = True) -> Pat
                 print(f"Inferred project root: {project_root}")
             return project_root
 
-        print(
-            f"Could not find project root - {env_var} not set and 'patientflow' not found in path"
+        message = (
+            f"Could not find project root - {env_var} not set and 'patientflow' "
+            f"not found in path\n\nCurrent directory: {Path().absolute()}"
         )
-        print(f"\nCurrent directory: {Path().absolute()}")
         if env_var:
-            print(f"\nRun one of these commands in a new cell to set {env_var}:")
-            print("# Linux/Mac:")
-            print(f"%env {env_var}=/path/to/project")
-            print("\n# Windows:")
-            print(f"%env {env_var}=C:\\path\\to\\project")
-        raise ValueError("Project root not found")
+            message += (
+                f"\n\nRun one of these commands in a new cell to set {env_var}:\n"
+                f"# Linux/Mac:\n%env {env_var}=/path/to/project\n\n"
+                f"# Windows:\n%env {env_var}=C:\\path\\to\\project"
+            )
+        raise ValueError(message)
 
 
 def load_config_file(
     config_file_path: str, return_start_end_dates: bool = False
-) -> Optional[Union[Dict[str, Any], Tuple[str, str]]]:
+) -> Union[Dict[str, Any], Tuple[str, str]]:
     """
     Load configuration from a YAML file.
 
@@ -158,20 +155,26 @@ def load_config_file(
 
     Returns
     -------
-    dict or tuple or None
+    dict or tuple
         If `return_start_end_dates` is True, returns a tuple of start and end dates (str).
         Otherwise, returns a dictionary containing the configuration parameters.
-        Returns None if an error occurs during file reading or parsing.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the configuration file does not exist.
+    ValueError
+        If the YAML cannot be parsed or required keys / modelling_dates are invalid.
     """
     try:
         with open(config_file_path, "r") as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
-        print(f"Error: The file '{config_file_path}' was not found.")
-        return None
+        raise FileNotFoundError(
+            f"The file '{config_file_path}' was not found."
+        ) from None
     except yaml.YAMLError as e:
-        print(f"Error parsing YAML file: {e}")
-        return None
+        raise ValueError(f"Error parsing YAML file: {e}") from e
 
     try:
         if return_start_end_dates:
@@ -179,11 +182,9 @@ def load_config_file(
             if "file_dates" in config and config["file_dates"]:
                 start_date, end_date = [str(item) for item in config["file_dates"]]
                 return (start_date, end_date)
-            else:
-                print(
-                    "Error: 'file_dates' key not found or empty in the configuration file."
-                )
-                return None
+            raise ValueError(
+                "'file_dates' key not found or empty in the configuration file."
+            )
 
         params: Dict[str, Any] = {}
 
@@ -192,8 +193,9 @@ def load_config_file(
                 tuple(item) for item in config["prediction_times"]
             ]
         else:
-            print("Error: 'prediction_times' key not found in the configuration file.")
-            sys.exit(1)
+            raise ValueError(
+                "'prediction_times' key not found in the configuration file."
+            )
 
         modelling_dates = config.get("modelling_dates", [])
         if len(modelling_dates) == 4:
@@ -214,11 +216,10 @@ def load_config_file(
                 params["end_test_set"],
             ) = [item for item in modelling_dates]
         else:
-            print(
+            raise ValueError(
                 "Error: expecting 4 or 5 modelling dates and got "
                 f"{len(modelling_dates)}"
             )
-            return None
 
         # Dates are read positionally, so a misordered list would silently
         # skew downstream window arithmetic; reject it here.
@@ -228,11 +229,10 @@ def load_config_file(
             if earlier >= later
         ]
         if out_of_order:
-            print(
+            raise ValueError(
                 "Error: modelling_dates must be in ascending chronological "
                 f"order; got {out_of_order} out of order"
             )
-            return None
 
         params["x1"] = float(config.get("x1", 4))
         params["y1"] = float(config.get("y1", 0.76))
@@ -245,11 +245,11 @@ def load_config_file(
         return params
 
     except KeyError as e:
-        print(f"Error: Missing key in the configuration file: {e}")
-        return None
-    except ValueError as e:
-        print(f"Error: Invalid value found in the configuration file: {e}")
-        return None
+        raise ValueError(f"Missing key in the configuration file: {e}") from e
+    except ValueError:
+        raise
+    except TypeError as e:
+        raise ValueError(f"Invalid value found in the configuration file: {e}") from e
 
 
 def set_file_paths(
@@ -438,43 +438,48 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
 
     Raises
     ------
-    SystemExit
-        If the file cannot be found or another error occurs during loading or processing.
+    FileNotFoundError
+        If the file cannot be found.
+    ValueError
+        If another error occurs during loading.
 
     Notes
     -----
-    The function will terminate the program with a message if the file is not found or if any errors
-    occur while loading the data. If sorting columns or applying `safe_literal_eval` fails,
-    a warning message is printed, but execution continues.
-
+    Soft issues (missing index/sort columns, eval failures) emit
+    ``warnings.warn`` and execution continues.
     """
     path = os.path.join(Path().home(), csv_path)
 
     if not os.path.exists(path):
-        print(f"Data file not found at path: {path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Data file not found at path: {path}")
 
     try:
         df = pd.read_csv(path, parse_dates=True)
     except FileNotFoundError:
-        print(f"Data file not found at path: {path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Data file not found at path: {path}") from None
     except Exception as e:
-        print(f"Error loading data: {e}")
-        sys.exit(1)
+        raise ValueError(f"Error loading data: {e}") from e
 
     if index_column:
         try:
             if df.index.name != index_column:
                 df = df.set_index(index_column)
         except KeyError:
-            print(f"Index column '{index_column}' not found in dataframe")
+            warnings.warn(
+                f"Index column '{index_column}' not found in dataframe",
+                UserWarning,
+                stacklevel=2,
+            )
 
     if sort_columns:
         try:
             df.sort_values(sort_columns, inplace=True)
         except KeyError:
-            print("One or more sort columns not found in dataframe")
+            warnings.warn(
+                "One or more sort columns not found in dataframe",
+                UserWarning,
+                stacklevel=2,
+            )
 
     if eval_columns:
         for column in eval_columns:
@@ -482,7 +487,11 @@ def data_from_csv(csv_path, index_column=None, sort_columns=None, eval_columns=N
                 try:
                     df[column] = df[column].apply(safe_literal_eval)
                 except Exception as e:
-                    print(f"Error applying safe_literal_eval to column '{column}': {e}")
+                    warnings.warn(
+                        f"Error applying safe_literal_eval to column '{column}': {e}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
 
     return df
 
@@ -553,13 +562,21 @@ def load_data(
         try:
             df = df.set_index(index_column)
         except KeyError:
-            print(f"Warning: Index column '{index_column}' not found in dataframe")
+            warnings.warn(
+                f"Index column '{index_column}' not found in dataframe",
+                UserWarning,
+                stacklevel=2,
+            )
 
     if sort_columns:
         try:
             df.sort_values(sort_columns, inplace=True)
         except KeyError:
-            print("Warning: One or more sort columns not found in dataframe")
+            warnings.warn(
+                "One or more sort columns not found in dataframe",
+                UserWarning,
+                stacklevel=2,
+            )
 
     if eval_columns:
         for column in eval_columns:
@@ -567,8 +584,10 @@ def load_data(
                 try:
                     df[column] = df[column].apply(safe_literal_eval)
                 except Exception as e:
-                    print(
-                        f"Warning: Error applying safe_literal_eval to column '{column}': {str(e)}"
+                    warnings.warn(
+                        f"Error applying safe_literal_eval to column '{column}': {str(e)}",
+                        UserWarning,
+                        stacklevel=2,
                     )
 
     return df
@@ -664,7 +683,11 @@ def get_dict_cols(df):
         elif col in consults_vars or col in outcome_vars:
             continue  # Already categorized
         else:
-            print(f"Column '{col}' did not match any predefined group")
+            warnings.warn(
+                f"Column '{col}' did not match any predefined group",
+                UserWarning,
+                stacklevel=2,
+            )
 
     # Create a list of column groups
     col_group_names = [
