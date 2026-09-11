@@ -224,7 +224,7 @@ print(
 ```
 
     Probability of being admitted to each specialty at the end of the visit if no consultation result has been made by the time of the snapshot:
-    {'surgical': 0.251, 'medical': 0.607, 'paediatric': 0.063, 'haem/onc': 0.079}
+    {'haem/onc': 0.059, 'medical': 0.651, 'paediatric': 0.059, 'surgical': 0.231}
 
 Similarly, we can view the probability of being admitted to each specialty after a consultation request to acute medicine
 
@@ -236,7 +236,7 @@ print(
 ```
 
     Probability of being admitted to each specialty if one consultation request to acute medicine has taken place by the time of the snapshot:
-    {'surgical': 0.016, 'medical': 0.948, 'paediatric': 0.001, 'haem/onc': 0.035}
+    {'haem/onc': 0.035, 'medical': 0.95, 'paediatric': 0.002, 'surgical': 0.013}
 
 The intermediate mapping of consultation_sequence to final_sequence can be accessed from the trained model like this. The first row shows the probability of a null sequence (ie no consults yet) ending in any of the final_sequence options.
 
@@ -446,11 +446,11 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict)
 ```
 
     snapshot_id
-    192732    {'surgical': 0.8227405247813412, 'medical': 0....
-    209659    {'surgical': 0.8954703832752613, 'medical': 0....
-    207377    {'surgical': 0.0, 'medical': 0.833333333333333...
-    216864    {'surgical': 0.25145865945638257, 'medical': 0...
-    207071    {'surgical': 0.25145865945638257, 'medical': 0...
+    192732    {'haem/onc': 0.006219158071009923, 'medical': ...
+    209659    {'haem/onc': 0.011191901910464784, 'medical': ...
+    207377    {'haem/onc': 0.0, 'medical': 1.0, 'paediatric'...
+    216864    {'haem/onc': 0.05932325779760185, 'medical': 0...
+    207071    {'haem/onc': 0.05932325779760185, 'medical': 0...
     Name: consultation_sequence, dtype: object
 
 A dictionary is returned for each patient, with probabilities summed to 1. To get each patient's probability of admission to one specialty indexed in the dictionary, we can select that key as shown below:
@@ -467,7 +467,7 @@ test_visits['consultation_sequence'].head().apply(spec_model.predict).apply(lamb
 
 
 
-    array([0.13236152, 0.07665505, 0.83333333, 0.60722926, 0.60722926])
+    array([0.10565043, 0.05826442, 1.        , 0.65128342, 0.65128342])
 
 ### Predicting specialty of admission using a simpler input
 

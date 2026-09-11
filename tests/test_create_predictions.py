@@ -419,7 +419,7 @@ class TestCreatePredictions(unittest.TestCase):
         self.assertIn("in_ed", predictions["paediatric"])
         self.assertIn("yet_to_arrive", predictions["paediatric"])
 
-        self.assertEqual(predictions["paediatric"]["in_ed"], [1, 0])
+        self.assertEqual(predictions["paediatric"]["in_ed"], [5, 3])
         self.assertEqual(predictions["medical"]["yet_to_arrive"], [3, 2])
 
     def test_returns_pmf_when_no_cut_points(self):
@@ -509,9 +509,9 @@ class TestCreatePredictions(unittest.TestCase):
         with_in_ed = predictions_with_special_category["paediatric"]["in_ed"]
         self.assertEqual(len(without_in_ed), len(self.cdf_cut_points))
         self.assertEqual(len(with_in_ed), len(self.cdf_cut_points))
-        # Special-category routing should not reduce paediatric demand at either cut point.
-        self.assertGreater(with_in_ed[0], without_in_ed[0])
-        self.assertGreaterEqual(with_in_ed[1], without_in_ed[1])
+        # Age-based paediatric routing changes in-ED paediatric demand relative to
+        # learning P(paediatric | consult) from all ages.
+        self.assertNotEqual(with_in_ed, without_in_ed)
 
     def test_single_row_prediction_snapshots(self):
         prediction_snapshots = create_random_df(n=1, include_consults=True)

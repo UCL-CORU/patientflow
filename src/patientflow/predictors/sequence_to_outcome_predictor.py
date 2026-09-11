@@ -179,8 +179,9 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
 
     def fit(self, X: pd.DataFrame) -> "SequenceToOutcomePredictor":
         """
-        Fits the predictor based on training data by computing the proportion of each input variable sequence
-        ending in specific outcome variable categories.
+        Fits the predictor by composing P(grouping sequence | input sequence) with
+        P(outcome | grouping sequence), giving P(outcome | input sequence) for each
+        observed input sequence.
 
         Automatically preprocesses the data before fitting.
 
@@ -204,133 +205,56 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         # Preprocess the data
         X = self._preprocess_data(X)
 
-        # derive the names of the observed outcome variables from the data
-        prop_keys = X[self.outcome_var].unique()
+        if X.empty:
+            self.weights = {}
+            self.input_to_grouping_probs = pd.DataFrame()
+            return self
 
-        # For each sequence count the number of observed categories
+        # For each grouping sequence, count observed outcome categories
         X_grouped = (
             X.groupby(self.grouping_var)[self.outcome_var]
             .value_counts()
             .unstack(fill_value=0)
         )
 
-        # Calculate the total number of times each grouping sequence occurred
+        # P(specialty | grouping sequence)
         row_totals = X_grouped.sum(axis=1)
+        proportions = X_grouped.div(row_totals, axis=0).fillna(0)
 
-        # Calculate for each grouping sequence, the proportion of ending with each observed specialty
-        proportions = X_grouped.div(row_totals, axis=0)
-
-        # Calculate the probability of each grouping sequence occurring in the original data
-        probability_of_grouping_sequence = row_totals / row_totals.sum()
-
-        # Reweight probabilities of ending with each observed specialty
-        # by the likelihood of each grouping sequence occurring
-        # This transforms conditional probabilities into overall probabilities
-        reweighted_proportions = proportions.copy()
-        for col in proportions.columns:
-            reweighted_proportions[col] *= probability_of_grouping_sequence
-
-        # Convert final sequence to a string in order to conduct string searches on it
-        grouping_sequence_to_string = proportions.index.map(
-            lambda x: "-".join(map(str, x))
-        )
-
-        # Row-wise function to return, for each input sequence,
-        # the proportion that end up in each final sequence and thereby
-        # the probability of it ending in any observed category
-        grouping_sequence_series = pd.Series(
-            grouping_sequence_to_string, index=proportions.index
-        )
-        prob_input_var_ends_in_observed_specialty = grouping_sequence_series.apply(
-            lambda x: self._string_match_input_var(
-                x, reweighted_proportions, prop_keys, grouping_sequence_to_string
-            )
-        )
-
-        # Combine all new columns at once to avoid DataFrame fragmentation
-        new_columns = pd.DataFrame(
-            {
-                "probability_of_grouping_sequence": probability_of_grouping_sequence,
-                "grouping_sequence_to_string": grouping_sequence_to_string,
-                "prob_input_var_ends_in_observed_specialty": prob_input_var_ends_in_observed_specialty,
-            }
-        )
-
-        proportions = pd.concat([proportions, new_columns], axis=1)
-
-        # Convert the prob_input_var_ends_in_observed_specialty column to a dictionary
-        result_dict = proportions["prob_input_var_ends_in_observed_specialty"].to_dict()
-
-        # Clean the key to remove excess string quotes
         def clean_tuple_key(key):
             if isinstance(key, tuple):
                 return tuple(
                     ast.literal_eval(item)
-                    if item.startswith("'") and item.endswith("'")
+                    if isinstance(item, str)
+                    and item.startswith("'")
+                    and item.endswith("'")
                     else item
                     for item in key
                 )
             return key
 
-        cleaned_dict = {clean_tuple_key(k): v for k, v in result_dict.items()}
+        # P(specialty | input_seq) = sum over grouping sequences of
+        #     P(grouping_seq | input_seq) * P(specialty | grouping_seq)
+        input_to_specialty_probs = {}
+        for input_seq in X[self.input_var].unique():
+            prob_grouping_given_input = X.loc[
+                X[self.input_var] == input_seq, self.grouping_var
+            ].value_counts(normalize=True)
+            prob_specialty_given_grouping = proportions.reindex(
+                prob_grouping_given_input.index
+            ).fillna(0)
+            input_to_specialty_probs[clean_tuple_key(input_seq)] = (
+                prob_specialty_given_grouping.mul(prob_grouping_given_input, axis=0)
+                .sum()
+                .to_dict()
+            )
 
-        # save prob_input_var_ends_in_observed_specialty as weights within the model
-        self.weights = cleaned_dict
-
-        # save the input to grouping probabilities for use as a reference
+        self.weights = input_to_specialty_probs
         self.input_to_grouping_probs = self._probability_of_input_to_grouping_sequence(
             X
         )
 
         return self
-
-    def _string_match_input_var(
-        self, input_var_string, proportions, prop_keys, grouping_sequence_to_string
-    ):
-        """
-        Matches a given input sequence string with grouped sequences (expressed as strings) in the dataset and aggregates
-        their probabilities for each outcome category. This function filters the data to
-        match only those rows where the *beginning* of the grouped sequence string
-        matches the given input sequence string, allowing for partial matches.
-        For instance, the sequence 'medical' will match 'medical, elderly' and 'medical, surgical'
-        as well as 'medical' on its own. It computes the total probabilities of any input sequence ending
-        in each outcome category, and normalizes these totals if possible.
-
-        Parameters
-        ----------
-        input_var_string : str
-            The sequence of inputs represented as a string, used to match against sequences in the proportions DataFrame.
-        proportions : pd.DataFrame
-            DataFrame containing reweighted proportions data for each outcome category. Must have the same index as grouping_sequence_to_string.
-        prop_keys : np.array
-            Array of unique outcome category names to consider in calculations.
-        grouping_sequence_to_string : pd.Index
-            Index containing string representations of the grouping sequences, with the same index as proportions.
-            Used to create boolean masks for filtering proportions rows.
-
-        Returns
-        -------
-        dict
-            A dictionary where keys are outcome names and values are the aggregated and normalized probabilities
-            of an input sequence ending in those outcomes.
-
-        """
-        # Filter rows where the grouped sequence string starts with the input sequence string
-        mask = grouping_sequence_to_string.str.match("^" + input_var_string)
-        props = proportions[mask][prop_keys].sum()
-
-        # Sum of all probabilities to normalize them
-        props_total = props.sum()
-
-        # Handle cases where the total probability is zero to avoid division by zero
-        if props_total > 0:
-            normalized_props = props / props_total
-        else:
-            normalized_props = (
-                props * 0
-            )  # Returns zero probabilities if no matches found
-
-        return dict(zip(prop_keys, normalized_props))
 
     def _probability_of_input_to_grouping_sequence(self, X):
         """
@@ -360,7 +284,7 @@ class SequenceToOutcomePredictor(BaseEstimator, TransformerMixin):
         proportions = X_grouped.div(row_totals, axis=0)
 
         # # Calculate the probability of each input sequence occurring in the original data
-        proportions["probability_of_grouping_sequence"] = row_totals / row_totals.sum()
+        proportions["probability_of_input_value"] = row_totals / row_totals.sum()
 
         return proportions
 
