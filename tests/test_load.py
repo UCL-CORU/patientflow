@@ -31,7 +31,6 @@ class TestLoadConfigModellingDates(unittest.TestCase):
                 tmp_dir, ["2031-03-01", "2031-09-01", "2031-10-01", "2032-01-01"]
             )
             params = load_config_file(path)
-        self.assertIsNotNone(params)
         self.assertNotIn("start_calibration_set", params)
         self.assertEqual(str(params["start_training_set"]), "2031-03-01")
         self.assertEqual(str(params["start_validation_set"]), "2031-09-01")
@@ -51,14 +50,13 @@ class TestLoadConfigModellingDates(unittest.TestCase):
                 ],
             )
             params = load_config_file(path)
-        self.assertIsNotNone(params)
         self.assertEqual(str(params["start_training_set"]), "2031-03-01")
         self.assertEqual(str(params["start_calibration_set"]), "2031-08-01")
         self.assertEqual(str(params["start_validation_set"]), "2031-09-01")
         self.assertEqual(str(params["start_test_set"]), "2031-10-01")
         self.assertEqual(str(params["end_test_set"]), "2032-01-01")
 
-    def test_wrong_number_of_dates_returns_none(self):
+    def test_wrong_number_of_dates_raises(self):
         for dates in [
             ["2031-03-01", "2031-09-01", "2031-10-01"],
             [
@@ -72,15 +70,17 @@ class TestLoadConfigModellingDates(unittest.TestCase):
         ]:
             with tempfile.TemporaryDirectory() as tmp_dir:
                 path = write_config(tmp_dir, dates)
-                self.assertIsNone(load_config_file(path))
+                with self.assertRaises(ValueError):
+                    load_config_file(path)
 
-    def test_out_of_order_dates_return_none(self):
+    def test_out_of_order_dates_raise(self):
         # Four-date form with validation before training
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = write_config(
                 tmp_dir, ["2031-09-01", "2031-03-01", "2031-10-01", "2032-01-01"]
             )
-            self.assertIsNone(load_config_file(path))
+            with self.assertRaises(ValueError):
+                load_config_file(path)
         # Five-date form with the calibration date in the wrong slot
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = write_config(
@@ -93,7 +93,8 @@ class TestLoadConfigModellingDates(unittest.TestCase):
                     "2032-01-01",
                 ],
             )
-            self.assertIsNone(load_config_file(path))
+            with self.assertRaises(ValueError):
+                load_config_file(path)
 
 
 if __name__ == "__main__":

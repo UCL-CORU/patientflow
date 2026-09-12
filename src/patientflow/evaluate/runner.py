@@ -14,8 +14,10 @@ patientflow.evaluate.inputs.EvaluationInputsBuilder
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import asdict
 from datetime import datetime, timedelta
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
 
@@ -37,6 +39,8 @@ from patientflow.evaluate.handlers import (
 from patientflow.evaluate.inputs import EvaluationInputs
 from patientflow.evaluate.scalars import ScalarsCollector
 
+logger = logging.getLogger(__name__)
+
 try:
     import matplotlib
 
@@ -49,8 +53,6 @@ try:
         matplotlib.use("Agg")
 except Exception:  # pragma: no cover
     pass
-
-from importlib.metadata import version as package_version
 
 EVALUATION_RUN_MANIFEST = "evaluation_run.yaml"
 
@@ -184,6 +186,10 @@ def run_evaluation(
     Dispatch uses `match` / `case` on `target.evaluation_mode` (no handler
     registry).
 
+    Progress is reported as ``logging.info`` milestones on this module's
+    logger (``Evaluating i/n: flow (mode)``), so long runs stay filterable
+    without stdout spam from quiet callees.
+
     Parameters
     ----------
     output_root : pathlib.Path
@@ -232,7 +238,15 @@ def run_evaluation(
     arrivals_dir = run_dir / "arrivals"
     survival_dir = run_dir / "survival"
 
-    for target in inputs.evaluation_targets:
+    n_targets = len(inputs.evaluation_targets)
+    for i, target in enumerate(inputs.evaluation_targets, start=1):
+        logger.info(
+            "Evaluating %s/%s: %s (%s)",
+            i,
+            n_targets,
+            target.flow_name,
+            target.evaluation_mode,
+        )
         match target.evaluation_mode:
             case "classifier_model_diagnostics":
                 if inputs.classifier_by_flow.get(target.flow_name):

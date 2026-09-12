@@ -372,7 +372,7 @@ print(f"Evaluation artefacts in {out['run_dir']}")
 
 ```
 
-    Evaluation artefacts in eval-output/notebook4g_20260806_182708
+    Evaluation artefacts in eval-output/notebook4g_20260911_132013
 
 ```python
 from patientflow.viz.madcap import plot_madcap_by_group

@@ -1618,6 +1618,47 @@ def test_manifest_records_charts_mode(tmp_path: Path):
     assert loaded["evaluation"]["charts"] == "none"
 
 
+def test_run_evaluation_emits_info_milestones(tmp_path: Path, caplog):
+    import logging
+
+    from patientflow.evaluate.runner import run_evaluation
+
+    target = EvaluationTarget(
+        flow_name="ed_current_beds",
+        flow_type="admissions",
+        evaluation_mode="distribution",
+        component="bed_demand_ed_current",
+        observation_mode="admitted_at_some_point",
+    )
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(10, 0)]),
+        )
+        .with_evaluation_targets([target])
+        .add_distributions_from_service_dict(
+            "ed_current_beds",
+            prob_dist_by_service={
+                "medical": _n_snapshot_model_key_dist("beds", (10, 0), 2),
+            },
+            model_name="beds",
+        )
+        .add_distribution_observations(
+            "ed_current_beds",
+            ed_visits_by_service={
+                "medical": _ed_visits_for_snapshots((10, 0), 2),
+            },
+        )
+        .build()
+    )
+    with caplog.at_level(logging.INFO, logger="patientflow.evaluate.runner"):
+        run_evaluation(tmp_path, inputs, run_name="info_milestones", charts="none")
+    assert any(
+        "Evaluating 1/1: ed_current_beds (distribution)" in record.getMessage()
+        for record in caplog.records
+    )
+
+
 def test_evaluate_distribution_yta_has_no_benchmark_fields(tmp_path: Path):
     prediction_time = (10, 0)
     model_name = "beds"

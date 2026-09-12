@@ -372,7 +372,7 @@ class TestSequenceToOutcomePredictor(unittest.TestCase):
         if not predictor.input_to_grouping_probs.empty:
             # Drop the probability column from the DataFrame
             probs = predictor.input_to_grouping_probs.drop(
-                columns=["probability_of_grouping_sequence"]
+                columns=["probability_of_input_value"]
             )
             # Check that probabilities sum to 1.0 for each input sequence
             for idx, row in probs.iterrows():
@@ -437,6 +437,98 @@ class TestSequenceToOutcomePredictor(unittest.TestCase):
         quoted_sequence = ["'medical'", "'surgical'"]
         cleaned_sequence = predictor._ensure_tuple(quoted_sequence)
         self.assertEqual(cleaned_sequence, ("medical", "surgical"))
+
+    def _consult_specialty_demo(self):
+        """Seven-row snapshot example from issue #245."""
+        demo = pd.DataFrame(
+            [
+                {
+                    "consultation_sequence": (),
+                    "final_sequence": (),
+                    "specialty": "medical",
+                },
+                {
+                    "consultation_sequence": (),
+                    "final_sequence": ("acute",),
+                    "specialty": "medical",
+                },
+                {
+                    "consultation_sequence": (),
+                    "final_sequence": ("surgical",),
+                    "specialty": "surgical",
+                },
+                {
+                    "consultation_sequence": ("acute",),
+                    "final_sequence": ("acute",),
+                    "specialty": "medical",
+                },
+                {
+                    "consultation_sequence": ("acute",),
+                    "final_sequence": ("acute", "surgical"),
+                    "specialty": "surgical",
+                },
+                {
+                    "consultation_sequence": ("acute",),
+                    "final_sequence": ("acute", "surgical"),
+                    "specialty": "surgical",
+                },
+                {
+                    "consultation_sequence": ("acute", "icu"),
+                    "final_sequence": ("acute", "icu", "medical"),
+                    "specialty": "medical",
+                },
+            ]
+        )
+        demo["is_admitted"] = True
+        demo["snapshot_date"] = pd.Timestamp("2024-01-01")
+        return demo
+
+    def _fit_consult_specialty_demo(self):
+        predictor = SequenceToOutcomePredictor(
+            input_var="consultation_sequence",
+            grouping_var="final_sequence",
+            outcome_var="specialty",
+            apply_special_category_filtering=False,
+            admit_col="is_admitted",
+        )
+        return predictor.fit(self._consult_specialty_demo())
+
+    def test_weights_keys_are_input_sequences(self):
+        """weights is keyed by unique consultation sequences, not final sequences."""
+        predictor = self._fit_consult_specialty_demo()
+        self.assertEqual(
+            set(predictor.weights.keys()),
+            {(), ("acute",), ("acute", "icu")},
+        )
+        self.assertNotIn(("surgical",), predictor.weights)
+        self.assertNotIn(("acute", "surgical"), predictor.weights)
+        self.assertNotIn(("acute", "icu", "medical"), predictor.weights)
+
+    def test_predict_matches_specialty_given_consult_sequence(self):
+        """predict(X) is P(specialty | consultation sequence = X), not the overall mix."""
+        predictor = self._fit_consult_specialty_demo()
+
+        empty = predictor.predict(())
+        self.assertAlmostEqual(empty["medical"], 2 / 3)
+        self.assertAlmostEqual(empty["surgical"], 1 / 3)
+
+        acute = predictor.predict(("acute",))
+        self.assertAlmostEqual(acute["medical"], 1 / 3)
+        self.assertAlmostEqual(acute["surgical"], 2 / 3)
+
+        acute_icu = predictor.predict(("acute", "icu"))
+        self.assertAlmostEqual(acute_icu["medical"], 1.0)
+        self.assertAlmostEqual(acute_icu.get("surgical", 0.0), 0.0)
+
+    def test_predict_unseen_prefix_falls_back_to_input_sequence(self):
+        """Unseen longer sequences truncate through stored input keys, not finals."""
+        predictor = self._fit_consult_specialty_demo()
+        prediction = predictor.predict(("acute", "icu", "unknown"))
+        expected = predictor.predict(("acute", "icu"))
+        self.assertAlmostEqual(prediction["medical"], expected["medical"])
+        self.assertAlmostEqual(
+            prediction.get("surgical", 0.0), expected.get("surgical", 0.0)
+        )
 
 
 if __name__ == "__main__":

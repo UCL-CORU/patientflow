@@ -697,25 +697,15 @@ plot_shap(
 
 ```
 
-    Predicted classification (not admitted, admitted):  [670 391]
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_0.png)
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_1.png)
 
-    Predicted classification (not admitted, admitted):  [995 549]
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_2.png)
 
 ![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_3.png)
 
-    Predicted classification (not admitted, admitted):  [1739  821]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_5.png)
-
-    Predicted classification (not admitted, admitted):  [1886  976]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_7.png)
-
-    Predicted classification (not admitted, admitted):  [1615  773]
-
-![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_9.png)
+![png](2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_4.png)
 
 ## When to look at the test set
 

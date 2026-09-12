@@ -139,8 +139,12 @@ def add_missing_columns(pipeline, df):
         added_columns.append(missing_col)
 
     if added_columns:
-        print(
-            f"Warning: The following columns were used in training, but not found in the real-time data. These have been added to the dataframe: {', '.join(added_columns)}"
+        warnings.warn(
+            "The following columns were used in training, but not found in the "
+            "real-time data. These have been added to the dataframe: "
+            f"{', '.join(added_columns)}",
+            UserWarning,
+            stacklevel=2,
         )
 
     return df
