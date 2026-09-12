@@ -2365,21 +2365,11 @@ plot_shap(
 )
 
 </code></pre>
-<pre><code>Predicted classification (not admitted, admitted):  [670 391]
-</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_0.png" /></p>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_1.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [995 549]
-</code></pre>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_2.png" /></p>
 <p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_3.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [1739  821]
-</code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_5.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [1886  976]
-</code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_7.png" /></p>
-<pre><code>Predicted classification (not admitted, admitted):  [1615  773]
-</code></pre>
-<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_9.png" /></p>
+<p><img alt="png" src="../2c_Evaluate_patient_snapshot_models_files/2c_Evaluate_patient_snapshot_models_40_4.png" /></p>
 <h2 id="when-to-look-at-the-test-set">When to look at the test set</h2>
 <p>Everything above should be done on the <strong>validation</strong> set while you are still iterating: choosing between sigmoid and isotonic, checking that the calibrator was fitted on a separate window, judging the three pooled plots, looking for subgroup bias, and inspecting feature importances and SHAP values. If the SHAP or importance plots suggest dropping, adding or transforming features — or the bias checks suggest a different modelling approach for some groups — make those changes and re-check on validation. Reach for the <strong>test</strong> set only once you are content with those settings. Looking at it earlier risks tuning decisions to a peek at final holdout performance.</p>
 <p>Other notebooks in this series show plots on the test set for continuity with published figures. The cells below do the same, with that caveat: treat them as a final look, not as material for further model selection.</p>

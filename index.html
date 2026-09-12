@@ -2179,6 +2179,10 @@ python -m patientflow.train.emergency_demand --data_folder_name=data-synthetic
 <li>Use type hints where appropriate</li>
 <li>Write docstrings for all functions, classes, and modules</li>
 <li>Add unit tests for new functionality</li>
+<li>Choose the output channel by intent:</li>
+<li>Progress / diagnostics (counts, split sizes, overlaps): <code>print</code> behind <code>verbose</code> for notebook helpers, or <code>logging.info</code> for long orchestrators such as <code>run_evaluation</code></li>
+<li>Soft data-quality issues where execution continues: <code>warnings.warn</code> (never <code>print("Warning: …")</code>)</li>
+<li>Hard failures: raise with the message in the exception</li>
 </ul>
 <h3 id="submitting-your-contribution">Submitting Your Contribution</h3>
 <ol>
