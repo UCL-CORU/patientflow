@@ -9,6 +9,7 @@ from patientflow.predict.types import FlowSelection
 from patientflow.predict.hierarchy import (
     DemandPrediction,
     EntityType,
+    HierarchicalPredictor,
     Hierarchy,
     PredictionBundle,
     create_hierarchical_predictor,
@@ -164,6 +165,88 @@ class TestDemandPredictor:
             k_sigma=1.0,
         )
         assert stats_elective == (0.0, 0.0, 0)
+
+    def test_mixed_pmf_and_poisson_parent_keeps_the_poisson(self):
+        """A PMF beside a Poisson must not cap the parent at the PMF support.
+
+        List-based electives are PMFs. Transfers are PMFs too, often a certain
+        zero. The other elective units stay Poisson. The parent cap has to
+        follow the statistical bound, or the division interquartile range
+        collapses onto the PMF support.
+        """
+        hierarchy = Hierarchy.create_default_hospital()
+        levels = hierarchy.get_levels_ordered()
+        subspecialty_type = levels[0]
+        reporting_unit_type = levels[1]
+        division_type = levels[2]
+        board_type = levels[3]
+        hospital_type = levels[4]
+
+        hierarchy.add_entity("Hospital", hospital_type)
+        hierarchy.add_entity("Board", board_type)
+        hierarchy.add_entity("Division", division_type)
+        hierarchy.add_entity("Unit", reporting_unit_type)
+        hierarchy.add_entity("Listed", subspecialty_type)
+        hierarchy.add_entity("Poisson", subspecialty_type)
+        hierarchy.relationships["board:Board"] = "hospital:Hospital"
+        hierarchy.relationships["division:Division"] = "board:Board"
+        hierarchy.relationships["reporting_unit:Unit"] = "division:Division"
+        hierarchy.relationships["subspecialty:Listed"] = "reporting_unit:Unit"
+        hierarchy.relationships["subspecialty:Poisson"] = "reporting_unit:Unit"
+
+        def inputs(service_id: str, elective: FlowInputs) -> ServicePredictionInputs:
+            certain_zero = np.array([1.0])
+
+            def pmf(flow_id: str) -> FlowInputs:
+                return FlowInputs(
+                    flow_id=flow_id, flow_type="pmf", distribution=certain_zero.copy()
+                )
+
+            return ServicePredictionInputs(
+                service_id=service_id,
+                prediction_window=8,
+                inflows={
+                    "ed_current": pmf("ed_current"),
+                    "ed_yta": FlowInputs("ed_yta", "poisson", 0.0),
+                    "non_ed_yta": FlowInputs("non_ed_yta", "poisson", 0.0),
+                    "elective_yta": elective,
+                    "elective_transfers": pmf("elective_transfers"),
+                    "emergency_transfers": pmf("emergency_transfers"),
+                },
+                outflows={
+                    "elective_departures": pmf("elective_departures"),
+                    "emergency_departures": pmf("emergency_departures"),
+                },
+            )
+
+        bottom = {
+            "Listed": inputs(
+                "Listed",
+                FlowInputs("elective_yta", "pmf", np.array([0.25, 0.5, 0.25])),
+            ),
+            "Poisson": inputs("Poisson", FlowInputs("elective_yta", "poisson", 3.0)),
+        }
+        _mean, _sd, max_support = calculate_hierarchical_stats(
+            "Division",
+            division_type,
+            bottom,
+            hierarchy,
+            "arrivals",
+            FlowSelection.elective_only(),
+            k_sigma=1.0,
+        )
+        # PMF support is 2. The old cap stopped there and dropped the Poisson.
+        assert max_support > 2
+
+        results = HierarchicalPredictor(
+            hierarchy, DemandPredictor()
+        ).predict_all_levels(bottom, FlowSelection.elective_only())
+        division = results["division:Division"]
+        assert division.arrivals.expectation == pytest.approx(4.0, abs=0.05)
+        low = division.arrivals.percentiles[25]
+        high = division.arrivals.percentiles[75]
+        assert low < high
+        assert low <= division.arrivals.expectation <= high
 
     def test_convolution(self):
         """Test basic convolution of two distributions."""
