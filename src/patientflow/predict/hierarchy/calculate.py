@@ -184,10 +184,13 @@ def calculate_hierarchical_stats(
     # Statistical cap: mean + k_sigma * SD
     statistical_cap = sum_of_means + k_sigma * combined_sd
 
-    # Physical cap: sum of all physical maxes (for convolution)
-    finite_physical_maxes = [pm for pm in physical_maxes if pm != float("inf")]
-    if finite_physical_maxes:
-        physical_cap = float(np.sum(finite_physical_maxes))  # Sum for convolution
+    # Physical cap: sum of the supports, but only when every selected flow is a
+    # PMF. A Poisson flow is unbounded. One PMF beside it (a transfer, or a
+    # list-based elective) must not discard that Poisson: the parent would
+    # otherwise be capped at the PMF supports and the interquartile range
+    # would collapse.
+    if physical_maxes and all(pm != float("inf") for pm in physical_maxes):
+        physical_cap = float(np.sum(physical_maxes))
     else:
         physical_cap = float("inf")
 
