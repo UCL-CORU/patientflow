@@ -22,7 +22,7 @@ to provide a complete picture of subspecialty bed demand by accounting for both
 external discharges and internal transfers.
 
 The predictor stores transition probabilities between services, which can be
-used at prediction time to model internal patient flows and compute arrival
+used at inference time to model internal patient flows and compute arrival
 distributions for each subspecialty from transfers.
 
 When cohort_col is specified, separate probability models are trained for each

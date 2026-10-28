@@ -91,6 +91,48 @@ class Distribution:
             p[-1] += tail_mass
         return cls.from_pmf(p)
 
+    @classmethod
+    def from_bernoulli_probs(cls, probs: Iterable[float]) -> "Distribution":
+        """Create the Poisson-binomial distribution of a sum of Bernoulli trials.
+
+        Each element of ``probs`` is the success probability ``q_i`` of one
+        independent trial. The support is ``[0, len(probs)]``. The unequal-``q_i``
+        case is built one trial at a time with
+        ``new[k] = old[k] * (1 - q_i) + old[k - 1] * q_i``, which only adds
+        non-negative terms and is numerically stable. When all ``q_i`` are equal
+        the result is the plain binomial.
+
+        Parameters
+        ----------
+        probs : iterable of float
+            Success probabilities, each in ``[0, 1]``.
+
+        Returns
+        -------
+        Distribution
+            Distribution of the number of successes.
+
+        Raises
+        ------
+        ValueError
+            If any probability is outside ``[0, 1]`` or not finite.
+        """
+        q = np.asarray(list(probs), dtype=float)
+        if q.size == 0:
+            return cls.from_pmf(np.array([1.0]))
+        if np.any(~np.isfinite(q)) or np.any(q < 0.0) or np.any(q > 1.0):
+            raise ValueError("Bernoulli probabilities must be finite and in [0, 1]")
+        # If all probabilities in q are equal, return the corresponding binomial PMF.
+        if np.all(q == q[0]):
+            return cls.from_pmf(_binom.pmf(np.arange(q.size + 1), q.size, float(q[0])))
+        pmf = np.zeros(q.size + 1)
+
+        pmf[0] = 1.0
+        for n, q_i in enumerate(q, start=1):
+            pmf[1 : n + 1] = pmf[1 : n + 1] * (1.0 - q_i) + pmf[0:n] * q_i
+            pmf[0] *= 1.0 - q_i
+        return cls.from_pmf(pmf)
+
     @staticmethod
     def poisson_cap_from_k_sigma(lambda_param: float, k_sigma: float) -> int:
         """Return a k-sigma truncation cap for a Poisson distribution.
@@ -322,7 +364,7 @@ class Distribution:
         p = self.probabilities
         if len(p) <= max_display:
             values = ", ".join(f"{v:.{precision}g}" for v in p)
-            return f"PMF[{self.offset}:{self.offset+len(p)}]: [{values}]"
+            return f"PMF[{self.offset}:{self.offset + len(p)}]: [{values}]"
         # Center on mode
         mode_idx = int(np.argmax(p))
         half = max_display // 2

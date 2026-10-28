@@ -4,7 +4,7 @@ There are situations where we might want to predict bed count distributions with
 
 - Incoming patients who haven't yet arrived at the Emergency Department, but who will need a bed within a prediction window
 - Emergency patients who arrive via other routes than the ED, and become inpatients (such as emergency transfers from other hospitals)
-- Elective admissions of patients. Planned elective admissions are recorded on a 'To Come In' (TCI) list by patient number. In data, the hospital visit (known as an encounter) for the elective procedure begins at the moment a patient arrives, but may not be recorded in data prior to that point. In a simple case without making use of any data on TCI lists, we might want to predict bed requirements for such patients based on past patterns of such arrivals between a prediction time (eg 12:00) and the end of a prediction window (eg 8 hours later).
+- Elective admissions of patients. Planned elective admissions are recorded on a 'To Come In' (TCI) list by patient number. In some data systems, the hospital visit (known as an encounter) for the elective procedure is only recorded once the patient arrives; in others, it is created when the patient is listed. In a simple case without making use of any data on TCI lists, we might want to predict bed requirements for such patients based on past patterns of such arrivals between a prediction time (eg 12:00) and the end of a prediction window (eg 8 hours later).
 
 For these situations, we can use `patientflow` to learn patterns from past data, and use these to predict a bed count distribution at the aggregate level.
 
@@ -13,6 +13,8 @@ In this notebook, I'll use the example of predicting the number of beds needed f
 - a Poisson model trained on past arrival rates of patients who both arrived and were admitted within a prediction window
 - a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data
 - a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.
+
+Notebook 3g shows how to use a list of planned admissions when one is available.
 
 I also demonstrate predictions by specialty, and weekday-aware arrival rates: the library fits per-weekday profiles by default; pass `prediction_date` on `predict()` to select the day (see the final section).
 

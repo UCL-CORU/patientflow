@@ -31,6 +31,9 @@ from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
     DirectAdmissionPredictor,
 )
+from patientflow.predictors.list_based_admission_predictor import (
+    ListBasedAdmissionPredictor,
+)
 from patientflow.predictors.sequence_to_outcome_predictor import (
     SequenceToOutcomePredictor,
 )
@@ -191,7 +194,8 @@ class ServicePredictionInputs:
         - "ed_current": Current ED patients who will be admitted (PMF)
         - "ed_yta": Yet-to-arrive ED patients who will be admitted (Poisson)
         - "non_ed_yta": Yet-to-arrive non-ED emergency admissions (Poisson)
-        - "elective_yta": Yet-to-arrive elective admissions (Poisson)
+        - "elective_yta": Yet-to-arrive elective admissions (Poisson, or PMF when
+          a list-based model and day list are supplied)
         - "elective_transfers": Elective patients transferring from other services (PMF)
         - "emergency_transfers": Emergency patients transferring from other services (PMF)
     outflows : Dict[str, FlowInputs]
@@ -937,8 +941,14 @@ def _create_flow_inputs(
     x2: Optional[float],
     y2: Optional[float],
     prediction_date: Optional[date] = None,
+    elective_day_list: Optional[pd.DataFrame] = None,
+    elective_arrivals: Optional[pd.DataFrame] = None,
 ) -> Dict[str, Dict[str, FlowInputs]]:
     """Create FlowInputs objects for inflows and outflows.
+
+    The elective yet-to-arrive flow is a ``"pmf"`` flow when *elective_yta_model*
+    is a `ListBasedAdmissionPredictor`, *elective_day_list* is supplied, and the
+    service has list probabilities. Otherwise it is a ``"poisson"`` flow.
 
     Returns
     -------
@@ -978,6 +988,33 @@ def _create_flow_inputs(
     else:
         ed_yta_mean = _safe_predict_mean(yet_to_arrive_model)
 
+    if (
+        isinstance(elective_yta_model, ListBasedAdmissionPredictor)
+        and elective_day_list is not None
+        and elective_yta_model.uses_list(spec)
+    ):
+        elective_pmf = elective_yta_model.predict(
+            prediction_time=prediction_time,
+            prediction_window=prediction_window,
+            filter_keys=[spec],
+            prediction_date=prediction_date,
+            day_list=elective_day_list,
+            arrivals=elective_arrivals,
+        )[spec]["agg_proba"].to_numpy()
+        elective_flow = FlowInputs(
+            flow_id="elective_yta",
+            flow_type="pmf",
+            distribution=np.asarray(elective_pmf, dtype=float),
+            display_name="Elective admissions",
+        )
+    else:
+        elective_flow = FlowInputs(
+            flow_id="elective_yta",
+            flow_type="poisson",
+            distribution=_safe_predict_mean(elective_yta_model),
+            display_name="Elective admissions",
+        )
+
     # Build FlowInputs objects for inflows and outflows
     # INFLOWS: All sources of patient arrivals to this subspecialty
     inflows_dict = {
@@ -1002,12 +1039,7 @@ def _create_flow_inputs(
             distribution=_safe_predict_mean(non_ed_yta_model),
             display_name="Non-ED emergency admissions",
         ),
-        "elective_yta": FlowInputs(
-            flow_id="elective_yta",
-            flow_type="poisson",
-            distribution=_safe_predict_mean(elective_yta_model),
-            display_name="Elective admissions",
-        ),
+        "elective_yta": elective_flow,
         # Note: "transfers_in" will be added later after compute_transfer_arrivals()
     }
 
@@ -1047,6 +1079,8 @@ def _build_legacy_flows(
     base_probs: Dict[str, Any],
     prediction_date: Optional[date] = None,
     inpatient_service_col: str = "current_subspecialty",
+    elective_day_list: Optional[pd.DataFrame] = None,
+    elective_arrivals: Optional[pd.DataFrame] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Build flows for all specialties using processing logic.
 
@@ -1125,6 +1159,8 @@ def _build_legacy_flows(
             x2,
             y2,
             prediction_date=prediction_date,
+            elective_day_list=elective_day_list,
+            elective_arrivals=elective_arrivals,
         )
 
         # Store in temporary dictionary structure
@@ -1240,6 +1276,8 @@ def build_service_data(
     use_admission_in_window_prob: bool = True,
     prediction_date: Optional[date] = None,
     inpatient_service_col: str = "current_subspecialty",
+    elective_day_list: Optional[pd.DataFrame] = None,
+    elective_arrivals: Optional[pd.DataFrame] = None,
 ) -> Dict[str, ServicePredictionInputs]:
     """Build per-service inputs for downstream roll-up.
 
@@ -1300,6 +1338,19 @@ def build_service_data(
         Column on *inpatient_snapshots* naming the patient's current service
         unit. Used to filter departures by service and as the source column
         for transfer routing.
+    elective_day_list : pandas.DataFrame, optional
+        The booked list for *prediction_date* (encounter and service columns,
+        including patients who may already have arrived). Used only when the
+        elective model is a `ListBasedAdmissionPredictor`. Services with list
+        probabilities then get a ``"pmf"`` elective yet-to-arrive flow, and the
+        rest keep ``"poisson"``. Requires *prediction_date* and
+        *elective_arrivals*.
+    elective_arrivals : pandas.DataFrame, optional
+        Elective arrivals at all services (encounter and ``arrival_datetime``),
+        reaching back to the day the list was produced. The predictor drops listed
+        patients who have arrived by the prediction moment, so include every
+        listed patient who arrived, including those who did not need a bed
+        (for example day cases).
 
     Returns
     -------
@@ -1379,6 +1430,8 @@ def build_service_data(
         base_probs,
         prediction_date=prediction_date,
         inpatient_service_col=inpatient_service_col,
+        elective_day_list=elective_day_list,
+        elective_arrivals=elective_arrivals,
     )
 
     return _finalise_service_data(

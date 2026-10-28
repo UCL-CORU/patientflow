@@ -236,6 +236,7 @@ def time_varying_arrival_rates_by_weekday(
     yta_time_interval: Union[int, timedelta],
     num_days: Optional[int] = None,
     verbose: bool = False,
+    date_span: Optional[Tuple[date, date]] = None,
 ) -> Dict[int, OrderedDict[time, float]]:
     """Time-varying arrival rates with a separate profile per weekday.
 
@@ -257,6 +258,12 @@ def time_varying_arrival_rates_by_weekday(
         The weekday divisor is always derived from the index date span.
     verbose : bool, optional
         If True, mirror logging behaviour of ``time_varying_arrival_rates``.
+    date_span : tuple of (date, date), optional
+        Inclusive ``(first_date, last_date)`` used to count weekday
+        occurrences instead of the span of ``df.index``. Use it when ``df`` is a
+        subset of a larger frame (for example off-list arrivals) and the rates
+        must share divisors with the larger frame's profile. When ``None``
+        (default) the span of ``df.index`` is used, as before.
 
     Returns
     -------
@@ -301,8 +308,13 @@ def time_varying_arrival_rates_by_weekday(
             f"Time interval ({yta_time_interval_minutes} minutes) must divide evenly into 24 hours."
         )
 
-    start_date = df.index.date.min()
-    end_date = df.index.date.max()
+    if date_span is not None:
+        start_date, end_date = date_span
+        if start_date > end_date:
+            raise ValueError("date_span start must not be after its end.")
+    else:
+        start_date = df.index.date.min()
+        end_date = df.index.date.max()
     weekday_counts = weekday_occurrences_in_span(start_date, end_date)
 
     if sum(weekday_counts) == 0:
@@ -469,7 +481,7 @@ def process_arrival_rates(
 
     # Create formatted hour labels with line breaks for better plot readability
     hour_labels = [
-        f'{hour.strftime("%H")}-\n{str((hour.hour + 1) % 24).zfill(2)}'
+        f"{hour.strftime('%H')}-\n{str((hour.hour + 1) % 24).zfill(2)}"
         for hour in hours
     ]
 

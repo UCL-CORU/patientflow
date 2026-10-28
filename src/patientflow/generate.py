@@ -15,11 +15,14 @@ synthesise_departure_times(df, kind='ed_visits', seed=42)
 
 create_fake_snapshots(prediction_times, start_date, end_date, df, observations_df, lab_orders_df, mean_patients_per_day)
     Create patient-level snapshots at specific times with visit, triage, and lab features.
+
+create_fake_elective_lists(start_date, end_date)
+    Generate daily lists of planned elective admissions and the elective arrivals that follow.
 """
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Dict, Literal, Optional, Tuple
 
 import pandas as pd
 import numpy as np
@@ -637,3 +640,192 @@ def create_fake_snapshots(
     # Name the index snapshot_id before returning
     final_df.index.name = "snapshot_id"
     return final_df
+
+
+_DEFAULT_LISTED_PER_WEEKDAY = {"surgical": 20.0, "paediatric": 0.4}
+_DEFAULT_UNLISTED_PER_DAY = {"surgical": 3.0, "paediatric": 1.0, "haem/onc": 4.0}
+_DEFAULT_LIST_OUTCOME_PROBS = {
+    "arrives_at_listed_service": 0.70,
+    "arrives_at_other_service": 0.05,
+    "arrives_evening_before": 0.05,
+    "deferred_to_next_day": 0.05,
+    "does_not_arrive": 0.15,
+}
+
+
+def create_fake_elective_lists(
+    start_date,
+    end_date,
+    listed_per_weekday: Optional[Dict[str, float]] = None,
+    unlisted_per_day: Optional[Dict[str, float]] = None,
+    weekend_fraction: float = 0.1,
+    outcome_probs: Optional[Dict[str, float]] = None,
+    not_admitted_share: float = 0.0,
+    seed: int = 42,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Generate daily lists of planned elective admissions and the arrivals that follow.
+
+    Each day has a list of patients booked for admission that day, by service.
+    Each listed patient has one outcome: they arrive at the listed service on the
+    day, arrive at a different service on the day, arrive the evening before,
+    are deferred to the next day, or do not arrive. Some of those who arrive at
+    the listed service on the day can be marked as not needing a bed (for
+    example day cases). Electives who were never on a list also arrive at each
+    service. The output is used to demonstrate ``ListBasedAdmissionPredictor``.
+
+    Parameters
+    ----------
+    start_date : str or datetime
+        First day with a list (inclusive), as a datetime or 'YYYY-MM-DD'.
+    end_date : str or datetime
+        Last day (exclusive), as a datetime or 'YYYY-MM-DD'.
+    listed_per_weekday : dict of str to float, optional
+        Mean number of listed patients per weekday (Monday to Friday), by service.
+        Defaults to a large surgical list and a very small paediatric list.
+        Services not in this dict have no list.
+    unlisted_per_day : dict of str to float, optional
+        Mean number of electives per day who were not on a list, by service.
+        Defaults include ``haem/onc``, which has no list.
+    weekend_fraction : float, default=0.1
+        Size of weekend lists relative to weekday lists.
+    outcome_probs : dict of str to float, optional
+        Probability of each outcome for a listed patient. Keys are
+        ``arrives_at_listed_service``, ``arrives_at_other_service``,
+        ``arrives_evening_before``, ``deferred_to_next_day`` and
+        ``does_not_arrive``. Must sum to 1.
+    not_admitted_share : float, default=0.0
+        Share of listed patients arriving at the listed service on the day who
+        do not need a bed. Drawn from a separate random stream, so changing it
+        does not change the lists, the outcomes or the arrival times.
+    seed : int, default=42
+        NumPy RNG seed for reproducibility.
+
+    Returns
+    -------
+    arrivals : pandas.DataFrame
+        One row per elective arrival, sorted by time, with columns
+        ``arrival_datetime``, ``encounter``, ``service`` and ``is_admitted``
+        (``False`` for listed patients who arrived without needing a bed).
+    list_df : pandas.DataFrame
+        One row per listed patient, with columns ``encounter``, ``service`` and
+        ``intended_date``.
+
+    Notes
+    -----
+    - Listed patients who arrive on the day arrive mostly in the morning
+      (normal around 09:00, standard deviation 2 hours, between 06:00 and 20:00).
+    - Patients who arrive the evening before arrive between 17:00 and 21:00.
+    - Unlisted electives arrive around 13:00 (standard deviation 3 hours).
+    - Patients arriving at a different service go to one of the other services,
+      chosen at random.
+    """
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    listed_per_weekday = (
+        _DEFAULT_LISTED_PER_WEEKDAY
+        if listed_per_weekday is None
+        else listed_per_weekday
+    )
+    unlisted_per_day = (
+        _DEFAULT_UNLISTED_PER_DAY if unlisted_per_day is None else unlisted_per_day
+    )
+    outcome_probs = (
+        _DEFAULT_LIST_OUTCOME_PROBS if outcome_probs is None else outcome_probs
+    )
+    if set(outcome_probs) != set(_DEFAULT_LIST_OUTCOME_PROBS):
+        raise ValueError(
+            f"outcome_probs keys must be {sorted(_DEFAULT_LIST_OUTCOME_PROBS)}"
+        )
+    if not np.isclose(sum(outcome_probs.values()), 1.0):
+        raise ValueError("outcome_probs must sum to 1")
+    if not 0.0 <= not_admitted_share <= 1.0:
+        raise ValueError(
+            f"not_admitted_share must be between 0 and 1, got {not_admitted_share}"
+        )
+
+    rng = np.random.default_rng(seed)
+    admission_rng = np.random.default_rng([seed, 1])
+    services = sorted(set(listed_per_weekday) | set(unlisted_per_day))
+    outcomes = list(outcome_probs)
+    outcome_weights = np.array([outcome_probs[o] for o in outcomes])
+
+    def at_hour(day: datetime, hour: float) -> datetime:
+        return day + timedelta(hours=float(hour))
+
+    def morning_hour() -> float:
+        while True:
+            hour = rng.normal(9.0, 2.0)
+            if 6.0 <= hour < 20.0:
+                return float(hour)
+
+    arrivals = []
+    listed = []
+    encounter_number = 0
+    day = start_date
+    while day < end_date:
+        is_weekend = day.weekday() >= 5
+        for service in services:
+            mean_listed = listed_per_weekday.get(service, 0.0)
+            if is_weekend:
+                mean_listed *= weekend_fraction
+            for _ in range(rng.poisson(mean_listed)):
+                encounter_number += 1
+                encounter = f"E{encounter_number:07d}"
+                listed.append(
+                    {
+                        "encounter": encounter,
+                        "service": service,
+                        "intended_date": day.date(),
+                    }
+                )
+                outcome = rng.choice(outcomes, p=outcome_weights)
+                if outcome == "arrives_at_listed_service":
+                    is_admitted = bool(admission_rng.random() >= not_admitted_share)
+                    arrivals.append(
+                        (at_hour(day, morning_hour()), encounter, service, is_admitted)
+                    )
+                elif outcome == "arrives_at_other_service":
+                    others = [s for s in services if s != service]
+                    if others:
+                        arrivals.append(
+                            (
+                                at_hour(day, morning_hour()),
+                                encounter,
+                                str(rng.choice(others)),
+                                True,
+                            )
+                        )
+                elif outcome == "arrives_evening_before":
+                    evening = at_hour(day - timedelta(days=1), rng.uniform(17.0, 21.0))
+                    arrivals.append((evening, encounter, service, True))
+                elif outcome == "deferred_to_next_day":
+                    arrivals.append(
+                        (
+                            at_hour(day + timedelta(days=1), morning_hour()),
+                            encounter,
+                            service,
+                            True,
+                        )
+                    )
+
+            for _ in range(rng.poisson(unlisted_per_day.get(service, 0.0))):
+                encounter_number += 1
+                hour = float(np.clip(rng.normal(13.0, 3.0), 0.0, 23.99))
+                arrivals.append(
+                    (at_hour(day, hour), f"E{encounter_number:07d}", service, True)
+                )
+        day += timedelta(days=1)
+
+    arrivals_df = (
+        pd.DataFrame(
+            arrivals,
+            columns=["arrival_datetime", "encounter", "service", "is_admitted"],
+        )
+        .sort_values("arrival_datetime")
+        .reset_index(drop=True)
+    )
+    arrivals_df["arrival_datetime"] = arrivals_df["arrival_datetime"].dt.floor("s")
+    list_df = pd.DataFrame(listed, columns=["encounter", "service", "intended_date"])
+    return arrivals_df, list_df

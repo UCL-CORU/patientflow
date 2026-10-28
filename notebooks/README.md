@@ -29,6 +29,7 @@ Next is a series of notebooks on preparing group snapshots, generating predictio
 - **[3d_Evaluate_bed_demand_by_hospital_service](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3d_Evaluate_bed_demand_by_hospital_service.ipynb):** Evaluate bed demand predictions by hospital service, and compare with a baseline.
 - **[3e_Predict_demand_from_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3e_Predict_demand_from_patients_yet_to_arrive.ipynb):** Shows how to predict demand, using historical data, when patient snapshots are not appropriate.
 - **[3f_Evaluate_demand_predictions_for_patients_yet_to_arrive](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3f_Evaluate_demand_predictions_for_patients_yet_to_arrive.ipynb):** Evaluate arrival rates and survival-curve yet-to-arrive bed demand against observed outcomes.
+- **[3g_Predict_elective_demand_using_a_list](https://github.com/UCL-CORU/patientflow/blob/main/notebooks/3g_Predict_elective_demand_using_a_list.ipynb):** Shows how to predict elective demand when a list of planned admissions is available, combining listed patients still to arrive with a Poisson distribution for electives who were not on the list.
 
 A set of notebooks follows that shows how we assembled the building blocks from the 3x\_ notebooks into a production system at UCLH to predict demand for beds.
 
@@ -43,7 +44,7 @@ A set of notebooks follows that shows how we assembled the building blocks from 
 
 ## Data used in the notebooks
 
-The early notebooks (2a*, 2b*, 3a*, 3e*) generate fake data on-the-fly so you can run them immediately without any external files. From notebook 2c* onwards, most notebooks use real data from University College London Hospital (UCLH), available on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'` to use the bundled synthetic dataset instead. Notebook 4a* also generates fake data on-the-fly, to introduce the production data classes without requiring external data.
+The early notebooks (2a*, 2b*, 3a*, 3e*, 3g*) generate fake data on-the-fly so you can run them immediately without any external files. From notebook 2c* onwards, most notebooks use real data from University College London Hospital (UCLH), available on [Zenodo](https://zenodo.org/records/14866057). If you don't have the public data, change `data_folder_name` from `'data-public'` to `'data-synthetic'` to use the bundled synthetic dataset instead. Notebook 4a\* also generates fake data on-the-fly, to introduce the production data classes without requiring external data.
 
 ## Preparing your notebook environment
 

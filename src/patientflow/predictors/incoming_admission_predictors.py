@@ -31,6 +31,12 @@ EmpiricalIncomingAdmissionPredictor : IncomingAdmissionPredictor
     Predicts the number of admissions using empirical survival curves and convolution
     of Poisson distributions; implemented via generating functions.
 
+See Also
+--------
+patientflow.predictors.list_based_admission_predictor.ListBasedAdmissionPredictor :
+    Subclass of DirectAdmissionPredictor that can condition on a booked list of
+    elective patients.
+
 Notes
 -----
 The DirectAdmissionPredictor is the simplest approach, summing all arrival rates across time
@@ -51,7 +57,7 @@ specific hospital settings or specialties.
 
 Prediction API (``predict`` / ``predict_mean``)
 ---------------------------------------------
-After ``fit()``, pass ``prediction_time`` and ``prediction_window`` at predict
+After ``fit()``, pass ``prediction_time`` and ``prediction_window`` at inference
 time. Use ``filter_keys`` with ``predict()`` or ``filter_key`` with
 ``predict_mean()`` to name which hospital **service** (or other stratum) to use —
 i.e. which key(s) appear in ``weights``, matching the names given in ``filters``
@@ -59,7 +65,7 @@ when the model was fitted with filters. If ``weights`` has only one key,
 ``filter_keys`` / ``filter_key`` may be omitted.
 
 Optional ``prediction_date`` (a :class:`~datetime.date`) anchors the calendar
-day. The library fits weekday profiles by default, but the predict-time
+day. The library fits weekday profiles by default, but the inference-time
 warning behaviour depends on whether ``stratify_by_weekday`` was explicitly
 opted into at fit time:
 
@@ -71,7 +77,7 @@ opted into at fit time:
   (``datetime.weekday()``: Monday = 0, …, Sunday = 6). Omitting
   ``prediction_date`` emits a ``UserWarning`` and falls back to pooled rates
   so existing predictions remain numerically unchanged.
-- ``strict_prediction_date=True`` at predict time turns any pooled fallback
+- ``strict_prediction_date=True`` at inference time turns any pooled fallback
   into a ``ValueError`` regardless of how ``stratify_by_weekday`` was set.
 
 The deprecated nested ``prediction_context`` dict (keyword or first positional
@@ -920,12 +926,12 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         prediction_window : timedelta, optional
             Deprecated. Prefer passing ``prediction_window`` to
             ``predict()`` / ``predict_mean()`` instead. If provided, will
-            be stored as a fall-back default for predict-time use.
+            be stored as a fall-back default for use at inference time.
         yta_time_interval : timedelta
             The granularity of arrival-rate buckets. Required.
         prediction_times : list, optional
             Deprecated. Prediction times are no longer needed at fit time; any
-            prediction time can be served at predict time (snapped to the
+            prediction time can be served at inference time (snapped to the
             nearest ``yta_time_interval`` boundary). Retained for backward
             compatibility only.
         num_days : int, optional
@@ -955,13 +961,13 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
               ``prediction_date`` to ``predict()`` / ``predict_mean()`` so each
               slice uses the matching weekday rate. Omitting ``prediction_date``
               emits a ``UserWarning`` (and ``strict_prediction_date=True`` at
-              predict time turns the warning into a ``ValueError``).
+              inference time turns the warning into a ``ValueError``).
             - ``False``: opt out. Only the pooled 24-hour profile is stored
               and ``arrival_rates_by_weekday`` is absent from ``weights``.
 
             Most callers should leave this on the default. Pass ``True``
             explicitly only when you intend to thread ``prediction_date`` at
-            predict time and want pooled-fallbacks to be surfaced loudly.
+            inference time and want pooled-fallbacks to be surfaced loudly.
 
         Returns
         -------
@@ -1011,7 +1017,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         if prediction_times is not None:
             warnings.warn(
                 "Passing prediction_times to fit() is deprecated; any prediction "
-                "time can be served at predict time. This argument is retained "
+                "time can be served at inference time. This argument is retained "
                 "for backward compatibility only and will be removed in a future "
                 "release.",
                 DeprecationWarning,
@@ -1019,7 +1025,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
             )
 
         # Resolve the sentinel default for stratify_by_weekday and track whether
-        # the user explicitly opted in. The flag gates the predict-time
+        # the user explicitly opted in. The flag gates the inference-time
         # "missing prediction_date" warning so that legacy callers who never
         # asked for weekday stratification don't see noise (Option 1 of the
         # weekday-contract design).
@@ -1034,7 +1040,7 @@ class IncomingAdmissionPredictor(BaseEstimator, TransformerMixin, ABC):
         self.stratify_by_weekday = stratify_by_weekday
         self._user_opted_in_to_weekday = user_opted_in_to_weekday
 
-        # Store deprecated fit-time values as predict-time fall-backs
+        # Store deprecated fit-time values as inference-time fall-backs
         self._deprecated_fit_prediction_window = prediction_window
         if prediction_times is not None:
             normalized_times = [
@@ -1281,7 +1287,7 @@ class DirectAdmissionPredictor(IncomingAdmissionPredictor):
     - Use ``fit(..., stratify_by_weekday=True)`` to store weekday-specific
       arrival profiles.
     - Use ``predict(..., prediction_date=...)`` (or ``predict_mean``) to
-      activate weekday-aware slicing at predict time.
+      activate weekday-aware slicing at inference time.
     - If ``prediction_date`` is omitted, pooled 24-hour arrival rates are used.
     """
 
@@ -1694,7 +1700,7 @@ class EmpiricalIncomingAdmissionPredictor(IncomingAdmissionPredictor):
         stratify_by_weekday : bool or None, default=None
             Same as ``IncomingAdmissionPredictor.fit``. The sentinel default
             (``None``) fits weekday profiles silently; pass ``True`` explicitly
-            to activate the predict-time weekday contract (warns when
+            to activate the inference-time weekday contract (warns when
             ``prediction_date`` is omitted), or ``False`` to opt out entirely.
         start_time_col : str, default='arrival_datetime'
             Name of the column containing the start time (e.g., arrival time).

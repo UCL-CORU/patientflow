@@ -720,6 +720,8 @@ def get_prob_dist_by_service(
     use_admission_in_window_prob: Optional[bool] = None,
     outcome_column: str = "left_subspecialty_in_window",
     verbose: bool = False,
+    elective_list: Optional[pd.DataFrame] = None,
+    elective_arrivals: Optional[pd.DataFrame] = None,
 ) -> Dict[str, Dict[date, Dict[str, Any]]]:
     """Evaluate composed service-level predictions across a set of test dates.
 
@@ -790,6 +792,20 @@ def get_prob_dist_by_service(
         Default is `left_subspecialty_in_window`.
     verbose : bool, optional
         If True, print a one-line summary on completion. Default is False.
+    elective_list : pandas.DataFrame, optional
+        Booked lists for all *snapshot_dates*, one row per listed patient with
+        the elective model's encounter column, its intended-date column and the
+        service columns used in its filters. For each snapshot date the rows
+        whose intended date equals that date are passed to `build_service_data`
+        as the day list. Only used when the elective model is a
+        `ListBasedAdmissionPredictor`; requires *elective_arrivals*.
+    elective_arrivals : pandas.DataFrame, optional
+        Elective arrivals at all services (encounter and ``arrival_datetime``)
+        covering the evaluation period and the day before the first list. The
+        predictor ignores rows after each prediction moment. Include every
+        listed patient who arrived, including those who did not need a bed
+        (for example day cases), because the predictor uses this frame to
+        drop listed patients who have already arrived.
 
     Returns
     -------
@@ -853,7 +869,7 @@ def get_prob_dist_by_service(
     valid_components = ("arrivals", "departures", "net_flow")
     if component not in valid_components:
         raise ValueError(
-            f"component must be one of {valid_components}, " f"got '{component}'"
+            f"component must be one of {valid_components}, got '{component}'"
         )
 
     validate_observation_mode_for_component(component, observation_mode)
@@ -905,6 +921,19 @@ def get_prob_dist_by_service(
             "inpatient_visits is required when the flow_selection includes "
             "departures or transfers with a transfer model"
         )
+
+    if elective_list is not None and elective_arrivals is None:
+        raise ValueError("elective_arrivals is required when elective_list is supplied")
+    if elective_list is not None:
+        elective_model = (
+            models.elective_yta_model
+            if isinstance(models, ServiceModels)
+            else models[5]
+        )
+        intended_date_col = getattr(
+            elective_model, "intended_date_col", "intended_date"
+        )
+        elective_intended = pd.to_datetime(elective_list[intended_date_col]).dt.date
 
     predictor = DemandPredictor(k_sigma=8.0)
     result: Dict[str, Dict[date, Dict[str, Any]]] = {svc: {} for svc in services}
@@ -975,6 +1004,12 @@ def get_prob_dist_by_service(
             y2=y2,
             use_admission_in_window_prob=use_admission_in_window_prob,
             prediction_date=dt,
+            elective_day_list=(
+                elective_list[elective_intended == dt]
+                if elective_list is not None
+                else None
+            ),
+            elective_arrivals=elective_arrivals,
         )
 
         for svc in services:

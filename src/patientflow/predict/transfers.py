@@ -15,7 +15,7 @@ producing **one** aggregated PMF per flow rather than one PMF per subgroup.
 
 The cohort-pooled ``["services"]`` row remains fitted for diagnostics (e.g.
 [get_transition_matrix][patientflow.predictors.transfer_predictor.TransferProbabilityEstimator.get_transition_matrix])
-but is **not** used at prediction time. Patients that do not resolve to a
+but is **not** used at inference time. Patients that do not resolve to a
 subgroup (typically adults with missing or invalid ``sex``) are excluded from
 transfer routing rather than falling back to the pooled row; see
 [compute_transfer_arrivals][patientflow.predict.transfers.compute_transfer_arrivals].

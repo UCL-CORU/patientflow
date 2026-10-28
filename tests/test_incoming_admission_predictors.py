@@ -999,7 +999,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         """Library-side default (sentinel) does NOT warn when prediction_date is omitted.
 
         Option 1 semantics: weekday profiles are fitted by default but the
-        predict-time warning only fires when the caller explicitly opted in
+        inference-time warning only fires when the caller explicitly opted in
         via ``stratify_by_weekday=True``. Legacy callers see no new warnings
         and predictions remain numerically unchanged.
         """
@@ -1047,7 +1047,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
         self.assertAlmostEqual(mean_no_date, mean_pooled, places=10)
 
     def test_explicit_opt_in_warns_when_prediction_date_omitted(self):
-        """Explicit stratify_by_weekday=True activates the predict-time contract."""
+        """Explicit stratify_by_weekday=True activates the inference-time contract."""
         predictor = DirectAdmissionPredictor(filters=None)
         predictor.fit(
             self.test_df,
@@ -1084,7 +1084,7 @@ class TestIncomingAdmissionPredictors(unittest.TestCase):
             yta_time_interval=self.yta_time_interval,
             num_days=self.num_days,
         )
-        # Default fit is silent on warnings, but strict at predict time still raises.
+        # Default fit is silent on warnings, but strict at inference time still raises.
         self.assertFalse(predictor._user_opted_in_to_weekday)
         with self.assertRaises(ValueError) as cm:
             predictor.predict_mean(

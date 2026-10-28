@@ -39,6 +39,9 @@ from patientflow.predictors.incoming_admission_predictors import (
     EmpiricalIncomingAdmissionPredictor,
     DirectAdmissionPredictor,
 )
+from patientflow.predictors.list_based_admission_predictor import (
+    ListBasedAdmissionPredictor,
+)
 from patientflow.prepare import create_yta_filters
 
 
@@ -479,7 +482,7 @@ class TestBuildServiceData(unittest.TestCase):
                 y2=self.y2,
             )
 
-        # With the prediction_window now supplied at predict() time, YTA models
+        # With the prediction_window now supplied at inference time, YTA models
         # trained for a different window should still be usable against any
         # caller-supplied window. Verify a previously "mismatched" elective YTA
         # model does not raise.
@@ -751,6 +754,129 @@ class TestComputeTransferArrivalsSmoke(unittest.TestCase):
         self.assertIn("surgery", result["emergency"])
         # Two emergency inpatients at cardiology both route to surgery.
         self.assertAlmostEqual(result["emergency"]["surgery"][2], 1.0, places=5)
+
+
+class TestListBasedElectiveFlow(unittest.TestCase):
+    """Mixed services: one list-based (PMF) and one without list data (Poisson)."""
+
+    @classmethod
+    def setUpClass(cls):
+        from datetime import datetime, time as dt_time
+
+        cls.specialties = ["medical", "surgical"]
+        cls.day = date(2024, 1, 15)  # Monday
+        arrivals, listed = [], []
+        for d in range(30):
+            day = date(2024, 1, 1) + timedelta(days=d)
+            for i in range(8):
+                enc = f"M{d}-{i}"
+                listed.append((enc, "medical", day))
+                if i < 5:
+                    arrivals.append(
+                        (datetime.combine(day, dt_time(10, 0)), enc, "medical")
+                    )
+            arrivals.append(
+                (datetime.combine(day, dt_time(12, 0)), f"UM{d}", "medical")
+            )
+            arrivals.append(
+                (datetime.combine(day, dt_time(11, 0)), f"US{d}", "surgical")
+            )
+        cls.train_df = (
+            pd.DataFrame(arrivals, columns=["arrival_datetime", "encounter", "service"])
+            .sort_values("arrival_datetime")
+            .set_index("arrival_datetime")
+        )
+        cls.list_df = pd.DataFrame(
+            listed, columns=["encounter", "service", "intended_date"]
+        )
+        filters = {s: {"service": s} for s in cls.specialties}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            cls.model = ListBasedAdmissionPredictor(filters=filters).fit(
+                cls.train_df,
+                list_df=cls.list_df,
+                yta_time_interval=timedelta(hours=1),
+                min_list_count=1,
+            )
+        # A list for "surgical" is absent, so it has no list probabilities.
+        cls.models = (None, None, None, None, None, cls.model, None)
+        cls.flow_selection = FlowSelection.custom(
+            include_ed_current=False,
+            include_ed_yta=False,
+            include_non_ed_yta=False,
+            include_elective_yta=True,
+            include_transfers_in=False,
+            include_departures=False,
+        )
+        cls.day_list = cls.list_df[cls.list_df["intended_date"] == cls.day]
+        cls.arrivals = cls.train_df.reset_index()
+
+    def _build(self, **kwargs):
+        return build_service_data(
+            models=self.models,
+            prediction_time=(8, 0),
+            ed_snapshots=None,
+            inpatient_snapshots=None,
+            specialties=self.specialties,
+            prediction_window=timedelta(hours=8),
+            flow_selection=self.flow_selection,
+            prediction_date=self.day,
+            **kwargs,
+        )
+
+    def test_mixed_pmf_and_poisson_flows(self):
+        result = self._build(
+            elective_day_list=self.day_list, elective_arrivals=self.arrivals
+        )
+        medical = result["medical"].inflows["elective_yta"]
+        surgical = result["surgical"].inflows["elective_yta"]
+        self.assertEqual(medical.flow_type, "pmf")
+        self.assertAlmostEqual(float(np.sum(medical.distribution)), 1.0)
+        self.assertEqual(surgical.flow_type, "poisson")
+        self.assertIsInstance(surgical.distribution, float)
+
+        mean = float(
+            np.sum(np.arange(len(medical.distribution)) * medical.distribution)
+        )
+        expected = self.model.predict_mean(
+            prediction_time=(8, 0),
+            prediction_window=timedelta(hours=8),
+            filter_key="medical",
+            prediction_date=self.day,
+            day_list=self.day_list,
+            arrivals=self.arrivals,
+        )
+        self.assertAlmostEqual(mean, expected, places=5)
+
+    def test_without_day_list_all_flows_are_poisson(self):
+        result = self._build()
+        for svc in self.specialties:
+            self.assertEqual(result[svc].inflows["elective_yta"].flow_type, "poisson")
+
+    def test_demand_predictor_accepts_pmf_elective_flow(self):
+        from patientflow.predict.demand import DemandPredictor
+
+        result = self._build(
+            elective_day_list=self.day_list, elective_arrivals=self.arrivals
+        )
+        predictor = DemandPredictor()
+        bundle = predictor.predict_service(result["medical"], self.flow_selection)
+        self.assertAlmostEqual(float(np.sum(bundle.arrivals.probabilities)), 1.0)
+
+    def test_physical_cap_of_pmf_flows_truncates_no_mass(self):
+        from patientflow.predict.demand import DemandPredictor
+
+        result = self._build(
+            elective_day_list=self.day_list, elective_arrivals=self.arrivals
+        )
+        pmf = np.asarray(result["medical"].inflows["elective_yta"].distribution)
+        predictor = DemandPredictor()
+        cap = 2 * (len(pmf) - 1)  # sum of physical maxima, as in the hierarchy
+        out = predictor.convolve_multiple(
+            [pmf, pmf], max_support=cap, entity_id="x", flow_type="arrivals"
+        )
+        self.assertEqual(predictor.truncated_mass[("x", "arrivals")], 0.0)
+        self.assertAlmostEqual(float(out.sum()), 1.0)
 
 
 class TestWarnSpecialtyMismatchShim(unittest.TestCase):
