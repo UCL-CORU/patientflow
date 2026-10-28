@@ -954,6 +954,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../3g_Predict_elective_demand_using_a_list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3g. Predict elective demand using a list of planned admissions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../4_Specify_demand_model/" class="md-nav__link">
         
   
@@ -1622,7 +1650,7 @@
 <ul>
 <li>Incoming patients who haven't yet arrived at the Emergency Department, but who will need a bed within a prediction window</li>
 <li>Emergency patients who arrive via other routes than the ED, and become inpatients (such as emergency transfers from other hospitals)</li>
-<li>Elective admissions of patients. Planned elective admissions are recorded on a 'To Come In' (TCI) list by patient number. In data, the hospital visit (known as an encounter) for the elective procedure begins at the moment a patient arrives, but may not be recorded in data prior to that point. In a simple case without making use of any data on TCI lists, we might want to predict bed requirements for such patients based on past patterns of such arrivals between a prediction time (eg 12:00) and the end of a prediction window (eg 8 hours later).</li>
+<li>Elective admissions of patients. Planned elective admissions are recorded on a 'To Come In' (TCI) list by patient number. In some data systems, the hospital visit (known as an encounter) for the elective procedure is only recorded once the patient arrives; in others, it is created when the patient is listed. In a simple case without making use of any data on TCI lists, we might want to predict bed requirements for such patients based on past patterns of such arrivals between a prediction time (eg 12:00) and the end of a prediction window (eg 8 hours later).</li>
 </ul>
 <p>For these situations, we can use <code>patientflow</code> to learn patterns from past data, and use these to predict a bed count distribution at the aggregate level.</p>
 <p>In this notebook, I'll use the example of predicting the number of beds needed for incoming patients (patients yet to arrive to the Emergency Department who will need a bed within a prediction window). I'll show three approaches:</p>
@@ -1631,6 +1659,7 @@
 <li>a weighted Poisson model using an empirical survival curve; arrival rates of patients who were admitted (at some point), are weighted by their probability of being admitted within a prediction window, calculated from a survival curve learned from past data</li>
 <li>a weighted Poisson model using an aspirational approach; instead of using a survival curve learned from past data, it is assumed that the ED is meeting 4-hour targets for time to admission.</li>
 </ul>
+<p>Notebook 3g shows how to use a list of planned admissions when one is available.</p>
 <p>I also demonstrate predictions by specialty, and weekday-aware arrival rates: the library fits per-weekday profiles by default; pass <code>prediction_date</code> on <code>predict()</code> to select the day (see the final section).</p>
 <pre><code class="language-python"># Reload functions every time
 %load_ext autoreload
