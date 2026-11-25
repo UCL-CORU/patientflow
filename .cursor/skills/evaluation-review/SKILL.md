@@ -66,13 +66,19 @@ distributions and Pearson X² for transition matrices.
 
 ### `classifier_model_diagnostics` (one row per clocked model)
 
-- Metrics: `auroc`, `auprc`, `log_loss`, `n_samples`, `n_positive_cases`.
-- `reliable` = `n_positive_cases >= 30` on the split named in `metrics_split`.
+- Metrics: `auroc`, `auprc`, `log_loss`, `n_samples`, `n_positive_cases`,
+  scored on the run's evaluation visits (`metrics_split` = the run's
+  `eval_split`) using every snapshot at the model's clock
+  (`single_snapshot_per_visit: false`), the same basis as the plots.
+  `n_samples` counts snapshots, not visits.
+- `reliable` = `n_positive_cases >= 30`.
 - There is no hard pass/fail cutoff. Compare clocks against each other and
   against previous runs; call out any clock notably worse than its siblings
   (e.g. AUROC ~0.05 below the rest) and any `reliable: false` row.
-- Caveat: these metrics come from train-time scoring (`metrics_split`:
-  typically `cv_train` or `test`), which may differ from the run's eval split.
+- `train_time_*` fields carry the metrics stored at training
+  (`train_time_metrics_split`: `test`, `valid` or `cv_train`). Use them for
+  context only. Runs made before this change have no `train_time_*` fields,
+  and their `metrics_split` is the training split.
 
 ### `classifier_probability_quality`
 

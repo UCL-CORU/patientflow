@@ -561,7 +561,8 @@ class EvaluationInputsBuilder:
             Models sorted by prediction time if a sequence; mapping keys are
             `(hour, minute)` tuples.
         visits_df : pandas.DataFrame
-            Visit-level frame for MADCAP / calibration / SHAP. May include
+            Visit-level frame for the classifier headline metrics and the
+            discrimination / MADCAP / calibration / SHAP plots. May include
             eval-only demographic columns used solely for stratified MADCAP
             charts; those columns are not model inputs unless they were
             present at training time.
