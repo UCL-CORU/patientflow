@@ -35,13 +35,13 @@ Notes
 Examples
 --------
 >>> # Generate random arrival times over a week
->>> np.random.seed(42)  # For reproducibility
+>>> rng = np.random.default_rng(42)  # For reproducibility
 >>> n_arrivals = 1000
 >>> random_times = [
 ...     pd.Timestamp('2024-01-01') +
-...     pd.Timedelta(days=np.random.randint(0, 7)) +
-...     pd.Timedelta(hours=np.random.randint(0, 24)) +
-...     pd.Timedelta(minutes=np.random.randint(0, 60))
+...     pd.Timedelta(days=int(rng.integers(0, 7))) +
+...     pd.Timedelta(hours=int(rng.integers(0, 24))) +
+...     pd.Timedelta(minutes=int(rng.integers(0, 60)))
 ...     for _ in range(n_arrivals)
 ... ]
 >>> df = pd.DataFrame(index=sorted(random_times))

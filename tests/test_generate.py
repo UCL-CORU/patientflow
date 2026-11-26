@@ -2,9 +2,32 @@
 
 from __future__ import annotations
 
+import random
+
+import numpy as np
 import pandas as pd
 
-from patientflow.generate import create_fake_elective_lists, synthesise_departure_times
+from patientflow.generate import (
+    create_fake_elective_lists,
+    create_fake_finished_visits,
+    synthesise_departure_times,
+)
+
+
+def test_create_fake_finished_visits_seeded_and_leaves_global_state():
+    args = ("2023-01-01", "2023-01-08", 20)
+    np.random.seed(123)
+    random.seed(123)
+    expected = (np.random.random(), random.random())
+
+    np.random.seed(123)
+    random.seed(123)
+    first = create_fake_finished_visits(*args)
+    assert (np.random.random(), random.random()) == expected
+
+    second = create_fake_finished_visits(*args)
+    for a, b in zip(first, second):
+        pd.testing.assert_frame_equal(a, b)
 
 
 def test_synthesise_departure_times_ed_visits():

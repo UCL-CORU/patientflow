@@ -121,7 +121,7 @@ def convert_dict_to_values(df, column, prefix):
     return dict_df
 
 
-def apply_set(row: pd.Series) -> str:
+def apply_set(row: pd.Series, rng: Optional[random.Random] = None) -> str:
     """Randomly assign a set label based on weighted probabilities.
 
     Parameters
@@ -130,6 +130,8 @@ def apply_set(row: pd.Series) -> str:
         Series containing 'training_set', 'validation_set', and 'test_set'
         weights, and optionally a 'calibration_set' weight when a calibration
         window is configured
+    rng : random.Random, optional
+        Generator to draw from. When None, a fresh unseeded generator is used.
 
     Returns
     -------
@@ -142,7 +144,9 @@ def apply_set(row: pd.Series) -> str:
     if "calibration_set" in row.index:
         labels.insert(1, "calibration")
         weights.insert(1, row.calibration_set)
-    return random.choices(labels, weights=weights)[0]
+    if rng is None:
+        rng = random.Random()
+    return rng.choices(labels, weights=weights)[0]
 
 
 def assign_patient_ids(
@@ -215,8 +219,7 @@ def assign_patient_ids(
             f"start_validation_set={start_validation_set}"
         )
 
-    # Set random seed for reproducibility
-    random.seed(seed)
+    rng = random.Random(seed)
 
     patients: pd.DataFrame = (
         df.groupby([patient_id, visit_col])[date_col].max().reset_index()
@@ -284,7 +287,7 @@ def assign_patient_ids(
         membership_cols.insert(1, "calibration_set")
 
     patients = patients.groupby(patient_id)[membership_cols].sum()
-    patients["training_validation_test"] = patients.apply(apply_set, axis=1)
+    patients["training_validation_test"] = patients.apply(apply_set, axis=1, rng=rng)
 
     set_display_names = {
         "training_set": "Train",
@@ -657,22 +660,24 @@ def select_one_snapshot_per_visit(df, visit_col, seed=42):
     visit_col : str
         Name of the column containing visit identifiers
     seed : int, optional
-        Random seed for reproducibility, by default 42
+        Seed for a local random generator, by default 42. Ignored when ``df``
+        already has a ``random_number`` column. None draws without a seed.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame containing one randomly selected snapshot per visit
+        DataFrame containing one randomly selected snapshot per visit. The
+        input ``df`` is not modified.
     """
-    # Generate random numbers if not present
-    if "random_number" not in df.columns:
-        if seed is not None:
-            np.random.seed(seed)
-        df["random_number"] = np.random.random(size=len(df))
+    if "random_number" in df.columns:
+        random_number = df["random_number"]
+    else:
+        rng = np.random.default_rng(seed)
+        random_number = pd.Series(rng.random(size=len(df)), index=df.index)
 
     # Select the row with the maximum random_number for each visit
-    max_indices = df.groupby(visit_col)["random_number"].idxmax()
-    return df.loc[max_indices].drop(columns=["random_number"])
+    max_indices = random_number.groupby(df[visit_col]).idxmax()
+    return df.loc[max_indices].drop(columns=["random_number"], errors="ignore")
 
 
 def prepare_patient_snapshots(

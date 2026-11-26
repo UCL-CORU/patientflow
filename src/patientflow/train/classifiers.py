@@ -599,7 +599,8 @@ def create_balance_info(
     original_positive_rate: float,
     balanced_positive_rate: float,
     majority_to_minority_ratio: float,
-) -> Dict[str, Union[bool, int, float]]:
+    random_state: Optional[int] = None,
+) -> Dict[str, Union[bool, int, float, None]]:
     """Create a dictionary with balance information.
 
     Parameters
@@ -616,10 +617,12 @@ def create_balance_info(
         Positive class rate after balancing
     majority_to_minority_ratio : float
         Ratio of majority to minority class samples
+    random_state : int, optional
+        Seed used for the undersampling draw, by default None
 
     Returns
     -------
-    Dict[str, Union[bool, int, float]]
+    Dict[str, Union[bool, int, float, None]]
         Dictionary containing balance information
     """
     return {
@@ -629,6 +632,7 @@ def create_balance_info(
         "original_positive_rate": original_positive_rate,
         "balanced_positive_rate": balanced_positive_rate,
         "majority_to_minority_ratio": majority_to_minority_ratio,
+        "random_state": random_state,
     }
 
 
@@ -681,6 +685,7 @@ def train_classifier(
     label_col: str = "is_admitted",
     evaluate_on_test: bool = False,
     calibration_visits: Optional[DataFrame] = None,
+    random_state: Optional[int] = 42,
 ) -> TrainedClassifier:
     """
     Train a single model including data preparation and balancing.
@@ -743,6 +748,10 @@ def train_classifier(
         validation remains eval-only. When omitted, the calibrator is fitted
         on validation (so validation is no longer an honest holdout for
         calibration).
+    random_state : int, optional
+        Seed for the local generator that undersamples the majority class
+        when `use_balanced_training` is True, by default 42. None draws
+        without a seed. Recorded in the balance metadata.
 
     Returns
     -------
@@ -883,12 +892,13 @@ def train_classifier(
         n_pos = len(pos_indices)
         n_neg = int(n_pos * majority_to_minority_ratio)
 
-        neg_indices_sampled = np.random.choice(
-            neg_indices, size=min(n_neg, len(neg_indices)), replace=False
+        rng = np.random.default_rng(random_state)
+        neg_indices_sampled = rng.choice(
+            neg_indices.to_numpy(), size=min(n_neg, len(neg_indices)), replace=False
         )
 
         train_balanced_indices = np.concatenate([pos_indices, neg_indices_sampled])
-        np.random.shuffle(train_balanced_indices)
+        rng.shuffle(train_balanced_indices)
 
         X_train = X_train.loc[train_balanced_indices]
         y_train = y_train.loc[train_balanced_indices]
@@ -903,6 +913,7 @@ def train_classifier(
         majority_to_minority_ratio=majority_to_minority_ratio
         if use_balanced_training
         else 1.0,
+        random_state=random_state if use_balanced_training else None,
     )
 
     # Initialize best training results with default values
@@ -1110,6 +1121,7 @@ def train_multiple_classifiers(
     evaluate_on_test: bool = False,
     verbose: bool = True,
     calibration_visits: Optional[DataFrame] = None,
+    random_state: Optional[int] = 42,
 ) -> Dict[str, TrainedClassifier]:
     """Train admission prediction models for multiple prediction times.
 
@@ -1163,6 +1175,9 @@ def train_multiple_classifiers(
         Visits from a dedicated chronological calibration window. When
         provided, probability calibration is fitted on this frame instead of
         validation for every prediction time (see `train_classifier`).
+    random_state : int, optional
+        Seed for the undersampling draw, passed to `train_classifier` for
+        every prediction time, by default 42.
 
     Returns
     -------
@@ -1201,6 +1216,7 @@ def train_multiple_classifiers(
             label_col=label_col,
             evaluate_on_test=evaluate_on_test,
             calibration_visits=calibration_visits,
+            random_state=random_state,
         )
 
         trained_models[model_key] = best_model
