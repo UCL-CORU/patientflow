@@ -18975,13 +18975,13 @@ and unfettered demand rates for inpatient arrivals using an aspirational approac
 
 <p><span class="doc-section-title">Examples:</span></p>
     <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Generate random arrival times over a week</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducibility</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducibility</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">n_arrivals</span> <span class="o">=</span> <span class="mi">1000</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">random_times</span> <span class="o">=</span> <span class="p">[</span>
 <span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s1">'2024-01-01'</span><span class="p">)</span> <span class="o">+</span>
-<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span> <span class="o">+</span>
-<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">24</span><span class="p">))</span> <span class="o">+</span>
-<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">))</span>
+<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">7</span><span class="p">)))</span> <span class="o">+</span>
+<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">24</span><span class="p">)))</span> <span class="o">+</span>
+<span class="gp">... </span>    <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">integers</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">)))</span>
 <span class="gp">... </span>    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_arrivals</span><span class="p">)</span>
 <span class="gp">... </span><span class="p">]</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="nb">sorted</span><span class="p">(</span><span class="n">random_times</span><span class="p">))</span>
@@ -38941,7 +38941,7 @@ The functions are used for illustrative purposes in some of the notebooks.</p>
       </thead>
       <tbody>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="create_fake_finished_visits(start_date, end_date, mean_patients_per_day, admitted_only=False) (patientflow.generate.create_fake_finished_visits)" href="#patientflow.generate.create_fake_finished_visits">create_fake_finished_visits</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="create_fake_finished_visits(start_date, end_date, mean_patients_per_day, admitted_only=False, seed=42) (patientflow.generate.create_fake_finished_visits)" href="#patientflow.generate.create_fake_finished_visits">create_fake_finished_visits</a></code></td>
               <td>
                 <div class="doc-md-description">
                   <p>Generate synthetic patient visits, triage observations, and lab orders.</p>
@@ -39217,7 +39217,10 @@ does not change the lists, the outcomes or the arrival times.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/generate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">656</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
 <span class="normal">657</span>
 <span class="normal">658</span>
 <span class="normal">659</span>
@@ -39389,10 +39392,7 @@ does not change the lists, the outcomes or the arrival times.</p>
 <span class="normal">825</span>
 <span class="normal">826</span>
 <span class="normal">827</span>
-<span class="normal">828</span>
-<span class="normal">829</span>
-<span class="normal">830</span>
-<span class="normal">831</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_elective_lists</span><span class="p">(</span>
+<span class="normal">828</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_elective_lists</span><span class="p">(</span>
     <span class="n">start_date</span><span class="p">,</span>
     <span class="n">end_date</span><span class="p">,</span>
     <span class="n">listed_per_weekday</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -39578,7 +39578,7 @@ does not change the lists, the outcomes or the arrival times.</p>
 
 
 <h3 id="patientflow.generate.create_fake_finished_visits" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">create_fake_finished_visits</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">admitted_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">create_fake_finished_visits</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">admitted_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span></code>
 
 </h3>
 
@@ -39664,6 +39664,23 @@ the same total number of admitted patients as would be expected in the full data
             </td>
             <td>
                   <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>seed</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Seed for a local random generator, by default 42. Global random state
+is not changed.</p>
+              </div>
+            </td>
+            <td>
+                  <code>42</code>
             </td>
           </tr>
       </tbody>
@@ -40047,11 +40064,8 @@ the same total number of admitted patients as would be expected in the full data
 <span class="normal">399</span>
 <span class="normal">400</span>
 <span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_finished_visits</span><span class="p">(</span>
-    <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">admitted_only</span><span class="o">=</span><span class="kc">False</span>
+<span class="normal">402</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_finished_visits</span><span class="p">(</span>
+    <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">admitted_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Generate synthetic patient visit data for an emergency department.</span>
@@ -40070,6 +40084,9 @@ the same total number of admitted patients as would be expected in the full data
 <span class="sd">    admitted_only : bool, optional</span>
 <span class="sd">        If True, only return admitted patients. The mean_patients_per_day will be adjusted to maintain</span>
 <span class="sd">        the same total number of admitted patients as would be expected in the full dataset.</span>
+<span class="sd">    seed : int, optional</span>
+<span class="sd">        Seed for a local random generator, by default 42. Global random state</span>
+<span class="sd">        is not changed.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -40108,8 +40125,8 @@ the same total number of admitted patients as would be expected in the full data
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">end_date</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">end_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">end_date</span><span class="p">,</span> <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span>
 
-    <span class="c1"># Set random seed for reproducibility</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># You can change this seed value as needed</span>
+    <span class="c1"># Legacy RandomState keeps the generated data identical to the global-seed version</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="c1"># Define admission probabilities based on triage score</span>
     <span class="c1"># Triage 1: 80% admission, Triage 2: 60%, Triage 3: 30%, Triage 4: 10%, Triage 5: 2%</span>
@@ -40141,7 +40158,7 @@ the same total number of admitted patients as would be expected in the full data
         <span class="n">mean_patients_per_day</span> <span class="o">=</span> <span class="n">mean_patients_per_day</span> <span class="o">/</span> <span class="n">expected_admission_rate</span>
 
     <span class="c1"># Generate random number of patients for each day using Poisson distribution</span>
-    <span class="n">daily_patients</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">days_range</span><span class="p">)</span>
+    <span class="n">daily_patients</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">mean_patients_per_day</span><span class="p">,</span> <span class="n">days_range</span><span class="p">)</span>
 
     <span class="c1"># Calculate the total number of visits</span>
     <span class="n">total_visits</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">daily_patients</span><span class="p">)</span>
@@ -40206,9 +40223,7 @@ the same total number of admitted patients as would be expected in the full data
 
     <span class="c1"># Create a pool of patients who will have multiple visits (20% of patients)</span>
     <span class="n">multi_visit_patients</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
-            <span class="n">patient_ids</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">num_unique_patients</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
-        <span class="p">)</span>
+        <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">patient_ids</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">num_unique_patients</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="p">)</span>
 
     <span class="k">for</span> <span class="n">day_idx</span><span class="p">,</span> <span class="n">num_patients</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">daily_patients</span><span class="p">):</span>
@@ -40225,40 +40240,38 @@ the same total number of admitted patients as would be expected in the full data
 
             <span class="k">if</span> <span class="n">available_new_patients</span><span class="p">:</span>
                 <span class="c1"># Use a new patient</span>
-                <span class="n">patient_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">available_new_patients</span><span class="p">)</span>
+                <span class="n">patient_id</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">available_new_patients</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># All patients have at least one visit, now use multi-visit patients</span>
-                <span class="n">patient_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">multi_visit_patients</span><span class="p">))</span>
+                <span class="n">patient_id</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">multi_visit_patients</span><span class="p">))</span>
 
             <span class="c1"># Increment the visit count for this patient</span>
             <span class="n">patient_visit_count</span><span class="p">[</span><span class="n">patient_id</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
 
             <span class="c1"># Random hour for arrival (more likely during daytime)</span>
-            <span class="n">arrival_hour</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># Mean at 1 PM, std dev of 4 hours</span>
+            <span class="n">arrival_hour</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>  <span class="c1"># Mean at 1 PM, std dev of 4 hours</span>
             <span class="n">arrival_hour</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">23</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">arrival_hour</span><span class="p">)))</span>  <span class="c1"># Clamp between 0-23</span>
 
             <span class="c1"># Random minutes</span>
-            <span class="n">arrival_minute</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="n">arrival_minute</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
 
             <span class="c1"># Create arrival datetime</span>
             <span class="n">arrival_datetime</span> <span class="o">=</span> <span class="n">current_date</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
                 <span class="n">hour</span><span class="o">=</span><span class="n">arrival_hour</span><span class="p">,</span>
                 <span class="n">minute</span><span class="o">=</span><span class="n">arrival_minute</span><span class="p">,</span>
-                <span class="n">second</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">),</span>
+                <span class="n">second</span><span class="o">=</span><span class="n">rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">60</span><span class="p">),</span>
             <span class="p">)</span>
 
             <span class="c1"># Generate triage score (1-5)</span>
-            <span class="n">triage_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="n">triage_probabilities</span><span class="p">)</span>
+            <span class="n">triage_score</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="n">triage_probabilities</span><span class="p">)</span>
 
             <span class="c1"># Generate admission status based on triage score</span>
             <span class="n">admission_prob</span> <span class="o">=</span> <span class="n">admission_probabilities</span><span class="p">[</span><span class="n">triage_score</span><span class="p">]</span>
-            <span class="n">is_admitted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
-                <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">admission_prob</span><span class="p">,</span> <span class="n">admission_prob</span><span class="p">]</span>
-            <span class="p">)</span>
+            <span class="n">is_admitted</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">admission_prob</span><span class="p">,</span> <span class="n">admission_prob</span><span class="p">])</span>
 
             <span class="c1"># Generate specialty for admitted patients</span>
             <span class="k">if</span> <span class="n">is_admitted</span><span class="p">:</span>
-                <span class="n">specialty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                <span class="n">specialty</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
                     <span class="p">[</span><span class="s2">"medical"</span><span class="p">,</span> <span class="s2">"surgical"</span><span class="p">,</span> <span class="s2">"haem/onc"</span><span class="p">,</span> <span class="s2">"paediatric"</span><span class="p">],</span>
                     <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.65</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
                 <span class="p">)</span>
@@ -40271,7 +40284,7 @@ the same total number of admitted patients as would be expected in the full data
 
             <span class="c1"># Generate length of stay (in minutes) - log-normal distribution</span>
             <span class="c1"># Most visits are 4 to 12 hours, but some can be shorter or longer</span>
-            <span class="n">length_of_stay</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">5.8</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">length_of_stay</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">5.8</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
             <span class="n">length_of_stay</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
                 <span class="mi">60</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2880</span><span class="p">,</span> <span class="n">length_of_stay</span><span class="p">)</span>
             <span class="p">)</span>  <span class="c1"># Between 1 hour and 48 hours</span>
@@ -40291,9 +40304,7 @@ the same total number of admitted patients as would be expected in the full data
                 <span class="n">age</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">v</span><span class="p">[</span><span class="s2">"age"</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">visits</span> <span class="k">if</span> <span class="n">v</span><span class="p">[</span><span class="s2">"patient_id"</span><span class="p">]</span> <span class="o">==</span> <span class="n">patient_id</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Generate age with a distribution skewed towards older adults</span>
-                <span class="n">age</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">3.8</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-                <span class="p">)</span>  <span class="c1"># Centers around 45 years</span>
+                <span class="n">age</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">lognormal</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">3.8</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>  <span class="c1"># Centers around 45 years</span>
                 <span class="n">age</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">age</span><span class="p">))</span>  <span class="c1"># Clamp between 0-100 years</span>
 
             <span class="c1"># Add visit record (without triage score, but with patient_id)</span>
@@ -40310,7 +40321,7 @@ the same total number of admitted patients as would be expected in the full data
             <span class="p">)</span>
 
             <span class="c1"># Generate triage observation within first 10 minutes</span>
-            <span class="n">minutes_after_arrival</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">minutes_after_arrival</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
             <span class="n">observation_datetime</span> <span class="o">=</span> <span class="n">arrival_datetime</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span>
                 <span class="n">minutes</span><span class="o">=</span><span class="n">minutes_after_arrival</span>
             <span class="p">)</span>
@@ -40327,9 +40338,9 @@ the same total number of admitted patients as would be expected in the full data
             <span class="k">if</span> <span class="n">length_of_stay</span> <span class="o">&gt;</span> <span class="mi">120</span><span class="p">:</span>
                 <span class="c1"># For each lab test, decide if it should be ordered based on triage score</span>
                 <span class="k">for</span> <span class="n">lab_test</span> <span class="ow">in</span> <span class="n">lab_tests</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">lab_probabilities</span><span class="p">[</span><span class="n">triage_score</span><span class="p">][</span><span class="n">lab_test</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">rng</span><span class="o">.</span><span class="n">random_sample</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">lab_probabilities</span><span class="p">[</span><span class="n">triage_score</span><span class="p">][</span><span class="n">lab_test</span><span class="p">]:</span>
                         <span class="c1"># Order time is after triage but within first 90 minutes</span>
-                        <span class="n">minutes_after_triage</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span>
+                        <span class="n">minutes_after_triage</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span>
                             <span class="mi">0</span><span class="p">,</span> <span class="mi">90</span> <span class="o">-</span> <span class="n">minutes_after_arrival</span>
                         <span class="p">)</span>
                         <span class="n">order_datetime</span> <span class="o">=</span> <span class="n">observation_datetime</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span>
@@ -40554,7 +40565,10 @@ and number of lab tests ordered prior to that time.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/generate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">408</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
 <span class="normal">409</span>
 <span class="normal">410</span>
 <span class="normal">411</span>
@@ -40785,10 +40799,7 @@ and number of lab tests ordered prior to that time.</p>
 <span class="normal">636</span>
 <span class="normal">637</span>
 <span class="normal">638</span>
-<span class="normal">639</span>
-<span class="normal">640</span>
-<span class="normal">641</span>
-<span class="normal">642</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_snapshots</span><span class="p">(</span>
+<span class="normal">639</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_fake_snapshots</span><span class="p">(</span>
     <span class="n">prediction_times</span><span class="p">,</span>
     <span class="n">start_date</span><span class="p">,</span>
     <span class="n">end_date</span><span class="p">,</span>
@@ -44318,8 +44329,7 @@ non-ED YTA, elective YTA, transfer).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">130</span>
-<span class="normal">131</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
@@ -44356,7 +44366,8 @@ non-ED YTA, elective YTA, transfer).</p>
 <span class="normal">165</span>
 <span class="normal">166</span>
 <span class="normal">167</span>
-<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">168</span>
+<span class="normal">169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ServiceModels</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Named bundle for the seven demand-prediction model slots.</span>
 
@@ -44519,8 +44530,7 @@ and <code>majority_to_minority_ratio</code>.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/model_artifacts.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
-<span class="normal">101</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span>
 <span class="normal">104</span>
@@ -44546,7 +44556,8 @@ and <code>majority_to_minority_ratio</code>.</p>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainedClassifier</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Container for trained model artifacts and their associated information.</span>
@@ -44680,11 +44691,12 @@ was supplied, otherwise <code>"validation"</code> (legacy behaviour).</p>
           <tr class="doc-section-item">
             <td><code><span title="patientflow.model_artifacts.TrainingResults.balance_info">balance_info</span></code></td>
             <td>
-                  <code>dict of str to bool or int or float, optional</code>
+                  <code>dict of str to bool or int or float or None, optional</code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Information related to class balance (e.g., whether data was balanced, class ratios).</p>
+                <p>Information related to class balance (e.g., whether data was balanced, class ratios,
+and the <code>random_state</code> used for undersampling).</p>
               </div>
             </td>
           </tr>
@@ -44726,7 +44738,8 @@ was supplied, otherwise <code>"validation"</code> (legacy behaviour).</p>
 <span class="normal">94</span>
 <span class="normal">95</span>
 <span class="normal">96</span>
-<span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">97</span>
+<span class="normal">98</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrainingResults</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Store comprehensive evaluation metrics and metadata from model training.</span>
@@ -44744,15 +44757,16 @@ was supplied, otherwise <code>"validation"</code> (legacy behaviour).</p>
 <span class="sd">        was supplied, otherwise ``"validation"`` (legacy behaviour).</span>
 <span class="sd">    test_results : dict of str to float, optional</span>
 <span class="sd">        Evaluation metrics computed on the test dataset. None if test evaluation was not performed.</span>
-<span class="sd">    balance_info : dict of str to bool or int or float, optional</span>
-<span class="sd">        Information related to class balance (e.g., whether data was balanced, class ratios).</span>
+<span class="sd">    balance_info : dict of str to bool or int or float or None, optional</span>
+<span class="sd">        Information related to class balance (e.g., whether data was balanced, class ratios,</span>
+<span class="sd">        and the ``random_state`` used for undersampling).</span>
 <span class="sd">    """</span>
 
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
     <span class="n">training_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="n">calibration_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="n">test_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">balance_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">balance_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -98809,10 +98823,7 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">504</span>
-<span class="normal">505</span>
-<span class="normal">506</span>
-<span class="normal">507</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">507</span>
 <span class="normal">508</span>
 <span class="normal">509</span>
 <span class="normal">510</span>
@@ -98911,7 +98922,10 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 <span class="normal">603</span>
 <span class="normal">604</span>
 <span class="normal">605</span>
-<span class="normal">606</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SpecialCategoryParams</span><span class="p">:</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span>
+<span class="normal">609</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SpecialCategoryParams</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A picklable implementation of special category parameters for patient classification.</span>
 
 <span class="sd">    This class identifies paediatric patients based on available age-related columns</span>
@@ -99072,10 +99086,7 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">581</span>
-<span class="normal">582</span>
-<span class="normal">583</span>
-<span class="normal">584</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">584</span>
 <span class="normal">585</span>
 <span class="normal">586</span>
 <span class="normal">587</span>
@@ -99092,7 +99103,10 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 <span class="normal">598</span>
 <span class="normal">599</span>
 <span class="normal">600</span>
-<span class="normal">601</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span>
+<span class="normal">601</span>
+<span class="normal">602</span>
+<span class="normal">603</span>
+<span class="normal">604</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_params_dict</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]]]:</span>
 <span class="w">    </span><span class="sd">"""Get the special parameter dictionary in the format expected by the SequencePredictor.</span>
@@ -99189,10 +99203,7 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">566</span>
-<span class="normal">567</span>
-<span class="normal">568</span>
-<span class="normal">569</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">569</span>
 <span class="normal">570</span>
 <span class="normal">571</span>
 <span class="normal">572</span>
@@ -99202,7 +99213,10 @@ It's designed to be serializable with pickle by implementing the <strong>reduce<
 <span class="normal">576</span>
 <span class="normal">577</span>
 <span class="normal">578</span>
-<span class="normal">579</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">579</span>
+<span class="normal">580</span>
+<span class="normal">581</span>
+<span class="normal">582</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">opposite_special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Identify if a patient is NOT paediatric.</span>
 
 <span class="sd">    Parameters</span>
@@ -99293,10 +99307,7 @@ False otherwise</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span>
-<span class="normal">550</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">550</span>
 <span class="normal">551</span>
 <span class="normal">552</span>
 <span class="normal">553</span>
@@ -99310,7 +99321,10 @@ False otherwise</p>
 <span class="normal">561</span>
 <span class="normal">562</span>
 <span class="normal">563</span>
-<span class="normal">564</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">special_category_func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">dict</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Identify if a patient is paediatric based on age data.</span>
 
 <span class="sd">    Parameters</span>
@@ -99433,12 +99447,7 @@ False otherwise</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
-<span class="normal">856</span>
-<span class="normal">857</span>
-<span class="normal">858</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">858</span>
 <span class="normal">859</span>
 <span class="normal">860</span>
 <span class="normal">861</span>
@@ -99506,7 +99515,12 @@ False otherwise</p>
 <span class="normal">923</span>
 <span class="normal">924</span>
 <span class="normal">925</span>
-<span class="normal">926</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">additional_details</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">col_name</span><span class="p">):</span>
+<span class="normal">926</span>
+<span class="normal">927</span>
+<span class="normal">928</span>
+<span class="normal">929</span>
+<span class="normal">930</span>
+<span class="normal">931</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">additional_details</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">col_name</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Generate additional statistical details about a column's contents.</span>
 
 <span class="sd">    Parameters</span>
@@ -99590,7 +99604,7 @@ False otherwise</p>
 
 
 <h3 id="patientflow.prepare.apply_set" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">apply_set</span><span class="p">(</span><span class="n">row</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">apply_set</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h3>
 
@@ -99627,6 +99641,22 @@ window is configured</p>
             </td>
             <td>
                 <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>rng</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" title="random.Random" href="https://docs.python.org/3/library/random.html#random.Random">Random</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Generator to draw from. When None, a fresh unseeded generator is used.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
       </tbody>
@@ -99680,7 +99710,11 @@ window is configured</p>
 <span class="normal">142</span>
 <span class="normal">143</span>
 <span class="normal">144</span>
-<span class="normal">145</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">apply_set</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">apply_set</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Randomly assign a set label based on weighted probabilities.</span>
 
 <span class="sd">    Parameters</span>
@@ -99689,6 +99723,8 @@ window is configured</p>
 <span class="sd">        Series containing 'training_set', 'validation_set', and 'test_set'</span>
 <span class="sd">        weights, and optionally a 'calibration_set' weight when a calibration</span>
 <span class="sd">        window is configured</span>
+<span class="sd">    rng : random.Random, optional</span>
+<span class="sd">        Generator to draw from. When None, a fresh unseeded generator is used.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -99701,7 +99737,9 @@ window is configured</p>
     <span class="k">if</span> <span class="s2">"calibration_set"</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
         <span class="n">labels</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"calibration"</span><span class="p">)</span>
         <span class="n">weights</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">row</span><span class="o">.</span><span class="n">calibration_set</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">rng</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">rng</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -99955,11 +99993,7 @@ a calibration period is configured.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">152</span>
 <span class="normal">153</span>
 <span class="normal">154</span>
 <span class="normal">155</span>
@@ -100119,7 +100153,10 @@ a calibration period is configured.</p>
 <span class="normal">309</span>
 <span class="normal">310</span>
 <span class="normal">311</span>
-<span class="normal">312</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assign_patient_ids</span><span class="p">(</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">assign_patient_ids</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">start_training_set</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">start_validation_set</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
@@ -100189,8 +100226,7 @@ a calibration period is configured.</p>
             <span class="sa">f</span><span class="s2">"start_validation_set=</span><span class="si">{</span><span class="n">start_validation_set</span><span class="si">}</span><span class="s2">"</span>
         <span class="p">)</span>
 
-    <span class="c1"># Set random seed for reproducibility</span>
-    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="n">patients</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="n">patient_id</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">])[</span><span class="n">date_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
@@ -100258,7 +100294,7 @@ a calibration period is configured.</p>
         <span class="n">membership_cols</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">"calibration_set"</span><span class="p">)</span>
 
     <span class="n">patients</span> <span class="o">=</span> <span class="n">patients</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">patient_id</span><span class="p">)[</span><span class="n">membership_cols</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">patients</span><span class="p">[</span><span class="s2">"training_validation_test"</span><span class="p">]</span> <span class="o">=</span> <span class="n">patients</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">apply_set</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">patients</span><span class="p">[</span><span class="s2">"training_validation_test"</span><span class="p">]</span> <span class="o">=</span> <span class="n">patients</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">apply_set</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="n">rng</span><span class="p">)</span>
 
     <span class="n">set_display_names</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">"training_set"</span><span class="p">:</span> <span class="s2">"Train"</span><span class="p">,</span>
@@ -100667,14 +100703,14 @@ with values extracted from 'value_as_real' or 'value_as_text' if present</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">609</span>
-<span class="normal">610</span>
-<span class="normal">611</span>
-<span class="normal">612</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">612</span>
 <span class="normal">613</span>
 <span class="normal">614</span>
 <span class="normal">615</span>
-<span class="normal">616</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_special_category_objects</span><span class="p">(</span><span class="n">columns</span><span class="p">):</span>
+<span class="normal">616</span>
+<span class="normal">617</span>
+<span class="normal">618</span>
+<span class="normal">619</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_special_category_objects</span><span class="p">(</span><span class="n">columns</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_special_category_objects."""</span>
     <span class="c1"># Local import avoids module-level cycles</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.predictors.legacy_compatibility</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -100939,10 +100975,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
-<span class="normal">350</span>
-<span class="normal">351</span>
-<span class="normal">352</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">352</span>
 <span class="normal">353</span>
 <span class="normal">354</span>
 <span class="normal">355</span>
@@ -101091,7 +101124,10 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">498</span>
 <span class="normal">499</span>
 <span class="normal">500</span>
-<span class="normal">501</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_temporal_splits</span><span class="p">(</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_temporal_splits</span><span class="p">(</span>
     <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">start_train</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
     <span class="n">start_valid</span><span class="p">:</span> <span class="n">date</span><span class="p">,</span>
@@ -101266,11 +101302,11 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">643</span>
-<span class="normal">644</span>
-<span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_yta_filters</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span>
+<span class="normal">649</span>
+<span class="normal">650</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_yta_filters</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Legacy wrapper: route to patientflow.predictors.legacy_compatibility.create_yta_filters."""</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.predictors.legacy_compatibility</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_yta_filters</span> <span class="k">as</span> <span class="n">_delegate</span>
 
@@ -101367,12 +101403,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">929</span>
-<span class="normal">930</span>
-<span class="normal">931</span>
-<span class="normal">932</span>
-<span class="normal">933</span>
-<span class="normal">934</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">934</span>
 <span class="normal">935</span>
 <span class="normal">936</span>
 <span class="normal">937</span>
@@ -101385,7 +101416,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">944</span>
 <span class="normal">945</span>
 <span class="normal">946</span>
-<span class="normal">947</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_group_for_colname</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">dict_col_groups</span><span class="p">):</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_group_for_colname</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">dict_col_groups</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Find the group name that a column belongs to in the column groups dictionary.</span>
 
 <span class="sd">    Parameters</span>
@@ -101480,12 +101516,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">814</span>
-<span class="normal">815</span>
-<span class="normal">816</span>
-<span class="normal">817</span>
-<span class="normal">818</span>
-<span class="normal">819</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">819</span>
 <span class="normal">820</span>
 <span class="normal">821</span>
 <span class="normal">822</span>
@@ -101516,7 +101547,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">847</span>
 <span class="normal">848</span>
 <span class="normal">849</span>
-<span class="normal">850</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_description</span><span class="p">(</span><span class="n">col_name</span><span class="p">):</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">generate_description</span><span class="p">(</span><span class="n">col_name</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Generate a description for a column based on its name and manual descriptions.</span>
 
 <span class="sd">    Parameters</span>
@@ -101687,12 +101723,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">765</span>
 <span class="normal">766</span>
 <span class="normal">767</span>
 <span class="normal">768</span>
@@ -101738,7 +101769,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">808</span>
 <span class="normal">809</span>
 <span class="normal">810</span>
-<span class="normal">811</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_group_snapshot_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">start_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_group_snapshot_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">start_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">end_dt</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Prepare a dictionary mapping snapshot dates to their corresponding snapshot indices.</span>
 
 <span class="sd">    Parameters</span>
@@ -101971,12 +102007,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">678</span>
-<span class="normal">679</span>
-<span class="normal">680</span>
-<span class="normal">681</span>
-<span class="normal">682</span>
-<span class="normal">683</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">683</span>
 <span class="normal">684</span>
 <span class="normal">685</span>
 <span class="normal">686</span>
@@ -102050,7 +102081,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">754</span>
 <span class="normal">755</span>
 <span class="normal">756</span>
-<span class="normal">757</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_patient_snapshots</span><span class="p">(</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare_patient_snapshots</span><span class="p">(</span>
     <span class="n">df</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">,</span>
     <span class="n">exclude_columns</span><span class="o">=</span><span class="p">[],</span>
@@ -102202,7 +102238,8 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Random seed for reproducibility, by default 42</p>
+                <p>Seed for a local random generator, by default 42. Ignored when <code>df</code>
+already has a <code>random_number</code> column. None draws without a seed.</p>
               </div>
             </td>
             <td>
@@ -102228,7 +102265,8 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
             </td>
             <td>
               <div class="doc-md-description">
-                <p>DataFrame containing one randomly selected snapshot per visit</p>
+                <p>DataFrame containing one randomly selected snapshot per visit. The
+input <code>df</code> is not modified.</p>
               </div>
             </td>
           </tr>
@@ -102238,10 +102276,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">650</span>
-<span class="normal">651</span>
-<span class="normal">652</span>
-<span class="normal">653</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">653</span>
 <span class="normal">654</span>
 <span class="normal">655</span>
 <span class="normal">656</span>
@@ -102263,7 +102298,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">672</span>
 <span class="normal">673</span>
 <span class="normal">674</span>
-<span class="normal">675</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">select_one_snapshot_per_visit</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">select_one_snapshot_per_visit</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Select one random snapshot per visit from a DataFrame.</span>
 
 <span class="sd">    Parameters</span>
@@ -102273,22 +102313,24 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="sd">    visit_col : str</span>
 <span class="sd">        Name of the column containing visit identifiers</span>
 <span class="sd">    seed : int, optional</span>
-<span class="sd">        Random seed for reproducibility, by default 42</span>
+<span class="sd">        Seed for a local random generator, by default 42. Ignored when ``df``</span>
+<span class="sd">        already has a ``random_number`` column. None draws without a seed.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    pandas.DataFrame</span>
-<span class="sd">        DataFrame containing one randomly selected snapshot per visit</span>
+<span class="sd">        DataFrame containing one randomly selected snapshot per visit. The</span>
+<span class="sd">        input ``df`` is not modified.</span>
 <span class="sd">    """</span>
-    <span class="c1"># Generate random numbers if not present</span>
-    <span class="k">if</span> <span class="s2">"random_number"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
-        <span class="n">df</span><span class="p">[</span><span class="s2">"random_number"</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+    <span class="k">if</span> <span class="s2">"random_number"</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">random_number</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">"random_number"</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">random_number</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
 
     <span class="c1"># Select the row with the maximum random_number for each visit</span>
-    <span class="n">max_indices</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">visit_col</span><span class="p">)[</span><span class="s2">"random_number"</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">max_indices</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"random_number"</span><span class="p">])</span>
+    <span class="n">max_indices</span> <span class="o">=</span> <span class="n">random_number</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">visit_col</span><span class="p">])</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">max_indices</span><span class="p">]</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"random_number"</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -102365,10 +102407,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">619</span>
-<span class="normal">620</span>
-<span class="normal">621</span>
-<span class="normal">622</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">622</span>
 <span class="normal">623</span>
 <span class="normal">624</span>
 <span class="normal">625</span>
@@ -102386,7 +102425,10 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">637</span>
 <span class="normal">638</span>
 <span class="normal">639</span>
-<span class="normal">640</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_special_category_objects</span><span class="p">(</span><span class="n">special_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">validate_special_category_objects</span><span class="p">(</span><span class="n">special_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Validate that a special category parameters dictionary contains all required keys.</span>
 
 <span class="sd">    Parameters</span>
@@ -102524,12 +102566,7 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/prepare.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 982</span>
-<span class="normal"> 983</span>
-<span class="normal"> 984</span>
-<span class="normal"> 985</span>
-<span class="normal"> 986</span>
-<span class="normal"> 987</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 987</span>
 <span class="normal"> 988</span>
 <span class="normal"> 989</span>
 <span class="normal"> 990</span>
@@ -102616,7 +102653,12 @@ elsewhere in the library use <code>warnings.warn</code>; long orchestrators such
 <span class="normal">1071</span>
 <span class="normal">1072</span>
 <span class="normal">1073</span>
-<span class="normal">1074</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_data_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">dict_name</span><span class="p">,</span> <span class="n">dict_path</span><span class="p">):</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_data_dict</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">dict_name</span><span class="p">,</span> <span class="n">dict_path</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Write a data dictionary for a DataFrame to both Markdown and CSV formats.</span>
 
 <span class="sd">    Parameters</span>
@@ -103129,7 +103171,7 @@ using time series cross-validation.</p>
               </td>
             </tr>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="create_balance_info(is_balanced, original_size, balanced_size, original_positive_rate, balanced_positive_rate, majority_to_minority_ratio) (patientflow.train.classifiers.create_balance_info)" href="#patientflow.train.classifiers.create_balance_info">create_balance_info</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="create_balance_info(is_balanced, original_size, balanced_size, original_positive_rate, balanced_positive_rate, majority_to_minority_ratio, random_state=None) (patientflow.train.classifiers.create_balance_info)" href="#patientflow.train.classifiers.create_balance_info">create_balance_info</a></code></td>
               <td>
                 <div class="doc-md-description">
                   <p>Create a dictionary with balance information</p>
@@ -103145,7 +103187,7 @@ using time series cross-validation.</p>
               </td>
             </tr>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="train_classifier(train_visits, valid_visits, prediction_time, exclude_from_training_data, grid, ordinal_mappings, test_visits=None, visit_col=None, model_class=XGBClassifier, use_balanced_training=True, majority_to_minority_ratio=1.0, calibrate_probabilities=True, calibration_method='sigmoid', single_snapshot_per_visit=True, single_snapshot_per_visit_train=None, single_snapshot_per_visit_valid=None, single_snapshot_per_visit_test=None, calibrate_on_deployment_like_validation=True, label_col='is_admitted', evaluate_on_test=False, calibration_visits=None) (patientflow.train.classifiers.train_classifier)" href="#patientflow.train.classifiers.train_classifier">train_classifier</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="train_classifier(train_visits, valid_visits, prediction_time, exclude_from_training_data, grid, ordinal_mappings, test_visits=None, visit_col=None, model_class=XGBClassifier, use_balanced_training=True, majority_to_minority_ratio=1.0, calibrate_probabilities=True, calibration_method='sigmoid', single_snapshot_per_visit=True, single_snapshot_per_visit_train=None, single_snapshot_per_visit_valid=None, single_snapshot_per_visit_test=None, calibrate_on_deployment_like_validation=True, label_col='is_admitted', evaluate_on_test=False, calibration_visits=None, random_state=42) (patientflow.train.classifiers.train_classifier)" href="#patientflow.train.classifiers.train_classifier">train_classifier</a></code></td>
               <td>
                 <div class="doc-md-description">
                   <p>Train a single model including data preparation and balancing</p>
@@ -103153,7 +103195,7 @@ using time series cross-validation.</p>
               </td>
             </tr>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="train_multiple_classifiers(train_visits, valid_visits, grid, exclude_from_training_data, ordinal_mappings, prediction_times, test_visits=None, model_name='admissions', visit_col='visit_number', calibrate_probabilities=True, calibration_method='isotonic', use_balanced_training=True, majority_to_minority_ratio=1.0, single_snapshot_per_visit=True, single_snapshot_per_visit_train=None, single_snapshot_per_visit_valid=None, single_snapshot_per_visit_test=None, calibrate_on_deployment_like_validation=True, label_col='is_admitted', evaluate_on_test=False, verbose=True, calibration_visits=None) (patientflow.train.classifiers.train_multiple_classifiers)" href="#patientflow.train.classifiers.train_multiple_classifiers">train_multiple_classifiers</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="train_multiple_classifiers(train_visits, valid_visits, grid, exclude_from_training_data, ordinal_mappings, prediction_times, test_visits=None, model_name='admissions', visit_col='visit_number', calibrate_probabilities=True, calibration_method='isotonic', use_balanced_training=True, majority_to_minority_ratio=1.0, single_snapshot_per_visit=True, single_snapshot_per_visit_train=None, single_snapshot_per_visit_valid=None, single_snapshot_per_visit_test=None, calibrate_on_deployment_like_validation=True, label_col='is_admitted', evaluate_on_test=False, verbose=True, calibration_visits=None, random_state=42) (patientflow.train.classifiers.train_multiple_classifiers)" href="#patientflow.train.classifiers.train_multiple_classifiers">train_multiple_classifiers</a></code></td>
               <td>
                 <div class="doc-md-description">
                   <p>Train admission prediction models for multiple prediction times</p>
@@ -103883,7 +103925,7 @@ columns get consistent kind and defaults.</p>
 
 
 <h4 id="patientflow.train.classifiers.create_balance_info" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">create_balance_info</span><span class="p">(</span><span class="n">is_balanced</span><span class="p">,</span> <span class="n">original_size</span><span class="p">,</span> <span class="n">balanced_size</span><span class="p">,</span> <span class="n">original_positive_rate</span><span class="p">,</span> <span class="n">balanced_positive_rate</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">create_balance_info</span><span class="p">(</span><span class="n">is_balanced</span><span class="p">,</span> <span class="n">original_size</span><span class="p">,</span> <span class="n">balanced_size</span><span class="p">,</span> <span class="n">original_positive_rate</span><span class="p">,</span> <span class="n">balanced_positive_rate</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -104000,6 +104042,22 @@ columns get consistent kind and defaults.</p>
                 <em>required</em>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>random_state</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Seed used for the undersampling draw, by default None</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -104015,7 +104073,7 @@ columns get consistent kind and defaults.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                  <code><a class="autorefs autorefs-external" title="typing.Dict" href="https://docs.python.org/3/library/typing.html#typing.Dict">Dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#float">float</a>]]</code>
+                  <code><a class="autorefs autorefs-external" title="typing.Dict" href="https://docs.python.org/3/library/typing.html#typing.Dict">Dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Union" href="https://docs.python.org/3/library/typing.html#typing.Union">Union</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#float">float</a>, None]]</code>
             </td>
             <td>
               <div class="doc-md-description">
@@ -104066,14 +104124,19 @@ columns get consistent kind and defaults.</p>
 <span class="normal">629</span>
 <span class="normal">630</span>
 <span class="normal">631</span>
-<span class="normal">632</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_balance_info</span><span class="p">(</span>
+<span class="normal">632</span>
+<span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">create_balance_info</span><span class="p">(</span>
     <span class="n">is_balanced</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">original_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">balanced_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">original_positive_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">balanced_positive_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">majority_to_minority_ratio</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="kc">None</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">"""Create a dictionary with balance information.</span>
 
 <span class="sd">    Parameters</span>
@@ -104090,10 +104153,12 @@ columns get consistent kind and defaults.</p>
 <span class="sd">        Positive class rate after balancing</span>
 <span class="sd">    majority_to_minority_ratio : float</span>
 <span class="sd">        Ratio of majority to minority class samples</span>
+<span class="sd">    random_state : int, optional</span>
+<span class="sd">        Seed used for the undersampling draw, by default None</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    Dict[str, Union[bool, int, float]]</span>
+<span class="sd">    Dict[str, Union[bool, int, float, None]]</span>
 <span class="sd">        Dictionary containing balance information</span>
 <span class="sd">    """</span>
     <span class="k">return</span> <span class="p">{</span>
@@ -104103,6 +104168,7 @@ columns get consistent kind and defaults.</p>
         <span class="s2">"original_positive_rate"</span><span class="p">:</span> <span class="n">original_positive_rate</span><span class="p">,</span>
         <span class="s2">"balanced_positive_rate"</span><span class="p">:</span> <span class="n">balanced_positive_rate</span><span class="p">,</span>
         <span class="s2">"majority_to_minority_ratio"</span><span class="p">:</span> <span class="n">majority_to_minority_ratio</span><span class="p">,</span>
+        <span class="s2">"random_state"</span><span class="p">:</span> <span class="n">random_state</span><span class="p">,</span>
     <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -104383,11 +104449,7 @@ columns get consistent kind and defaults.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">635</span>
-<span class="normal">636</span>
-<span class="normal">637</span>
-<span class="normal">638</span>
-<span class="normal">639</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">639</span>
 <span class="normal">640</span>
 <span class="normal">641</span>
 <span class="normal">642</span>
@@ -104407,7 +104469,11 @@ columns get consistent kind and defaults.</p>
 <span class="normal">656</span>
 <span class="normal">657</span>
 <span class="normal">658</span>
-<span class="normal">659</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_model</span><span class="p">(</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_model</span><span class="p">(</span>
     <span class="n">pipeline</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">X_test</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span> <span class="n">y_test</span><span class="p">:</span> <span class="n">Series</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""Evaluate model on test set.</span>
@@ -105425,7 +105491,7 @@ mixed Python types (e.g. <code>True</code> / <code>None</code>) remain categoric
 
 
 <h4 id="patientflow.train.classifiers.train_classifier" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">train_classifier</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">valid_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">ordinal_mappings</span><span class="p">,</span> <span class="n">test_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_class</span><span class="o">=</span><span class="n">XGBClassifier</span><span class="p">,</span> <span class="n">use_balanced_training</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">calibrate_probabilities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_method</span><span class="o">=</span><span class="s1">'sigmoid'</span><span class="p">,</span> <span class="n">single_snapshot_per_visit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_valid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">calibrate_on_deployment_like_validation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">'is_admitted'</span><span class="p">,</span> <span class="n">evaluate_on_test</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">calibration_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">train_classifier</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">valid_visits</span><span class="p">,</span> <span class="n">prediction_time</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">ordinal_mappings</span><span class="p">,</span> <span class="n">test_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_class</span><span class="o">=</span><span class="n">XGBClassifier</span><span class="p">,</span> <span class="n">use_balanced_training</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">calibrate_probabilities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_method</span><span class="o">=</span><span class="s1">'sigmoid'</span><span class="p">,</span> <span class="n">single_snapshot_per_visit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_valid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">calibrate_on_deployment_like_validation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">'is_admitted'</span><span class="p">,</span> <span class="n">evaluate_on_test</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">calibration_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span></code>
 
 </h4>
 
@@ -105796,6 +105862,24 @@ calibration).</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>random_state</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Seed for the local generator that undersamples the majority class
+when <code>use_balanced_training</code> is True, by default 42. None draws
+without a seed. Recorded in the balance metadata.</p>
+              </div>
+            </td>
+            <td>
+                  <code>42</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -105830,11 +105914,7 @@ calibration).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 662</span>
-<span class="normal"> 663</span>
-<span class="normal"> 664</span>
-<span class="normal"> 665</span>
-<span class="normal"> 666</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 666</span>
 <span class="normal"> 667</span>
 <span class="normal"> 668</span>
 <span class="normal"> 669</span>
@@ -106255,7 +106335,18 @@ calibration).</p>
 <span class="normal">1084</span>
 <span class="normal">1085</span>
 <span class="normal">1086</span>
-<span class="normal">1087</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_classifier</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">prediction_time</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
@@ -106277,6 +106368,7 @@ calibration).</p>
     <span class="n">label_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"is_admitted"</span><span class="p">,</span>
     <span class="n">evaluate_on_test</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">calibration_visits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainedClassifier</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Train a single model including data preparation and balancing.</span>
@@ -106339,6 +106431,10 @@ calibration).</p>
 <span class="sd">        validation remains eval-only. When omitted, the calibrator is fitted</span>
 <span class="sd">        on validation (so validation is no longer an honest holdout for</span>
 <span class="sd">        calibration).</span>
+<span class="sd">    random_state : int, optional</span>
+<span class="sd">        Seed for the local generator that undersamples the majority class</span>
+<span class="sd">        when `use_balanced_training` is True, by default 42. None draws</span>
+<span class="sd">        without a seed. Recorded in the balance metadata.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -106479,12 +106575,13 @@ calibration).</p>
         <span class="n">n_pos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_indices</span><span class="p">)</span>
         <span class="n">n_neg</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n_pos</span> <span class="o">*</span> <span class="n">majority_to_minority_ratio</span><span class="p">)</span>
 
-        <span class="n">neg_indices_sampled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
-            <span class="n">neg_indices</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">n_neg</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">neg_indices</span><span class="p">)),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
+        <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">random_state</span><span class="p">)</span>
+        <span class="n">neg_indices_sampled</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">neg_indices</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">size</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">n_neg</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">neg_indices</span><span class="p">)),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
         <span class="p">)</span>
 
         <span class="n">train_balanced_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">pos_indices</span><span class="p">,</span> <span class="n">neg_indices_sampled</span><span class="p">])</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">train_balanced_indices</span><span class="p">)</span>
+        <span class="n">rng</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">train_balanced_indices</span><span class="p">)</span>
 
         <span class="n">X_train</span> <span class="o">=</span> <span class="n">X_train</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">train_balanced_indices</span><span class="p">]</span>
         <span class="n">y_train</span> <span class="o">=</span> <span class="n">y_train</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">train_balanced_indices</span><span class="p">]</span>
@@ -106499,6 +106596,7 @@ calibration).</p>
         <span class="n">majority_to_minority_ratio</span><span class="o">=</span><span class="n">majority_to_minority_ratio</span>
         <span class="k">if</span> <span class="n">use_balanced_training</span>
         <span class="k">else</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span> <span class="k">if</span> <span class="n">use_balanced_training</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Initialize best training results with default values</span>
@@ -106691,7 +106789,7 @@ calibration).</p>
 
 
 <h4 id="patientflow.train.classifiers.train_multiple_classifiers" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">train_multiple_classifiers</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">valid_visits</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">ordinal_mappings</span><span class="p">,</span> <span class="n">prediction_times</span><span class="p">,</span> <span class="n">test_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">'admissions'</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s1">'visit_number'</span><span class="p">,</span> <span class="n">calibrate_probabilities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_method</span><span class="o">=</span><span class="s1">'isotonic'</span><span class="p">,</span> <span class="n">use_balanced_training</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">single_snapshot_per_visit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_valid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">calibrate_on_deployment_like_validation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">'is_admitted'</span><span class="p">,</span> <span class="n">evaluate_on_test</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">train_multiple_classifiers</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">valid_visits</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">exclude_from_training_data</span><span class="p">,</span> <span class="n">ordinal_mappings</span><span class="p">,</span> <span class="n">prediction_times</span><span class="p">,</span> <span class="n">test_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_name</span><span class="o">=</span><span class="s1">'admissions'</span><span class="p">,</span> <span class="n">visit_col</span><span class="o">=</span><span class="s1">'visit_number'</span><span class="p">,</span> <span class="n">calibrate_probabilities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_method</span><span class="o">=</span><span class="s1">'isotonic'</span><span class="p">,</span> <span class="n">use_balanced_training</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">majority_to_minority_ratio</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">single_snapshot_per_visit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_train</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_valid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">single_snapshot_per_visit_test</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">calibrate_on_deployment_like_validation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label_col</span><span class="o">=</span><span class="s1">'is_admitted'</span><span class="p">,</span> <span class="n">evaluate_on_test</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">calibration_visits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span></code>
 
 </h4>
 
@@ -107068,6 +107166,23 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>random_state</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Seed for the undersampling draw, passed to <code>train_classifier</code> for
+every prediction time, by default 42.</p>
+              </div>
+            </td>
+            <td>
+                  <code>42</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -107102,18 +107217,7 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/classifiers.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1090</span>
-<span class="normal">1091</span>
-<span class="normal">1092</span>
-<span class="normal">1093</span>
-<span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span>
-<span class="normal">1097</span>
-<span class="normal">1098</span>
-<span class="normal">1099</span>
-<span class="normal">1100</span>
-<span class="normal">1101</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1101</span>
 <span class="normal">1102</span>
 <span class="normal">1103</span>
 <span class="normal">1104</span>
@@ -107220,7 +107324,23 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
 <span class="normal">1205</span>
 <span class="normal">1206</span>
 <span class="normal">1207</span>
-<span class="normal">1208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">train_multiple_classifiers</span><span class="p">(</span>
     <span class="n">train_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">valid_visits</span><span class="p">:</span> <span class="n">DataFrame</span><span class="p">,</span>
     <span class="n">grid</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
@@ -107243,6 +107363,7 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
     <span class="n">evaluate_on_test</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">calibration_visits</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">random_state</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TrainedClassifier</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""Train admission prediction models for multiple prediction times.</span>
 
@@ -107296,6 +107417,9 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
 <span class="sd">        Visits from a dedicated chronological calibration window. When</span>
 <span class="sd">        provided, probability calibration is fitted on this frame instead of</span>
 <span class="sd">        validation for every prediction time (see `train_classifier`).</span>
+<span class="sd">    random_state : int, optional</span>
+<span class="sd">        Seed for the undersampling draw, passed to `train_classifier` for</span>
+<span class="sd">        every prediction time, by default 42.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -107334,6 +107458,7 @@ validation for every prediction time (see <code>train_classifier</code>).</p>
             <span class="n">label_col</span><span class="o">=</span><span class="n">label_col</span><span class="p">,</span>
             <span class="n">evaluate_on_test</span><span class="o">=</span><span class="n">evaluate_on_test</span><span class="p">,</span>
             <span class="n">calibration_visits</span><span class="o">=</span><span class="n">calibration_visits</span><span class="p">,</span>
+            <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="n">trained_models</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_model</span>
@@ -108532,7 +108657,8 @@ specified parameters.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 71</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 70</span>
+<span class="normal"> 71</span>
 <span class="normal"> 72</span>
 <span class="normal"> 73</span>
 <span class="normal"> 74</span>
@@ -108634,8 +108760,7 @@ specified parameters.</p>
 <span class="normal">170</span>
 <span class="normal">171</span>
 <span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_real_time_predictions</span><span class="p">(</span>
+<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_real_time_predictions</span><span class="p">(</span>
     <span class="n">visits</span><span class="p">,</span>
     <span class="n">models</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span>
         <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TrainedClassifier</span><span class="p">],</span>
@@ -108923,7 +109048,8 @@ specified parameters.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Random seed for reproducibility.</p>
+                <p>Seed for snapshot selection, majority-class undersampling and the
+real-time prediction test. Global random state is not changed.</p>
               </div>
             </td>
             <td>
@@ -109143,7 +109269,8 @@ or if test_realtime is True but any of specialties, cdf_cut_points, or curve_par
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/patientflow/train/emergency_demand.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">177</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">176</span>
+<span class="normal">177</span>
 <span class="normal">178</span>
 <span class="normal">179</span>
 <span class="normal">180</span>
@@ -109449,7 +109576,8 @@ or if test_realtime is True but any of specialties, cdf_cut_points, or curve_par
 <span class="sd">    ordinal_mappings : dict</span>
 <span class="sd">        Ordinal variable mappings for categorical features.</span>
 <span class="sd">    random_seed : int</span>
-<span class="sd">        Random seed for reproducibility.</span>
+<span class="sd">        Seed for snapshot selection, majority-class undersampling and the</span>
+<span class="sd">        real-time prediction test. Global random state is not changed.</span>
 <span class="sd">    visit_col : str, optional</span>
 <span class="sd">        Name of column in dataset that is used to identify a hospital visit (eg visit_number, csn).</span>
 <span class="sd">    specialties : list, optional</span>
@@ -109507,9 +109635,6 @@ or if test_realtime is True but any of specialties, cdf_cut_points, or curve_par
             <span class="p">)</span>
         <span class="k">if</span> <span class="n">curve_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"curve_params must be provided when test_realtime is True"</span><span class="p">)</span>
-
-    <span class="c1"># Set random seed</span>
-    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
 
     <span class="c1"># Define model names internally</span>
     <span class="n">model_names</span> <span class="o">=</span> <span class="p">{</span>
@@ -109579,6 +109704,7 @@ or if test_realtime is True but any of specialties, cdf_cut_points, or curve_par
         <span class="n">model_name</span><span class="o">=</span><span class="n">model_names</span><span class="p">[</span><span class="s2">"admissions"</span><span class="p">],</span>
         <span class="n">visit_col</span><span class="o">=</span><span class="n">visit_col</span><span class="p">,</span>
         <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="n">random_seed</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Save admission models if requested</span>
@@ -109591,7 +109717,9 @@ or if test_realtime is True but any of specialties, cdf_cut_points, or curve_par
     <span class="c1"># (e.g. paediatric vs adult) for more accurate specialty prediction</span>
 
     <span class="c1"># Select one snapshot per visit for specialty training</span>
-    <span class="n">visits_single</span> <span class="o">=</span> <span class="n">select_one_snapshot_per_visit</span><span class="p">(</span><span class="n">train_visits</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">)</span>
+    <span class="n">visits_single</span> <span class="o">=</span> <span class="n">select_one_snapshot_per_visit</span><span class="p">(</span>
+        <span class="n">train_visits</span><span class="p">,</span> <span class="n">visit_col</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">random_seed</span>
+    <span class="p">)</span>
     <span class="n">admitted</span> <span class="o">=</span> <span class="n">visits_single</span><span class="p">[</span>
         <span class="p">(</span><span class="n">visits_single</span><span class="o">.</span><span class="n">is_admitted</span><span class="p">)</span> <span class="o">&amp;</span> <span class="o">~</span><span class="p">(</span><span class="n">visits_single</span><span class="o">.</span><span class="n">specialty</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
     <span class="p">]</span>
@@ -128044,8 +128172,8 @@ based on number of plots, by default None.</p>
 <span class="sd">    None</span>
 <span class="sd">        If neither return_figure nor return_dataframe is True, displays the plots and returns None.</span>
 <span class="sd">    """</span>
-    <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="c1"># Legacy RandomState keeps PIT draws identical to the global-seed version</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
 
     <span class="c1"># Sort prediction times by converting to minutes since midnight</span>
     <span class="n">prediction_times_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
@@ -128104,7 +128232,7 @@ based on number of plots, by default None.</p>
                 <span class="n">upper</span> <span class="o">=</span> <span class="n">cdf_func</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
 
                 <span class="c1"># Sample randomly within the range</span>
-                <span class="n">pit_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span>
+                <span class="n">pit_value</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span>
                 <span class="n">pit_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pit_value</span><span class="p">)</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
