@@ -9,6 +9,9 @@ import numpy as np
 import pandas as pd
 import pytest
 import yaml
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import average_precision_score, log_loss, roc_auc_score
+from sklearn.pipeline import Pipeline
 
 from patientflow.evaluate.handlers import (
     _arrival_delta_suptitle,
@@ -45,6 +48,7 @@ from patientflow.evaluate.scalars import (
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier, TrainingResults
 from patientflow.predict.demand import FlowSelection
+from patientflow.train.classifiers import FeatureColumnTransformer
 
 
 def _uniform_prediction_dict(
@@ -308,14 +312,8 @@ def test_evaluate_classifier_model_diagnostics_per_clock_features(
     monkeypatch.setattr("patientflow.evaluate.handlers.SHAP_AVAILABLE", False)
     monkeypatch.setattr("patientflow.evaluate.handlers.plot_shap", None)
 
-    visits = pd.DataFrame({"is_admitted": [0, 1]})
-    target = EvaluationTarget(
-        flow_name="ed_admissions_cls",
-        flow_type="admissions",
-        evaluation_mode="classifier_model_diagnostics",
-        component="classifier_model_diagnostics",
-        observation_mode="admitted_at_some_point",
-    )
+    visits = _classifier_eval_visits([(6, 0), (15, 30)])
+    target = _classifier_model_diagnostics_target()
     inputs = (
         EvaluationInputsBuilder(
             flow_selection=FlowSelection.emergency_only(),
@@ -325,8 +323,8 @@ def test_evaluate_classifier_model_diagnostics_per_clock_features(
         .add_classifier(
             target.flow_name,
             [
-                _minimal_trained_classifier((6, 0)),
-                _minimal_trained_classifier((15, 30)),
+                _fitted_trained_classifier((6, 0)),
+                _fitted_trained_classifier((15, 30)),
             ],
             visits,
             "is_admitted",
@@ -383,6 +381,219 @@ def _minimal_trained_classifier(
             "n_positive_cases": 5,
         },
     )
+
+
+# --- classifier headline metrics on the evaluation visits ---
+
+_TRAIN_TIME_METRICS = {
+    "auroc": 0.111,
+    "auprc": 0.222,
+    "log_loss": 3.333,
+    "n_samples": 4444,
+    "n_positive_cases": 555,
+}
+
+
+def _fitted_trained_classifier(
+    prediction_time: tuple[int, int] = (6, 0),
+    *,
+    train_split: str = "cv_train",
+) -> TrainedClassifier:
+    """Return a classifier on one feature ``x`` with sentinel training-time metrics."""
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=200)
+    y = (x + rng.normal(scale=0.5, size=200) > 0).astype(int)
+    pipeline = Pipeline(
+        [
+            ("feature_columns", FeatureColumnTransformer()),
+            ("classifier", LogisticRegression()),
+        ]
+    )
+    pipeline.fit(pd.DataFrame({"x": x}), y)
+    model = _minimal_trained_classifier(prediction_time)
+    model.pipeline = pipeline
+    model.selected_eval_metrics = {"split": train_split, **_TRAIN_TIME_METRICS}
+    return model
+
+
+def _classifier_eval_visits(
+    prediction_times: list[tuple[int, int]],
+    *,
+    n_visits: int = 40,
+    seed: int = 1,
+) -> pd.DataFrame:
+    """Return evaluation snapshots with two snapshots per visit at each clock."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for pt in prediction_times:
+        for visit in range(n_visits):
+            for day in (1, 2):
+                x = rng.normal()
+                rows.append(
+                    {
+                        "visit_number": visit,
+                        "snapshot_date": date(2024, 1, day),
+                        "prediction_time": pt,
+                        "x": x,
+                        "is_admitted": int(x + rng.normal(scale=0.5) > 0),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def _classifier_model_diagnostics_target() -> EvaluationTarget:
+    return EvaluationTarget(
+        flow_name="ed_admissions_cls",
+        flow_type="admissions",
+        evaluation_mode="classifier_model_diagnostics",
+        component="classifier_model_diagnostics",
+        observation_mode="admitted_at_some_point",
+    )
+
+
+def _run_classifier_model_diagnostics(
+    tmp_path: Path,
+    models: list[TrainedClassifier],
+    visits: pd.DataFrame,
+    *,
+    eval_split: str = "valid",
+) -> list[dict]:
+    target = _classifier_model_diagnostics_target()
+    prediction_times = [m.training_results.prediction_time for m in models]
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict(prediction_times),
+            eval_split=eval_split,  # type: ignore[arg-type]
+        )
+        .add_classifier(target.flow_name, models, visits, "is_admitted")
+        .with_evaluation_targets([target])
+        .build()
+    )
+    collector = ScalarsCollector()
+    evaluate_classifier_model_diagnostics(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=collector,
+        charts="none",
+    )
+    return sorted(collector.as_list(), key=lambda r: r["prediction_time"])
+
+
+@pytest.mark.parametrize(
+    ("eval_split", "train_split"),
+    [("valid", "cv_train"), ("valid", "test"), ("test", "cv_train"), ("test", "valid")],
+)
+def test_classifier_diagnostics_scores_on_eval_visits_not_pickle(
+    tmp_path: Path, eval_split: str, train_split: str
+):
+    """Headline metrics come from visits_df, not selected_eval_metrics."""
+    visits = _classifier_eval_visits([(6, 0)])
+    model = _fitted_trained_classifier((6, 0), train_split=train_split)
+    [row] = _run_classifier_model_diagnostics(
+        tmp_path, [model], visits, eval_split=eval_split
+    )
+
+    assert model.pipeline is not None
+    y = visits["is_admitted"]
+    y_pred = model.pipeline.predict_proba(visits[["x"]])[:, 1]
+    assert row["metrics_split"] == eval_split
+    assert row["single_snapshot_per_visit"] is False
+    assert row["auroc"] == pytest.approx(roc_auc_score(y, y_pred))
+    assert row["auprc"] == pytest.approx(average_precision_score(y, y_pred))
+    assert row["log_loss"] == pytest.approx(log_loss(y, y_pred))
+    assert row["n_samples"] == len(visits)
+    assert row["n_samples"] == 2 * visits["visit_number"].nunique()
+    assert row["n_positive_cases"] == int(y.sum())
+    assert row["reliable"] is (int(y.sum()) >= RELIABILITY_MIN_POSITIVE_CASES)
+
+    assert row["train_time_metrics_split"] == train_split
+    for key, value in _TRAIN_TIME_METRICS.items():
+        assert row[f"train_time_{key}"] == value
+        assert row[key] != value
+
+
+def test_classifier_diagnostics_scores_each_clock_on_its_own_snapshots(
+    tmp_path: Path,
+):
+    visits = _classifier_eval_visits([(6, 0), (15, 30)], n_visits=10)
+    visits = visits[~((visits["prediction_time"] == (15, 30)) & (visits["x"] < 0))]
+    rows = _run_classifier_model_diagnostics(
+        tmp_path,
+        [_fitted_trained_classifier((6, 0)), _fitted_trained_classifier((15, 30))],
+        visits,
+    )
+    n_at_0600 = int((visits["prediction_time"] == (6, 0)).sum())
+    n_at_1530 = int((visits["prediction_time"] == (15, 30)).sum())
+    assert [r["n_samples"] for r in rows] == [n_at_0600, n_at_1530]
+
+
+def test_classifier_diagnostics_handles_missing_clock_and_single_class(
+    tmp_path: Path,
+):
+    visits = _classifier_eval_visits([(6, 0)], n_visits=5)
+    visits["is_admitted"] = 0
+    rows = _run_classifier_model_diagnostics(
+        tmp_path,
+        [_fitted_trained_classifier((6, 0)), _fitted_trained_classifier((15, 30))],
+        visits,
+    )
+    single_class, missing = rows
+    assert single_class["auroc"] is None
+    assert single_class["auprc"] is None
+    assert single_class["log_loss"] is not None
+    assert single_class["n_samples"] == len(visits)
+    assert single_class["reliable"] is False
+    assert missing["auroc"] is None
+    assert missing["log_loss"] is None
+    assert missing["n_samples"] == 0
+    assert missing["reliable"] is False
+
+
+def test_classifier_diagnostics_requires_pipeline(tmp_path: Path):
+    visits = _classifier_eval_visits([(6, 0)], n_visits=5)
+    with pytest.raises(ValueError, match="no pipeline"):
+        _run_classifier_model_diagnostics(
+            tmp_path, [_minimal_trained_classifier((6, 0))], visits
+        )
+
+
+def test_classifier_shap_uses_registered_visits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    shap_frames: list[pd.DataFrame] = []
+
+    def _capture_shap(models, visits_df, *args, **kwargs):
+        shap_frames.append(visits_df)
+
+    monkeypatch.setattr(
+        "patientflow.evaluate.handlers.plot_features", lambda *a, **k: None
+    )
+    monkeypatch.setattr("patientflow.evaluate.handlers.SHAP_AVAILABLE", True)
+    monkeypatch.setattr("patientflow.evaluate.handlers.plot_shap", _capture_shap)
+
+    visits = _classifier_eval_visits([(6, 0)], n_visits=5)
+    target = _classifier_model_diagnostics_target()
+    inputs = (
+        EvaluationInputsBuilder(
+            flow_selection=FlowSelection.emergency_only(),
+            prediction_dict=_uniform_prediction_dict([(6, 0)]),
+        )
+        .add_classifier(
+            target.flow_name, [_fitted_trained_classifier()], visits, "is_admitted"
+        )
+        .with_evaluation_targets([target])
+        .build()
+    )
+    evaluate_classifier_model_diagnostics(
+        inputs,
+        target,
+        classifiers_dir=tmp_path / "classifiers",
+        collector=ScalarsCollector(),
+    )
+    assert len(shap_frames) == 1
+    assert shap_frames[0] is visits
 
 
 def test_resolve_madcap_groupings_default_and_explicit():

@@ -26,6 +26,10 @@ from patientflow.evaluate.inputs import EvaluationTarget
 # Reliability: minimum positive cases on the evaluated split for classifier headline metrics.
 RELIABILITY_MIN_POSITIVE_CASES: int = 30
 
+# Snapshot selection for classifier headline metrics. Matches the classifier
+# plots in ``patientflow.viz``, which score every snapshot of the evaluation visits.
+CLASSIFIER_SINGLE_SNAPSHOT_PER_VISIT: bool = False
+
 # Reliability: minimum departures for transition-matrix row calibration.
 RELIABILITY_MIN_OBSERVATIONS_TRANSITION: int = 30
 
@@ -74,11 +78,13 @@ def scalar_merge_key(row: Mapping[str, Any]) -> Tuple[Any, ...]:
     -----
     Survival rows use `prediction_time=None` and typically
     `service="_all_"`. Classifier model-diagnostics rows use a non-empty
-    `model_name` (the clocked model key, e.g. ``admissions_0600``) and may
-    include ``metrics_split`` (``"test"``, ``"valid"``, or ``"cv_train"``) for
-    the population used at train time (from
-    ``TrainedClassifier.selected_eval_metrics``). Plot cohort labels use
-    run-level ``EvaluationInputs.eval_split`` instead.
+    `model_name` (the clocked model key, e.g. ``admissions_0600``). Their
+    headline metrics are scored on the run's evaluation visits, and
+    ``metrics_split`` equals ``EvaluationInputs.eval_split`` (``"valid"`` or
+    ``"test"``). ``single_snapshot_per_visit`` records the snapshot selection.
+    Training-time metrics from ``TrainedClassifier.selected_eval_metrics`` are
+    kept as ``train_time_*`` fields, with ``train_time_metrics_split``
+    (``"test"``, ``"valid"``, or ``"cv_train"``).
     Classifier probability-quality rows use flow-level keys
     with ``model_name=""`` and ``prediction_time=None``.
     """

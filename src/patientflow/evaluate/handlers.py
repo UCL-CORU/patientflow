@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.metrics import average_precision_score, log_loss, roc_auc_score
 
 from patientflow.evaluate.calibration import (
     MIN_DISTRIBUTION_SNAPSHOTS,
@@ -57,19 +58,22 @@ from patientflow.evaluate.observations import (
     observation_context_frame_key,
 )
 from patientflow.evaluate.scalars import (
+    CLASSIFIER_SINGLE_SNAPSHOT_PER_VISIT,
     RELIABILITY_MIN_OBSERVATIONS_TRANSITION,
+    RELIABILITY_MIN_POSITIVE_CASES,
     SERVICE_SENTINEL_ALL,
     ScalarsCollector,
-    classifier_reliable,
     scalar_target_fields,
 )
 from patientflow.evaluate.goodness_of_fit import (
     derive_seed_offset,
     multinomial_gof_montecarlo,
 )
+from patientflow.predict.emergency_demand import add_missing_columns
 from patientflow.predict.transfers import build_per_patient_probabilities
 from patientflow.load import get_model_key
 from patientflow.model_artifacts import TrainedClassifier
+from patientflow.prepare import prepare_patient_snapshots
 from patientflow.viz.epudd import plot_epudd
 from patientflow.viz.features import plot_features
 from patientflow.viz.observed_against_expected import plot_arrival_deltas
@@ -308,33 +312,106 @@ def _disambiguate_classifier_plot_filename(
     return f"{fn.stem}_{clock}{fn.suffix}"
 
 
+def _score_classifier_on_visits(
+    model: TrainedClassifier,
+    visits: pd.DataFrame,
+    label_col: str,
+) -> Dict[str, Any]:
+    """Score one clocked model on the evaluation visits at its prediction time.
+
+    Parameters
+    ----------
+    model : TrainedClassifier
+        Model to score; the calibrated pipeline is used when present, as in
+        the discrimination, MADCAP, calibration and SHAP plots.
+    visits : pandas.DataFrame
+        Registered ``visits_df`` for the flow (the ``eval_split`` holdout).
+    label_col : str
+        Binary label column in ``visits``.
+
+    Returns
+    -------
+    dict
+        ``auroc``, ``auprc``, ``log_loss``, ``n_samples`` and
+        ``n_positive_cases``. ``n_samples`` counts snapshots, not visits.
+        ``auroc`` and ``auprc`` are ``None`` when only one class is present;
+        all three metrics are ``None`` when ``visits`` has no snapshots at
+        the model's prediction time.
+
+    Raises
+    ------
+    ValueError
+        If the model has no fitted pipeline.
+    """
+    pipeline = model.calibrated_pipeline or model.pipeline
+    if pipeline is None:
+        raise ValueError(
+            "TrainedClassifier has no pipeline; evaluation scores the model on "
+            "the registered visits_df."
+        )
+    prediction_time = model.training_results.prediction_time
+    if len(visits) == 0 or not (visits["prediction_time"] == prediction_time).any():
+        return {
+            "auroc": None,
+            "auprc": None,
+            "log_loss": None,
+            "n_samples": 0,
+            "n_positive_cases": 0,
+        }
+    X, y = prepare_patient_snapshots(
+        df=visits,
+        prediction_time=prediction_time,
+        single_snapshot_per_visit=CLASSIFIER_SINGLE_SNAPSHOT_PER_VISIT,
+        label_col=label_col,
+    )
+    if "feature_columns" not in pipeline.named_steps:
+        X = add_missing_columns(pipeline, X)
+    y_pred = pipeline.predict_proba(X)[:, 1]
+    both_classes = y.nunique() == 2
+    return {
+        "auroc": float(roc_auc_score(y, y_pred)) if both_classes else None,
+        "auprc": float(average_precision_score(y, y_pred)) if both_classes else None,
+        "log_loss": float(log_loss(y, y_pred, labels=[0, 1])),
+        "n_samples": int(len(y)),
+        "n_positive_cases": int((y == 1).sum()),
+    }
+
+
 def _classifier_diagnostics_scalar_row(
     target: EvaluationTarget,
     model: TrainedClassifier,
     *,
     base_name: str,
+    visits: pd.DataFrame,
+    label_col: str,
+    eval_split: str,
 ) -> Dict[str, Any]:
-    """Build one model-diagnostics scalar row (headline metrics from training)."""
-    metrics = model.selected_eval_metrics
-    pt = model.training_results.prediction_time
-    info = (model.training_results.training_info or {}).get("dataset_info") or {}
-    pos_cases = info.get("train_valid_test_positive_cases") or {}
-    reliable = classifier_reliable(metrics, pos_cases)
-    hour, minute = pt
+    """Build one model-diagnostics scalar row scored on the evaluation visits.
+
+    Headline metrics are computed on ``visits`` with the same snapshot
+    selection as the classifier plots. The training-time numbers from
+    ``TrainedClassifier.selected_eval_metrics`` are kept under ``train_time_*``.
+    """
+    scores = _score_classifier_on_visits(model, visits, label_col)
+    train_metrics = model.selected_eval_metrics
+    hour, minute = model.training_results.prediction_time
     return {
         **scalar_target_fields(target),
         "service": SERVICE_SENTINEL_ALL,
         "component": target.component,
         "prediction_time": [hour, minute],
         "model_name": _classifier_model_key(model, base_name),
-        "metrics_split": metrics.get("split"),
+        "metrics_split": eval_split,
+        "single_snapshot_per_visit": CLASSIFIER_SINGLE_SNAPSHOT_PER_VISIT,
         "charts_generated": True,
-        "auroc": metrics.get("auroc"),
-        "auprc": metrics.get("auprc"),
-        "log_loss": metrics.get("log_loss"),
-        "n_samples": metrics.get("n_samples"),
-        "n_positive_cases": metrics.get("n_positive_cases"),
-        "reliable": reliable,
+        **scores,
+        "reliable": scores["n_positive_cases"] >= RELIABILITY_MIN_POSITIVE_CASES,
+        "train_time_metrics_split": train_metrics.get("split"),
+        "train_time_auroc": train_metrics.get("auroc"),
+        "train_time_auprc": train_metrics.get("auprc"),
+        "train_time_log_loss": train_metrics.get("log_loss"),
+        "train_time_n_samples": train_metrics.get("n_samples"),
+        "train_time_n_positive_cases": train_metrics.get("n_positive_cases"),
     }
 
 
@@ -727,6 +804,13 @@ def evaluate_classifier_model_diagnostics(
 
     Notes
     -----
+    Headline metrics (AUROC, AUPRC, log-loss, counts) are scored on the
+    registered ``visits_df``, using every snapshot at each model's prediction
+    time, as the discrimination, MADCAP, calibration and SHAP plots do.
+    ``metrics_split`` records ``inputs.eval_split``. Training-time metrics from
+    ``TrainedClassifier.selected_eval_metrics`` are kept as ``train_time_*``
+    fields.
+
     Skips quietly when no classifier block is registered for the flow. Uses
     `patientflow.viz.features.plot_features` and, when available,
     `patientflow.viz.shap.plot_shap`. Writes a multi-clock ``features.png``
@@ -806,7 +890,14 @@ def evaluate_classifier_model_diagnostics(
     base_name = _classifier_base_name(block)
     for m in models:
         _require_classifier_eval_artifacts(m)
-        row = _classifier_diagnostics_scalar_row(target, m, base_name=base_name)
+        row = _classifier_diagnostics_scalar_row(
+            target,
+            m,
+            base_name=base_name,
+            visits=visits,
+            label_col=label_col,
+            eval_split=eval_split,
+        )
         if chart_mode == "none":
             row["charts_generated"] = False
             row["skip_reason"] = SKIP_CHARTS_DISABLED

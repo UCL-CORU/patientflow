@@ -240,7 +240,7 @@ def plot_madcap(
 
             # Pipeline handles column selection automatically via FeatureColumnTransformer
             # For legacy models, add_missing_columns is called internally if needed
-            if "add_missing_columns" not in pipeline.named_steps:
+            if "feature_columns" not in pipeline.named_steps:
                 X_test = add_missing_columns(pipeline, X_test)
             predict_proba = pipeline.predict_proba(X_test)[:, 1]
 
