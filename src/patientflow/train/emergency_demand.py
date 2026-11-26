@@ -31,7 +31,6 @@ main : Entry point for training pipeline
 """
 
 from typing import Dict, Tuple
-import numpy as np
 import pandas as pd
 from datetime import timedelta
 import sys
@@ -223,7 +222,8 @@ def train_all_models(
     ordinal_mappings : dict
         Ordinal variable mappings for categorical features.
     random_seed : int
-        Random seed for reproducibility.
+        Seed for snapshot selection, majority-class undersampling and the
+        real-time prediction test. Global random state is not changed.
     visit_col : str, optional
         Name of column in dataset that is used to identify a hospital visit (eg visit_number, csn).
     specialties : list, optional
@@ -281,9 +281,6 @@ def train_all_models(
             )
         if curve_params is None:
             raise ValueError("curve_params must be provided when test_realtime is True")
-
-    # Set random seed
-    np.random.seed(random_seed)
 
     # Define model names internally
     model_names = {
@@ -353,6 +350,7 @@ def train_all_models(
         model_name=model_names["admissions"],
         visit_col=visit_col,
         verbose=verbose,
+        random_state=random_seed,
     )
 
     # Save admission models if requested
@@ -365,7 +363,9 @@ def train_all_models(
     # (e.g. paediatric vs adult) for more accurate specialty prediction
 
     # Select one snapshot per visit for specialty training
-    visits_single = select_one_snapshot_per_visit(train_visits, visit_col)
+    visits_single = select_one_snapshot_per_visit(
+        train_visits, visit_col, seed=random_seed
+    )
     admitted = visits_single[
         (visits_single.is_admitted) & ~(visits_single.specialty.isnull())
     ]

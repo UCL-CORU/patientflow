@@ -1,5 +1,7 @@
+import random
 import unittest
 from datetime import timedelta
+from unittest import mock
 
 import pandas as pd
 import numpy as np
@@ -9,6 +11,8 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardSc
 from xgboost import XGBClassifier
 
 from patientflow.predict.emergency_demand import dataframe_for_classifier_predict_proba
+from patientflow.prepare import select_one_snapshot_per_visit
+from patientflow.train import classifiers
 from patientflow.train.classifiers import (
     FeatureColumnTransformer,
     FeatureKind,
@@ -684,6 +688,133 @@ class TestClassifiers(unittest.TestCase):
         )
         probs = pipe.predict_proba(prepared)
         self.assertEqual(probs.shape[0], 2)
+
+
+def assert_global_state_unchanged(test, fn):
+    """Run ``fn`` and check the next numpy and stdlib global draws are unaffected."""
+    np.random.seed(123)
+    random.seed(123)
+    expected = (np.random.random(), random.random())
+
+    np.random.seed(123)
+    random.seed(123)
+    result = fn()
+    test.assertEqual((np.random.random(), random.random()), expected)
+    return result
+
+
+class TestSelectOneSnapshotPerVisit(unittest.TestCase):
+    @staticmethod
+    def make_snapshots(n_visits=50, snapshots_per_visit=4):
+        return pd.DataFrame(
+            {
+                "visit_number": np.repeat(np.arange(n_visits), snapshots_per_visit),
+                "value": np.arange(n_visits * snapshots_per_visit),
+            }
+        )
+
+    def test_global_state_unchanged(self):
+        df = self.make_snapshots()
+        assert_global_state_unchanged(
+            self, lambda: select_one_snapshot_per_visit(df, "visit_number")
+        )
+
+    def test_same_seed_same_selection(self):
+        df = self.make_snapshots()
+        first = select_one_snapshot_per_visit(df, "visit_number", seed=7)
+        np.random.seed(999)
+        second = select_one_snapshot_per_visit(df, "visit_number", seed=7)
+        pd.testing.assert_frame_equal(first, second)
+        self.assertEqual(len(first), df["visit_number"].nunique())
+
+    def test_input_not_modified(self):
+        df = self.make_snapshots()
+        original = df.copy()
+        select_one_snapshot_per_visit(df, "visit_number")
+        pd.testing.assert_frame_equal(df, original)
+
+    def test_existing_random_number_column_is_used(self):
+        df = self.make_snapshots(n_visits=3, snapshots_per_visit=2)
+        df["random_number"] = [0.1, 0.9, 0.8, 0.2, 0.3, 0.7]
+        selected = select_one_snapshot_per_visit(df, "visit_number")
+        self.assertEqual(selected["value"].tolist(), [1, 2, 5])
+        self.assertNotIn("random_number", selected.columns)
+
+
+class TestUndersamplingRandomState(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        rng = np.random.default_rng(42)
+        n = 400
+        cls.visits = pd.DataFrame(
+            {
+                "visit_number": range(n),
+                "age": rng.integers(0, 100, n),
+                "is_admitted": rng.choice([0, 1], n, p=[0.7, 0.3]),
+                "snapshot_time": pd.date_range("2023-01-01", periods=n, freq="h"),
+                "prediction_time": [(4, 0)] * n,
+            }
+        )
+
+    def balanced_train_index(self, train_visits, **kwargs):
+        """Train once and return the index of the balanced frame passed to CV."""
+        with mock.patch.object(
+            classifiers,
+            "chronological_cross_validation",
+            wraps=classifiers.chronological_cross_validation,
+        ) as cv:
+            model = train_classifier(
+                train_visits=train_visits,
+                valid_visits=self.visits,
+                prediction_time=(4, 0),
+                exclude_from_training_data=[
+                    "snapshot_time",
+                    "visit_number",
+                    "prediction_time",
+                ],
+                grid={"max_depth": [2], "n_estimators": [5]},
+                ordinal_mappings={},
+                visit_col="visit_number",
+                calibrate_probabilities=False,
+                **kwargs,
+            )
+        return list(cv.call_args.args[1].index), model
+
+    def test_same_random_state_same_balanced_set_across_settings(self):
+        reference, _ = self.balanced_train_index(self.visits, random_state=7)
+
+        np.random.seed(999)
+        unselected, _ = self.balanced_train_index(
+            self.visits,
+            random_state=7,
+            single_snapshot_per_visit_train=False,
+            single_snapshot_per_visit_valid=False,
+        )
+
+        with_random_number = self.visits.assign(random_number=0.5)
+        preseeded, _ = self.balanced_train_index(with_random_number, random_state=7)
+
+        self.assertEqual(unselected, reference)
+        self.assertEqual(preseeded, reference)
+
+    def test_different_random_state_different_balanced_set(self):
+        first, _ = self.balanced_train_index(self.visits, random_state=7)
+        second, _ = self.balanced_train_index(self.visits, random_state=8)
+        self.assertNotEqual(first, second)
+
+    def test_random_state_recorded_in_balance_info(self):
+        _, model = self.balanced_train_index(self.visits, random_state=7)
+        self.assertEqual(model.training_results.balance_info["random_state"], 7)
+
+        _, unbalanced = self.balanced_train_index(
+            self.visits, random_state=7, use_balanced_training=False
+        )
+        self.assertIsNone(unbalanced.training_results.balance_info["random_state"])
+
+    def test_global_state_unchanged(self):
+        assert_global_state_unchanged(
+            self, lambda: self.balanced_train_index(self.visits, random_state=7)
+        )
 
 
 class TestServiceModels(unittest.TestCase):

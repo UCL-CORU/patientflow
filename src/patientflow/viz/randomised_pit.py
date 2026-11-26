@@ -63,8 +63,8 @@ def plot_randomised_pit(
     None
         If neither return_figure nor return_dataframe is True, displays the plots and returns None.
     """
-    if seed is not None:
-        np.random.seed(seed)
+    # Legacy RandomState keeps PIT draws identical to the global-seed version
+    rng = np.random.RandomState(seed)
 
     # Sort prediction times by converting to minutes since midnight
     prediction_times_sorted = sorted(
@@ -123,7 +123,7 @@ def plot_randomised_pit(
                 upper = cdf_func(obs)
 
                 # Sample randomly within the range
-                pit_value = np.random.uniform(lower, upper)
+                pit_value = rng.uniform(lower, upper)
                 pit_values.append(pit_value)
 
             except Exception as e:

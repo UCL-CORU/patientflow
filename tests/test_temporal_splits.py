@@ -4,6 +4,7 @@ Covers the three-way legacy behaviour and the optional four-way split with a
 chronological calibration window (issue #228).
 """
 
+import random
 import unittest
 from datetime import date
 
@@ -257,6 +258,33 @@ class TestAssignPatientIds(unittest.TestCase):
                 END_TEST,
                 start_calibration_set=START_VALID,
             )
+
+    def assign_seeded(self):
+        return assign_patient_ids(
+            self.df,
+            START_TRAIN,
+            START_VALID,
+            START_TEST,
+            END_TEST,
+            seed=11,
+            verbose=False,
+        )
+
+    def test_same_seed_same_assignment(self):
+        first = self.assign_seeded()
+        random.seed(999)
+        second = self.assign_seeded()
+        pd.testing.assert_frame_equal(first, second)
+
+    def test_global_random_state_unchanged(self):
+        np.random.seed(123)
+        random.seed(123)
+        expected = (np.random.random(), random.random())
+
+        np.random.seed(123)
+        random.seed(123)
+        self.assign_seeded()
+        self.assertEqual((np.random.random(), random.random()), expected)
 
 
 class TestVerboseQuietStdout(unittest.TestCase):

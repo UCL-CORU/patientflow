@@ -92,7 +92,7 @@ def synthesise_departure_times(
 
 
 def create_fake_finished_visits(
-    start_date, end_date, mean_patients_per_day, admitted_only=False
+    start_date, end_date, mean_patients_per_day, admitted_only=False, seed=42
 ):
     """
     Generate synthetic patient visit data for an emergency department.
@@ -111,6 +111,9 @@ def create_fake_finished_visits(
     admitted_only : bool, optional
         If True, only return admitted patients. The mean_patients_per_day will be adjusted to maintain
         the same total number of admitted patients as would be expected in the full dataset.
+    seed : int, optional
+        Seed for a local random generator, by default 42. Global random state
+        is not changed.
 
     Returns
     -------
@@ -149,8 +152,8 @@ def create_fake_finished_visits(
     if isinstance(end_date, str):
         end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Set random seed for reproducibility
-    np.random.seed(42)  # You can change this seed value as needed
+    # Legacy RandomState keeps the generated data identical to the global-seed version
+    rng = np.random.RandomState(seed)
 
     # Define admission probabilities based on triage score
     # Triage 1: 80% admission, Triage 2: 60%, Triage 3: 30%, Triage 4: 10%, Triage 5: 2%
@@ -182,7 +185,7 @@ def create_fake_finished_visits(
         mean_patients_per_day = mean_patients_per_day / expected_admission_rate
 
     # Generate random number of patients for each day using Poisson distribution
-    daily_patients = np.random.poisson(mean_patients_per_day, days_range)
+    daily_patients = rng.poisson(mean_patients_per_day, days_range)
 
     # Calculate the total number of visits
     total_visits = sum(daily_patients)
@@ -247,9 +250,7 @@ def create_fake_finished_visits(
 
     # Create a pool of patients who will have multiple visits (20% of patients)
     multi_visit_patients = set(
-        np.random.choice(
-            patient_ids, size=int(num_unique_patients * 0.2), replace=False
-        )
+        rng.choice(patient_ids, size=int(num_unique_patients * 0.2), replace=False)
     )
 
     for day_idx, num_patients in enumerate(daily_patients):
@@ -266,40 +267,38 @@ def create_fake_finished_visits(
 
             if available_new_patients:
                 # Use a new patient
-                patient_id = np.random.choice(available_new_patients)
+                patient_id = rng.choice(available_new_patients)
             else:
                 # All patients have at least one visit, now use multi-visit patients
-                patient_id = np.random.choice(list(multi_visit_patients))
+                patient_id = rng.choice(list(multi_visit_patients))
 
             # Increment the visit count for this patient
             patient_visit_count[patient_id] += 1
 
             # Random hour for arrival (more likely during daytime)
-            arrival_hour = np.random.normal(13, 4)  # Mean at 1 PM, std dev of 4 hours
+            arrival_hour = rng.normal(13, 4)  # Mean at 1 PM, std dev of 4 hours
             arrival_hour = max(0, min(23, int(arrival_hour)))  # Clamp between 0-23
 
             # Random minutes
-            arrival_minute = np.random.randint(0, 60)
+            arrival_minute = rng.randint(0, 60)
 
             # Create arrival datetime
             arrival_datetime = current_date.replace(
                 hour=arrival_hour,
                 minute=arrival_minute,
-                second=np.random.randint(0, 60),
+                second=rng.randint(0, 60),
             )
 
             # Generate triage score (1-5)
-            triage_score = np.random.choice([1, 2, 3, 4, 5], p=triage_probabilities)
+            triage_score = rng.choice([1, 2, 3, 4, 5], p=triage_probabilities)
 
             # Generate admission status based on triage score
             admission_prob = admission_probabilities[triage_score]
-            is_admitted = np.random.choice(
-                [0, 1], p=[1 - admission_prob, admission_prob]
-            )
+            is_admitted = rng.choice([0, 1], p=[1 - admission_prob, admission_prob])
 
             # Generate specialty for admitted patients
             if is_admitted:
-                specialty = np.random.choice(
+                specialty = rng.choice(
                     ["medical", "surgical", "haem/onc", "paediatric"],
                     p=[0.65, 0.25, 0.05, 0.05],
                 )
@@ -312,7 +311,7 @@ def create_fake_finished_visits(
 
             # Generate length of stay (in minutes) - log-normal distribution
             # Most visits are 4 to 12 hours, but some can be shorter or longer
-            length_of_stay = np.random.lognormal(mean=5.8, sigma=0.5)
+            length_of_stay = rng.lognormal(mean=5.8, sigma=0.5)
             length_of_stay = max(
                 60, min(2880, length_of_stay)
             )  # Between 1 hour and 48 hours
@@ -332,9 +331,7 @@ def create_fake_finished_visits(
                 age = next(v["age"] for v in visits if v["patient_id"] == patient_id)
             else:
                 # Generate age with a distribution skewed towards older adults
-                age = int(
-                    np.random.lognormal(mean=3.8, sigma=0.5)
-                )  # Centers around 45 years
+                age = int(rng.lognormal(mean=3.8, sigma=0.5))  # Centers around 45 years
                 age = max(0, min(100, age))  # Clamp between 0-100 years
 
             # Add visit record (without triage score, but with patient_id)
@@ -351,7 +348,7 @@ def create_fake_finished_visits(
             )
 
             # Generate triage observation within first 10 minutes
-            minutes_after_arrival = np.random.uniform(0, 10)
+            minutes_after_arrival = rng.uniform(0, 10)
             observation_datetime = arrival_datetime + timedelta(
                 minutes=minutes_after_arrival
             )
@@ -368,9 +365,9 @@ def create_fake_finished_visits(
             if length_of_stay > 120:
                 # For each lab test, decide if it should be ordered based on triage score
                 for lab_test in lab_tests:
-                    if np.random.random() < lab_probabilities[triage_score][lab_test]:
+                    if rng.random_sample() < lab_probabilities[triage_score][lab_test]:
                         # Order time is after triage but within first 90 minutes
-                        minutes_after_triage = np.random.uniform(
+                        minutes_after_triage = rng.uniform(
                             0, 90 - minutes_after_arrival
                         )
                         order_datetime = observation_datetime + timedelta(

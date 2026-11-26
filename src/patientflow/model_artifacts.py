@@ -86,15 +86,16 @@ class TrainingResults:
         was supplied, otherwise ``"validation"`` (legacy behaviour).
     test_results : dict of str to float, optional
         Evaluation metrics computed on the test dataset. None if test evaluation was not performed.
-    balance_info : dict of str to bool or int or float, optional
-        Information related to class balance (e.g., whether data was balanced, class ratios).
+    balance_info : dict of str to bool or int or float or None, optional
+        Information related to class balance (e.g., whether data was balanced, class ratios,
+        and the ``random_state`` used for undersampling).
     """
 
     prediction_time: Tuple[int, int]
     training_info: Dict[str, Any] = field(default_factory=dict)
     calibration_info: Dict[str, Any] = field(default_factory=dict)
     test_results: Optional[Dict[str, float]] = None
-    balance_info: Dict[str, Union[bool, int, float]] = field(default_factory=dict)
+    balance_info: Dict[str, Union[bool, int, float, None]] = field(default_factory=dict)
 
 
 @dataclass
